@@ -3,12 +3,12 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-namespace DynamicStorage
+namespace SSTUTools
 {
 	
-	//Multi-panel solar panel module, each with own suncatcher and pivot
+	//Multi-panel solar panel module, each with own suncatcher and pivot and occlusion checks
 	//Animation code based from stock, Near-Future, and Firespitter code
-	//Solar panel code based from stock, Near-Future, and...who knows
+	//Solar panel code based from stock code
 	public class SSTUSolarPanel : PartModule
 	{
 			
@@ -25,14 +25,31 @@ namespace DynamicStorage
 		public String pivotTransforms = string.Empty;
 		
 		[KSPField(isPersistant = false)]
+		public String windBreakTransformName = string.Empty;
+		
+		[KSPField(isPersistant = false)]
 		public String resourceName = "ElectricCharge";
 		
 		[KSPField(isPersistant = false)]
 		public float resourceAmount = 3.0f;
 		
+		[KSPField(isPersistant = false)]
+		public float windResistance = 30.0f;
+		
+		[KSPField(isPersistant = false)]
+		public bool breakable = true;
+		
+		[KSPField(isPersistant = false)]
+		public bool canDeployShrouded = false;
+		
 		//config field, sets animation layer to reduce conflicts with stock layers/etc
 		[KSPField(isPersistant = false)]
 		public int animationLayer = 1;
+		
+		[KSPField (isPersistant = false)]
+		public FloatCurve temperatureEfficCurve;
+		
+		//BELOW HERE ARE NON-CONFIG EDITABLE FIELDS
 				
 		//used purely to persist rough estimate of animation state; if it is retracting/extending when reloaded, it will default to the start of that animation transition
 		//defaults to retracted state for any new/uninitialized parts
@@ -40,12 +57,9 @@ namespace DynamicStorage
 		public String savedAnimationState = "RETRACTED";
 
 		//Status displayed for panel state, includes animation state and energy state;  Using in place of the three-line output from stock panels
-		[KSPField(isPersistant = false, guiName = "Panel Status", guiActive = true)]
+		[KSPField(isPersistant = false, guiName = "S.P.", guiActive = true)]
 		public String guiStatus = "unknown";
-		
-		[KSPField(isPersistant = false)]
-		public FloatCurve powerCurve = new FloatCurve();
-		
+				
 		//parsed list of pivot transform names, should be same length and order as suncatchers
 		private List<String> pivotNames = new List<String>();
 		
@@ -72,6 +86,8 @@ namespace DynamicStorage
 		private float trackingSpeed = 0.25f;
 		
 		private Transform sunTransform;
+		
+		private Transform windBreakTransform;
 			
 		//panel state enum, each represents a discrete state
 		public enum SSTUPanelState
@@ -83,16 +99,19 @@ namespace DynamicStorage
 			BROKEN,//not sure I should include, but might be good for if someone keeps them deployed in atmosphere... or something
 		}
 					
-		public SSTUSolarPanel ()
-		{		
-			//base();//super constructor automatically called? (as this doesn't work/isn't valid)
-			//yep, i'm lazy and ther is nothing in the constructor;
+		public SSTUSolarPanel () : base()//call super needed?
+		{	
+			//the default stock temperatureEfficiencyCurve
+			this.temperatureEfficCurve = new FloatCurve ();
+			this.temperatureEfficCurve.Add (4f, 1.2f, 0f, -0.0005725837f);
+			this.temperatureEfficCurve.Add (300f, 1f, -0.0008277721f, -0.0008277721f);
+			this.temperatureEfficCurve.Add (1200f, 0.1f, -0.0003626566f, -0.0003626566f);
+			this.temperatureEfficCurve.Add (2500f, 0.01f, 0f, 0f);
 		}
 		
 		public override void OnStart (StartState state)
 		{
 			base.OnStart (state);
-			printConfigData();
 			initializeAnimations();
 			parseTransformData();
 			findTransforms();
@@ -107,6 +126,12 @@ namespace DynamicStorage
 			{
 				setAnimNormTime(1.0f);
 				setAnimSpeed(1);
+			}
+			else if(panelState==SSTUPanelState.BROKEN)
+			{
+				setAnimNormTime(1.0f);
+				setAnimSpeed(1);
+				breakPanels();
 			}
 			
 			//and set if in flight or not
@@ -150,7 +175,6 @@ namespace DynamicStorage
 		{
 			base.OnLoad (node);
 			loadSavedState(savedAnimationState);
-			updateGuiData();
 		}
 		
 		//TODO
@@ -159,19 +183,19 @@ namespace DynamicStorage
 			return base.GetInfo ();
 		}
 		
-		//per tick update; checks animation state for completion
+		//per ? tick update; checks animation state for completion
 		public void Update()
 		{
 			//TODO -- find best place for this code to run..... fixedUpdate might be appropriate, no clue how often it is ran
 			//check animations to see if should toggle state
-			//clamp times to 0-1 range for ease of checking
+			//clamp times to 0-1 range for ease of checking (and proper reverse handling)
 			//find largest time from range
 			float animTimeBig = 0;//start at 0, will go up if anything is > 1
 			float animTimeSmall = 1;//start at 1, will go down if anything is < 1
 			foreach(AnimationState state in animationStates)
 			{				
-				state.normalizedTime = Mathf.Clamp01(state.normalizedTime);
-				animTimeBig = Math.Max(state.normalizedTime, animTimeBig);//clamp animation times to 0-1 range, and find largest time
+				state.normalizedTime = Mathf.Clamp01(state.normalizedTime);//clamp animation times to 0-1 range
+				animTimeBig = Math.Max(state.normalizedTime, animTimeBig);//find largest time
 				animTimeSmall = Math.Min (state.normalizedTime, animTimeSmall);//find smallest time
 			}
 			if(panelState==SSTUPanelState.EXTENDING && animTimeSmall==1)
@@ -182,18 +206,19 @@ namespace DynamicStorage
 			{
 				setState(SSTUPanelState.RETRACTED);
 			}
-			//updating GUI status is done in fixed update....should possibly be done here though?
+			//updating GUI status is done in fixed update....should possibly be done here though? what freq does this update run at?
 		}
 		
 		public void FixedUpdate ()
 		{
 			updatePowerStatus ();
+			checkForBreak();
 			updateGuiData();
 		}
 		
 		//KSP Action Group 'Extend Panels' action, will only trigger when panels are actually retracted/ing
 		[KSPAction("Extend Panels")]
-		public void extendAction()
+		public void extendAction(KSPActionParam param)
 		{
 			if(panelState==SSTUPanelState.RETRACTED || panelState==SSTUPanelState.RETRACTING)
 			{
@@ -203,18 +228,17 @@ namespace DynamicStorage
 		
 		//KSP Action Group 'Retract Panels' action, will only trigger when panels are actually extended/ing
 		[KSPAction("Retract Panels")]
-		public void retractAction()
+		public void retractAction(KSPActionParam param)
 		{
 			if(panelState==SSTUPanelState.EXTENDING || panelState==SSTUPanelState.EXTENDED)
 			{
 				toggle ();
-			}
-			
+			}			
 		}
 		
 		//KSP Action Group 'Toggle Panels' action, will operate regardless of current panel status (except broken)
 		[KSPAction("Toggle Panels")]
-		public void toggleAction()
+		public void toggleAction(KSPActionParam param)
 		{
 			toggle ();
 		}
@@ -250,8 +274,14 @@ namespace DynamicStorage
 		
 		//final deploy activation action, sets animation speed and panel state to trigger deployment
 		private void deploy()
-		{			
+		{	
+			if(!canDeployShrouded && base.part.ShieldedFromAirstream)
+			{
+				print ("Cannot deploy while shielded from airstream!!");
+				return;
+			}
 			setAnimSpeed(1.0f);
+			setPanelsToDefaultOrientation();
 			setState (SSTUPanelState.EXTENDING);			
 		}
 		
@@ -262,27 +292,31 @@ namespace DynamicStorage
 			setPanelsToDefaultOrientation();
 			setState(SSTUPanelState.RETRACTING);
 			occluderName = String.Empty;
+			energyFlow = 0.0f;
 		}
 		
 		//TODO
 		//update power status every tick if panels are extended (and not broken)
 		private void updatePowerStatus()
 		{	
-			//TODO update power state, raycasts... the whole solar panel bit
-			if(panelState!=SSTUPanelState.EXTENDED || !flight){return;}			
+			//TODO update power state, raycasts... the whole solar panel bit		
 			energyFlow = 0.0f;
 			occluderName = String.Empty;
+			if(panelState!=SSTUPanelState.EXTENDED || !flight){return;}	
 			CelestialBody sun = FlightGlobals.Bodies[0];
 			sunTransform = sun.transform;
 			foreach(PanelData pd in panelData)
 			{
 				updatePanelRotation(pd);
 				updatePanelPower(pd);
-				//print ("updated power for panel: "+pd.GetHashCode());
+			}		
+			if(energyFlow>0)
+			{				
+				part.RequestResource (resourceName, -energyFlow);
 			}
 		}	
 		
-		//based on stock solar panel tracking code, with guesses as to many of the transforms...some things could be inverted; but it seems to work
+		//based on stock solar panel sun tracking code
 		private void updatePanelRotation(PanelData pd)
 		{
 			//vector from pivot to sun
@@ -298,60 +332,35 @@ namespace DynamicStorage
 		
 		private void updatePanelPower(PanelData pd)
 		{			
-			//check for occlusion below the horizon
-			//check for occlusion by other parts	
-			//check angle between sun and panel			
-			//derive power for that panel from the angle and maximum power; don't think it is linear?
-			CelestialBody body = FlightGlobals.currentMainBody;
-			bool planetOcclusion = body != FlightGlobals.Bodies[0] && checkSameBodyOcclusion(pd.rayCastTransform);//current body is not the sun and fails occlusion test			
-			bool partOcclusion = planetOcclusion || checkPartOcclusion(pd.rayCastTransform);//don't bother with part check if horizon is occluded
-			if(!partOcclusion && !planetOcclusion)//if no occlusion, calc angle for power calculations
+			if(!isOccludedByPart(pd.rayCastTransform))
 			{
-				float angle = Vector3.Angle(pd.rayCastTransform.forward, sunTransform.position-pd.rayCastTransform.position);
-				float energy = Mathf.Clamp01(Mathf.Cos(angle*Mathf.Deg2Rad)) * resourceAmount;
-							
-				double altitude = FlightGlobals.getAltitudeAtPos(vessel.GetWorldPos3D(), FlightGlobals.Bodies[0]);
-				energyFlow += powerCurve.Evaluate((float)altitude) * energy;
+				Vector3 normalized = (sunTransform.position - pd.rayCastTransform.position).normalized;
 				
-				part.RequestResource(resourceName, -energyFlow * TimeWarp.fixedDeltaTime);
-			}
-		}
-	
-		//called when current body is not the sun, to check if can see the sun
-		//I really don't know the math here, based loosely on code from Nertea/Near Future
-		private bool checkSameBodyOcclusion(Transform tr)
-		{
-			CelestialBody sun = FlightGlobals.Bodies[0];			
-			CelestialBody body = FlightGlobals.currentMainBody;
-			
-			Vector3d sunVector = sun.position - part.vessel.GetWorldPos3D();
-			Vector3d bodyVector = body.position - part.vessel.GetWorldPos3D();
-			
-			double bdsq = body.Radius * body.Radius;
-			double dot = Vector3d.Dot (sunVector, bodyVector);
-			
-			if(dot > (bodyVector.sqrMagnitude - bdsq))
-			{
-				if(((dot*dot)/sunVector.sqrMagnitude) > (bodyVector.sqrMagnitude - bdsq))
+				float sunAOA = Mathf.Clamp (Vector3.Dot (pd.rayCastTransform.forward, normalized), 0f, 1f);
+				float distMult = (float)(base.vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
+				
+				if(distMult==0 && FlightGlobals.currentMainBody!=null)//vessel.solarFlux == 0, so occluded by a planetary body
 				{
-					occluderName = body.name;
-					return true;
-				}	
-			}			
-			return false;
+					occluderName = FlightGlobals.currentMainBody.name;//just guessing..but might be occluded by the body we are orbiting?
+				}
+				
+				float efficMult = this.temperatureEfficCurve.Evaluate ((float)base.part.temperature);
+				float panelEnergy = resourceAmount * TimeWarp.fixedDeltaTime * sunAOA * distMult * efficMult;
+				energyFlow += panelEnergy;
+			}
 		}
 		
-		//TOODO use in conjunction with above method for a slightly more optimized-than-stock panel power update checking sequence
-		private bool checkPartOcclusion(Transform tr)
+		//does a very short raycast for vessel/part occlusion checking
+		//rely on stock thermal input data for body occlusion checks
+		private bool isOccludedByPart(Transform tr)
 		{
-			Transform sunTransform = FlightGlobals.Bodies[0].transform;
 			RaycastHit hit;
-			if( Physics.Raycast(tr.position, sunTransform.position - tr.position, out hit, 3000f) )
+			if( Physics.Raycast(tr.position, (sunTransform.position - tr.position).normalized, out hit, 300f) )
 			{		
-				occluderName = hit.transform.gameObject.name;
+				occluderName = hit.transform.gameObject.name;						
 				return true;
 			}
-			return false;
+			return false;	
 		}
 		
 		//set the panel state enum, updates persistent saved state variable and gui data and buttons
@@ -369,6 +378,48 @@ namespace DynamicStorage
 			foreach(PanelData panel in panelData)
 			{
 				panel.pivotTransform.localRotation = new Quaternion(panel.defaultOrientation.x, panel.defaultOrientation.y, panel.defaultOrientation.z, panel.defaultOrientation.w);			
+			}
+		}
+		
+		private void checkForBreak()
+		{
+			if( !breakable || panelState==SSTUPanelState.BROKEN || vessel.packed )
+			{
+				return;//noop
+			}
+			Vector3 tr;
+			if(windBreakTransform!=null)
+			{
+				tr = windBreakTransform.forward;
+			}			
+			else
+			{
+				tr = vessel.transform.up;
+			}
+			if(tr==null){return;}//unpossible...but w/e
+			float num = Mathf.Abs (Vector3.Dot (base.vessel.srf_velocity.normalized, tr.normalized));
+			float num2 = (float)base.vessel.srf_velocity.magnitude * num * (float)base.vessel.atmDensity;
+			if (num2 >= this.windResistance)
+			{
+				breakPanels();
+				setState(SSTUPanelState.BROKEN);
+			}
+		}
+		
+		private void breakPanels()
+		{
+			print ("BREAKING SC-B-SM SOLAR PANELS......");
+			foreach(PanelData pd in panelData)
+			{
+				recurseTransforms(pd.pivotTransform, false);
+			}
+		}
+		
+		private void repairPanels()
+		{
+			foreach(PanelData pd in panelData)
+			{
+				recurseTransforms(pd.pivotTransform, true);
 			}
 		}
 		
@@ -428,15 +479,37 @@ namespace DynamicStorage
 				pd.defaultOrientation = new Quaternion(t1.localRotation.x, t1.localRotation.y, t1.localRotation.z, t1.localRotation.w);//set a copy of original rotation, to restore when panels are retracted
 				panelData.Add (pd);
 			}
+			
+			if(windBreakTransformName!=null && windBreakTransformName.Length>0)
+			{
+				t1 = part.FindModelTransform(windBreakTransformName);
+				if(t1!=null)
+				{
+					windBreakTransform = t1;
+				}
+			}
+			if(windBreakTransform==null && panelData.Count>0)
+			{
+				windBreakTransform = panelData[0].pivotTransform;
+			}//else it will use default vessel transform
 		}
 		
 		//updates GUI information and buttons from panel state and energy flow values
 		//TODO cache/reduce GC churn
 		private void updateGuiData()
-		{
-			guiStatus = panelState.ToString();
-			if(energyFlow > 0){guiStatus += " - "+energyFlow+" e/s";}
-			if(occluderName.Length>0){guiStatus += " occ: "+occluderName;}
+		{			
+			if(energyFlow==0 && occluderName.Length>0)//if occluded, state that information first
+			{
+				guiStatus = "OCC: "+occluderName;
+			}
+			else
+			{
+				guiStatus = panelState.ToString();
+				if(energyFlow > 0)
+				{
+					guiStatus += " : "+String.Format("{0:F1}", (energyFlow* (1/TimeWarp.fixedDeltaTime)))+" e/s";
+				}	
+			}			
 			if(panelState==SSTUPanelState.BROKEN)			
 			{
 				Events["extendEvent"].active=false;
@@ -476,18 +549,6 @@ namespace DynamicStorage
 			animationStates = states.ToArray();
 		}
 		
-		private void printConfigData()
-		{
-			print ("Config Data: ");
-			print ("animationName: " + animationName);
-			print ("rayTransforms: " + rayTransforms);
-			print ("pivotTransforms: " + pivotTransforms);
-			print ("guiStatus: "+guiStatus);
-			print ("animationStatusString: " +savedAnimationState);
-			print ("animationLayer: "+animationLayer);
-			print ("EndConfigData");
-		}
-		
 		//parses saved state string into enum state, falls back to retracted status if load fails for any reason
 		private void loadSavedState(String state)
 		{
@@ -501,6 +562,24 @@ namespace DynamicStorage
 			}
 			setState(panelState);			
 		}
+		
+		//recurse through all children of the input transform, enabling or disabling the renderer component (if present) based on the enable flag
+		private void recurseTransforms(Transform tr, bool enableRender)
+		{
+			if(tr.renderer!=null)
+			{
+				tr.renderer.enabled = enableRender;				
+			}
+			for(int i = 0; i < tr.childCount; i++)
+			{
+				recurseTransforms(tr.GetChild(i), enableRender);
+			}
+		}		
+		//TODO load an index from config and use this method for people with custom games? no clue how multiple solar systems handle body references...
+//		private CelestialBody getSun()
+//		{
+//			return FlightGlobals.Bodies[0];
+//		}
 	}
 	
 	//wrapper class for solar panel data needed on a per-panel bases in a multi-panel setup
