@@ -146,12 +146,12 @@ namespace SSTUTools
 		}
 		
 		public override void OnAwake ()
-		{
+		{			
 			base.OnAwake ();
 		}
 		
 		public override void OnActive ()
-		{
+		{			
 			base.OnActive ();
 		}
 		
@@ -383,7 +383,7 @@ namespace SSTUTools
 		
 		private void checkForBreak()
 		{
-			if( !breakable || panelState==SSTUPanelState.BROKEN || vessel.packed )
+			if( !breakable || panelState==SSTUPanelState.BROKEN || vessel==null || vessel.packed )
 			{
 				return;//noop
 			}
