@@ -1,0 +1,223 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace SSTUTools
+{
+	//creates a basic panels-only fairing with the given parameters
+	public class BasicFairingGenerator
+	{		
+		
+		public String baseName = "FairingBase";
+		public String panelName = "FairingPanel";
+		#region publicReadOnlyVars		
+		public readonly float startHeight;
+		public readonly float boltPanelHeight;
+		public readonly float totalPanelHeight;
+		public readonly float maxPanelSectionHeight;		
+		public readonly int numOfPanels;
+		public readonly int cylinderSides;
+		public readonly float topRadius;
+		public readonly float bottomRadius;
+		public readonly float wallThickness;	
+		#endregion 
+		
+		#region publicUVvars
+		//UV map areas
+		//made public so that they could potentially be overriden by KSPModule code and/or set from a config file
+		public UVArea innerCap = new UVArea(0, 5, 1023, 24, 1024);
+		public UVArea innerPanel = new UVArea(0, 30, 1023, 335, 1024);			
+		public UVArea outerCap = new UVArea(0, 346, 1023, 364, 1024);
+		public UVArea outerPanel = new UVArea(0, 371, 1023, 675, 1024);
+		#endregion
+
+		#region privateWorkingVars
+		//private internal working vars
+		public readonly int sidesPerPanel;
+		public readonly float anglePerPanel;
+		public readonly float anglePerSide;
+		public readonly float startAngle;
+		public readonly float topOuterRadius;
+		public readonly float topInnerRadius;
+		public readonly float bottomOuterRadius;
+		public readonly float bottomInnerRadius;
+		public readonly float bottomOuterCirc;
+		public readonly float topOuterCirc;
+		public readonly float centerX;
+		public readonly float centerZ;
+		#endregion
+		
+		public BasicFairingGenerator(float startHeight, float boltPanelHeight, float totalPanelHeight, float maxPanelSectionHeight, float bottomRadius, 
+			float topRadius, float wallThickness, int numOfPanels, int cylinderSides)
+		{
+			this.startHeight = startHeight;
+			this.boltPanelHeight = boltPanelHeight;
+			this.totalPanelHeight = totalPanelHeight;
+			this.maxPanelSectionHeight = maxPanelSectionHeight;
+			this.bottomRadius = bottomRadius;
+			this.topRadius = topRadius;
+			this.wallThickness = wallThickness;
+			this.numOfPanels = numOfPanels;
+			this.cylinderSides = cylinderSides;
+			
+			sidesPerPanel = cylinderSides / numOfPanels;
+			anglePerPanel = 360.0f / (float)numOfPanels;
+			anglePerSide = anglePerPanel / (float)sidesPerPanel;
+			startAngle = 90.0f - (anglePerPanel / 2.0f);
+			topOuterRadius = topRadius;
+			topInnerRadius = topRadius-wallThickness;
+			bottomOuterRadius = bottomRadius;
+			bottomInnerRadius = bottomRadius-wallThickness;
+			bottomOuterCirc = Mathf.PI * bottomOuterRadius * 2f;
+			topOuterCirc = Mathf.PI * topOuterRadius * 2f;
+			centerX = 0;
+			centerZ = - bottomRadius;
+			
+//			MonoBehaviour.print("Fairing mesh config: \n"+
+//			                    "spp:  "+sidesPerPanel+"\n"+
+//			                    "app:  "+anglePerPanel+"\n"+
+//			                    "aps:  "+anglePerSide+"\n"+
+//			                    "sa:   "+startAngle+"\n"+
+//			                    "trad: "+topOuterRadius+"\n"+ 
+//			                    "brad: "+bottomOuterRadius+"\n"+
+//			                    "boc:  "+bottomOuterCirc+"\n"+
+//			                    "toc:  "+topOuterCirc);
+		}	
+		
+		#region privateGeneration methods
+		
+		protected void generateFairingPanel(MeshGenerator gen)
+		{	
+			//generate outer wall
+			generateFairingWallSection(gen, outerCap, outerPanel, 0, totalPanelHeight, maxPanelSectionHeight, boltPanelHeight, topOuterRadius, bottomOuterRadius, sidesPerPanel, anglePerSide, startAngle, true);				
+			
+			//generate inner wall
+			generateFairingWallSection(gen, innerCap, innerPanel, 0, totalPanelHeight, maxPanelSectionHeight, boltPanelHeight, topInnerRadius, bottomInnerRadius, sidesPerPanel, anglePerSide, startAngle, false);
+			
+			
+			//setup proper scaled UVs to maintain 1:1 aspect ratio for a straight cylinder panel
+			UVArea innerCapUV = new UVArea (this.innerCap);
+			float vHeight = innerCapUV.v2 - innerCapUV.v1;
+			float uScale = vHeight / wallThickness;	
+			innerCapUV.u2 = (bottomOuterCirc / (float)numOfPanels) * uScale;	
+			
+			gen.setUVArea(innerCapUV);
+			//generate bottom cap
+			gen.generateCylinderPartialCap(0, -bottomOuterRadius, 0, bottomOuterRadius, bottomInnerRadius, sidesPerPanel, anglePerSide, startAngle, false);				
+			
+			
+			innerCapUV.u2 = (topOuterCirc / (float)numOfPanels) * uScale;
+			gen.setUVArea(innerCapUV);
+			//generate top cap
+			gen.generateCylinderPartialCap(0, -bottomOuterRadius, 0 + totalPanelHeight, topOuterRadius, topInnerRadius, sidesPerPanel, anglePerSide, startAngle, true);
+			
+			
+			// uScale is already determined by wall thickness
+			// thus only uv-U needs scaled based on actual panel aspect ratio
+			Vector2 topMeasure = new Vector2 (topOuterRadius - bottomOuterRadius, totalPanelHeight);
+			float sideHeight = topMeasure.magnitude;
+			innerCapUV.u2 = sideHeight * uScale;
+			gen.setUVArea(innerCapUV);
+			//generate left? panel side
+			gen.generateCylinderPanelSidewall(0, -bottomOuterRadius, 0, totalPanelHeight, topOuterRadius, topInnerRadius, bottomOuterRadius, bottomInnerRadius, startAngle, true);
+			//generate right? panel side
+			gen.generateCylinderPanelSidewall(0, -bottomOuterRadius, 0, totalPanelHeight, topOuterRadius, topInnerRadius, bottomOuterRadius, bottomInnerRadius, startAngle + anglePerPanel, false);			
+		}
+				
+		protected void generateFairingWallSection(MeshGenerator gen, UVArea capUV, UVArea panelUV, float startY, float totalHeight, float maxHeightPerPanel, float boltPanelHeight, float topRadius, float bottomRadius, int sides, float anglePerSide, float startAngle, bool outsideWall)
+		{			
+			UVArea capUVCopy = new UVArea(capUV);
+			UVArea panelUVCopy = new UVArea(panelUV);
+			Vector2 start = new Vector2(bottomRadius, startY);//1.25, 0			
+			Vector2 topOffset = new Vector2(topRadius - bottomRadius, totalHeight);
+			
+			float vlen = topOffset.magnitude;			
+			float capPercent = boltPanelHeight / vlen;
+			float fullPanelPercent = maxHeightPerPanel / vlen;
+			float panelHeight = vlen - boltPanelHeight*2.0f;
+			
+			float height;
+			Vector2 pBottom;
+			Vector2 pTop;
+			
+			if(boltPanelHeight>0)
+			{
+				//generate caps
+				float capVHeight = capUV.v2 - capUV.v1;
+				float capVScale = capVHeight / boltPanelHeight;
+				float capU = (bottomOuterCirc / (float)this.numOfPanels) * capVScale;
+				capUVCopy.u2 = capU;
+				
+				//top cap
+				pBottom = start;
+				pTop = start + (topOffset * capPercent);
+				height = pTop.y - pBottom.y;
+				gen.setUVArea(capUVCopy);
+				gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);			
+				
+				capU = (topOuterCirc / (float)this.numOfPanels) * capVScale;
+				capUVCopy.u2 = capU;
+				//bottom cap
+				pBottom = start + topOffset - (topOffset*capPercent);									
+				pTop = start + topOffset;
+				height = pTop.y - pBottom.y;
+				gen.setUVArea(capUVCopy);
+				gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);				
+			}
+			
+			
+			//generate panels
+			//setup UV scaling for full height panels
+			float panelVHeight = panelUV.v2 - panelUV.v1;
+			float panelVScale = panelVHeight / maxHeightPerPanel;
+			float panelU = (bottomOuterCirc / (float)this.numOfPanels) * panelVScale;
+			panelUVCopy.u2 = panelU;//scale the u2 coordinate (right-hand extent) by the scale factor, to setup a 1:1 texture ratio across the panel
+			
+			gen.setUVArea(panelUVCopy);
+			// modulus operation to get the whole and remainder
+			float extraPanelHeight = panelHeight / maxHeightPerPanel;
+			int numOfVerticalSections = (int)extraPanelHeight;
+			extraPanelHeight-=numOfVerticalSections;
+			
+			pBottom = start + (topOffset * capPercent);
+			for(int i = 0; i<numOfVerticalSections; i++)//generate full panels
+			{
+				pTop = pBottom + (fullPanelPercent * topOffset);				
+				height = pTop.y - pBottom.y;
+				gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);
+				//increment for next full panel
+				pBottom = pTop;
+			}
+			if(extraPanelHeight>0)//gen extra partial panel if needed
+			{
+				//gen 'extra' panel			
+				//setup UV scaling for partial height panel, both u and V;
+				panelVHeight = panelUV.v2 - panelUV.v1;		
+				panelVScale = panelVHeight / maxHeightPerPanel;
+				panelU = (bottomOuterCirc / (float)this.numOfPanels) * panelVScale;
+				panelUVCopy.u2 = panelU;//scale u area
+				float panelV = panelUVCopy.v1 + panelVScale * extraPanelHeight;
+				panelUVCopy.v2 = panelV;//scale v area
+				
+				float extraPanelPercent = extraPanelHeight / vlen;
+				pTop = pBottom + (extraPanelPercent * topOffset);
+				height = pTop.y - pBottom.y;
+				gen.setUVArea(panelUVCopy);
+				gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);							
+			}
+		}
+		
+		protected void generateCylinderCollider(MeshGenerator gen, float offsetX, float offsetZ, float startY, float colliderHeight, float topRadius, float bottomRadius, int sides)
+		{
+			float anglePerSide = 360.0f / (float)sides;
+			gen.setUVArea(0,0,1,1);
+			gen.generateCylinderWallSection(offsetX, offsetZ, startY, colliderHeight, topRadius, bottomRadius, sides, anglePerSide, 0, true);
+			gen.generateTriangleFan(offsetX, offsetZ, startY, bottomRadius, sides, anglePerSide, 0, false);
+			gen.generateTriangleFan(offsetX, offsetZ, startY+colliderHeight, topRadius, sides, anglePerSide, 0, true);
+		}
+		
+		#endregion
+		
+	}
+}
+
