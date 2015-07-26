@@ -103,8 +103,6 @@ namespace SSTUTools
 						
 		private Animation deployAnimation;		
 		
-		private bool firstUpdate;		
-
 		public SSTULandingLeg ()
 		{
 			
@@ -178,27 +176,29 @@ namespace SSTUTools
 			else if(legState==LegState.DEPLOYING)
 			{
 				legState=LegState.DEPLOYED;
-			}
+			}		
 		}
 						
 		public override void OnStart (PartModule.StartState state)
 		{
-			base.OnStart (state);			
-			
+			base.OnStart (state);	
 			#region animationSetup		
 			
 			deployAnimation = part.FindModelAnimators(animationName).FirstOrDefault();
 			if(deployAnimation!=null)
-			{	
+			{					
 				deployAnimation[animationName].layer = animationLayer;			
 				if(legState==LegState.DEPLOYED)
 				{
 					deployAnimation[animationName].normalizedTime = 1;
+					deployAnimation[animationName].speed = 1;
 				}
 				else//retracted or broken
 				{
 					deployAnimation[animationName].normalizedTime = 0;
+					deployAnimation[animationName].speed = -1;
 				}
+				deployAnimation.Play(animationName);
 			}
 			else
 			{
@@ -291,12 +291,7 @@ namespace SSTUTools
 			
 			#endregion	
 			
-			setLegState(legState);				
-			
-			if(HighLogic.LoadedSceneIsFlight && legState==LegState.DEPLOYED)
-			{
-				enableFootColliders(true);
-			}
+			setLegState(legState);
 		}
 		
 		#endregion
@@ -323,21 +318,13 @@ namespace SSTUTools
 		
 		private void fixedUpdateFlight()
 		{
-			if(!firstUpdate)
-			{
-				firstUpdate=true;
-				if(legState==LegState.DEPLOYED)
-				{
-					enableFootColliders(false);
-				}
-			}
 			if(legState==LegState.DEPLOYED)
-			{								
-				updateSuspension();				
-			}
-			if(decompressTime>0)
 			{
-				decompress();
+				updateSuspension();									
+			}
+			else if(decompressTime>0)
+			{
+				decompress();		
 			}
 		}
 				
@@ -351,14 +338,43 @@ namespace SSTUTools
 			if(!deployAnimation.isPlaying)
 			{
 				if(legState==LegState.DEPLOYING){setLegState(LegState.DEPLOYED);}
-				else if(legState==LegState.RETRACTING){setLegState(LegState.RETRACTED);}
+				else if(legState==LegState.RETRACTING && decompressTime==0){setLegState(LegState.RETRACTED);}
 			}
 		}
 		
 		private void decompress()
 		{
-			decompressTime -= TimeWarp.fixedDeltaTime;
-			if(decompressTime<0){decompressTime = 0;}			
+			float fixedTick = TimeWarp.fixedDeltaTime;
+			
+			float percent = fixedTick / decompressTime;//need to move this percent of total remaining move
+			if(percent>1){percent=1;}
+			if(percent<0){percent=0;}
+			
+			Vector3 startPos;
+			Vector3 endPos;
+			Vector3 diff;
+			
+			for (int i = 0; i < legData.Count; i++)
+			{				
+				WheelCollider wheelCollider = legData[i].wheelCollider;
+				Transform suspensionParent = legData[i].suspensionTransform;
+				startPos = suspensionParent.transform.position;
+				endPos = wheelCollider.transform.position;
+				diff = endPos - startPos;
+				suspensionParent.position = suspensionParent.position + diff * percent;
+			}
+			
+			decompressTime-= fixedTick;
+			if(decompressTime<=0)
+			{
+				decompressTime = 0;
+				resetSuspensionPosition();
+				enableWheelColliders(false);
+				AnimationState anim = deployAnimation[animationName];
+				anim.normalizedTime=1;
+				anim.speed = -1;
+				deployAnimation.Play(animationName);
+			}			
 		}
 			
 		private void updateSuspension()
@@ -371,9 +387,9 @@ namespace SSTUTools
 				int layerMask = 622593;
 				if (Physics.Raycast(wheelCollider.transform.position, -wheelCollider.transform.up, out raycastHit, ((wheelCollider.suspensionDistance + wheelCollider.radius) * part.rescaleFactor), layerMask))
 				{
-					float distance = Vector3.Distance(raycastHit.point, wheelCollider.transform.position);					
-					float suspensionTravel = wheelCollider.suspensionDistance;
 					float wheelRadius = wheelCollider.radius * part.rescaleFactor;
+					float distance = Vector3.Distance(raycastHit.point, wheelCollider.transform.position);					
+					float suspensionTravel = wheelCollider.suspensionDistance*part.rescaleFactor + wheelRadius;					
 					if(distance >= suspensionTravel){ distance = suspensionTravel;}
 					float compressionAmount = suspensionTravel - distance;
 					suspensionParent.position = wheelCollider.transform.position + (wheelCollider.transform.up * compressionAmount) + (wheelCollider.transform.up * suspensionOffset * part.rescaleFactor);
@@ -406,6 +422,7 @@ namespace SSTUTools
 		
 		private void setLegState(LegState newState)
 		{
+			LegState prevState = legState;
 			legState = newState;
 			persistentState = legState.ToString();
 			
@@ -418,11 +435,13 @@ namespace SSTUTools
 				anim.normalizedTime = 0;
 				anim.speed = -1;
 				deployAnimation.Play(animationName);
+				decompressTime = 0;
 				break;
 				
 			case LegState.DEPLOYED:
 				anim.normalizedTime = 1;
 				anim.speed = 1;
+				decompressTime = 0;
 				if(HighLogic.LoadedSceneIsFlight)
 				{
 					enableWheelColliders(true);
@@ -434,30 +453,40 @@ namespace SSTUTools
 				enableWheelColliders(false);
 				enableFootColliders(false);
 				anim.normalizedTime = 0;
+				decompressTime = 0;
 				anim.speed = -1;
 				break;
 				
 			case LegState.DEPLOYING:
-				enableWheelColliders(false);
+				enableWheelColliders(false);				
 				if(HighLogic.LoadedSceneIsFlight)
 				{
 					enableFootColliders(true);	
 				}
+				if(prevState==LegState.RETRACTED)//fix for 'instant retract' bug on newly loaded vessel
+				{
+					anim.normalizedTime = 0;
+				}
+				decompressTime = 0;
 				anim.speed = 1;
 				resetSuspensionPosition();
 				deployAnimation.Play(animationName);
 				break;
 				
-			case LegState.RETRACTING:	
-				enableWheelColliders(false);
+			case LegState.RETRACTING:					
 				enableFootColliders(true);
-//				if(oldState==LegState.DEPLOYED)//fix for 'instant retract' bug on newly loaded vessel, replaced by code in OnStart()
-//				{
-//					anim.normalizedTime = 1;
-//				}
 				anim.speed = -1;
-				resetSuspensionPosition();
-				deployAnimation.Play(animationName);
+				if(prevState==LegState.DEPLOYED)//fix for 'instant retract' bug on newly loaded vessel
+				{
+					decompressTime = 1.0f;
+					anim.normalizedTime = 1;
+				}
+				else
+				{
+					resetSuspensionPosition();
+					enableWheelColliders(false);
+					deployAnimation.Play(animationName);
+				}
 				break;
 			}
 			updateGuiState();

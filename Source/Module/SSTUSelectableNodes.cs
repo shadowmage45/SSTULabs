@@ -34,6 +34,7 @@ namespace SSTUTools
 		
 		public override void OnStart (PartModule.StartState state)
 		{
+			print ("SSTUSelectableNodes OnStart");
 			base.OnStart (state);							
 			Events["removeNode"].guiName = "Remove Node - "+nodeName;
 			Events["addNode"].guiName = "Add Node - "+nodeName;
@@ -43,11 +44,14 @@ namespace SSTUTools
 			//remove all un-attached nodes
 			bool leftOneNode = startWithOpenNode ? false : true;
 			AttachNode node;
-			int foundNodes = 0;
 			for(int i = 0; i < numOfNodes; i++)
 			{
 				node = part.findAttachNode(nodeName + (i+1));
-				if(node!=null){foundNodes++;}
+				if(node==null)
+				{
+					print ("could not locate node for name:"+nodeName+(i+1));
+					continue;
+				}
 				if(node.attachedPart==null)
 				{
 					if(leftOneNode)
@@ -61,7 +65,9 @@ namespace SSTUTools
 				}
 				nodes.Add (node);
 			}
-			numOfNodes = foundNodes;
+			numOfNodes = nodes.Count;
+			print ("SSTUSelectableNodes OnStartEnd");
+			debugSpew();
 		}
 		
 		[KSPEvent (name= "addNode", guiName = "Add Node", guiActiveUnfocused = false, externalToEVAOnly = false, guiActive = false, guiActiveEditor = true)]
