@@ -59,6 +59,18 @@ namespace SSTUTools
 			}
 			return str;
 		}
+		
+		public static String printArray<T>(T[] array, String separator)
+		{
+			String str = "";
+			int len = array.Length;
+			for(int i = 0; i < len; i++)
+			{
+				str = str + array[i].ToString();
+				if(i<len-1){str = str+separator;}
+			}
+			return str;
+		}
 						
 		public static void recursePrintChild(Transform tr, String prefix)
 		{			

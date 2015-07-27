@@ -55,12 +55,17 @@ namespace SSTUTools
 		[KSPField(guiActiveEditor=true, guiName="Tank Type", guiActive=true)]
 		public String tankTypeName = "NONE";
 		
-		float defaultMass;
-		bool hasTankCost=false;
-		float tankCost;
-		float resourceCost;
+		[KSPField]
+		public bool externalControl = false;
+		
+		private float defaultMass;
+		private bool hasTankCost=false;
+		private float tankCost;
+		private float resourceCost;
 
-		TankConfig[] configs;
+		private TankConfig[] configs;
+		
+		private bool configInit = false;
 				
 		public SSTUResourceSwitch ()
 		{
@@ -86,65 +91,89 @@ namespace SSTUTools
 		public override void OnLoad (ConfigNode node)
 		{
 			base.OnLoad (node);
-
-			//only init tank types if not previously loaded
-			if(tankSetupsByPart.ContainsKey(part.name))
+						
+			if(!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
 			{
-				return;
-			}
-			if(HighLogic.LoadedSceneIsEditor)//somehow init got missed
-			{
-				//create fake config node, structural
-				TankConfig structural = TankConfig.STRUCTURAL;
-				configs = new TankConfig[]{structural};
-				return;
-			}
-			defaultMass = part.mass;
-			if(node.HasNode("TANK"))
-			{				
-				ConfigNode[] tankNodes = node.GetNodes("TANK");			
-				List<TankConfig> tanks = new List<TankConfig>();
-				TankConfig tank;
-				foreach(ConfigNode n2 in tankNodes)
-				{
-					tank = parseTankConfig(n2);
-					if(tank!=null)
+				defaultMass = part.mass;
+				if(node.HasNode("TANK"))
+				{				
+					ConfigNode[] tankNodes = node.GetNodes("TANK");			
+					List<TankConfig> tanks = new List<TankConfig>();
+					TankConfig tank;
+					foreach(ConfigNode n2 in tankNodes)
 					{
-						tanks.Add (tank);
-					}				
+						tank = parseTankConfig(n2);
+						if(tank!=null)
+						{
+							tanks.Add (tank);
+						}				
+					}
+					TankConfig[] configs = tanks.ToArray();
+					tankSetupsByPart.Remove(part.name);
+					tankSetupsByPart.Add (part.name, configs);
 				}
-				TankConfig[] configs = tanks.ToArray();
-				tankSetupsByPart.Add (part.name, configs);
+				else
+				{
+					tankSetupsByPart.Add(part.name, new TankConfig[]{TankConfig.STRUCTURAL});
+				}
 			}
-			else
-			{
-				tankSetupsByPart.Add(part.name, new TankConfig[]{TankConfig.STRUCTURAL});
-			}
+			
+			initModule();
 		}
 		
 		public override void OnStart (PartModule.StartState state)
 		{
 			base.OnStart (state);
-
+			
+			initModule();				
+		}
+		
+		public void initModule()
+		{
+			if(configInit){return;}
+			configInit = true;
+			
 			//initialize local tank config list; memory use should be minimal as it is just a reference to an already existing array
-			configs = getConfigForPart (part);
+			initTankConfigs();
 			//only run init if first time the part is being setup AND it is in the editor
 			if(!initialized && HighLogic.LoadedSceneIsEditor)
 			{
 				setTankToConfig(0);
 			}
-			if(configs.Length<=1)
+			if(configs.Length <= 1 || externalControl)
 			{
-				Events["nextTankEvent"].active=false;
-				Events["prevTankEvent"].active=false;
+				Events["nextTankEvent"].active = false;
+				Events["prevTankEvent"].active = false;
+				Fields["tankTypeName"].guiActive = false;
+				Fields["tankTypeName"].guiActiveEditor = false;
 			}
 			tankTypeName = configs[tankType].tankName;
+		}
+		
+		private void initTankConfigs()
+		{
+			configs = getConfigForPart (part);			
 		}
 		
 		public float GetModuleCost (float defaultCost)
 		{
 			if(hasTankCost){return -defaultCost + tankCost + resourceCost;}
 			else{return resourceCost;}
+		}
+		
+		public void setTankToConfig(String tankName)
+		{
+			int len = configs.Length;
+			for(int i = 0; i < len; i++)
+			{
+				if(configs[i].tankName.Equals(tankName))
+				{
+					setTankToConfig(i);
+					return;
+				}
+			}
+			//will only hit here if tank not found
+			//TODO what to do if not found?
 		}
 		
 		private void setTankToConfig(int index)
