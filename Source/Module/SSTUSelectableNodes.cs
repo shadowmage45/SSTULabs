@@ -34,7 +34,7 @@ namespace SSTUTools
 		
 		public override void OnStart (PartModule.StartState state)
 		{
-			print ("SSTUSelectableNodes OnStart");
+//			print ("SSTUSelectableNodes OnStart");
 			base.OnStart (state);							
 			Events["removeNode"].guiName = "Remove Node - "+nodeName;
 			Events["addNode"].guiName = "Add Node - "+nodeName;
@@ -66,8 +66,8 @@ namespace SSTUTools
 				nodes.Add (node);
 			}
 			numOfNodes = nodes.Count;
-			print ("SSTUSelectableNodes OnStartEnd");
-			debugSpew();
+//			print ("SSTUSelectableNodes OnStartEnd");
+//			debugSpew();
 		}
 		
 		[KSPEvent (name= "addNode", guiName = "Add Node", guiActiveUnfocused = false, externalToEVAOnly = false, guiActive = false, guiActiveEditor = true)]

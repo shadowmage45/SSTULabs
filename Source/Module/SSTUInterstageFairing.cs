@@ -279,7 +279,6 @@ namespace SSTUTools
 			GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onVesselUnpack));
 			GameEvents.onVesselGoOnRails.Add(new EventData<Vessel>.OnEvent(onVesselPack));
 			GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
-			
 		}
 		
 		public override void OnActive ()

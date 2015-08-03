@@ -2,130 +2,180 @@ using System;
 
 namespace SSTUTools
 {
-	public class SSTUDecoupler : PartModule
+	//decoupler that can be disabled by moduleSwitch
+	//TODO adapt to allow to play an animation on/before decouple
+	//TODO adapt to allow a 'decoupled mesh' similar to moduleJettison
+	public class SSTUDecoupler : ModuleDecouple, IControlledModule
 	{		
 		[KSPField]
-		public string nodeName = "top";
-		
-		[KSPField]
-		public float decoupleForce = 15;
-		
-		[KSPField(isPersistant=true, guiActiveEditor=true, guiName="DC Stage Enabled")]
-		public bool useStaging = false;
-		
-		[KSPField]
-		public string displayName = "Decouple";
+		public int controlID = -1;
 		
 		[KSPField(isPersistant=true)]
-		public bool decoupled = false;
-		
-		[KSPField(isPersistant=true, guiActiveEditor=true, guiName="Decoupler Enabled")]
-		public bool decouplerEnabled = true;
+		public bool moduleControlEnabled = false;
 		
 		[KSPField]
-		public string stagingIcon = DefaultIcons.DECOUPLER_VERT.ToString();
+		public bool disableCrossflow = true;
 		
-		DefaultIcons stagingIconImage = DefaultIcons.DECOUPLER_VERT;//default value
+		[KSPField]
+		public bool useStaging = true;
 		
-		public SSTUDecoupler ()
+		[KSPField]
+		public bool invertNode = false;
+		
+		private bool subscribedToEvents = false;
+		private AttachNode otherNode;
+		private bool otherNodeDefaultFlow;
+		private bool updatedCrossflow = false;
+		
+		[KSPEvent(guiName="Toggle Decoupler Staging", guiActiveEditor=true, active=false)]
+		public void toggleStagingEvent()
 		{
-			
+			useStaging = !useStaging;
+			setupStagingIcon();
 		}
-		
-		public override void OnStart(StartState state)
+				
+		public override void OnStart (PartModule.StartState state)
 		{
-			base.OnStart(state);
-			Events["decoupleEvent"].guiName=displayName;
-			Actions["decoupleAction"].guiName=displayName;	
-			try
+			if(controlID==-1){moduleControlEnabled=true;}
+			base.OnStart (state);
+			if(moduleControlEnabled)
 			{
-				stagingIconImage = (DefaultIcons)Enum.Parse(typeof(DefaultIcons),stagingIcon);
+				if(disableCrossflow)
+				{
+					subscribeToEvents();
+					updatePartCrossflow();						
+				}
 			}
-			catch(Exception e)
-			{
-				stagingIconImage = DefaultIcons.DECOUPLER_VERT;
-				print(e.Message);
-			}
-			
-			setupStagingIcon(useStaging);
-			setupDecouplerEnabled(decouplerEnabled);
-			
-			if(decoupled)
-			{
-				Events["decoupleEvent"].active=false;
-				Events["decoupleEvent"].guiActive=false;
-			}
-			
-			if(!decouplerEnabled)
-			{
-				Events["toggleStagingEvent"].guiActive=false;
-			}
+			updateAttachNode();
+			setupStagingIcon();	
+			updateGuiFromState();
+		}		
+		
+		public override void OnLoad (ConfigNode node)
+		{
+			base.OnLoad (node);
+			updateAttachNode();
 		}
 		
 		public override void OnActive ()
 		{
-			base.OnActive ();
-			if(useStaging)
+			if(moduleControlEnabled)
 			{
-				decoupleInternal ();
+				base.OnActive ();				
 			}
 		}
 		
-		[KSPAction("Decouple")]
-		public void decoupleAction(KSPActionParam param)
+		public void OnDestroy()
 		{
-			decoupleInternal();
+			if(subscribedToEvents)
+			{
+				removeSubscriptions();
+			}
 		}
 		
-		[KSPEvent(name= "decoupleEvent", guiName = "Decouple", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = false) ]
-		public void decoupleEvent()
+		public void FixedUpdate()
 		{
-			decoupleInternal();
+			if(!moduleControlEnabled){return;}
+			if(!updatedCrossflow)
+			{
+				updatedCrossflow=true;
+				updatePartCrossflow();
+			}
 		}
 		
-		[KSPEvent(name= "toggleStagingEvent", guiName = "Toggle DC Staging", guiActiveUnfocused = false, externalToEVAOnly = false, guiActive = false, guiActiveEditor = true) ]
-		public void toggleStagingEvent()
+		public bool isControlEnabled ()
 		{
-			setupStagingIcon(!useStaging);		
+			return moduleControlEnabled;
 		}
 		
-		[KSPEvent(name= "toggleEnabledEvent", guiName = "Toggle DC Enabled", guiActiveUnfocused = false, externalToEVAOnly = false, guiActive = false, guiActiveEditor = true) ]
-		public void toggleEnabledEvent()
+		public int getControlID ()
+		{
+			return controlID;
+		}
+		
+		public void enableModule ()
+		{
+			moduleControlEnabled = true;			
+			updateGuiFromState();			
+			if(disableCrossflow)
+			{
+				subscribeToEvents();				
+			}
+			updateAttachNode();
+			updatePartCrossflow();
+			setupStagingIcon();
+		}
+		
+		public void disableModule ()
+		{
+			moduleControlEnabled = false;
+			updateGuiFromState();			
+			removeSubscriptions();
+			updateAttachNode();
+			updatePartCrossflow();
+			setupStagingIcon();
+		}
+		
+		private void subscribeToEvents()
+		{
+			if(!subscribedToEvents)
+			{
+				subscribedToEvents = true;
+				GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+				GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
+			}
+		}
+		
+		private void removeSubscriptions()
+		{
+			if(subscribedToEvents)
+			{
+				subscribedToEvents = false;		
+				GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+				GameEvents.onVesselWasModified.Remove(new EventData<Vessel>.OnEvent(onVesselModified));	
+			}
+		}
+		
+		public void onEditorVesselModified(ShipConstruct c)
+		{
+			print ("vessel modified, updating crossflow...");
+			updatePartCrossflow();
+		}
+		
+		public void onVesselModified(Vessel v)
+		{
+			print ("vessel modified, updating crossflow...");
+			updatePartCrossflow();
+		}
+		
+		private void updateAttachNode()
+		{
+			AttachNode node = part.findAttachNode(explosiveNodeID);
+			if(node==null){return;}
+			if(invertNode && moduleControlEnabled)
+			{
+				node.orientation = node.originalOrientation * -1;
+			}
+			else
+			{
+				node.orientation = node.originalOrientation;
+			}
+		}
+		
+		private void setupStagingIcon()
 		{			
-			setupDecouplerEnabled(!decouplerEnabled);
-			if(!decouplerEnabled)
-			{
-				setupStagingIcon(false);
-			}
-			Events["toggleStagingEvent"].guiActive=decouplerEnabled;
-		}
-		
-		private void setupDecouplerEnabled(bool enabled)
-		{			
-			decouplerEnabled = enabled;
-			Events["decoupleEvent"].active = enabled  && !decoupled;
-			Events["decoupleEvent"].guiActive = enabled  && !decoupled;
-		}
-		
-		private void setupStagingIcon(bool useStaging)
-		{
-			if(!decouplerEnabled)
-			{
-				useStaging=false;
-			}
-			this.useStaging = useStaging;			
-			if(useStaging)
+			if(useStaging && moduleControlEnabled)
 			{
 				if(part.stagingIcon==string.Empty)
 				{
-					part.stagingIcon=stagingIcon;
-					part.stackIcon.iconImage = stagingIconImage;
+					part.stagingIcon = DefaultIcons.DECOUPLER_VERT.ToString();
+					part.stackIcon.iconImage = DefaultIcons.DECOUPLER_VERT;
 					part.stackIcon.CreateIcon();					
 				}
 			}
 			else
 			{
-				if(part.stagingIcon==stagingIcon)
+				if(part.stagingIcon==DefaultIcons.DECOUPLER_VERT.ToString())
 				{
 					part.stagingIcon=string.Empty;
 					part.stackIcon.RemoveIcon();
@@ -135,39 +185,63 @@ namespace SSTUTools
 			Staging.SortIcons();
 		}
 		
-		private void decoupleInternal()
+		private void updatePartCrossflow()
 		{
-			if(decoupled || !decouplerEnabled){return;}
-			decoupled=true;
-			
-			Events["decoupleEvent"].active=false;
-			Events["decoupleEvent"].guiActive=false;
-			
-			playFX();
-			AttachNode node = part.findAttachNode(nodeName);
-			if(node==null || node.attachedPart==null){return;}
-			
-			Part attachedPart = node.attachedPart;
-			if (attachedPart == base.part.parent)
-			{				
-				base.part.decouple (0f);
+			print ("examining decoupler part crossfeed!");
+			if(otherNode!=null){otherNode.ResourceXFeed=otherNodeDefaultFlow;}
+			otherNode=null;
+			AttachNode node = part.findAttachNode(explosiveNodeID);			
+			if(node!=null)
+			{
+				node.ResourceXFeed = !disableCrossflow;
+				Part otherPart = node.attachedPart;
+				AttachNode oNode = otherPart==null ? null : otherPart.findAttachNodeByPart(part);
+				
+				print ("set decoupler node crossflow to: "+node.ResourceXFeed+ " for node: "+node.id+" for part: "+part+ " attached part: "+otherPart+ " oNode: "+oNode);
+				
+				if(oNode!=null)
+				{
+					otherNode = oNode;
+					otherNodeDefaultFlow = oNode.ResourceXFeed;
+					if(disableCrossflow){oNode.ResourceXFeed=false;}
+					print ("set other node crossflow to: "+oNode.ResourceXFeed);
+				}
+				else if(otherPart!=null)
+				{
+					AttachNode on = SSTUUtils.findRemoteParentNode(otherPart, part);
+					if(on!=null)
+					{
+						print ("found remote node connection through: "+on+" :: "+on.id+" :: attached "+on.attachedPart);
+						otherNode = on;
+						otherNodeDefaultFlow = on.ResourceXFeed;
+						if(disableCrossflow){on.ResourceXFeed=false;}
+						print ("set remote connected node crosfeed to: "+on.ResourceXFeed);
+					}
+					else
+					{
+						print ("found part connected to node, but could not trace parantage through nodes");
+					}
+				}
+			}
+		}
+		
+		private void updateGuiFromState()
+		{
+			if(!moduleControlEnabled)
+			{
+				Fields["ejectionForcePercent"].guiActive = Fields["ejectionForcePercent"].guiActiveEditor = false;
+				Events["Decouple"].active = false;
+				Events["toggleStagingEvent"].active = false;
+				Actions["DecoupleAction"].active = false;
 			}
 			else
 			{
-				attachedPart.decouple (0f);
-			}	
-			addForces ();
+				Fields["ejectionForcePercent"].guiActive = Fields["ejectionForcePercent"].guiActiveEditor = true;
+				Events["Decouple"].active = true;
+				Events["toggleStagingEvent"].active = true;
+				Actions["DecoupleAction"].active = true;
+			}
 		}
-		
-		private void playFX()
-		{
-			
-		}
-		
-		private void addForces()
-		{
-			//TODO
-		}				
 	}
 }
 

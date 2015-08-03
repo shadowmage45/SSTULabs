@@ -5,7 +5,7 @@ namespace SSTUTools
 {
 	public class SSTUResourceSwitch : PartModule, IPartCostModifier
 	{
-		public static Dictionary<String, TankConfig[]> tankSetupsByPart = new Dictionary<String, TankConfig[]>();
+		public static Dictionary<String, ResourceSwitchConfig> tankSetupsByPart = new Dictionary<String, ResourceSwitchConfig>();
 
 		//example tank definitions
 		//
@@ -40,33 +40,45 @@ namespace SSTUTools
 		//		fillAmount=110
 		//	}
 		//}
-				
-		//has the tank been initialized the first time?
-		//if not, and it is -in the editor-, the tank contents will be setup
-		//used to prevent swapping of contents of in-flight tanks if module is added at a later date
-		//also prevents swapping of contents if tank setup indices change
-		[KSPField(isPersistant=true)]
-		public bool initialized = false;
-		
+
 		//used to track the current tank type from those loaded from config, mostly used in editor
 		[KSPField(isPersistant=true)]
-		public int tankType = 0;
+		public int tankType = -1;
+		
+		[KSPField(isPersistant=true)]
+		public int optionType = -1;
 		
 		[KSPField(guiActiveEditor=true, guiName="Tank Type", guiActive=true)]
 		public String tankTypeName = "NONE";
 		
+		[KSPField(guiActiveEditor=false, guiName="Tank Option Type", guiActive=false)]
+		public String tankOptionName = String.Empty;
+		
+		[KSPField]
+		public String defaultTankName = String.Empty;
+		
+		//is being controlled by SSTUMeshSwitch? (or other...)
+		//if true, disables automatic loading of tank type and allows mesh-switch to specify tank type
+		//if not set properly will result in undefined behavior
 		[KSPField]
 		public bool externalControl = false;
 		
-		private float defaultMass;
-		private bool hasTankCost=false;
-		private float tankCost;
-		private float resourceCost;
-
-		private TankConfig[] configs;
+		[KSPField]
+		public float defaultTankCost = 0;
 		
-		private bool configInit = false;
+		[KSPField]
+		public float defaultTankMass = 0;
+		
+		//if true, tankDryMass will set part mass directly
+		//if false, tankDryMass will be an offset to part mass
+		[KSPField]
+		public bool modifyPartMass = true;
 				
+		private TankConfig[] configs;
+		private TankConfig[] optionConfigs;
+		private TankConfig currentConfig;//main configuration; primary resources
+		private TankConfig currentOption;//additional optional configuration; secondary resources; e.g. a monoprop secondary tank or battery bank, none are enabled by default
+						
 		public SSTUResourceSwitch ()
 		{
 			
@@ -77,7 +89,8 @@ namespace SSTUTools
 		{
 			tankType++;
 			if(tankType>=configs.Length){tankType=0;}
-			setTankToConfig(tankType);
+			updateTankStats(true);
+			updateResources();
 		}	
 		
 		[KSPEvent(name="prevTankEvent", guiName="Prev. Tank", guiActiveEditor=true)]
@@ -85,60 +98,48 @@ namespace SSTUTools
 		{
 			tankType--;
 			if(tankType<0){tankType = configs.Length - 1;}
-			setTankToConfig(tankType);
+			updateTankStats(true);
+			updateResources();
 		}	
 		
 		public override void OnLoad (ConfigNode node)
 		{
 			base.OnLoad (node);
-						
+			
+			//only runs for prefab construction, e.g. loading screen or database reload while on space center screen
 			if(!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
 			{
-				defaultMass = part.mass;
-				if(node.HasNode("TANK"))
-				{				
-					ConfigNode[] tankNodes = node.GetNodes("TANK");			
-					List<TankConfig> tanks = new List<TankConfig>();
-					TankConfig tank;
-					foreach(ConfigNode n2 in tankNodes)
-					{
-						tank = parseTankConfig(n2);
-						if(tank!=null)
-						{
-							tanks.Add (tank);
-						}				
-					}
-					TankConfig[] configs = tanks.ToArray();
-					tankSetupsByPart.Remove(part.name);
-					tankSetupsByPart.Add (part.name, configs);
-				}
-				else
-				{
-					tankSetupsByPart.Add(part.name, new TankConfig[]{TankConfig.STRUCTURAL});
-				}
+				parseResourceSwitchConfig(node);
 			}
-			
-			initModule();
+						
+			loadTankConfigs();			
 		}
 		
 		public override void OnStart (PartModule.StartState state)
 		{
 			base.OnStart (state);
-			
-			initModule();				
-		}
-		
-		public void initModule()
-		{
-			if(configInit){return;}
-			configInit = true;
-			
-			//initialize local tank config list; memory use should be minimal as it is just a reference to an already existing array
-			initTankConfigs();
-			//only run init if first time the part is being setup AND it is in the editor
-			if(!initialized && HighLogic.LoadedSceneIsEditor)
+			loadTankConfigs();
+			if(!externalControl)
 			{
-				setTankToConfig(0);
+				if(tankType==-1)//only init default tank if first time part is ever setup
+				{
+					initDefaultTank();//loads the default tank, updates resources and part mass					
+				}
+				else
+				{
+					updateTankStats(false);//this will reload all of the GUI data/etc, but not reset part mass
+				}
+			}
+			else
+			{
+				if(tankType>=0)//tank was already initialized, external control should -NOT- re-set tank type
+				{
+					updateTankStats(false);
+				}
+				else
+				{
+					//allow for external control to set things as it sees fit; this then becomes a passive module for data-storage and method sharing...	
+				}				
 			}
 			if(configs.Length <= 1 || externalControl)
 			{
@@ -147,75 +148,146 @@ namespace SSTUTools
 				Fields["tankTypeName"].guiActive = false;
 				Fields["tankTypeName"].guiActiveEditor = false;
 			}
-			tankTypeName = configs[tankType].tankName;
 		}
 		
-		private void initTankConfigs()
+		//runs only on prefab part, used for editor info initialization
+		public override string GetInfo ()
+		{	
+			initDefaultTank();
+			return base.GetInfo ();
+		}
+		
+		private void loadTankConfigs()
 		{
-			configs = getConfigForPart (part);			
+			if(configs==null)
+			{
+				ResourceSwitchConfig cfg = getConfigForPart (part);
+				if(cfg!=null)
+				{
+					configs = cfg.mainTanks;
+					optionConfigs = cfg.optionTanks;
+				}
+				if(configs==null)
+				{
+					print ("ERROR loading tank configs for part: "+part.name);
+				}
+			}	
 		}
 		
+		//OVERRIDE from IPartCostModifier
+		//return offset/modifier to the part cost, input is the cost listed in the config
 		public float GetModuleCost (float defaultCost)
 		{
-			if(hasTankCost){return -defaultCost + tankCost + resourceCost;}
-			else{return resourceCost;}
+			//TODO add in option cost
+			return currentConfig==null ? 0 : currentConfig.tankCost + currentConfig.getResourceCost();
 		}
 		
-		public void setTankToConfig(String tankName)
+		//OVERRIDE from IPartMassModifier
+		//return offset/modifier to the part mass, input is the mass listed in config
+		public float GetModuleMass (float defaultMass)
+		{
+			//TODO add in option mass
+			return modifyPartMass? 0 : (currentConfig==null ? 0 : currentConfig.tankDryMass);
+		}
+		
+		public void setTankMainConfig(String tankName)
 		{
 			int len = configs.Length;
 			for(int i = 0; i < len; i++)
 			{
 				if(configs[i].tankName.Equals(tankName))
 				{
-					setTankToConfig(i);
+					tankType = i;
+					updateTankStats(true);
+					updateResources();
 					return;
 				}
 			}
 			//will only hit here if tank not found
-			//TODO what to do if not found?
+			tankType = 0;
+			updateTankStats(true);
+			updateResources();
 		}
 		
-		private void setTankToConfig(int index)
-		{	
-			initialized = true;
-			if(index>=configs.Length || index<0)
+		//external control method to set option type by name
+		public void setTankOption(String optionName)
+		{			
+			print ("setting resource switch to optional tank: "+optionName);
+			TankConfig optionConfig = null;
+			int index = 0;
+			int length = optionConfigs.Length;
+			for(index = 0 ; index<length; index++)
 			{
-				index = 0;				
-			}
-			tankType = index;
-			TankConfig config = configs[index];
-			tankTypeName = config.tankName;
-			setTankToResourcesFromConfig(config);
-			
-			if(config.tankDryMass>=0)
+				if(optionConfigs[index].tankName.Equals(optionName))
+				{
+					optionConfig = optionConfigs[index];
+					break;
+				}
+			}			
+			setTankOption(optionConfig==null? -1 : index);
+		}
+				
+		public void clearTankOption()
+		{			
+			setTankOption(-1);
+		}
+		
+		private void setTankOption(int index)
+		{
+			optionType = index;			
+			updateTankStats(true);
+			updateResources();
+		}
+		
+		/// <summary>
+		/// Inits the default tank. To be used by the prefab (in getInfo()), and ONCE on first editor load.
+		/// </summary>
+		private void initDefaultTank()
+		{			
+			if(defaultTankName.Length>0)
 			{
-				part.mass = config.tankDryMass;
+				setTankMainConfig(defaultTankName);
 			}
 			else
 			{
-				part.mass = defaultMass;
-			}
-			
-			resourceCost = config.getResourceCost();
-			
-			if(config.tankCost>=0)
-			{
-				tankCost = config.tankCost;				
-				hasTankCost = true;
-			}
-			else
-			{
-				tankCost = -1;
-				hasTankCost = false;
-			}
-			if(HighLogic.LoadedSceneIsEditor)
-			{
-				GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+				tankType = 0;
+				updateTankStats(true);
+				updateResources();
 			}
 		}
 		
-		private void setTankToResourcesFromConfig(TankConfig config)
+		/// <summary>
+		/// Updates current config and option references from index as well as updating gui name references
+		/// </summary>
+		private void updateTankStats(bool updateMass)
+		{				
+			currentConfig = configs[tankType];
+			currentOption = optionType==-1 ? null : optionConfigs[optionType];
+			tankTypeName = currentConfig.tankName;
+			tankOptionName = currentOption==null? String.Empty : currentOption.tankName;			
+			if(updateMass){updatePartMass();}
+		}
+		
+		/// <summary>
+		/// Updates the part mass from the current config and option config (if any).
+		/// </summary>
+		private void updatePartMass()
+		{		
+			if(modifyPartMass)
+			{
+				part.mass = currentConfig.tankDryMass;
+				if(currentOption!=null){part.mass+=currentOption.tankDryMass;}				
+				if(HighLogic.LoadedSceneIsEditor)
+				{
+					GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+				}	
+			}
+		}
+						
+		/// <summary>
+		/// Updates the parts resources from the current config and option config (if any).
+		/// </summary>
+		private void updateResources()
 		{
 			part.Resources.list.Clear ();
 			PartResource[] resources = part.GetComponents<PartResource> ();
@@ -224,26 +296,88 @@ namespace SSTUTools
 			{
 				DestroyImmediate(resources[i]);
 			}
-			foreach(ConfigNode node in config.getResourceConfigNodes())
+			if(currentConfig!=null)
 			{
-				part.AddResource(node);
+				foreach(ConfigNode node in currentConfig.getResourceConfigNodes())
+				{
+					part.AddResource(node);
+				}	
+			}
+			if(currentOption!=null)
+			{
+				foreach(ConfigNode node in currentOption.getResourceConfigNodes())
+				{
+					part.AddResource(node);
+				}
+			}
+			if(HighLogic.LoadedSceneIsEditor)
+			{
+				GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+			}	
+		}
+		
+		private void parseResourceSwitchConfig(ConfigNode node)
+		{				
+			if(node.HasNode("TANK"))
+			{				
+				ConfigNode[] tankNodes = node.GetNodes("TANK");			
+				List<TankConfig> tanks = new List<TankConfig>();
+				List<TankConfig> optionTanks = new List<TankConfig>();
+				TankConfig tank;
+				foreach(ConfigNode n2 in tankNodes)
+				{
+					tank = parseTankConfig(n2);
+					if(tank!=null)
+					{
+						if(tank.isOption)
+						{
+							print ("parsed optional tank: "+tank);
+							optionTanks.Add (tank);
+						}
+						else
+						{
+							tanks.Add (tank);	
+						}
+					}				
+				}
+				if(tanks.Count==0){tanks.Add(TankConfig.STRUCTURAL);}
+				TankConfig[] configs = tanks.ToArray();
+				TankConfig[] optionConfigs = optionTanks.ToArray();
+				tankSetupsByPart.Remove(part.name);
+				tankSetupsByPart.Add (part.name, new ResourceSwitchConfig(configs, optionConfigs));
+			}
+			else
+			{
+				tankSetupsByPart.Remove(part.name);
+				tankSetupsByPart.Add(part.name, new ResourceSwitchConfig(new TankConfig[]{TankConfig.STRUCTURAL}, new TankConfig[0]));
 			}
 		}
 		
 		private TankConfig parseTankConfig(ConfigNode node)
 		{			
-			TankConfig config = new TankConfig(node);
-			return config;
+			return new TankConfig(node, defaultTankCost, defaultTankMass);
 		}
 
-		private TankConfig[] getConfigForPart(Part part)
+		private ResourceSwitchConfig getConfigForPart(Part part)
 		{
-			TankConfig[] cfgs;
-			if(!tankSetupsByPart.TryGetValue(part.name, out cfgs))
+			ResourceSwitchConfig config;
+			if(!tankSetupsByPart.TryGetValue(part.name, out config))
 		   	{
-				return new TankConfig[0];
+				return null;
 			}
-			return cfgs;
+			return config;
+		}
+	}
+	
+	public class ResourceSwitchConfig
+	{
+		public TankConfig[] mainTanks;
+		public TankConfig[] optionTanks;
+		public ResourceSwitchConfig(TankConfig[] mainTanks, TankConfig[] optionTanks)
+		{
+			if(mainTanks==null || optionTanks==null){throw new NullReferenceException("Tank definition input arrays cannot be null, use empty arrays instead");}
+			this.mainTanks = mainTanks;
+			this.optionTanks = optionTanks;
 		}
 	}
 	
@@ -251,25 +385,31 @@ namespace SSTUTools
 	{
 		public static TankConfig STRUCTURAL;
 		public String tankName;
-		public float tankCost = -1;
-		public float tankDryMass = -1;
-		private float tankResourceCost = -1;
+		public float tankCost = 0;
+		public float tankDryMass = 0;
+		public bool isOption = false;
+		private float tankResourceCost = -1f;
 		List<TankResourceConfig> tankResourceConfigs = new List<TankResourceConfig>();	
 				
 		static TankConfig()
 		{
 			STRUCTURAL = new TankConfig();
 			STRUCTURAL.tankName = "Structural";
+			STRUCTURAL.tankDryMass = 0.125f;
+			STRUCTURAL.tankCost = 1200f;
+			STRUCTURAL.tankResourceCost = 0f;
 		}
 		
 		private TankConfig (){}
 		
-		public TankConfig(ConfigNode node)
+		public TankConfig(ConfigNode node, float defaultCost, float defaultMass)
 		{
 			tankName = node.GetValue("tankName");	
 			if(node.HasValue("tankCost")){tankCost = (float)SSTUUtils.safeParseDouble(node.GetValue("tankCost"));}
+			else{tankCost = defaultCost;}
 			if(node.HasValue("tankDryMass")){tankDryMass = (float)SSTUUtils.safeParseDouble(node.GetValue("tankDryMass"));}			
-			
+			else{tankDryMass = defaultMass;}
+			if(node.HasValue("isOption")){isOption = Boolean.Parse(node.GetValue("isOption"));}
 			ConfigNode[] tanks = node.GetNodes("TANKRESOURCE");
 			foreach(ConfigNode tcn in tanks){loadTankConfigNode(tcn);}
 		}
@@ -287,13 +427,9 @@ namespace SSTUTools
 		{
 			int length = tankResourceConfigs.Count;
 			ConfigNode[] nodes = new ConfigNode[length];
-			ConfigNode node;			
 			for (int i = 0; i < length; i++)
 			{
-				node = nodes[i] = new ConfigNode("RESOURCE");
-				node.AddValue("name", tankResourceConfigs[i].resourceName);
-				node.AddValue("maxAmount", tankResourceConfigs[i].amount);
-				node.AddValue("amount", tankResourceConfigs[i].fillAmount);
+				nodes[i] = tankResourceConfigs[i].getResourceConfigNode();
 			}
 			return nodes;
 		}
@@ -328,7 +464,7 @@ namespace SSTUTools
 		private String getResourcesString()
 		{
 			return SSTUUtils.printList(tankResourceConfigs, "\n");
-		}
+		}		
 	}
 	
 	public class TankResourceConfig
@@ -336,6 +472,15 @@ namespace SSTUTools
 		public String resourceName;
 		public float amount;
 		public float fillAmount;
+		
+		public ConfigNode getResourceConfigNode()
+		{
+			ConfigNode node = new ConfigNode("RESOURCE");			
+			node.AddValue("name", resourceName);
+			node.AddValue("maxAmount", amount);
+			node.AddValue("amount", fillAmount);
+			return node;
+		}
 		
 		public override string ToString ()
 		{

@@ -6,6 +6,24 @@ namespace SSTUTools
 {
 	public class SSTUUtils
 	{
+		//retrieve an array of Components that implement <T>/ extend <T>;
+		//<T> may be an interface or class
+		public static T[] getComponentsImplementing<T>(GameObject obj) where T : class
+		{
+			List<T> interfacesList = new List<T> ();
+			Component[] comps = obj.GetComponents<MonoBehaviour> ();
+			T t;
+			foreach (Component c in comps)
+			{
+				t = c as T;
+				if(t!=null)
+				{
+					interfacesList.Add (t);
+				}
+			}
+			return interfacesList.ToArray();
+		}
+
 		public static double safeParseDouble(String val)
 		{
 			double returnVal = 0;
@@ -37,14 +55,20 @@ namespace SSTUTools
 		public static String concatArray(float[] array)
 		{
 			String val = "";
-			foreach(float f in array){val=val+f+",";}
+			if(array!=null)
+			{
+				foreach(float f in array){val=val+f+",";}				
+			}
 			return val;
 		}
 		
 		public static String concatArray(String[] array)
 		{
 			String val = "";
-			foreach(String f in array){val=val+f+",";}
+			if(array!=null)
+			{
+				foreach(String f in array){val=val+f+",";}				
+			}
 			return val;
 		}
 		
@@ -63,24 +87,43 @@ namespace SSTUTools
 		public static String printArray<T>(T[] array, String separator)
 		{
 			String str = "";
-			int len = array.Length;
-			for(int i = 0; i < len; i++)
+			if(array!=null)
 			{
-				str = str + array[i].ToString();
-				if(i<len-1){str = str+separator;}
+				int len = array.Length;
+				for(int i = 0; i < len; i++)
+				{
+					str = str + array[i].ToString();
+					if(i<len-1){str = str+separator;}
+				}				
 			}
 			return str;
 		}
 						
-		public static void recursePrintChild(Transform tr, String prefix)
+		public static void recursePrintChildTransforms(Transform tr, String prefix)
 		{			
 			MonoBehaviour.print ("Transform found: "+prefix+tr.name);
 			for(int i = 0; i < tr.childCount; i++)
 			{
-				recursePrintChild(tr.GetChild(i), prefix+"  ");
+				recursePrintChildTransforms(tr.GetChild(i), prefix+"  ");
 			}
 		}
 		
+		public static void recursePrintComponents(GameObject go, String prefix)
+		{
+			MonoBehaviour.print 	("Found gameObject: "+prefix+go.name);	
+			int childCount = go.transform.childCount;
+			Component[] comps = go.GetComponents<Component>();
+			foreach(Component comp in comps)
+			{
+				MonoBehaviour.print ("Found Component : "+prefix +"* "+comp.GetType());
+			}
+			
+			for(int i = 0; i < childCount; i++)
+			{
+				recursePrintComponents(go.transform.GetChild(i).gameObject, prefix+"  ");
+			}
+		}
+						
 		public static void enableMeshColliderRecursive(Transform tr, bool enabled, bool convex)
 		{
 			MeshCollider mc = tr.GetComponent<MeshCollider>();
@@ -93,6 +136,89 @@ namespace SSTUTools
 			for(int i = 0; i < len; i++)
 			{
 				enableMeshColliderRecursive(tr.GetChild(i), enabled, convex);
+			}
+		}
+
+		public static void recursePrintOjbectTree(GameObject go)
+		{
+			MonoBehaviour.print("Object graph for: " + go.name);
+			printObjectTree (go, "", true);
+		}
+		
+		public static AttachNode findRemoteParentNode(Part searchRoot, Part toFind)
+		{
+			AttachNode returnNode = null;
+			foreach(AttachNode node in searchRoot.attachNodes)
+			{
+				if(node.attachedPart==toFind)
+				{
+					returnNode = node;
+					break;
+				}
+				else if(nodeTreeContains(node, toFind))
+				{
+					returnNode = node;
+					break;
+				}
+			}
+			return returnNode;
+		}
+		
+		private static bool nodeTreeContains(AttachNode node, Part toFind)
+		{
+			if(node.attachedPart==null){return false;}
+			foreach(AttachNode on in node.attachedPart.attachNodes)
+			{
+				if(on.attachedPart==toFind){return true;}
+				if(nodeTreeContains(on, toFind)){return true;}
+			}
+			return false;
+		}
+
+		private static void printObjectTree(GameObject go, String prefix, bool isTail)
+		{
+			
+			//			http://stackoverflow.com/questions/4965335/how-to-print-binary-tree-diagram
+			//			final String name;
+			//			final List<TreeNode> children;
+			//			
+			//			public TreeNode(String name, List<TreeNode> children) {
+			//				this.name = name;
+			//				this.children = children;
+			//			}
+			//			
+			//			public void print() {
+			//				print("", true);
+			//			}
+			//			
+			//			private void print(String prefix, boolean isTail) {
+			//				System.out.println(prefix + (isTail ? "└── " : "├── ") + name);
+			//				for (int i = 0; i < children.size() - 1; i++) {
+			//					children.get(i).print(prefix + (isTail ? "    " : "│   "), false);
+			//				}
+			//				if (children.size() > 0) {
+			//					children.get(children.size() - 1).print(prefix + (isTail ?"    " : "│   "), true);
+			//				}
+			//			}
+
+			//alternative to investigate:
+			//http://stackoverflow.com/questions/1649027/how-do-i-print-out-a-tree-structure
+
+			MonoBehaviour.print (prefix  + (isTail ? "└── " : "├── " + go.name));
+			Component[] comps = go.GetComponents<MonoBehaviour>();
+			bool compTail = false;
+			for (int i = 0; i < comps.Length; i++)
+			{
+				compTail = i>=comps.Length-1;
+				MonoBehaviour.print (prefix + (compTail ? "    " : "|   ") +comps[i].GetType());
+			}
+			for (int i = 0; i< go.transform.childCount-1; i++)
+			{
+				printObjectTree(go.transform.GetChild(i).gameObject, prefix + (isTail ? "    " : "|   "), false);
+			}
+			if (go.transform.childCount > 0)
+			{
+				printObjectTree(go.transform.GetChild(go.transform.childCount-1).gameObject, prefix + (isTail ?"    " : "│   "), true);
 			}
 		}
 		
@@ -119,12 +245,6 @@ namespace SSTUTools
 				enableColliderRecursive(tr.GetChild(i), val);
 			}
 		}
-		
-//		public static void enableComponentRecursive<T>(Transform tr, bool val) where T : UnityEngine.Component
-//		{
-//			UnityEngine.Component t = tr.GetComponent<T>() as UnityEngine.Component;
-//			if(t!=null){t.enabled = val;}//apparently not everything has an enable flag...meh
-//		} 
 		
 		public static Texture findTexture(String textureName)
 		{

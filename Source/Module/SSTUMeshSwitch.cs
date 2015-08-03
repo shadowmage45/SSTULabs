@@ -7,9 +7,17 @@ namespace SSTUTools
 	
 	//mesh switch module
 	//driven by config node system, can be linked to resource switch through config specification
-	public class SSTUMeshSwitch : PartModule
+	//TODO
+	// how to allow for setting of default mesh AND resources during prefab part instantiation?
+	// -- have an externally accessible var/method in SSTUResourceSwitch that accepts a tankName for default instantiation?
+	public class SSTUMeshSwitch : PartModule, IPartCostModifier, IPartMassModifier
 	{
 		public static Dictionary<String, MeshConfigData> meshConfigByPart = new Dictionary<String, MeshConfigData>();
+		//TODO create private map of string - index for faster findByName, will need re-filled when prefab configs are reloaded
+
+		//used to suffix the part-name in order to store persistent config data in static dictionary
+		[KSPField]
+		public int moduleID = 0;
 					
 		[KSPField]
 		public String defaultVariantName;
@@ -20,22 +28,34 @@ namespace SSTUTools
 		[KSPField(guiActive=true, guiActiveEditor = true, guiName = "Variant")]
 		public String meshDisplayName = String.Empty;
 		
+		[KSPField]
+		public String variantLabel = "Variant";
+		
+		[KSPField]
+		public bool modifyPartMass = false;
+
+		[KSPField]
+		public bool controlsTankOptions = false;
+
+		[KSPField]
+		public bool enablePrevButton = true;
+						
 		MeshConfig[] meshConfigurations;
+		MeshConfig currentConfig;
 		
-		//linked resource switch module
+		//linked resource switch module, if any
 		SSTUResourceSwitch resourceSwitch;
-				
-		public SSTUMeshSwitch ()
-		{
-			
-		}
-		
+		SSTUModuleControl moduleControl;
+					
 		[KSPEvent(name="nextMeshEvent", guiName="Next Variant", guiActiveEditor=true)]
 		public void nextMeshEvent()
 		{
 			currentConfiguration++;
 			if(currentConfiguration>=meshConfigurations.Length){currentConfiguration=0;}
-			setToMeshConfig(currentConfiguration, true);
+			setToMeshConfig(currentConfiguration);
+			updateResourceSwitch();
+			updateModuleSwitch();
+			GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
 		}	
 		
 		[KSPEvent(name="prevMeshEvent", guiName="Prev. Variant", guiActiveEditor=true)]
@@ -43,88 +63,223 @@ namespace SSTUTools
 		{
 			currentConfiguration--;
 			if(currentConfiguration<0){currentConfiguration = meshConfigurations.Length - 1;}
-			setToMeshConfig(currentConfiguration, true);
+			setToMeshConfig(currentConfiguration);
+			updateResourceSwitch();
+			updateModuleSwitch();
+			GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
 		}	
 		
+		#region KSP Overrides
+				
 		public override void OnLoad (ConfigNode node)
 		{
-			base.OnLoad (node);
-			MeshConfigData mcd = null;
-			//only run on prefab init.  how to properly catch that state?
-			
-			if(!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
+			base.OnLoad (node);									
+			if(HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
+			{				
+				initialize();
+			}
+			else
 			{
-				mcd = new MeshConfigData();
-				mcd.moduleConfigNode = node;
-				meshConfigByPart.Remove(part.name);
-				meshConfigByPart.Add(part.name, mcd);
-			}		
-			initMeshConfig(false);	
+				onPrefabLoad(node);//only occurs on database load (loading screen, reload on space-center screen)		
+			}
 		}
 		
 		public override void OnStart (PartModule.StartState state)
 		{
-			base.OnStart (state);
-			initMeshConfig(true);
+			base.OnStart (state);			
+			initialize();
+			Events["nextMeshEvent"].guiName = "Next "+variantLabel;
+			Events["prevMeshEvent"].guiName = "Prev. "+variantLabel;
+			Events["prevMeshEvent"].active = enablePrevButton;
+			Fields["meshDisplayName"].guiName = variantLabel;
 		}
 		
-		private void initMeshConfig(bool enableResourceSwitch)
-		{			
-			MeshConfigData mcd = null;
-			if(meshConfigByPart.TryGetValue(part.name, out mcd))
-			{
-				meshConfigurations = mcd.getConfigFor(part);
-			}
-			if(enableResourceSwitch)
-			{				
-				resourceSwitch = part.GetComponent<SSTUResourceSwitch>();				
-			}
-			if(currentConfiguration==-1)//uninitialized part
-			{
-				setToMeshConfig(defaultVariantName, true);
-			}
-			else
-			{
-				setToMeshConfig(currentConfiguration, !HighLogic.LoadedSceneIsFlight);//only update resources (refill/reset) if not in flight
-			}
-		}
-		
-		public void setToMeshConfig(String variantName, bool updateResources)
+		public override string GetInfo ()
 		{
+			print ("SSTUMeshSwitch GetInfo "+GetHashCode());
+			return base.GetInfo ();
+		}
+		
+		public float GetModuleCost (float defaultCost)
+		{
+			return currentConfig==null? 0 : currentConfig.variantCost;
+		}
+		
+		public float GetModuleMass (float defaultMass)
+		{
+			return modifyPartMass ? 0 : (currentConfig==null? 0 : currentConfig.variantMass);
+		}
+		
+		#endregion
+		
+		private void initialize()
+		{
+			findLinkedModules();
+			loadLocalConfigs();
+			reloadSavedMeshData();		
+		}
+				
+		/// <summary>
+		/// To be called by the prefab part only during initialization and/or database reload.
+		/// Sets the current active mesh to the specified default from the part config file (or first found if no default specified)
+		/// </summary>
+		/// <param name="node">Node.</param>
+		private void onPrefabLoad(ConfigNode node)
+		{		
+			loadGlobalConfigs (node);
+			loadLocalConfigs ();
+			loadDefaultMeshConfig();
+		}
+
+		private void loadGlobalConfigs(ConfigNode node)
+		{
+			MeshConfigData mcd = new MeshConfigData();
+			mcd.moduleConfigNode = node;
+			meshConfigByPart.Remove(part.name+"-"+moduleID);//remove any old occurance of this module
+			meshConfigByPart.Add(part.name+"-"+moduleID, mcd);	
+		}
+			
+		private void loadLocalConfigs()
+		{
+			if(meshConfigurations==null || meshConfigurations.Length==0)
+			{
+				MeshConfigData mcd = null;
+				if(meshConfigByPart.TryGetValue(part.name+"-"+moduleID, out mcd))
+				{
+					meshConfigurations = mcd.getConfigFor(part);
+				}					
+			}
+		}
+
+		private void findLinkedModules()
+		{
+			moduleControl = part.GetComponent<SSTUModuleControl>();
+			resourceSwitch = part.GetComponent<SSTUResourceSwitch>();
+		}
+		
+		private void updateResourceSwitch()
+		{
+			if(resourceSwitch==null){findLinkedModules();}
+			if(resourceSwitch!=null)
+			{
+				MeshConfig config = meshConfigurations[currentConfiguration];
+				if(config!=null && config.tankName!=null && config.tankName.Length>0)
+				{					
+					resourceSwitch.setTankMainConfig(config.tankName);	
+				}
+				if(controlsTankOptions)
+				{
+					if(config.tankOption!=null && config.tankOption.Length>0)
+					{
+						resourceSwitch.setTankOption(config.tankOption);
+					}
+					else
+					{
+						resourceSwitch.clearTankOption();
+					}
+				}
+			}
+		}
+
+		private void updateModuleSwitch()
+		{
+			if(moduleControl==null){findLinkedModules ();}
+			if(moduleControl!=null)
+			{
+				int len = meshConfigurations.Length;
+				MeshConfig cfg;
+				int[] modules;
+				for(int i = 0; i < len; i++)
+				{
+					cfg = meshConfigurations[i];
+					modules = cfg.controlledModules;
+					for(int k = 0; k < modules.Length; k++)
+					{
+						if(i==currentConfiguration)
+						{
+							print ("enabling module: "+modules[k]);
+							moduleControl.enableControlledModule(modules[k]);
+						}
+						else
+						{
+							print ("disabling module: "+modules[k]);
+							moduleControl.disableControlledModule(modules[k]);
+						}
+					}
+				}
+			}
+		}
+		
+		private void enableAllMeshes()
+		{
+			foreach(MeshConfig cfg in meshConfigurations)
+			{
+				cfg.enable();
+			}
+		}
+
+		private void reloadSavedMeshData()
+		{
+			setToMeshConfig (currentConfiguration);
+		}
+
+		private void loadDefaultMeshConfig()
+		{
+			setToMeshConfig (defaultVariantName);
+		}
+		
+		private void setToMeshConfig(String variantName)
+		{
+			if(variantName==null || variantName.Length==0)
+			{
+				setToMeshConfig(0);
+			}
 			int len = meshConfigurations.Length;
 			for(int i = 0; i < len; i++)
 			{
 				if(meshConfigurations[i].variantName.Equals(variantName))
 				{
-					setToMeshConfig(i, updateResources);
+					setToMeshConfig(i);
 					return;
 				}
 			}
+			setToMeshConfig(0);
 		}
 		
-		private void setToMeshConfig(int index, bool updateResources)
+		private void setToMeshConfig(int index)
 		{
+			if(index < 0 || index >= meshConfigurations.Length){index = 0;}
 			currentConfiguration = index;
+			
 			MeshConfig config = meshConfigurations[index];
 			meshDisplayName = config.variantName;
+			currentConfig = config;
 			
 			int len = meshConfigurations.Length;
 			for(int i = 0; i < len; i++)
 			{
 				if(i==index){continue;}
 				meshConfigurations[i].disable();
-				if(HighLogic.LoadedSceneIsFlight)
-				{
-					meshConfigurations[i].removeMeshes();
-				}
 			}
-			config.enable();			
-			if(updateResources && config.tankName.Length>0 && resourceSwitch!=null)
+			currentConfig.enable();						
+			
+			if(modifyPartMass)
 			{
-				resourceSwitch.initModule();
-				resourceSwitch.setTankToConfig(config.tankName);
+				part.mass = config.variantMass;
 			}
 		}
+		
+		private void printConfig()
+		{
+			print ("MeshSwitch Config:");
+			print ("defaultVariantName: "+defaultVariantName);
+			print ("moduleID: "+moduleID);
+			print ("currentConfiguration: "+currentConfiguration);
+			print ("meshDisplayName: "+meshDisplayName);
+			print ("Configs: "+SSTUUtils.printArray(meshConfigurations, "\n"));
+			print ("-----end config---");
+		}
+	
 	}
 	
 	//wraps the persistent config node data, to be read by individual part instances
@@ -149,14 +304,36 @@ namespace SSTUTools
 	{
 		public String variantName = String.Empty;
 		public String tankName = String.Empty;
+		public String tankOption = String.Empty;
 		public MeshData[] meshData;
+		public int[] controlledModules;
+		public float variantMass = 0;
+		public float variantCost = 0;
 		
 		public MeshConfig(ConfigNode node, Part part)
 		{
 			variantName = node.GetValue("variantName");
-			tankName = node.GetValue("tankName");
-			String meshNames = node.GetValue("meshNames");
-			MonoBehaviour.print ("mesh names: "+meshNames);
+			if(variantName==null || variantName.Length==0)
+			{
+				MonoBehaviour.print ("ILLEGAL VARIANT NAME: "+variantName);
+			}
+			if(node.HasValue("tankName"))//else it ends up null?
+			{			
+				tankName = node.GetValue("tankName");
+			}
+			if(node.HasValue("variantMass"))
+			{
+				variantMass = (float)SSTUUtils.safeParseDouble(node.GetValue("variantMass"));
+			}
+			if(node.HasValue("variantCost"))
+			{
+				variantCost = (float)SSTUUtils.safeParseDouble(node.GetValue("variantCost"));
+			}	
+			if (node.HasValue ("tankOption"))
+			{
+				tankOption = node.GetValue("tankOption");
+			}
+			String meshNames = node.GetValue("meshNames");	
 			if(meshNames==null || meshNames.Length==0)
 			{
 				meshData = new MeshData[0];
@@ -170,6 +347,17 @@ namespace SSTUTools
 				{
 					meshData[i] = new MeshData(splitNames[i].Trim (), part);
 				}				
+			}			
+			String configControlIDs = node.GetValue ("controlIDs");
+			if (configControlIDs != null && configControlIDs.Length > 0)
+			{
+				String[] splitIDs = configControlIDs.Split(',');				
+				controlledModules = new int[splitIDs.Length];
+				for(int i = 0; i < splitIDs.Length; i++){controlledModules[i] = SSTUUtils.safeParseInt(splitIDs[i].Trim());}				
+			}
+			else
+			{
+				controlledModules = new int[0];
 			}
 		}
 		
@@ -189,20 +377,12 @@ namespace SSTUTools
 			}
 		}
 		
-		public void removeMeshes()
-		{
-			foreach(MeshData md in meshData)
-			{
-				md.removeMesh();
-			}
-		}
-		
 		public override string ToString ()
 		{
 			return string.Format ("[MeshConfig\n" +
-				"variantName =" + variantName+"\n"+
+				"variantName = " + variantName+"\n"+
 				"tankType = " + tankName + "\n" +
-				"meshData: \n"+SSTUUtils.printArray(meshData,"\n")+"]");
+				"meshData: \n"+SSTUUtils.printArray(meshData, "\n")+"]");
 		}
 	}
 	
@@ -214,8 +394,15 @@ namespace SSTUTools
 		public MeshData(String name, Part part)
 		{
 			meshName = name;
-			Transform tr = part.FindModelTransform(meshName);
+			GameObject g = part.gameObject.GetChild(meshName);
+//			Transform tr = part.FindModelTransform(meshName);
+			Transform tr = g==null? null : g.transform;
 			if(tr!=null){gameObject = tr.gameObject;}
+			else
+			{
+				MonoBehaviour.print ("ERROR! Could not locate transform for name: "+name);
+				SSTUUtils.recursePrintComponents(part.gameObject, "");
+			}
 		}
 		
 		public void enable()
@@ -231,16 +418,25 @@ namespace SSTUTools
 		{		
 			if(gameObject!=null)
 			{
-				SSTUUtils.enableRenderRecursive(gameObject.transform, false);
-				SSTUUtils.enableColliderRecursive(gameObject.transform, false);	
+				if(HighLogic.LoadedSceneIsFlight)
+				{
+					//TODO change this over to -delete- the extra unused meshes
+					SSTUUtils.enableRenderRecursive(gameObject.transform, false);
+					SSTUUtils.enableColliderRecursive(gameObject.transform, false);
+				}
+				else
+				{
+					SSTUUtils.enableRenderRecursive(gameObject.transform, false);
+					SSTUUtils.enableColliderRecursive(gameObject.transform, false);
+				}
 			}			
 		}
-		
-		public void removeMesh()
+
+		public override string ToString ()
 		{
-//			GameObject.Destroy(gameObject);
-//			gameObject=null;
+			return string.Format ("[MeshData: "+meshName+"]");
 		}
 	}
+	
 }
 

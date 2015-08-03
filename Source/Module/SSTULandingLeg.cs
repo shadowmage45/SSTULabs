@@ -8,7 +8,7 @@ namespace SSTUTools
 	//multi-leg capable landing leg
 	//maintains wheel collider for each leg
 	//uses SSTUAnimate for deploy/retract handling
-	public class SSTULandingLeg : PartModule
+	public class SSTULandingLeg : SSTUControlledModule
 	{
 		
 		public enum LegState
@@ -17,7 +17,7 @@ namespace SSTUTools
 			DEPLOYED,
 			RETRACTING,
 			RETRACTED,
-			BROKEN
+			BROKEN,
 		}
 		
 		public class LandingLegData
@@ -37,10 +37,8 @@ namespace SSTUTools
 		
 		[KSPField]
 		public string footColliderNames = "unknown";	
-		
-		
-		//wheel collider setup config values
-		
+				
+		//wheel collider setup config values		
 		[KSPField]
 		public float suspensionTravel = -1;
 
@@ -61,22 +59,11 @@ namespace SSTUTools
 		
 		[KSPField]
 		public float suspensionOffset = 0;
-		
-		
-		//animation setup config values
-		
+
 		[KSPField]
-		public string animationName = "unknown";
+		public int animationID = 0;	
 		
-		[KSPField]
-		public int animationLayer = 1;
-		
-		[KSPField]
-		public float customAnimationSpeed = 1;
-	
-		
-		//gui label setup config values
-		
+		//gui label setup config values		
 		[KSPField]
 		public string deployGuiName = "Deploy Gear";
 			
@@ -88,26 +75,19 @@ namespace SSTUTools
 		
 		[KSPField]
 		public string repairGuiName = "Repair Gear";
-		
-		
-		//module internal use fields
-		
+				
+		//module internal use fields		
 		[KSPField(isPersistant=true)]
 		public string persistentState = LegState.RETRACTED.ToString();
-				
+								
 		private float decompressTime = 0.0f;
 								
 		private List<LandingLegData> legData = new List<LandingLegData>();
 		
 		private LegState legState = LegState.RETRACTED;
 						
-		private Animation deployAnimation;		
-		
-		public SSTULandingLeg ()
-		{
-			
-		}
-		
+		private SSTUAnimateControlled animationController;
+
 		#region KSP Actions
 
 		//KSP Action Group 'Toggle'
@@ -176,39 +156,28 @@ namespace SSTUTools
 			else if(legState==LegState.DEPLOYING)
 			{
 				legState=LegState.DEPLOYED;
-			}		
+			}
+			updateGuiControlsFromState();
 		}
 						
 		public override void OnStart (PartModule.StartState state)
 		{
 			base.OnStart (state);	
-			#region animationSetup		
-			
-			deployAnimation = part.FindModelAnimators(animationName).FirstOrDefault();
-			if(deployAnimation!=null)
-			{					
-				deployAnimation[animationName].layer = animationLayer;			
-				if(legState==LegState.DEPLOYED)
-				{
-					deployAnimation[animationName].normalizedTime = 1;
-					deployAnimation[animationName].speed = 1;
-				}
-				else//retracted or broken
-				{
-					deployAnimation[animationName].normalizedTime = 0;
-					deployAnimation[animationName].speed = -1;
-				}
-				deployAnimation.Play(animationName);
-			}
-			else
-			{
-				print ("Could not locate animation for name: "+animationName);
-			}
 
+			#region animationSetup					
+			SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
+			foreach(SSTUAnimateControlled ac in potentialAnimators)
+			{
+				if(ac.animationID == animationID)
+				{
+					animationController = ac;
+					ac.setCallback(onAnimationStatusChanged);
+					break;
+				}
+			}
 			#endregion
 			
-			#region gui setup
-			
+			#region gui setup			
 			Events["retractEvent"].guiName = retractGuiName;
 			Events["deployEvent"].guiName = deployGuiName;
 			Events["repairEvent"].guiName = repairGuiName;
@@ -216,8 +185,7 @@ namespace SSTUTools
 			
 			Events["retractEvent"].active = legState==LegState.DEPLOYED;
 			Events["deployEvent"].active = legState==LegState.RETRACTED;
-			Events["repairEvent"].active = legState==LegState.BROKEN;
-			
+			Events["repairEvent"].active = legState==LegState.BROKEN;			
 			#endregion					
 			
 			#region colliderSetup
@@ -292,32 +260,60 @@ namespace SSTUTools
 			#endregion	
 			
 			setLegState(legState);
+			if(!moduleControlEnabled)
+			{
+				onControlDisabled();
+			}
 		}
 		
+		#endregion		
+
+		#region IControlledModule overrides
+
+		public override void updateGuiControlsFromState (bool enabled)
+		{
+			updateGuiControlsFromState ();
+		}
+		
+		public override void onControlEnabled ()
+		{
+			setLegState(legState);
+			updateGuiControlsFromState();
+		}
+		
+		public override void onControlDisabled ()
+		{
+			enableWheelColliders(false);
+			enableFootColliders(false);
+			updateGuiControlsFromState();
+		}
+
+		#endregion
+
+		#region SSTUAnimateControlled interface
+
+		public void onAnimationStatusChanged(SSTUAnimState state)
+		{
+			if(state==SSTUAnimState.STOPPED_START)
+			{
+				setLegState(LegState.RETRACTED);
+			}
+			else if(state==SSTUAnimState.STOPPED_END)
+			{
+				setLegState(LegState.DEPLOYED);
+			}
+		}
+
 		#endregion
 		
 		#region Unity Overrides
 		
 		public void FixedUpdate()
 		{			
-			//print ("SSTULandingLeg FixedUpdate");
-			updateAnimation();
-			if(HighLogic.LoadedSceneIsFlight && !part.packed)
+			if (!moduleControlEnabled)
 			{
-				fixedUpdateFlight();			
+				return;
 			}
-			else if(HighLogic.LoadedSceneIsEditor)
-			{
-				fixedUpdateEditor();
-			}
-		}
-		
-		#endregion
-		
-		#region private udpate methods
-		
-		private void fixedUpdateFlight()
-		{
 			if(legState==LegState.DEPLOYED)
 			{
 				updateSuspension();									
@@ -327,20 +323,10 @@ namespace SSTUTools
 				decompress();		
 			}
 		}
-				
-		private void fixedUpdateEditor()
-		{
-
-		}
 		
-		private void updateAnimation()
-		{
-			if(!deployAnimation.isPlaying)
-			{
-				if(legState==LegState.DEPLOYING){setLegState(LegState.DEPLOYED);}
-				else if(legState==LegState.RETRACTING && decompressTime==0){setLegState(LegState.RETRACTED);}
-			}
-		}
+		#endregion
+		
+		#region private udpate methods
 		
 		private void decompress()
 		{
@@ -370,10 +356,7 @@ namespace SSTUTools
 				decompressTime = 0;
 				resetSuspensionPosition();
 				enableWheelColliders(false);
-				AnimationState anim = deployAnimation[animationName];
-				anim.normalizedTime=1;
-				anim.speed = -1;
-				deployAnimation.Play(animationName);
+				animationController.setToState(SSTUAnimState.PLAYING_BACKWARD);
 			}			
 		}
 			
@@ -422,81 +405,119 @@ namespace SSTUTools
 		
 		private void setLegState(LegState newState)
 		{
+			print ("setting leg state to: "+newState);
 			LegState prevState = legState;
 			legState = newState;
 			persistentState = legState.ToString();
-			
-			AnimationState anim = deployAnimation[animationName];			
+									
 			switch(newState)
-			{				
+			{	
+				
 			case LegState.BROKEN:
+			{
 				enableWheelColliders(false);
 				enableFootColliders(false);
-				anim.normalizedTime = 0;
-				anim.speed = -1;
-				deployAnimation.Play(animationName);
+				animationController.setToState(SSTUAnimState.STOPPED_START);
 				decompressTime = 0;
 				break;
+			}		
 				
 			case LegState.DEPLOYED:
-				anim.normalizedTime = 1;
-				anim.speed = 1;
+			{			
+				animationController.setToState(SSTUAnimState.STOPPED_END);
 				decompressTime = 0;
 				if(HighLogic.LoadedSceneIsFlight)
 				{
 					enableWheelColliders(true);
 					enableFootColliders(false);
 				}
-				break;
+				break;	
+			}
 				
-			case LegState.RETRACTED:	
+			case LegState.RETRACTED:
+			{			
 				enableWheelColliders(false);
 				enableFootColliders(false);
-				anim.normalizedTime = 0;
 				decompressTime = 0;
-				anim.speed = -1;
-				break;
-				
+				animationController.setToState(SSTUAnimState.STOPPED_START);
+				break;	
+			}
+			
 			case LegState.DEPLOYING:
-				enableWheelColliders(false);				
+			{
+				enableWheelColliders(false);	
+				decompressTime = 0;
+				resetSuspensionPosition();//just in case something got fubard
 				if(HighLogic.LoadedSceneIsFlight)
 				{
 					enableFootColliders(true);	
+					animationController.setToState(SSTUAnimState.PLAYING_FORWARD);
 				}
-				if(prevState==LegState.RETRACTED)//fix for 'instant retract' bug on newly loaded vessel
-				{
-					anim.normalizedTime = 0;
-				}
-				decompressTime = 0;
-				anim.speed = 1;
-				resetSuspensionPosition();
-				deployAnimation.Play(animationName);
-				break;
-				
-			case LegState.RETRACTING:					
-				enableFootColliders(true);
-				anim.speed = -1;
-				if(prevState==LegState.DEPLOYED)//fix for 'instant retract' bug on newly loaded vessel
-				{
-					decompressTime = 1.0f;
-					anim.normalizedTime = 1;
-				}
-				else
-				{
-					resetSuspensionPosition();
-					enableWheelColliders(false);
-					deployAnimation.Play(animationName);
+				else//we are in editor
+				{	
+					legState = LegState.DEPLOYED;
+					animationController.setToState(SSTUAnimState.STOPPED_END);
 				}
 				break;
 			}
-			updateGuiState();
+								
+			case LegState.RETRACTING:	
+			{
+				enableFootColliders(true);
+				if(prevState==LegState.DEPLOYED)//fix for 'instant retract' bug on newly loaded vessel
+				{						
+					if(HighLogic.LoadedSceneIsFlight)
+					{
+						print ("starting decompress from retract command");
+						decompressTime = 1.0f;
+						//from here the decompress logic will trigger retract animation when it is needed...
+					}
+					else//else we are in editor, do not bother with retract decompress, go straight to playing animation;
+					{
+						//TODO instant-retract when in editor
+						resetSuspensionPosition();						
+						animationController.setToState(SSTUAnimState.STOPPED_START);
+						legState=LegState.RETRACTED;
+					}
+				}
+				else
+				{
+					if(HighLogic.LoadedSceneIsFlight)
+					{						
+						resetSuspensionPosition();
+						enableWheelColliders(false);
+						animationController.setToState(SSTUAnimState.PLAYING_BACKWARD);
+					}
+					else
+					{
+						resetSuspensionPosition();						
+						animationController.setToState(SSTUAnimState.STOPPED_START);
+						legState=LegState.RETRACTED;
+					}
+				}
+				break;
+			}
+
+			}//end switch
+			
+			print ("actual new state: "+legState);
+			updateGuiControlsFromState();
 		}
 		
-		private void updateGuiState()
+		private void updateGuiControlsFromState()
 		{
+			if(!moduleControlEnabled)
+			{
+				Events["repairEvent"].active = false;
+				Events["deployEvent"].active = false;
+				Events["retractEvent"].active = false;
+				Actions["toggleAction"].active = false;
+				return;
+			}
 			switch(legState)
 			{				
 			case LegState.BROKEN:
+				Events["repairEvent"].active = true;
 				Events["deployEvent"].active = false;
 				Events["retractEvent"].active = false;
 				Actions["toggleAction"].active = false;
