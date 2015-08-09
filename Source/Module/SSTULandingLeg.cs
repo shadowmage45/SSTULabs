@@ -164,17 +164,8 @@ namespace SSTUTools
 		{
 			base.OnStart (state);	
 
-			#region animationSetup					
-			SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
-			foreach(SSTUAnimateControlled ac in potentialAnimators)
-			{
-				if(ac.animationID == animationID)
-				{
-					animationController = ac;
-					ac.setCallback(onAnimationStatusChanged);
-					break;
-				}
-			}
+			#region animationSetup
+			animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
 			#endregion
 			
 			#region gui setup			
@@ -219,7 +210,7 @@ namespace SSTUTools
 					wheelCollider = wheelColliderTransform.GetComponent<WheelCollider>();
 					if(wheelCollider==null)
 					{
-						print ("wheel collider transform does not contain a valid wheel collider!");
+						print ("Wheel collider transform does not contain a valid wheel collider!  name: "+wheelCollider.name);
 						continue;
 					}
 					if(i<footNameArray.Length)
@@ -405,7 +396,6 @@ namespace SSTUTools
 		
 		private void setLegState(LegState newState)
 		{
-			print ("setting leg state to: "+newState);
 			LegState prevState = legState;
 			legState = newState;
 			persistentState = legState.ToString();
@@ -468,7 +458,6 @@ namespace SSTUTools
 				{						
 					if(HighLogic.LoadedSceneIsFlight)
 					{
-						print ("starting decompress from retract command");
 						decompressTime = 1.0f;
 						//from here the decompress logic will trigger retract animation when it is needed...
 					}
@@ -499,8 +488,7 @@ namespace SSTUTools
 			}
 
 			}//end switch
-			
-			print ("actual new state: "+legState);
+
 			updateGuiControlsFromState();
 		}
 		

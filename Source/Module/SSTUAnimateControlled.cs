@@ -34,9 +34,28 @@ namespace SSTUTools
 
 		private SSTUAnimState currentAnimState = SSTUAnimState.STOPPED_START;
 
-		private Action<SSTUAnimState> onAnimStateChangeCallback;
+		private List<Action<SSTUAnimState>> onAnimStateChangeCallbacks = new List<Action<SSTUAnimState>>();
 
 		private Animation[] anims;
+			
+		//Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
+		public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<SSTUAnimState> callback)
+		{
+			if (id < 0)
+			{
+				return null;
+			}
+			SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
+			foreach(SSTUAnimateControlled ac in potentialAnimators)
+			{
+				if(ac.animationID == id)
+				{
+					ac.addCallback(callback);
+					return ac;
+				}
+			}
+			return null;
+		}
 
 		public override void OnStart (StartState state)
 		{
@@ -69,9 +88,9 @@ namespace SSTUTools
 			restorePreviousAnimationState(currentAnimState);				
 		}
 
-		public void setCallback(Action<SSTUAnimState> cb)
+		public void addCallback(Action<SSTUAnimState> cb)
 		{
-			onAnimStateChangeCallback = cb;
+			onAnimStateChangeCallbacks.Add (cb);
 		}
 
 		//External method to set the state; does not callback on this state change, as this is supposed to originate -from- the callback;
@@ -149,9 +168,13 @@ namespace SSTUTools
 			}
 			currentAnimState = newState;
 			persistentState = currentAnimState.ToString();
-			if (callback && onAnimStateChangeCallback!=null)
+			if (callback && onAnimStateChangeCallbacks!=null)
 			{
-				onAnimStateChangeCallback.Invoke(currentAnimState);
+				int len = onAnimStateChangeCallbacks.Count;
+				for(int i = 0; i < len; i++)
+				{
+					onAnimStateChangeCallbacks[i].Invoke(currentAnimState);
+				}
 			}
 		}
 		

@@ -35,7 +35,7 @@ namespace SSTUTools
 		public override void OnStart(PartModule.StartState state)
 		{
 			if(controlID==-1){moduleControlEnabled=true;}
-			locateAnimationController();
+			animationControl = SSTUAnimateControlled.locateAnimationController (part, animationID, onAnimationStatusChanged);
 			base.OnStart(state);
 			if(moduleControlEnabled)
 			{
@@ -192,25 +192,7 @@ namespace SSTUTools
 			Events["deployEngineEvent"].active = false;
 			Events["retractEngineEvent"].active = false;
 		}
-		
-		//DONE
-		private void locateAnimationController()
-		{
-			if (animationID >= 0)
-			{
-				SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
-				foreach(SSTUAnimateControlled ac in potentialAnimators)
-				{
-					if(ac.animationID == animationID)
-					{
-						animationControl = ac;
-						ac.setCallback(onAnimationStatusChanged);
-						break;
-					}
-				}
-			}
-		}
-		
+
 		//DONE
 		public void onAnimationStatusChanged(SSTUAnimState state)
 		{

@@ -184,7 +184,7 @@ namespace SSTUTools
 			}
 			energyFlow = 0.0f;
 			occluderName = String.Empty;
-			if(panelState==SSTUPanelState.EXTENDED)
+			if(panelState==SSTUPanelState.EXTENDED && HighLogic.LoadedSceneIsFlight)
 			{
 				updatePowerStatus ();
 				checkForBreak();				
@@ -205,29 +205,20 @@ namespace SSTUTools
 			}
 		}
 		
+		public override void updateGuiControlsFromState (bool enabled)
+		{
+			updateGuiData();
+		}
+		
 		private void initializeState()
 		{	
 			if(initialized){return;}
 			initialized = true;			
 			parseTransformData();
 			findTransforms();
-			locateAnimator();
+			animationController = SSTUAnimateControlled.locateAnimationController (part, animationID, onAnimationStatusChanged);
 			setPanelState(panelState);
 			updateGuiData();
-		}
-		
-		private void locateAnimator()
-		{				
-			SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
-			foreach(SSTUAnimateControlled ac in potentialAnimators)
-			{
-				if(ac.animationID == animationID)
-				{
-					animationController = ac;
-					ac.setCallback(onAnimationStatusChanged);
-					break;
-				}
-			}
 		}
 		
 		//triggers retract or deploy final action depending upon which is needed
@@ -304,14 +295,14 @@ namespace SSTUTools
 				Vector3 normalized = (sunTransform.position - pd.rayCastTransform.position).normalized;
 				
 				float sunAOA = Mathf.Clamp (Vector3.Dot (pd.rayCastTransform.forward, normalized), 0f, 1f);
-				float distMult = (float)(base.vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
+				float distMult = (float)(vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
 				
 				if(distMult==0 && FlightGlobals.currentMainBody!=null)//vessel.solarFlux == 0, so occluded by a planetary body
 				{
 					occluderName = FlightGlobals.currentMainBody.name;//just guessing..but might be occluded by the body we are orbiting?
 				}
 				
-				float efficMult = this.temperatureEfficCurve.Evaluate ((float)base.part.temperature);
+				float efficMult = temperatureEfficCurve.Evaluate ((float)part.temperature);
 				float panelEnergy = resourceAmount * TimeWarp.fixedDeltaTime * sunAOA * distMult * efficMult;
 				energyFlow += panelEnergy;
 			}

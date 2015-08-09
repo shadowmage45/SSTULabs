@@ -311,6 +311,7 @@ namespace SSTUTools
 				updateStatusFromNode();
 				enableFairingRender(fairingEnabled);
 				updateAttachedStatus();
+				updateButtonStatus();
 			}
 			updateShieldStatus();
 		}
@@ -398,6 +399,18 @@ namespace SSTUTools
 			if(attachedToNode && watchedNode!=null && watchedNode.attachedPart!=null)
 			{
 				fairingBase.root.transform.parent = watchedNode.attachedPart.transform;
+			}
+		}
+		
+		private void updateButtonStatus()
+		{
+			if(watchedNode!=null && watchedNode.attachedPart!=null)
+			{
+				//enable fairing size adjust buttons if they should be enabled
+			}
+			else
+			{
+				//disable fairing size adjust buttons
 			}
 		}
 		

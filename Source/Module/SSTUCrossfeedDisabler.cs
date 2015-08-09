@@ -12,9 +12,12 @@ namespace SSTUTools
 		
 		[KSPField]
 		public String nodeName;
+
+		[KSPField]
+		public bool disableCrossflow;
 				
-		AttachNode otherNode;
-		Part otherPart;
+		private AttachNode otherNode;
+		private bool otherNodeDefaultFlow;
 		
 		public override void OnStart (PartModule.StartState state)
 		{
@@ -42,20 +45,49 @@ namespace SSTUTools
 					if(an!=null)
 					{
 						ap.NoCrossFeedNodeKey = an.id;
-						otherPart = ap;
 						otherNode = an;
 					}
 				}
 			}
 		}
 		
-		private void clearCurrentSetup()
+		private void updatePartCrossflow()
 		{
-			if(otherPart!=null)
+			print ("examining decoupler part crossfeed!");
+			if(otherNode!=null){otherNode.ResourceXFeed=otherNodeDefaultFlow;}
+			otherNode=null;
+			AttachNode node = part.findAttachNode(nodeName);			
+			if(node!=null)
 			{
-				otherPart.NoCrossFeedNodeKey=string.Empty;
-				otherNode=null;
-				otherPart=null;				
+				node.ResourceXFeed = !disableCrossflow;
+				Part otherPart = node.attachedPart;
+				AttachNode oNode = otherPart==null ? null : otherPart.findAttachNodeByPart(part);
+				
+				print ("set decoupler node crossflow to: "+node.ResourceXFeed+ " for node: "+node.id+" for part: "+part+ " attached part: "+otherPart+ " oNode: "+oNode);
+				
+				if(oNode!=null)
+				{
+					otherNode = oNode;
+					otherNodeDefaultFlow = oNode.ResourceXFeed;
+					if(disableCrossflow){oNode.ResourceXFeed=false;}
+					print ("set other node crossflow to: "+oNode.ResourceXFeed);
+				}
+				else if(otherPart!=null)
+				{
+					AttachNode on = SSTUUtils.findRemoteParentNode(otherPart, part);
+					if(on!=null)
+					{
+						print ("found remote node connection through: "+on+" :: "+on.id+" :: attached "+on.attachedPart);
+						otherNode = on;
+						otherNodeDefaultFlow = on.ResourceXFeed;
+						if(disableCrossflow){on.ResourceXFeed=false;}
+						print ("set remote connected node crosfeed to: "+on.ResourceXFeed);
+					}
+					else
+					{
+						print ("found part connected to node, but could not trace parantage through nodes");
+					}
+				}
 			}
 		}
 	}
