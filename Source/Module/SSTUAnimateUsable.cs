@@ -2,8 +2,7 @@ using System;
 
 namespace SSTUTools
 {
-	//TODO
-	public class SSTUAnimateUsable : PartModule
+	public class SSTUAnimateUsable : PartModule, IControlledModule
 	{			
 		[KSPField]
 		public int animationID;
@@ -43,10 +42,17 @@ namespace SSTUTools
 		
 		[KSPField]
 		public String resourceAmounts = string.Empty;
-		
-		//TODO
-		private String[] resNames;
-		private float[] resAmounts;
+
+		//IControlledModule fields
+		[KSPField(isPersistant=true)]
+		public bool moduleControlEnabled = false;
+
+		[KSPField]
+		public int controlID = -1;
+
+		//TODO - add resource use
+		//private String[] resNames;
+		//private float[] resAmounts;
 				
 		private SSTUAnimateControlled animationControl;
 		
@@ -76,6 +82,7 @@ namespace SSTUTools
 		
 		public override void OnStart (PartModule.StartState state)
 		{
+			if(controlID==-1){moduleControlEnabled=true;}
 			base.OnStart (state);
 			animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
 			initializeGuiFields();
@@ -85,6 +92,15 @@ namespace SSTUTools
 		//DONE
 		private void updateGuiDataFromState(SSTUAnimState state)
 		{
+			if (!moduleControlEnabled)
+			{
+				Events["deployEvent"].active = false;
+				Events["retractEvent"].active = false;
+				Actions["deployAction"].active = false;
+				Actions["retractAction"].active = false;
+				Fields["displayState"].guiActiveEditor = Fields["displayState"].guiActive = false;
+				return;
+			}
 			switch(state)
 			{
 			case SSTUAnimState.PLAYING_BACKWARD:
@@ -125,11 +141,36 @@ namespace SSTUTools
 			}
 			}
 		}
+
+		//IControlledModule method
+		public void enableModule ()
+		{
+			moduleControlEnabled = true;
+			updateGuiDataFromState (animationControl.getAnimationState());
+		}
+
+		//IControlledModule method
+		public void disableModule ()
+		{
+			moduleControlEnabled = false;
+			updateGuiDataFromState (animationControl.getAnimationState());
+		}
+
+		//IControlledModule method
+		public bool isControlEnabled ()
+		{
+			return moduleControlEnabled;
+		}
+
+		//IControlledModule method
+		public int getControlID ()
+		{
+			return controlID;
+		}
 		
 		//DONE
 		public void onAnimationStatusChanged(SSTUAnimState state)
 		{
-			print ("usable anim rec callback state change: "+state);
 			updateGuiDataFromState(state);
 		}
 		

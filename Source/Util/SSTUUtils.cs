@@ -144,18 +144,52 @@ namespace SSTUTools
 			MonoBehaviour.print("Object graph for: " + go.name);
 			printObjectTree (go, "", true);
 		}
+
+		public static ConfigNode findModuleNode(Part part, String moduleName, String idField, String idValue)
+		{
+			ConfigNode partNode = PartLoader.Instance.GetDatabaseConfig(part);
+			if(partNode==null)
+			{
+				MonoBehaviour.print("partNode==null!!");
+			}
+			else
+			{
+				MonoBehaviour.print ("Found part node: \n"+partNode);
+			}
+			if(moduleName==null)
+			{
+				MonoBehaviour.print ("moduleName==null!!");
+			}
+			ConfigNode[] moduleNodes = partNode.GetNodes ("MODULE", "name", moduleName);
+			int len = moduleNodes.Length;
+			String val;
+			for (int i = 0; i < len; i++)
+			{
+				if(moduleNodes[i].HasValue(idField))
+				{
+					val = moduleNodes[i].GetValue(idField);
+					if(idValue.Equals(val))
+					{
+						return moduleNodes[i];
+					}
+				}
+			}
+			return null;
+		}
 		
 		public static AttachNode findRemoteParentNode(Part searchRoot, Part toFind)
 		{
 			AttachNode returnNode = null;
+			List<AttachNode> searchedNodes = new List<AttachNode>();
 			foreach(AttachNode node in searchRoot.attachNodes)
 			{
+				searchedNodes.AddUnique(node);
 				if(node.attachedPart==toFind)
 				{
 					returnNode = node;
 					break;
 				}
-				else if(nodeTreeContains(node, toFind))
+				else if(nodeTreeContains(node, toFind, searchedNodes))
 				{
 					returnNode = node;
 					break;
@@ -164,13 +198,15 @@ namespace SSTUTools
 			return returnNode;
 		}
 		
-		private static bool nodeTreeContains(AttachNode node, Part toFind)
+		private static bool nodeTreeContains(AttachNode node, Part toFind, List<AttachNode> searchedNodes)
 		{
 			if(node.attachedPart==null){return false;}
 			foreach(AttachNode on in node.attachedPart.attachNodes)
 			{
+				if(searchedNodes.Contains(on)){continue;}//prevent stack overflow
+				searchedNodes.AddUnique (on);
 				if(on.attachedPart==toFind){return true;}
-				if(nodeTreeContains(on, toFind)){return true;}
+				if(nodeTreeContains(on, toFind, searchedNodes)){return true;}
 			}
 			return false;
 		}

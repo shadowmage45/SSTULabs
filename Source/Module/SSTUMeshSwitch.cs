@@ -12,9 +12,6 @@ namespace SSTUTools
 	// -- have an externally accessible var/method in SSTUResourceSwitch that accepts a tankName for default instantiation?
 	public class SSTUMeshSwitch : PartModule, IPartCostModifier, IPartMassModifier
 	{
-		public static Dictionary<String, MeshConfigData> meshConfigByPart = new Dictionary<String, MeshConfigData>();
-		//TODO create private map of string - index for faster findByName, will need re-filled when prefab configs are reloaded
-
 		//used to suffix the part-name in order to store persistent config data in static dictionary
 		[KSPField]
 		public int moduleID = 0;
@@ -39,13 +36,18 @@ namespace SSTUTools
 
 		[KSPField]
 		public bool enablePrevButton = true;
-						
-		MeshConfig[] meshConfigurations;
-		MeshConfig currentConfig;
+
+
+		[Persistent]
+		public String configNodeString;
+
+		//current mesh configuration data
+		private MeshConfig[] meshConfigurations;
+		private MeshConfig currentConfig;
 		
 		//linked resource switch module, if any
-		SSTUResourceSwitch resourceSwitch;
-		SSTUModuleControl moduleControl;
+		private SSTUResourceSwitch resourceSwitch;
+		private SSTUModuleControl moduleControl;
 					
 		[KSPEvent(name="nextMeshEvent", guiName="Next Variant", guiActiveEditor=true)]
 		public void nextMeshEvent()
@@ -80,6 +82,7 @@ namespace SSTUTools
 			}
 			else
 			{
+				configNodeString = node.ToString();
 				onPrefabLoad(node);//only occurs on database load (loading screen, reload on space-center screen)		
 			}
 		}
@@ -115,7 +118,7 @@ namespace SSTUTools
 		private void initialize()
 		{
 			findLinkedModules();
-			loadLocalConfigs();
+			loadConfigFromPrefab();
 			reloadSavedMeshData();		
 		}
 				
@@ -126,29 +129,24 @@ namespace SSTUTools
 		/// <param name="node">Node.</param>
 		private void onPrefabLoad(ConfigNode node)
 		{		
-			loadGlobalConfigs (node);
-			loadLocalConfigs ();
+			loadConfigFromNode(node);
 			loadDefaultMeshConfig();
 		}
-
-		private void loadGlobalConfigs(ConfigNode node)
+		
+		private void loadConfigFromPrefab()
 		{
-			MeshConfigData mcd = new MeshConfigData();
-			mcd.moduleConfigNode = node;
-			meshConfigByPart.Remove(part.name+"-"+moduleID);//remove any old occurance of this module
-			meshConfigByPart.Add(part.name+"-"+moduleID, mcd);	
+			loadConfigFromNode (SSTUNodeUtils.parseConfigNode (configNodeString));
 		}
-			
-		private void loadLocalConfigs()
+		
+		private void loadConfigFromNode(ConfigNode node)
 		{
-			if(meshConfigurations==null || meshConfigurations.Length==0)
+			ConfigNode[] variantNodes = node.GetNodes("MESHVARIANT");
+			MeshConfig[] cfgs = new MeshConfig[variantNodes.Length];
+			for(int i = 0; i < cfgs.Length; i++)
 			{
-				MeshConfigData mcd = null;
-				if(meshConfigByPart.TryGetValue(part.name+"-"+moduleID, out mcd))
-				{
-					meshConfigurations = mcd.getConfigFor(part);
-				}					
+				cfgs[i] = new MeshConfig(variantNodes[i], part);
 			}
+			meshConfigurations = cfgs;
 		}
 
 		private void findLinkedModules()
@@ -248,6 +246,7 @@ namespace SSTUTools
 		
 		private void setToMeshConfig(int index)
 		{
+			if(meshConfigurations==null){print ("ERROR: NO MESH CONFIG FOR PART: "+part);}
 			if(index < 0 || index >= meshConfigurations.Length){index = 0;}
 			currentConfiguration = index;
 			
@@ -280,23 +279,6 @@ namespace SSTUTools
 			print ("-----end config---");
 		}
 	
-	}
-	
-	//wraps the persistent config node data, to be read by individual part instances
-	public class MeshConfigData
-	{
-		public ConfigNode moduleConfigNode;
-		
-		public MeshConfig[] getConfigFor(Part part)
-		{
-			ConfigNode[] variantNodes = moduleConfigNode.GetNodes("MESHVARIANT");
-			MeshConfig[] cfgs = new MeshConfig[variantNodes.Length];
-			for(int i = 0; i < cfgs.Length; i++)
-			{
-				cfgs[i] = new MeshConfig(variantNodes[i], part);
-			}
-			return cfgs;
-		}
 	}
 	
 	//single part variant configuration

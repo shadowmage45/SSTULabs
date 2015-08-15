@@ -490,6 +490,7 @@ namespace SSTUTools
 			{				
 				Events["extendEvent"].active=false;
 				Events["retractEvent"].active=false;
+				Fields["guiStatus"].guiActive = false;
 				return;
 			}
 			if(energyFlow==0 && occluderName.Length>0)//if occluded, state that information first

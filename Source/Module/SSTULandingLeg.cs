@@ -365,8 +365,9 @@ namespace SSTUTools
 					float distance = Vector3.Distance(raycastHit.point, wheelCollider.transform.position);					
 					float suspensionTravel = wheelCollider.suspensionDistance*part.rescaleFactor + wheelRadius;					
 					if(distance >= suspensionTravel){ distance = suspensionTravel;}
-					float compressionAmount = suspensionTravel - distance;
-					suspensionParent.position = wheelCollider.transform.position + (wheelCollider.transform.up * compressionAmount) + (wheelCollider.transform.up * suspensionOffset * part.rescaleFactor);
+					float compressionAmount = (suspensionTravel - distance) + (suspensionOffset * part.rescaleFactor);					
+					if(compressionAmount < 0){compressionAmount=0;}//fix for negative compression (extended too far)
+					suspensionParent.position = wheelCollider.transform.position + (wheelCollider.transform.up * compressionAmount);
 				}
 				else
 				{
