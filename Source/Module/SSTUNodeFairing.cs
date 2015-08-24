@@ -5,6 +5,8 @@ using System.Linq;
 namespace SSTUTools
 {
 
+
+
 	public class SSTUNodeFairing : PartModule, IAirstreamShield
 	{
 
@@ -83,10 +85,10 @@ namespace SSTUTools
 		[KSPField]
 		public int fairingSections = 1;
 		
-		//in node-relative coordinates, what is the top of the fairing?
+		//in part-relative coordinates, what is the top of the fairing?
 		[KSPField]
 		public float fairingTopY = -1.47298f;
-		//in node-relative coordinates, what is the bottom of the fairing?
+		//in part-relative coordinates, what is the bottom of the fairing?
 		[KSPField]
 		public float fairingBottomY = -1.891f;
 		

@@ -81,6 +81,25 @@ namespace SSTUTools
 			mc.convex = convex;
 		}
 
+		public void jettisonPanels(Part part, float force, Vector3 jettisonDirection, float perPanelMass)
+		{
+			GameObject panelGO;
+			Rigidbody rb;
+			Vector3 globalForceDirection;
+			for(int i = 0; i < panels.Length; i++)
+			{
+				panelGO = panels[i].panel;
+				panelGO.transform.parent = null;
+				panelGO.AddComponent<physicalObject>();//auto-destroy when more than 1km away
+				rb = panelGO.AddComponent<Rigidbody>();
+				rb.velocity = part.rigidbody.velocity;
+				rb.mass = perPanelMass;
+				globalForceDirection = panelGO.transform.TransformPoint(jettisonDirection) - panelGO.transform.position;
+				rb.AddForce (globalForceDirection * force);
+				rb.useGravity = false;
+			}
+		}
+
 	}
 	
 }
