@@ -100,7 +100,6 @@ namespace SSTUTools
 				loadRecipeFromNode(node);
 				configNodeString = node.ToString();				
 			}
-			SSTUNodeUtils.test();
 		}
 
 		public override void OnStart (StartState state)

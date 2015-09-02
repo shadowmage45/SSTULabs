@@ -98,6 +98,23 @@ namespace SSTUTools
 			}
 			return str;
 		}
+		
+		public static void destroyChildren(Transform tr)
+		{			
+			int len = tr.childCount;
+			for(int i = 0; i < len; i++)
+			{
+				GameObject go = tr.GetChild(i).gameObject;
+				MonoBehaviour.print ("destroying GO: "+go);
+				GameObject.Destroy(go);
+			}
+//			while(tr.childCount>0)
+//			{
+//				GameObject go = tr.GetChild(0).gameObject;
+//				MonoBehaviour.print ("destroying GO: "+go);
+//				GameObject.Destroy(go);
+//			}
+		}
 						
 		public static void recursePrintChildTransforms(Transform tr, String prefix)
 		{			
@@ -136,6 +153,29 @@ namespace SSTUTools
 			for(int i = 0; i < len; i++)
 			{
 				enableMeshColliderRecursive(tr.GetChild(i), enabled, convex);
+			}
+		}
+		
+		public static void addMeshCollidersRecursive(Transform tr, bool enabled, bool convex)
+		{
+			MeshCollider mc = tr.GetComponent<MeshCollider>();
+			if(mc==null)			
+			{
+				MeshFilter mf = tr.GetComponent<MeshFilter>();
+				if(mf!=null && mf.mesh!=null)
+				{
+					mc = tr.gameObject.AddComponent<MeshCollider>();
+				}
+			}
+			if(mc!=null)
+			{
+				mc.enabled = enabled;
+				mc.convex = convex;
+			}
+			int len = tr.childCount;
+			for(int i = 0; i < len; i++)
+			{
+				addMeshCollidersRecursive(tr.GetChild(i), enabled, convex);
 			}
 		}
 
@@ -203,7 +243,7 @@ namespace SSTUTools
 			if(node.attachedPart==null){return false;}
 			foreach(AttachNode on in node.attachedPart.attachNodes)
 			{
-				if(searchedNodes.Contains(on)){continue;}//prevent stack overflow
+				if(searchedNodes.Contains(on)){continue;}//prevent stack overflow/infinite recursion
 				searchedNodes.AddUnique (on);
 				if(on.attachedPart==toFind){return true;}
 				if(nodeTreeContains(on, toFind, searchedNodes)){return true;}
@@ -240,7 +280,7 @@ namespace SSTUTools
 			//alternative to investigate:
 			//http://stackoverflow.com/questions/1649027/how-do-i-print-out-a-tree-structure
 
-			MonoBehaviour.print (prefix  + (isTail ? "└── " : "├── " + go.name));
+			MonoBehaviour.print (prefix  + (isTail ? "└── " : "├── " + go + ":"+go.GetType()));
 			Component[] comps = go.GetComponents<MonoBehaviour>();
 			bool compTail = false;
 			for (int i = 0; i < comps.Length; i++)
@@ -295,6 +335,40 @@ namespace SSTUTools
 		public static float distanceFromLine(Ray ray, Vector3 point)
 		{
 			return Vector3.Cross(ray.direction, point - ray.origin).magnitude;
+		}
+
+		public static Material loadMaterial(String diffuse, String normal)
+		{
+			return loadMaterial (diffuse, normal, string.Empty, "KSP/Bumped Specular");
+		}
+
+		public static Material loadMaterial(String diffuse, String normal, String emissive, String shader)
+		{
+			Material material;
+			Texture diffuseTexture = SSTUUtils.findTexture(diffuse);
+			Texture normalTexture = normal==null || normal.Length==0 ? null : SSTUUtils.findTexture(normal);
+			Texture emissiveTexture = emissive==null || emissive.Length==0 ? null : SSTUUtils.findTexture(emissive);					
+			material = new Material(Shader.Find(shader));
+			material.SetTexture("_MainTex", diffuseTexture);
+			if (normalTexture!=null)
+			{
+				material.SetTexture ("_BumpMap", normalTexture);
+			}
+			if (emissiveTexture!=null)
+			{
+				material.SetTexture("_Emissive", emissiveTexture);
+			}
+			return material;
+		}
+		
+		public static void setMaterialRecursive(Transform tr, Material mat)
+		{
+			if(tr.gameObject.renderer!=null){tr.gameObject.renderer.material = mat;}
+			int len = tr.childCount;
+			for(int i = 0; i < len; i++)
+			{
+				setMaterialRecursive(tr.GetChild(i), mat);
+			}
 		}
 		
 		public static Bounds getRendererBoundsRecursive(GameObject gameObject)

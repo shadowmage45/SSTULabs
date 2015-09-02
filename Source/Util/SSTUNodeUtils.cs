@@ -33,22 +33,19 @@ namespace SSTUTools
 		//any other input will result in undefined behavior		
 		public static ConfigNode parseConfigNode(String input)
 		{
-			if(true)
-			{
-				ConfigNode baseCfn = ConfigNode.Parse(input);
-				return baseCfn.nodes[0];
-			}
-			String[] lines = input.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);	
-			List<String> baseLines = new List<String>();
-			baseLines.AddRange(lines);
-			String nodeName = baseLines[0];//grab first line (node name)
-			baseLines.RemoveAt (0);//remove first line(node name)
-			baseLines.RemoveAt (0);//remove second line(openBracket)
-			baseLines.RemoveAt (baseLines.Count-1);//remove last line(emptyLine)
-			baseLines.RemoveAt (baseLines.Count-1);//remove last line(closeBracket)
-			//what remains is only the inner values for the base config node			
-			//if I make these assumptions, it cleans up all following code substantially
-			return parseConfigNodeLines(new ConfigNode(nodeName), baseLines);
+			ConfigNode baseCfn = ConfigNode.Parse(input);
+			return baseCfn.nodes[0];
+//			String[] lines = input.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);	
+//			List<String> baseLines = new List<String>();
+//			baseLines.AddRange(lines);
+//			String nodeName = baseLines[0];//grab first line (node name)
+//			baseLines.RemoveAt (0);//remove first line(node name)
+//			baseLines.RemoveAt (0);//remove second line(openBracket)
+//			baseLines.RemoveAt (baseLines.Count-1);//remove last line(emptyLine)
+//			baseLines.RemoveAt (baseLines.Count-1);//remove last line(closeBracket)
+//			//what remains is only the inner values for the base config node			
+//			//if I make these assumptions, it cleans up all following code substantially
+//			return parseConfigNodeLines(new ConfigNode(nodeName), baseLines);
 		}
 		
 		public static void test()

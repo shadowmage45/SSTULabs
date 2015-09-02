@@ -16,13 +16,23 @@ namespace SSTUTools
 		[KSPField]
 		public bool disableCrossflow = true;
 		
-		[KSPField]
+		[KSPField(isPersistant=true)]
 		public bool useStaging = true;
+
+		[KSPField]
+		public bool canAdjustStaging = true;
 		
 		[KSPField]
 		public bool invertNode = false;
+
+		[KSPField]
+		public string mainStagingIcon = DefaultIcons.DECOUPLER_VERT.ToString();
+
+		[KSPField]
+		public string alternateStagingIcon = DefaultIcons.COMMAND_POD.ToString();
 		
 		private bool subscribedToEvents = false;
+
 		private AttachNode otherNode;
 		private bool otherNodeDefaultFlow;
 		private bool updatedCrossflow = false;
@@ -31,6 +41,7 @@ namespace SSTUTools
 		public void toggleStagingEvent()
 		{
 			useStaging = !useStaging;
+			staged = useStaging;//TODO investigate any problems due to this....
 			setupStagingIcon();
 		}
 				
@@ -59,7 +70,7 @@ namespace SSTUTools
 		
 		public override void OnActive ()
 		{
-			if(moduleControlEnabled)
+			if(moduleControlEnabled && useStaging)
 			{
 				base.OnActive ();				
 			}
@@ -138,13 +149,11 @@ namespace SSTUTools
 		
 		public void onEditorVesselModified(ShipConstruct c)
 		{
-			print ("vessel modified, updating crossflow...");
 			updatePartCrossflow();
 		}
 		
 		public void onVesselModified(Vessel v)
 		{
-			print ("vessel modified, updating crossflow...");
 			updatePartCrossflow();
 		}
 		
@@ -168,17 +177,23 @@ namespace SSTUTools
 			{
 				if(part.stagingIcon==string.Empty)
 				{
-					part.stagingIcon = DefaultIcons.DECOUPLER_VERT.ToString();
-					part.stackIcon.iconImage = DefaultIcons.DECOUPLER_VERT;
+					part.stagingIcon = mainStagingIcon;
+					part.stackIcon.iconImage = (DefaultIcons)Enum.Parse (typeof(DefaultIcons),mainStagingIcon);
 					part.stackIcon.CreateIcon();					
 				}
 			}
 			else
 			{
-				if(part.stagingIcon==DefaultIcons.DECOUPLER_VERT.ToString())
+				if(part.stagingIcon == mainStagingIcon)
 				{
 					part.stagingIcon=string.Empty;
 					part.stackIcon.RemoveIcon();
+				}
+				if(part.stagingIcon==string.Empty && alternateStagingIcon!=null && alternateStagingIcon.Length>0)
+				{
+					part.stagingIcon = alternateStagingIcon;
+					part.stackIcon.iconImage = (DefaultIcons)Enum.Parse (typeof(DefaultIcons),alternateStagingIcon);
+					part.stackIcon.CreateIcon();
 				}
 			}		
 			Staging.GenerateStagingSequence(part.localRoot);
@@ -187,7 +202,6 @@ namespace SSTUTools
 		
 		private void updatePartCrossflow()
 		{
-			print ("examining decoupler part crossfeed!");
 			if(otherNode!=null){otherNode.ResourceXFeed=otherNodeDefaultFlow;}
 			otherNode=null;
 			AttachNode node = part.findAttachNode(explosiveNodeID);			
@@ -196,30 +210,25 @@ namespace SSTUTools
 				node.ResourceXFeed = !disableCrossflow;
 				Part otherPart = node.attachedPart;
 				AttachNode oNode = otherPart==null ? null : otherPart.findAttachNodeByPart(part);
-				
-				print ("set decoupler node crossflow to: "+node.ResourceXFeed+ " for node: "+node.id+" for part: "+part+ " attached part: "+otherPart+ " oNode: "+oNode);
-				
+								
 				if(oNode!=null)
 				{
 					otherNode = oNode;
 					otherNodeDefaultFlow = oNode.ResourceXFeed;
-					if(disableCrossflow){oNode.ResourceXFeed=false;}
-					print ("set other node crossflow to: "+oNode.ResourceXFeed);
+					if(disableCrossflow){oNode.ResourceXFeed=false;}				
 				}
 				else if(otherPart!=null)
 				{
 					AttachNode on = SSTUUtils.findRemoteParentNode(otherPart, part);
 					if(on!=null)
 					{
-						print ("found remote node connection through: "+on+" :: "+on.id+" :: attached "+on.attachedPart);
 						otherNode = on;
 						otherNodeDefaultFlow = on.ResourceXFeed;
 						if(disableCrossflow){on.ResourceXFeed=false;}
-						print ("set remote connected node crosfeed to: "+on.ResourceXFeed);
 					}
 					else
 					{
-						print ("found part connected to node, but could not trace parantage through nodes");
+						print ("Found part connected to node, but could not trace parantage through nodes. parent: "+part+" dest: "+otherPart);
 					}
 				}
 			}
@@ -238,7 +247,7 @@ namespace SSTUTools
 			{
 				Fields["ejectionForcePercent"].guiActive = Fields["ejectionForcePercent"].guiActiveEditor = true;
 				Events["Decouple"].active = true;
-				Events["toggleStagingEvent"].active = true;
+				Events["toggleStagingEvent"].active = canAdjustStaging;
 				Actions["DecoupleAction"].active = true;
 			}
 		}

@@ -194,7 +194,6 @@ namespace SSTUTools
 		
 		public void onAnimationStatusChanged(SSTUAnimState state)
 		{
-			print ("SSTUSolarPanel receieved animation state update of: "+state);
 			if(state==SSTUAnimState.STOPPED_END)
 			{
 				setPanelState(SSTUPanelState.EXTENDED);
