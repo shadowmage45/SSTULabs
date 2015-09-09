@@ -48,7 +48,7 @@ namespace SSTUTools
 		
 		//stored current height of the panels, used to recreate mesh on part reload, may be set in config to set the default starting height
 		[KSPField(isPersistant=true)]
-		public float currentHeight = 1.0f;
+		public float currentHeight = 1.0f;	
 		
 		//how tall is the decoupler base-cap
 		[KSPField]
@@ -116,10 +116,34 @@ namespace SSTUTools
 		float massPerBaseVolume = 0.5f;
 		[KSPField]
 		float massPerPanelArea = 0.025f;
+
+		[KSPField]
+		float topRadiusAdjust = 0.625f;
+		[KSPField]
+		float bottomRadiusAdjust = 0.625f;
+		[KSPField]
+		float heightAdjust = 1;
+
+		[KSPField(guiActiveEditor=true, guiName="Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		public float topRadiusExtra;
+		
+		[KSPField(guiActiveEditor=true, guiName="Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		public float bottomRadiusExtra;
+		
+		[KSPField(guiActiveEditor=true, guiName="Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		public float heightExtra;	
 		
 		#endregion
 			
 		#region private working variables
+
+		private float editorTopRadius;
+		private float editorBottomRadius;
+		private float editorHeight;
+		private float lastTopRadiusExtra;
+		private float lastBottomRadiusExtra;
+		private float lastHeightExtra;
+
 		//quick references to part attach nodes
 		private AttachNode lowerNode;
 		private AttachNode upperNode;
@@ -154,10 +178,10 @@ namespace SSTUTools
 		[KSPEvent (name= "increaseHeightEvent", guiName = "Increase Height", guiActiveEditor = true)]
 		public void increaseHeightEvent()
 		{
-			if (currentHeight < maxHeight)
+			if (editorHeight < maxHeight)
 			{				
 				float prevHeight = currentHeight;
-				currentHeight++;
+				editorHeight += heightAdjust;
 				updateFairingHeight(prevHeight);
 			}
 		}
@@ -165,10 +189,10 @@ namespace SSTUTools
 		[KSPEvent (name= "decreaseHeightEvent", guiName = "Decrease Height", guiActiveEditor = true)]
 		public void decreaseHeightEvent()
 		{
-			if (currentHeight > minHeight)
+			if (editorHeight > minHeight)
 			{	
 				float prevHeight = currentHeight;
-				currentHeight--;				
+				editorHeight -= heightAdjust;			
 				updateFairingHeight(prevHeight);
 			}
 		}
@@ -188,10 +212,10 @@ namespace SSTUTools
 		[KSPEvent (name= "increaseTopRadiusEvent", guiName = "Top Radius +", guiActiveEditor = true)]
 		public void increaseTopRadiusEvent()
 		{
-			if (topRadius < 5.0f)
+			if (editorTopRadius < 5.0f)
 			{
-				topRadius += 0.625f;
-				if(topRadius>5.0f){topRadius=5.0f;}
+				editorTopRadius += topRadiusAdjust;
+				if(editorTopRadius>5.0f){editorTopRadius=5.0f;}
 				updateFairingHeight(currentHeight);
 			}
 		}
@@ -199,10 +223,10 @@ namespace SSTUTools
 		[KSPEvent (name= "decreaseTopRadiusEvent", guiName = "Top Radius -", guiActiveEditor = true)]
 		public void decreaseTopRadiusEvent()
 		{
-			if (topRadius > 0.625f)
+			if (editorTopRadius > topRadiusAdjust)
 			{
-				topRadius -= 0.625f;
-				if(topRadius<0.625f){topRadius=0.625f;}
+				editorTopRadius -= topRadiusAdjust;
+				if(topRadius < topRadiusAdjust){topRadius = topRadiusAdjust;}
 				updateFairingHeight(currentHeight);
 			}	
 		}
@@ -210,10 +234,10 @@ namespace SSTUTools
 		[KSPEvent (name= "increaseBottomRadiusEvent", guiName = "Bottom Radius +", guiActiveEditor = true)]
 		public void increaseBottomRadiusEvent()
 		{
-			if (bottomRadius < 5.0f)
+			if (editorBottomRadius < 5.0f)
 			{
-				bottomRadius += 0.625f;
-				if(bottomRadius>5.0f){bottomRadius=5.0f;}
+				editorBottomRadius += bottomRadiusAdjust;
+				if(editorBottomRadius>5.0f){editorBottomRadius=5.0f;}
 				updateFairingHeight(currentHeight);
 			}
 		}
@@ -221,10 +245,10 @@ namespace SSTUTools
 		[KSPEvent (name= "decreaseBottomRadiusEvent", guiName = "Bottom Radius -", guiActiveEditor = true)]
 		public void decreaseBottomRadiusEvent()
 		{
-			if (bottomRadius > 0.625f)
+			if (editorBottomRadius > bottomRadiusAdjust)
 			{
-				bottomRadius -= 0.625f;
-				if(bottomRadius<0.625f){bottomRadius=0.625f;}
+				editorBottomRadius -= bottomRadiusAdjust;
+				if(editorBottomRadius<bottomRadiusAdjust){bottomRadius=bottomRadiusAdjust;}
 				updateFairingHeight(currentHeight);
 			}	
 		}
@@ -261,6 +285,9 @@ namespace SSTUTools
 				Component.Destroy(boundsCollider);
 				boundsCollider = null;
 			}
+			
+			restoreEditorFields();
+			updateModelParameters();
 						
 			updateFairingHeight(currentHeight);//set nodes to current height, will not change any positions parts with a zero delta, but will still set nodes to proper height
 						
@@ -297,7 +324,8 @@ namespace SSTUTools
 		public override void OnLoad (ConfigNode node)
 		{
 			base.OnLoad (node);
-			
+			restoreEditorFields();
+			updateModelParameters();
 			if(HighLogic.LoadedSceneIsFlight)
 			{
 				boundsCollider = part.gameObject.AddComponent<BoxCollider>();
@@ -388,6 +416,12 @@ namespace SSTUTools
 		
 		public void onEditorVesselModified(ShipConstruct ship)
 		{
+			if(lastTopRadiusExtra != topRadiusExtra || lastBottomRadiusExtra != bottomRadiusExtra || lastHeightExtra != heightExtra)
+			{
+				float h = currentHeight;
+				updateModelParameters();
+				updateFairingHeight(h);
+			}
 			updateShieldStatus();
 			setPanelOpacity(0.25f);
 		}
@@ -512,7 +546,42 @@ namespace SSTUTools
 		#endregion
 		
 		#region fairing rebuild methods
-				
+
+		private void restoreEditorFields()
+		{
+			float div = topRadius / topRadiusAdjust;
+			float whole = (int)div;
+			float extra = div - whole;
+			editorTopRadius = whole * topRadiusAdjust;
+			topRadiusExtra = extra;
+			lastTopRadiusExtra = extra;
+
+			div = bottomRadius / bottomRadiusAdjust;
+			whole = (int)div;
+			extra = div - whole;
+			editorBottomRadius = whole * bottomRadiusAdjust;
+			bottomRadiusExtra = extra;
+			lastBottomRadiusExtra = extra;
+
+			div = currentHeight / heightAdjust;
+			whole = (int)div;
+			extra = div - whole;
+			editorHeight = whole * heightAdjust;
+			heightExtra = extra;
+			lastHeightExtra = extra;
+		}
+
+		private void updateModelParameters()
+		{
+			lastTopRadiusExtra = topRadiusExtra;
+			lastBottomRadiusExtra = bottomRadiusExtra;
+			lastHeightExtra = heightExtra;				
+			topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjust);
+			bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjust);
+			currentHeight = editorHeight + (heightExtra * heightAdjust);
+//			print ("updated model params. rad: "+topRadius+"::"+bottomRadius+" hi: "+currentHeight);
+		}
+
 		private void updateFairingHeight(float prevHeight)
 		{
 			recreateFairing();
@@ -525,7 +594,7 @@ namespace SSTUTools
 			}
 			recreateDragCubes();
 			updateShieldStatus();
-			updateFairingMassAndCost();
+			
 			if(HighLogic.LoadedSceneIsEditor)
 			{
 				GameEvents.onEditorPartEvent.Fire(ConstructionEventType.PartTweaked, part);
@@ -544,9 +613,11 @@ namespace SSTUTools
 		private void recreateFairing()
 		{
 			destroyPanels();
+			updateModelParameters ();
 			createPanels();
 			setPanelRotations(currentRotation);//set animation status to whatever is current
-			fairingBase.enablePanelColliders(false, false);			
+			fairingBase.enablePanelColliders(false, false);
+			updateFairingMassAndCost();
 		}
 		
 		//destroy any procedurally created panel sections
@@ -564,7 +635,12 @@ namespace SSTUTools
 			float totalHeight = baseHeight + currentHeight;
 			float startHeight = - (totalHeight / 2);
 
-			InterstageFairingGenerator fg = new InterstageFairingGenerator(startHeight, baseHeight, boltPanelHeight, currentHeight, maxPanelSectionHeight, bottomRadius, topRadius, wallThickness, numOfRadialSections, cylinderSides);
+			float tRad, bRad, height;
+			tRad = topRadius;
+			bRad = bottomRadius;
+			height = currentHeight;
+
+			InterstageFairingGenerator fg = new InterstageFairingGenerator(startHeight, baseHeight, boltPanelHeight, height, maxPanelSectionHeight, bRad, tRad, wallThickness, numOfRadialSections, cylinderSides);
 			fairingBase = fg.buildFairing ();
 			Transform modelTransform = part.partTransform.FindChild("model");
 			fairingBase.root.transform.NestToParent(modelTransform);

@@ -29,13 +29,13 @@ namespace SSTUTools
 		[KSPField(isPersistant=true)]
 		public float thickness = 0.1f;
 
-		[KSPField(isPersistant=true, guiActiveEditor=true, guiName="Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		[KSPField(guiActiveEditor=true, guiName="Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
 		public float radiusExtra;
 		
-		[KSPField(isPersistant=true, guiActiveEditor=true, guiName="Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		[KSPField(guiActiveEditor=true, guiName="Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
 		public float heightExtra;
 		
-		[KSPField(isPersistant=true, guiActiveEditor=true, guiName="Thick Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+		[KSPField(guiActiveEditor=true, guiName="Thick Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
 		public float thicknessExtra;
 		
 		[KSPField]
@@ -90,11 +90,13 @@ namespace SSTUTools
 		public float volume = 0;
 
 		private ProceduralCylinderModel model;
-		
+
+		private float editorRadius;
+		private float editorHeight;
+		private float editorThickness;
 		private float lastRadiusExtra;
 		private float lastHeightExtra;
 		private float lastThicknessExtra;
-		
 
 		#endregion
 
@@ -103,24 +105,24 @@ namespace SSTUTools
 		[KSPEvent(guiName="Radius +",guiActiveEditor=true)]
 		public void increaseRadius()
 		{
-			radius+=radiusAdjust;
-			if(radius>maxRadius){radius=maxRadius;}
+			editorRadius+=radiusAdjust;
+			if(editorRadius>maxRadius){editorRadius=maxRadius;}
 			recreateModel ();
 		}
 		
 		[KSPEvent(guiName="Radius -",guiActiveEditor=true)]
 		public void decreaseRadius()
 		{
-			radius-=radiusAdjust;
-			if(radius<minRadius){radius=minRadius;}
+			editorRadius-=radiusAdjust;
+			if(editorRadius<minRadius){editorRadius=minRadius;}
 			recreateModel ();
 		}
 		
 		[KSPEvent(guiName="Height +",guiActiveEditor=true)]
 		public void increaseHeight()
 		{
-			height+=heightAdjust;
-			if(height>maxHeight){height=maxHeight;}
+			editorHeight+=heightAdjust;
+			if(editorHeight>maxHeight){editorHeight=maxHeight;}
 			recreateModel ();
 			updateAttachNodePositions();			
 		}
@@ -128,8 +130,8 @@ namespace SSTUTools
 		[KSPEvent(guiName="Height -",guiActiveEditor=true)]
 		public void decreaseHeight()
 		{
-			height-=heightAdjust;
-			if(height<minHeight){height=minHeight;}
+			editorHeight-=heightAdjust;
+			if(editorHeight<minHeight){editorHeight=minHeight;}
 			recreateModel ();
 			updateAttachNodePositions();
 		}
@@ -137,16 +139,16 @@ namespace SSTUTools
 		[KSPEvent(guiName="Thickness +",guiActiveEditor=true)]
 		public void increaseThickness()
 		{
-			thickness+=thicknessAdjust;
-			if(thickness>maxThickness){thickness=maxThickness;}
+			editorThickness+=thicknessAdjust;
+			if(editorThickness>maxThickness){editorThickness=maxThickness;}
 			recreateModel ();
 		}
 		
 		[KSPEvent(guiName="Thickness -",guiActiveEditor=true)]
 		public void decreaseThickness()
 		{
-			thickness-=thicknessAdjust;
-			if(thickness<minThickness){thickness=minThickness;}
+			editorThickness-=thicknessAdjust;
+			if(editorThickness<minThickness){editorThickness=minThickness;}
 			recreateModel ();
 		}
 
@@ -160,6 +162,7 @@ namespace SSTUTools
 			base.OnLoad (node);
 			if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
 			{
+				restoreEditorFields ();
 				prepModel ();
 			}
 		}
@@ -177,6 +180,7 @@ namespace SSTUTools
 		public override void OnStart (PartModule.StartState state)
 		{
 			base.OnStart (state);
+			restoreEditorFields ();
 			prepModel ();
 			updateGuiState();
 		}
@@ -201,7 +205,7 @@ namespace SSTUTools
 			{
 				lastRadiusExtra = radiusExtra;
 				lastHeightExtra = heightExtra;
-				lastThicknessExtra = thicknessExtra;
+				lastThicknessExtra = thicknessExtra;				
 				recreateModel();				
 				updatePhysicalAttributes();
 				updateAttachNodePositions();
@@ -215,6 +219,30 @@ namespace SSTUTools
 
 		#region model updating/generation/regeneration
 
+		public void restoreEditorFields()
+		{
+			float div = radius / radiusAdjust;
+			float whole = (int)div;
+			float extra = div - whole;
+			editorRadius = whole * radiusAdjust;
+			radiusExtra = extra;
+			lastRadiusExtra = radiusExtra;
+
+			div = height / heightAdjust;
+			whole = (int)div;
+			extra = div - whole;
+			editorHeight = whole * heightAdjust;
+			heightExtra = extra;
+			lastHeightExtra = heightExtra;
+
+			div = thickness / thicknessAdjust;
+			whole = (int)div;
+			extra = div - whole;
+			editorThickness = whole * thicknessAdjust;
+			thicknessExtra = extra;
+			lastThicknessExtra = thicknessExtra;
+		}
+
 		//DONE
 		public void prepModel()
 		{
@@ -225,6 +253,7 @@ namespace SSTUTools
 			Transform tr = part.FindModelTransform("model");			
 			SSTUUtils.destroyChildren(tr);//remove the original empty proxy model
 			model = new ProceduralCylinderModel ();
+			updateModelParameters ();
 			setModelParameters ();
 			model.setMaterial (SSTUUtils.loadMaterial (diffuseTextureName, normalTextureName));
 			model.setMeshColliderStatus (true, false);
@@ -239,6 +268,7 @@ namespace SSTUTools
 		//DONE
 		public void recreateModel()
 		{
+			updateModelParameters ();
 			setModelParameters ();
 			model.recreateModel ();
 			updatePhysicalAttributes ();
@@ -246,14 +276,21 @@ namespace SSTUTools
 			updateDragCube ();
 			resetHighlighter();
 		}
+
+		private void updateModelParameters()
+		{
+			lastRadiusExtra = radiusExtra;
+			lastHeightExtra = heightExtra;
+			lastThicknessExtra = thicknessExtra;
+			radius = editorRadius + (radiusExtra * radiusAdjust);
+			height = editorHeight + (heightExtra * heightAdjust);
+			thickness = editorThickness + (thicknessExtra * thicknessAdjust);
+		}
 		
 		//DONE
 		private void setModelParameters()
 		{
-			float r = radius + (radiusExtra * radiusAdjust);
-			float h = height + (heightExtra * heightAdjust);
-			float t = thickness + (thicknessExtra * thicknessAdjust);
-			model.setModelParameters (r, h, t, capHeight, maxPanelHeight, cylinderSides);
+			model.setModelParameters (radius, height, thickness, capHeight, maxPanelHeight, cylinderSides);
 		}
 
 		//DONE
@@ -286,9 +323,9 @@ namespace SSTUTools
 		//DONE
 		public void updatePhysicalAttributes ()
 		{			
-			float r = radius + (radiusExtra * radiusAdjust);
-			float h = height + (heightExtra * heightAdjust);
-			float t = thickness + (thicknessExtra * thicknessAdjust);
+			float r = radius;
+			float h = height;
+			float t = thickness;
 			float innerCylVolume = 0;
 			float outerCylVolume = 0;
 			float innerCylRadius = (r) - (t);
