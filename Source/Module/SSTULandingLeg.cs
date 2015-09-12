@@ -189,7 +189,7 @@ namespace SSTUTools
 				String[] susNameArray = suspensionTransformNames.Split(',');
 				String[] footNameArray = footColliderNames.Split(',');
 				int length = wcNameArray.Length < susNameArray.Length ? wcNameArray.Length : susNameArray.Length;
-							
+				
 				LandingLegData legData;
 				Transform suspensionTransform;
 				Transform wheelColliderTransform;
@@ -199,6 +199,7 @@ namespace SSTUTools
 				
 				for(int i = 0; i < length; i++)
 				{
+					
 					suspensionTransform = part.FindModelTransform(susNameArray[i].Trim());
 					wheelColliderTransform = part.FindModelTransform(wcNameArray[i].Trim());				
 					if(suspensionTransform==null || wheelColliderTransform==null)
@@ -206,13 +207,15 @@ namespace SSTUTools
 						print ("error locating transforms for names: "+susNameArray[i]+", "+wcNameArray[i]);
 						print ("found objects: "+suspensionTransform+", "+wheelColliderTransform); 
 						continue;
-					}
+					}					
 					wheelCollider = wheelColliderTransform.GetComponent<WheelCollider>();
 					if(wheelCollider==null)
 					{
-						print ("Wheel collider transform does not contain a valid wheel collider!  name: "+wheelCollider.name);
+						
+						print ("Wheel collider transform does not contain a valid wheel collider!  name: "+wcNameArray[i]);
+						SSTUUtils.recursePrintComponents(wheelColliderTransform.gameObject, "");
 						continue;
-					}
+					}					
 					if(i<footNameArray.Length)
 					{
 						footColliderTransform = part.FindModelTransform(footNameArray[i].Trim ());					
@@ -220,8 +223,7 @@ namespace SSTUTools
 					else
 					{
 						footColliderTransform = null;
-					}
-					
+					}					
 					legData = new LandingLegData();
 					legData.suspensionTransform = suspensionTransform;
 					legData.wheelCollider = wheelCollider;
@@ -244,7 +246,7 @@ namespace SSTUTools
 					spring.spring = wcSpring;
 					spring.damper = wcDamper;
 					spring.targetPosition = wcTarget;
-					wheelCollider.suspensionSpring = spring;//assign the new spring joint to the wheel collider		
+					wheelCollider.suspensionSpring = spring;//assign the new spring joint to the wheel collider						
 				}								
 			}
 			
@@ -436,20 +438,31 @@ namespace SSTUTools
 			
 			case LegState.DEPLOYING:
 			{
-				enableWheelColliders(false);	
-				decompressTime = 0;
-				resetSuspensionPosition();//just in case something got fubard
-				if(HighLogic.LoadedSceneIsFlight)
+				if(decompressTime>0)//decompress/retracting; just stop decompressing, disable foot colliders, and set state to deployed;
 				{
-					enableFootColliders(true);	
-					animationController.setToState(SSTUAnimState.PLAYING_FORWARD);
-				}
-				else//we are in editor
-				{	
+					decompressTime = 0;
 					legState = LegState.DEPLOYED;
-					animationController.setToState(SSTUAnimState.STOPPED_END);
+					enableFootColliders(false);
+					enableWheelColliders(true);
+					break;
 				}
-				break;
+				else
+				{
+					enableWheelColliders(false);	
+					decompressTime = 0;
+					resetSuspensionPosition();//just in case something got fubard
+					if(HighLogic.LoadedSceneIsFlight)
+					{
+						enableFootColliders(true);	
+						animationController.setToState(SSTUAnimState.PLAYING_FORWARD);
+					}
+					else//we are in editor
+					{	
+						legState = LegState.DEPLOYED;
+						animationController.setToState(SSTUAnimState.STOPPED_END);
+					}
+					break;	
+				}				
 			}
 								
 			case LegState.RETRACTING:	
