@@ -240,6 +240,7 @@ namespace SSTUTools
 					//setup wheel collider radius and suspension distance in case of overrides in config
 					wheelCollider.radius = wcRadius;				
 					wheelCollider.suspensionDistance = wcTravel;
+					wheelCollider.brakeTorque = 1000f;
 					
 					//setup a new JointSpring for the wheel to use, overriding values from config if needed
 					JointSpring spring = new JointSpring();

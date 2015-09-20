@@ -87,6 +87,7 @@ namespace SSTUTools
 				part.stagingIcon = string.Empty;
 				//re-sort staging icons/etc
 			}
+			#warning unimplemented function
 			throw new NotImplementedException ();
 		}
 		
@@ -99,6 +100,7 @@ namespace SSTUTools
 				part.stagingIcon = DefaultIcons.LIQUID_ENGINE.ToString();
 				//re-sort staging icons/etc
 			}
+			#warning unimplemented function
 			throw new NotImplementedException ();
 		}
 		
@@ -205,7 +207,6 @@ namespace SSTUTools
 		//DONE
 		private void setAnimationState(SSTUAnimState state)
 		{
-			print ("DeployableEngine setting anim state to : "+state);
 			if(animationControl!=null)
 			{
 				SSTUAnimState currentState = animationControl.getAnimationState();
