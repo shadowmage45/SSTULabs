@@ -60,6 +60,7 @@ namespace SSTUTools
 
 	public class SSTUNodeFairing : PartModule, IAirstreamShield
 	{
+		
 		#region KSP Part Module config vars for entire fairing
 
 		[KSPField(isPersistant=true, guiName = "Fairing Type", guiActiveEditor=true)]
@@ -136,14 +137,20 @@ namespace SSTUTools
 		public float shieldBottomRadius;
 		#endregion
 
-		#region private working vars
-
+		#region working vars, not user editable
+		//used to persist user-edited top/bottom radius data
+		[KSPField(isPersistant=true)]
+		public float persistentTopRadius;
+		
+		//used to persist user-edited top/bottom radius data
+		[KSPField(isPersistant=true)]
+		public float persistentBottomRadius;
 		//radius adjustment fields, mostly used in editor
 		//these values are restored during the OnStart operation, and only used in the editor
 		//the 'live' values for the fairing are stored persistently and used directly to update the
 		//fairing physical attributes.
-		//the 'live' values will be set from these values for further operations in the editor
-		private float editorTopRadius = 0;
+		//the 'live' values will be set from these values for further operations in the editor		
+		private float editorTopRadius = 0;				
 		private float editorBottomRadius = 0;
 		private float lastTopExtra = 0;
 		private float lastBottomExtra = 0;
@@ -175,9 +182,6 @@ namespace SSTUTools
 		//only marked public so that it can be serialized from prefab into instance parts
 		[Persistent]
 		public String configNodeString = String.Empty;
-
-		private ConfigNode reloadedNode;
-				
 		#endregion
 
 		//DONE
@@ -228,7 +232,7 @@ namespace SSTUTools
 			if (bottomAdjust != null && editorBottomRadius < maxBottomRadius)
 			{
 				editorBottomRadius += bottomRadiusAdjustSize;
-				if(editorBottomRadius>maxBottomRadius){editorBottomRadius=maxBottomRadius;}
+				if(editorBottomRadius > maxBottomRadius){editorBottomRadius=maxBottomRadius;}
 				rebuildFairing();
 			}
 		}
@@ -240,7 +244,7 @@ namespace SSTUTools
 			if (bottomAdjust != null && editorBottomRadius > minBottomRadius)
 			{
 				editorBottomRadius -= bottomRadiusAdjustSize;
-				if(editorBottomRadius<minBottomRadius){editorBottomRadius=minBottomRadius;}
+				if(editorBottomRadius < minBottomRadius){editorBottomRadius=minBottomRadius;}
 				rebuildFairing();
 			}
 		}	
@@ -274,24 +278,9 @@ namespace SSTUTools
 
 		#endregion
 
-		//TODO - event callback methods; partDestroyed
+		
 		#region ksp overrides
-
-		//DONE
-		public override void OnSave (ConfigNode node)
-		{
-			base.OnSave (node);
-			if(fairingParts==null || fairingParts.Length==0)
-			{
-				print ("ERROR, cannot save FairingData for part"+part.name+", no FairingData available to save.");
-				return;
-			}
-			foreach (FairingData fd in fairingParts)
-			{
-				fd.savePersistence(node);
-			}
-		}
-
+		
 		//DONE
 		public override void OnLoad (ConfigNode node)
 		{
@@ -300,10 +289,6 @@ namespace SSTUTools
 			if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
 			{
 				configNodeString = node.ToString ();
-			}
-			else
-			{
-				reloadedNode = node;//not a prefab part, can persist the config node until needed (hopefully)
 			}
 
 			//load the material...uhh...for use in prefab?? no clue why it is loaded here...probably some reason
@@ -318,7 +303,7 @@ namespace SSTUTools
 		//DONE
 		public override void OnStart (StartState state)
 		{			
-			base.OnStart (state);
+			base.OnStart (state);			
 			//remove any stock transforms for engine-fairing overrides
 			if(rendersToRemove!=null && rendersToRemove.Length>0)
 			{
@@ -525,6 +510,7 @@ namespace SSTUTools
 		#region fairingJettison methods
 
 		//DONE
+		//only called from UI, which is only available for manual-deployed fairing type
 		private void onJettisonEvent()
 		{	
 			if (jettisoned)
@@ -537,18 +523,25 @@ namespace SSTUTools
 				print ("Cannot jettison disabled fairing");
 				return;
 			}
-			jettisonFairing (true, typeEnum != FairingType.NODE_DESPAWN, true, typeEnum==FairingType.NODE_ATTACHED);
+			bool jettison = HighLogic.LoadedSceneIsFlight;
+			bool render = HighLogic.LoadedSceneIsFlight;
+			bool removeMass = true;
+			bool addMass = false;
+			jettisonFairing (jettison, render, removeMass, addMass);
 		}
 
 		//DONE
 		private void jettisonFairing(bool jettisonPanels, bool renderPanels, bool removeMass, bool addMass)
 		{
-			if(jettisonPanels && HighLogic.LoadedSceneIsFlight)//only jettison panel parts if actually in flight
+			if(jettisonPanels)
 			{
-				foreach (FairingData fd in fairingParts)
+				if(HighLogic.LoadedSceneIsFlight)//only jettison visible panels if actually in-flight
 				{
-					fd.jettisonPanels(part);
-				}
+					foreach (FairingData fd in fairingParts)
+					{
+						fd.jettisonPanels(part);
+					}
+				}			
 			}
 			jettisoned = true;
 			fairingEnabled = false;
@@ -603,21 +596,27 @@ namespace SSTUTools
 		//restores the values to the editor size-adjust fields from the loaded values from the fairing
 		private void restoreEditorFields()
 		{
+			float topRadius = persistentTopRadius;
+			float bottomRadius = persistentBottomRadius;
 			foreach (FairingData fd in fairingParts)
 			{
 				if(fd.canAdjustTop)
 				{
 					topAdjust = fd;
+					if(persistentTopRadius>0){topAdjust.topRadius=persistentTopRadius;}
+					else{persistentTopRadius=topAdjust.topRadius;}
 				}
 				if(fd.canAdjustBottom)
 				{
 					bottomAdjust = fd;
+					if(persistentBottomRadius>0){bottomAdjust.bottomRadius=persistentBottomRadius;}
+					else{persistentBottomRadius=bottomAdjust.bottomRadius;}
 				}
 			}
 			float div, whole, extra;
 			if (topAdjust != null)
 			{
-				div = topAdjust.topRadius / topRadiusAdjustSize;
+				div = topRadius / topRadiusAdjustSize;
 				whole = (int)div;
 				extra = div-whole;
 				editorTopRadius = whole * topRadiusAdjustSize;
@@ -626,7 +625,7 @@ namespace SSTUTools
 			}
 			if (bottomAdjust != null)
 			{
-				div = bottomAdjust.bottomRadius / bottomRadiusAdjustSize;
+				div = bottomRadius / bottomRadiusAdjustSize;
 				whole = (int)div;
 				extra = div-whole;
 				editorBottomRadius = whole * bottomRadiusAdjustSize;
@@ -640,11 +639,13 @@ namespace SSTUTools
 		{
 			if (topAdjust != null)
 			{
-				topAdjust.topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjustSize);			
+				topAdjust.topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjustSize);
+				persistentTopRadius = topAdjust.topRadius;
 			}
 			if (bottomAdjust != null)
 			{
-				bottomAdjust.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);				
+				bottomAdjust.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);
+				persistentBottomRadius = bottomAdjust.bottomRadius;
 			}
 		}
 
@@ -667,22 +668,26 @@ namespace SSTUTools
 		//DONE
 		//creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
 		private void loadFairingData(ConfigNode node)
-		{
+		{			
 			ConfigNode[] fairingNodes = node.GetNodes ("FAIRING");
 			fairingParts = new FairingData[fairingNodes.Length];
 			for (int i = 0; i < fairingNodes.Length; i++)
 			{
 				fairingParts[i] = new FairingData();
 				fairingParts[i].load(fairingNodes[i]);
-			}
-			if (reloadedNode != null)
-			{
-				fairingNodes = reloadedNode.GetNodes ("FAIRING");
-				for(int i = 0; i < fairingNodes.Length; i++)
+				if(fairingParts[i].canAdjustTop)
 				{
-					fairingParts[i].reload(fairingNodes[i]);
+					topAdjust = fairingParts[i];
+					if(persistentTopRadius>0){topAdjust.topRadius=persistentTopRadius;}
+					else{persistentTopRadius=topAdjust.topRadius;}
 				}
-			}
+				if(fairingParts[i].canAdjustBottom)
+				{
+					bottomAdjust = fairingParts[i];
+					if(persistentBottomRadius>0){bottomAdjust.bottomRadius=persistentBottomRadius;}
+					else{persistentBottomRadius=bottomAdjust.bottomRadius;}
+				}
+			}			
 		}
 
 		//DONE

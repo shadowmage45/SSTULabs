@@ -1,0 +1,664 @@
+INTERNAL
+{
+	name = LC3-POD-IVA
+	MODULE
+	{
+		name = InternalSeat
+		seatTransformName = LC3-KerbalSeat1
+		allowCrewHelmet = false
+	}
+	MODULE
+	{
+		name = InternalSeat
+		seatTransformName = LC3-KerbalSeat2
+		allowCrewHelmet = false
+	}
+	MODULE
+	{
+		name = InternalSeat
+		seatTransformName = LC3-KerbalSeat3
+		allowCrewHelmet = false
+	}
+	MODULE
+	{
+		name = InternalCameraSwitch
+		colliderTransformName = LC3-CamSwitch1
+		cameraTransformName = LC3-CamSwitch1
+	}
+	MODULE
+	{
+		name = InternalCameraSwitch
+		colliderTransformName = LC3-CamSwitch2
+		cameraTransformName = LC3-CamSwitch2
+	}
+	PROP
+	{
+		name = AltimeterThreeHands
+		position = 0.6679311,-1.156959,0.4215641
+		rotation = -0.1973061,-0.1975,0.6797049,0.6782812
+		scale = 1.000001,0.9999997,1
+	}
+	PROP
+	{
+		name = AltimeterThreeHands
+		position = -0.6679311,-1.156959,0.4215641
+		rotation = -0.1973061,0.1975001,-0.679705,0.6782811
+		scale = 1,1,0.9999998
+	}
+	PROP
+	{
+		name = AtmosphereDepth
+		position = 0.1252689,-1.347013,0.4346752
+		rotation = -0.2070895,0.6761019,-0.2070895,0.6761022
+		scale = 1,1,0.9999996
+	}
+	PROP
+	{
+		name = AtmosphereDepth
+		position = -0.1252689,-1.347013,0.4346752
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = AxisIndicatorPitch
+		position = 0.4669547,-1.314936,0.4821253
+		rotation = -4.080747E-08,0.9561527,-0.2928688,3.708135E-07
+		scale = 1,1,0.9999998
+	}
+	PROP
+	{
+		name = AxisIndicatorPitch
+		position = -0.4669552,-1.314936,0.4821248
+		rotation = 0,0.9561526,-0.2928689,0
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = AxisIndicatorRoll
+		position = 0.4933438,-1.347406,0.434094
+		rotation = 0.2070896,0.6761021,-0.2070895,-0.676102
+		scale = 0.9999998,1,0.9999995
+	}
+	PROP
+	{
+		name = AxisIndicatorRoll
+		position = -0.4933438,-1.347406,0.434094
+		rotation = 0.20709,0.6761019,-0.20709,-0.6761019
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = AxisIndicatorYaw
+		position = 0.5163407,-1.366178,0.4063253
+		rotation = 0.2070896,0.6761021,-0.2070895,-0.676102
+		scale = 0.9999998,1,0.9999999
+	}
+	PROP
+	{
+		name = AxisIndicatorYaw
+		position = -0.5163412,-1.366178,0.4063249
+		rotation = 0.20709,0.6761019,-0.20709,-0.6761019
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = ButtonSquare
+		position = 0.4998975,-1.327765,0.4631476
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,0.9999999
+	}
+	PROP
+	{
+		name = ButtonSquare
+		position = -0.499897,-1.327765,0.4631481
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 1,0.9999998,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.05823755,-1.289495,0.5197573
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 0.9999998,0.9999999,0.9999999
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.09168816,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.1250567,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.1566715,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.1566715,-1.271937,0.5457287
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.1250567,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.09168816,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = -0.05823755,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.05823803,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.05823803,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.09168816,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.09168816,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.1250572,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.1250572,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.156672,-1.289495,0.5197568
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = circularButton
+		position = 0.156672,-1.271937,0.5457292
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = Compass
+		position = 0.1252689,-1.364709,0.4084992
+		rotation = 0.2070895,0.6761024,-0.2070896,-0.6761016
+		scale = 0.5000001,0.5000001,0.5
+	}
+	PROP
+	{
+		name = Compass
+		position = -0.1252689,-1.364709,0.4084988
+		rotation = 0.207089,0.676102,-0.20709,-0.676102
+		scale = 0.5,0.5,0.5
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = 0.4669547,-1.280939,0.5324154
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,0.9999999
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = -0.4669552,-1.280939,0.5324149
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 1,0.9999998,1
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = 0.6394019,-1.13759,0.4664145
+		rotation = -0.1973061,-0.1975,0.6797049,0.6782812
+		scale = 1.000001,0.9999996,1
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = 0.6161709,-1.137626,0.5029902
+		rotation = -0.197306,-0.1975,0.6797051,0.6782811
+		scale = 1.000001,1,0.9999993
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = -0.6394019,-1.13759,0.466414
+		rotation = -0.1973061,0.1975001,-0.679705,0.6782811
+		scale = 1,1,0.9999998
+	}
+	PROP
+	{
+		name = directionalKnob2
+		position = -0.6161709,-1.137626,0.5029898
+		rotation = -0.1973061,0.1975001,-0.679705,0.6782811
+		scale = 1,1,0.9999998
+	}
+	PROP
+	{
+		name = IndicatorPanel
+		position = 0.5785961,-1.24628,0.4649363
+		rotation = -0.3301371,-0.1429906,0.3648471,0.858749
+		scale = 1.5,1.5,1.5
+	}
+	PROP
+	{
+		name = IndicatorPanel
+		position = -0.5785961,-1.24628,0.4649358
+		rotation = -0.3301373,0.1429908,-0.3648469,0.858749
+		scale = 1.5,1.5,1.5
+	}
+	PROP
+	{
+		name = ledPanelSpeed
+		position = 0.4373813,-1.365786,0.4069057
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = ledPanelSpeed
+		position = -0.4198675,-1.365786,0.4069061
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 1,0.9999998,1
+	}
+	PROP
+	{
+		name = ledPanelSpeed
+		position = 0.283349,-1.466393,0.3476858
+		rotation = -0.5361584,0,-6.888401E-08,0.8441174
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = ledPanelSpeed
+		position = -0.2717228,-1.466393,0.3476858
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = NavBall
+		position = 0.4161301,-1.290635,0.5180717
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = NavBall
+		position = -0.4161301,-1.290635,0.5180721
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 1,0.9999998,1
+	}
+	PROP
+	{
+		name = NavBall
+		position = 0.3598843,-1.456149,0.3524966
+		rotation = -0.5361584,0,-6.888401E-08,0.8441174
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = NavBall
+		position = -0.3598838,-1.456149,0.3524971
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = RadarAltimeter
+		position = 0.4164305,-1.330173,0.4595861
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = RadarAltimeter
+		position = -0.41643,-1.330173,0.4595861
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 1,0.9999998,1
+	}
+	PROP
+	{
+		name = RadarAltimeter
+		position = 0.284297,-1.419874,0.3695312
+		rotation = -0.5361584,0,-6.888401E-08,0.8441174
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = RadarAltimeter
+		position = -0.284297,-1.419874,0.3695312
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = squareButton
+		position = -0.05823755,-1.327831,0.4630489
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 0.9999998,0.9999999,0.9999999
+	}
+	PROP
+	{
+		name = squareButton
+		position = -0.08855724,-1.327831,0.4630489
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = -0.08855677,-1.307789,0.4926958
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = -0.05823755,-1.307789,0.4926958
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = 0.08855677,-1.327831,0.4630489
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = 0.05823803,-1.327831,0.4630489
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = 0.08855677,-1.307789,0.4926958
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = squareButton
+		position = 0.05823803,-1.307789,0.4926958
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = SSTU-Prop-IVAChair
+		position = 0.2836099,-1.00398,0.7599401
+		rotation = -3.090862E-08,0.7071068,-0.7071068,-3.090862E-08
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = SSTU-Prop-IVAChair
+		position = -0.2836099,-1.00398,0.7599401
+		rotation = 0,0.7071068,-0.7071068,0
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = SSTU-Prop-IVAChair
+		position = -0.2836099,0,0.7080603
+		rotation = 0.5000001,0.4999999,-0.4999999,-0.5000001
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = SSTU-Prop-MFD
+		position = 0.2784133,-1.320025,0.474597
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 0.5,0.5,0.5
+	}
+	PROP
+	{
+		name = SSTU-Prop-MFD
+		position = -0.2784128,-1.320025,0.474597
+		rotation = -0.2928689,0,0,0.9561526
+		scale = 0.5,0.4999999,0.5
+	}
+	PROP
+	{
+		name = SSTU-Prop-MFD
+		position = 0.6434641,-1.021869,0.4734616
+		rotation = -0.2056137,-0.205825,0.6772304,0.6758092
+		scale = 0.5,0.4999998,0.5
+	}
+	PROP
+	{
+		name = SSTU-Prop-MFD
+		position = -0.6434641,-1.021869,0.4734621
+		rotation = -0.2056143,0.2058252,-0.6772301,0.6758093
+		scale = 0.4999998,0.4999999,0.4999999
+	}
+	PROP
+	{
+		name = switch
+		position = 0.06281614,-1.343466,0.4399214
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 0.9999998,0.9999999,0.9999999
+	}
+	PROP
+	{
+		name = switch
+		position = -0.06281614,-1.343466,0.4399209
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = switch
+		position = 0.6772962,-1.198956,0.4069648
+		rotation = -0.1973061,-0.1975,0.6797049,0.6782812
+		scale = 1.000001,0.9999996,1
+	}
+	PROP
+	{
+		name = switch
+		position = -0.6772962,-1.198956,0.4069648
+		rotation = -0.1973061,0.1975001,-0.679705,0.6782811
+		scale = 1,1,0.9999998
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.06281567,-1.361555,0.4131632
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 0.9999998,0.9999999,0.9999999
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.06281614,-1.361555,0.4131632
+		rotation = -0.207089,0.676102,-0.20709,0.676102
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.3499999,-1.400908,0.378438
+		rotation = -0.5361584,0,-6.888401E-08,0.8441174
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.4000001,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.4499998,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.5,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.3499999,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.4000001,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.4499998,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.5,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.2249999,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.1750002,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.125,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = 0.07499981,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.2249999,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.1750002,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.125,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = switchWithGuards
+		position = -0.07499981,-1.400908,0.378438
+		rotation = -0.5361583,0,0,0.8441175
+		scale = 1,0.9999996,0.9999996
+	}
+	PROP
+	{
+		name = throttle
+		position = 0,-1.320025,0.474597
+		rotation = -0.2928688,0,-6.347701E-08,0.9561527
+		scale = 1,1,1
+	}
+	PROP
+	{
+		name = VSI
+		position = 0.1381607,-1.318478,0.4768853
+		rotation = -0.2928688,1.499095E-07,-7.512245E-07,0.9561527
+		scale = 0.9999998,0.9999996,1
+	}
+	PROP
+	{
+		name = VSI
+		position = -0.1381612,-1.318478,0.4768848
+		rotation = -0.2928689,0,-9.999997E-07,0.9561526
+		scale = 1,0.9999998,1
+	}
+}

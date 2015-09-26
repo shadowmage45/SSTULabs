@@ -47,35 +47,7 @@ namespace SSTUTools
 			jettisonForce = node.GetFloatValue ("jettisonForce", jettisonForce);
 			jettisonDirection = node.GetVector3 ("jettisonDirection", jettisonDirection);
 		}
-		
-		//DONE
-		//to be called on part re-load (editor reload/revert, launch, in-flight reload)
-		public void reload(ConfigNode node)
-		{
-			topRadius = node.GetFloatValue ("topRadius", topRadius);
-			bottomRadius = node.GetFloatValue ("bottomRadius", bottomRadius);
-		}
-		
-		//DONE
-		//to be called by part OnSave method to persist any persistent data for the fairing
-		//this will generally only be the top and bottom radius (everything else is static)
-		//the passed in node is the RAW config node for the entire module; values for this fairing should
-		//be added as sub-nodes
-		public void savePersistence(ConfigNode node)
-		{
-			ConfigNode output = null;
-			output = new ConfigNode("FAIRING");
-			if (canAdjustTop)
-			{
-				output.AddValue("topRadius", topRadius);
-			}
-			if (canAdjustBottom)
-			{
-				output.AddValue ("bottomRadius", bottomRadius);
-			}
-			node.AddNode(output);
-		}
-		
+						
 		//DONE
 		public void createFairing(Part part, Material material)
 		{
