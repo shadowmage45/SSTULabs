@@ -10,7 +10,7 @@ namespace SSTUTools
 	//TODO
 	// how to allow for setting of default mesh AND resources during prefab part instantiation?
 	// -- have an externally accessible var/method in SSTUResourceSwitch that accepts a tankName for default instantiation?
-	public class SSTUMeshSwitch : PartModule, IPartCostModifier, IPartMassModifier
+	public class SSTUMeshSwitch : PartModule, IPartCostModifier//, IPartMassModifier
 	{
 		//used to suffix the part-name in order to store persistent config data in static dictionary
 		[KSPField]
@@ -27,9 +27,6 @@ namespace SSTUTools
 		
 		[KSPField]
 		public String variantLabel = "Variant";
-		
-		[KSPField]
-		public bool modifyPartMass = false;
 
 		[KSPField]
 		public bool controlsTankOptions = false;
@@ -52,22 +49,38 @@ namespace SSTUTools
 		[KSPEvent(name="nextMeshEvent", guiName="Next Variant", guiActiveEditor=true)]
 		public void nextMeshEvent()
 		{
+			int prevConfig = currentConfiguration;
 			currentConfiguration++;
 			if(currentConfiguration>=meshConfigurations.Length){currentConfiguration=0;}
+			if(!meshConfigurations[currentConfiguration].canSwitchToVariant())
+			{
+				currentConfiguration = prevConfig;
+				//TODO print error msg
+				return;
+			}
 			setToMeshConfig(currentConfiguration);
 			updateResourceSwitch();
 			updateModuleSwitch();
+			updatePartMass();
 			GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
 		}	
 		
 		[KSPEvent(name="prevMeshEvent", guiName="Prev. Variant", guiActiveEditor=true)]
 		public void prevMeshEvent()
 		{
+			int prevConfig = currentConfiguration;
 			currentConfiguration--;
 			if(currentConfiguration<0){currentConfiguration = meshConfigurations.Length - 1;}
+			if(!meshConfigurations[currentConfiguration].canSwitchToVariant())
+			{
+				currentConfiguration = prevConfig;
+				//TODO print error msg
+				return;
+			}
 			setToMeshConfig(currentConfiguration);
 			updateResourceSwitch();
 			updateModuleSwitch();
+			updatePartMass();
 			GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
 		}	
 		
@@ -108,18 +121,14 @@ namespace SSTUTools
 			return currentConfig==null? 0 : currentConfig.variantCost;
 		}
 		
-		public float GetModuleMass (float defaultMass)
-		{
-			return modifyPartMass ? 0 : (currentConfig==null? 0 : currentConfig.variantMass);
-		}
-		
 		#endregion
 		
 		private void initialize()
 		{
 			findLinkedModules();
 			loadConfigFromPrefab();
-			reloadSavedMeshData();		
+			reloadSavedMeshData();
+			updatePartMass();
 		}
 				
 		/// <summary>
@@ -131,6 +140,7 @@ namespace SSTUTools
 		{		
 			loadConfigFromNode(node);
 			loadDefaultMeshConfig();
+			updatePartMass();
 		}
 		
 		private void loadConfigFromPrefab()
@@ -208,13 +218,32 @@ namespace SSTUTools
 			}
 		}
 		
-		private void enableAllMeshes()
+		private void updatePartMass()
 		{
-			foreach(MeshConfig cfg in meshConfigurations)
+			float mass = currentConfig==null? 0 : currentConfig.variantMass;			
+			SSTUMeshSwitch[] switches = part.GetComponents<SSTUMeshSwitch>();
+			//find all other mesh-switch modules and manually add that mass in, even though they will all run the same circular calculation whenever they are upated
+			if(switches!=null && switches.Length>0)
 			{
-				cfg.enable();
-			}
+				foreach(SSTUMeshSwitch sw in switches)
+				{
+					if(sw.currentConfig!=null){mass+=sw.currentConfig.variantMass;}
+				}
+			}			
+			//lastly, if resourceSwitch is not null, add the base mass from the resourceswitch
+			if(resourceSwitch!=null){mass+=resourceSwitch.GetModuleMass(0);}
+			if(mass==0){mass=part.mass;}//if mass not set in config, use existing part mass
+			part.mass = mass;
+			print ("SSTUMeshSwitch set part mass to : "+part.mass);
 		}
+		
+//		private void enableAllMeshes()
+//		{
+//			foreach(MeshConfig cfg in meshConfigurations)
+//			{
+//				cfg.enable(true);
+//			}
+//		}
 
 		private void reloadSavedMeshData()
 		{
@@ -237,7 +266,15 @@ namespace SSTUTools
 			{
 				if(meshConfigurations[i].variantName.Equals(variantName))
 				{
-					setToMeshConfig(i);
+					if(meshConfigurations[i].canSwitchToVariant())
+					{
+						setToMeshConfig(i);
+					}
+					else
+					{
+						//TODO print on-screen message regarding cannot switch due to node stuff
+						#warning need to add output screen message
+					}
 					return;
 				}
 			}
@@ -260,12 +297,7 @@ namespace SSTUTools
 				if(i==index){continue;}
 				meshConfigurations[i].disable();
 			}
-			currentConfig.enable();						
-			
-			if(modifyPartMass)
-			{
-				part.mass = config.variantMass;
-			}
+			currentConfig.enable(HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor);			
 		}
 		
 		private void printConfig()
@@ -277,8 +309,7 @@ namespace SSTUTools
 			print ("meshDisplayName: "+meshDisplayName);
 			print ("Configs: "+SSTUUtils.printArray(meshConfigurations, "\n"));
 			print ("-----end config---");
-		}
-	
+		}	
 	}
 	
 	//single part variant configuration
@@ -288,6 +319,7 @@ namespace SSTUTools
 		public String tankName = String.Empty;
 		public String tankOption = String.Empty;
 		public MeshData[] meshData;
+		public MeshNodeData[] nodeData;
 		public int[] controlledModules;
 		public float variantMass = 0;
 		public float variantCost = 0;
@@ -299,24 +331,12 @@ namespace SSTUTools
 			{
 				MonoBehaviour.print ("ILLEGAL VARIANT NAME: "+variantName);
 			}
-			if(node.HasValue("tankName"))//else it ends up null?
-			{			
-				tankName = node.GetValue("tankName");
-			}
-			if(node.HasValue("variantMass"))
-			{
-				variantMass = (float)SSTUUtils.safeParseDouble(node.GetValue("variantMass"));
-			}
-			if(node.HasValue("variantCost"))
-			{
-				variantCost = (float)SSTUUtils.safeParseDouble(node.GetValue("variantCost"));
-			}	
-			if (node.HasValue ("tankOption"))
-			{
-				tankOption = node.GetValue("tankOption");
-			}
-			String meshNames = node.GetValue("meshNames");	
-			if(meshNames==null || meshNames.Length==0)
+			tankName = node.GetStringValue("tankName");
+			variantMass = (float)node.GetDoubleValue ("variantMass");
+			variantCost = (float)node.GetDoubleValue ("variantCost");
+			tankOption = node.GetStringValue("tankOption");
+			String meshNames = node.GetStringValue("meshNames");
+			if(String.IsNullOrEmpty(meshNames))
 			{
 				meshData = new MeshData[0];
 			}
@@ -330,24 +350,45 @@ namespace SSTUTools
 					meshData[i] = new MeshData(splitNames[i].Trim (), part);
 				}				
 			}			
-			String configControlIDs = node.GetValue ("controlIDs");
-			if (configControlIDs != null && configControlIDs.Length > 0)
+			String configControlIDs = node.GetStringValue ("controlIDs");
+			if (String.IsNullOrEmpty (configControlIDs))
+			{
+				controlledModules = new int[0];
+			}
+			else
 			{
 				String[] splitIDs = configControlIDs.Split(',');				
 				controlledModules = new int[splitIDs.Length];
 				for(int i = 0; i < splitIDs.Length; i++){controlledModules[i] = SSTUUtils.safeParseInt(splitIDs[i].Trim());}				
 			}
+			ConfigNode[] nodeNodes = node.GetNodes ("MESHNODE");
+			if (nodeNodes!=null && nodeNodes.Length > 0)
+			{
+				nodeData = new MeshNodeData[nodeNodes.Length];
+				int len = nodeNodes.Length;
+				for(int i = 0; i < len; i++)
+				{
+					nodeData[i] = new MeshNodeData(nodeNodes[i], part);
+				}
+			}
 			else
 			{
-				controlledModules = new int[0];
+				nodeData = new MeshNodeData[0];
 			}
 		}
 		
-		public void enable()
-		{				
+		public void enable(bool updateNodes)
+		{		
+			MonoBehaviour.print ("enablig mesh config: "+variantName);
 			foreach(MeshData md in meshData)
 			{
 				md.enable();
+			}
+			if(!updateNodes){return;}
+			MonoBehaviour.print ("setting up config nodes for mesh config: "+variantName);
+			foreach (MeshNodeData mnd in nodeData)
+			{
+				mnd.enableConfig();
 			}
 		}
 		
@@ -366,6 +407,140 @@ namespace SSTUTools
 				"tankType = " + tankName + "\n" +
 				"meshData: \n"+SSTUUtils.printArray(meshData, "\n")+"]");
 		}
+
+		public bool canSwitchToVariant()
+		{
+			foreach (MeshNodeData mnd in nodeData)
+			{
+				if(!mnd.canEnable())
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	//data for one manipulatable node in a mesh
+	public class MeshNodeData
+	{
+		public Part part;
+		public String nodeName = "top";
+		public bool nodeEnabled = true;
+		public Vector3 nodePosition = Vector3.zero;
+		public Vector3 nodeOrientation = Vector3.zero;
+		public int nodeSize = 2;
+
+		public MeshNodeData(ConfigNode inputNode, Part inputPart)
+		{			
+			nodeName = inputNode.GetStringValue ("name");			
+			if(String.IsNullOrEmpty(nodeName)){MonoBehaviour.print ("ERROR!! : Node name was null for meshswitch node data!!");}
+			nodeEnabled = inputNode.GetBoolValue ("enabled", true);			
+			this.part = inputPart;			
+			if (inputNode.HasValue ("position"))
+			{				
+				nodePosition = inputNode.GetVector3 ("position");
+			}
+			else if(nodeEnabled==true)
+			{
+				MonoBehaviour.print ("ERROR -- no position assigned, but node: "+nodeName+" is enabled for mesh switch");
+				nodePosition = Vector3.zero;
+			}
+			if (inputNode.HasValue ("orientation"))
+			{
+				nodeOrientation = inputNode.GetVector3 ("orientation");
+			}
+			else if(nodeEnabled==true)
+			{					
+				MonoBehaviour.print ("ERROR -- no orientation assigned, but node: "+nodeName+" is enabled for mesh switch");
+				nodeOrientation = Vector3.zero;				
+			}
+			nodeSize = inputNode.GetIntValue("size", 2);
+		}
+
+		public void enableConfig()
+		{
+			AttachNode node = part.findAttachNode (nodeName);
+			if (nodeEnabled)//node is enabled in this config; add it if not present, move it if it is already present
+			{			
+				if (node == null)
+				{
+					
+					AttachNode newNode = new AttachNode();
+					node = newNode;
+					newNode.id = nodeName;
+					newNode.owner = part;
+					newNode.nodeType = AttachNode.NodeType.Stack;
+					newNode.size = nodeSize;
+					newNode.originalPosition.x = newNode.position.x = nodePosition.x;
+					newNode.originalPosition.y = newNode.position.y = nodePosition.y;
+					newNode.originalPosition.z = newNode.position.z = nodePosition.z;
+					newNode.originalOrientation.x = newNode.orientation.x = nodeOrientation.x;
+					newNode.originalOrientation.y = newNode.orientation.y = nodeOrientation.y;
+					newNode.originalOrientation.z = newNode.orientation.z = nodeOrientation.z;
+					part.attachNodes.Add (newNode);
+					//TODO trigger editor update to refresh node position...; just send editor-part-modified event?
+				}
+				else
+				{
+					Vector3 pos = node.position;
+					Vector3 diff = nodePosition - node.position;//used to adjust part positions
+					diff = part.transform.InverseTransformPoint(diff);
+					diff += part.transform.position;
+					node.position = node.originalPosition = nodePosition.CopyVector();
+					node.orientation = node.originalOrientation = nodeOrientation.CopyVector();
+					if(node.attachedPart!=null)
+					{
+						if(node.attachedPart.parent == part)//is a child of this part, move it the entire offset distance
+						{
+							node.attachedPart.attPos0 += diff;
+							node.attachedPart.transform.position += diff;
+						}
+						else//is a parent of this part, do not move it, instead move this part the full amount
+						{
+							part.attPos0 -= diff;
+							part.transform.position -= diff;
+						}
+					}
+					//check for attached parts, move attached parts if current node position and new node position differ
+				}
+			}
+			else//node not enabled for this config, remove it if possible (no parts attached)  
+			{
+				if(node!=null)
+				{
+					if(node.attachedPart!=null)//cannot disable node, it will cause crashes if part is still attached (at least at vessel reload)
+					{
+						MonoBehaviour.print ("Could not remove attach node: "+nodeName+" as it has attached parts!!");
+						return;
+					}
+					else
+					{
+						node.owner = null;
+						part.attachNodes.Remove(node);
+						if(node.icon!=null)
+						{
+							GameObject.Destroy(node.icon);
+						}
+					} 
+				}
+				//else NOOP, nothing to do if node is not present
+			}			
+		}
+
+		public bool canEnable()
+		{
+			if (nodeEnabled)//node is enabled for this config, can be set regardless of part attached status
+			{
+				return true;
+			}
+			else//node not enabled for this config, cannot switch to if parts are currently attached to it
+			{
+				AttachNode persistentNode = part.findAttachNode(nodeName);
+				if(persistentNode==null){return true;}
+				return persistentNode.attachedPart == null;
+			}
+		}
 	}
 	
 	public class MeshData
@@ -377,7 +552,6 @@ namespace SSTUTools
 		{
 			meshName = name;
 			GameObject g = part.gameObject.GetChild(meshName);
-//			Transform tr = part.FindModelTransform(meshName);
 			Transform tr = g==null? null : g.transform;
 			if(tr!=null){gameObject = tr.gameObject;}
 			else

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-	public class SSTUResourceSwitch : PartModule, IPartCostModifier
+	public class SSTUResourceSwitch : PartModule, IPartCostModifier//, IPartMassModifier
 	{
 		//example tank definitions
 		//
@@ -68,11 +68,12 @@ namespace SSTUTools
 		[KSPField]
 		public float defaultTankMass = 0;
 		
-		//if true, tankDryMass will set part mass directly
-		//if false, tankDryMass will be an offset to part mass
-		[KSPField]
-		public bool modifyPartMass = true;
-
+		[KSPField(isPersistant=true)]
+		public float persistentCost;
+		
+		[KSPField(isPersistant=true)]
+		public float persistentMass;	
+		
 		[Persistent]
 		public String configNodeString;
 				
@@ -91,7 +92,7 @@ namespace SSTUTools
 		{
 			tankType++;
 			if(tankType>=configs.Length){tankType=0;}
-			updateTankStats(true);
+			updateTankStats();
 			updateResources();
 		}	
 		
@@ -100,7 +101,7 @@ namespace SSTUTools
 		{
 			tankType--;
 			if(tankType<0){tankType = configs.Length - 1;}
-			updateTankStats(true);
+			updateTankStats();
 			updateResources();
 		}	
 		
@@ -116,7 +117,8 @@ namespace SSTUTools
 			}
 			else
 			{
-				loadTankConfigsFromPrefab();							
+				loadTankConfigsFromPrefab();
+				if(persistentMass>0){part.mass=persistentMass;}
 			}
 		}
 		
@@ -132,14 +134,14 @@ namespace SSTUTools
 				}
 				else
 				{
-					updateTankStats(false);//this will reload all of the GUI data/etc, but not reset part mass
+					updateTankStats();//this will reload all of the GUI data/etc, but not reset part resources
 				}
 			}
 			else
 			{
 				if(tankType>=0)//tank was already initialized, external control should -NOT- re-set tank type
 				{
-					updateTankStats(false);
+					updateTankStats();
 				}
 				else
 				{
@@ -170,17 +172,15 @@ namespace SSTUTools
 		//OVERRIDE from IPartCostModifier
 		//return offset/modifier to the part cost, input is the cost listed in the config
 		public float GetModuleCost (float defaultCost)
-		{
-			//TODO add in option cost
-			return currentConfig==null ? 0 : currentConfig.tankCost + currentConfig.getResourceCost();
+		{			
+			return persistentCost;
 		}
 		
 		//OVERRIDE from IPartMassModifier
 		//return offset/modifier to the part mass, input is the mass listed in config
 		public float GetModuleMass (float defaultMass)
-		{
-			//TODO add in option mass
-			return modifyPartMass? 0 : (currentConfig==null ? 0 : currentConfig.tankDryMass);
+		{				
+			return persistentMass;
 		}
 		
 		public void setTankMainConfig(String tankName)
@@ -191,21 +191,20 @@ namespace SSTUTools
 				if(configs[i].tankName.Equals(tankName))
 				{
 					tankType = i;
-					updateTankStats(true);
+					updateTankStats();
 					updateResources();
 					return;
 				}
 			}
 			//will only hit here if tank not found
 			tankType = 0;
-			updateTankStats(true);
+			updateTankStats();
 			updateResources();
 		}
 		
 		//external control method to set option type by name
 		public void setTankOption(String optionName)
 		{			
-			print ("setting resource switch to optional tank: "+optionName);
 			TankConfig optionConfig = null;
 			int index = 0;
 			int length = optionConfigs.Length;
@@ -228,7 +227,7 @@ namespace SSTUTools
 		private void setTankOption(int index)
 		{
 			optionType = index;			
-			updateTankStats(true);
+			updateTankStats();
 			updateResources();
 		}
 		
@@ -244,7 +243,7 @@ namespace SSTUTools
 			else
 			{
 				tankType = 0;
-				updateTankStats(true);
+				updateTankStats();
 				updateResources();
 			}
 		}
@@ -252,31 +251,29 @@ namespace SSTUTools
 		/// <summary>
 		/// Updates current config and option references from index as well as updating gui name references
 		/// </summary>
-		private void updateTankStats(bool updateMass)
+		private void updateTankStats()
 		{				
+			print ("Updating tank stats from SSTUResourceSwitch");
 			currentConfig = configs[tankType];
 			currentOption = optionType==-1 ? null : optionConfigs[optionType];
 			tankTypeName = currentConfig.tankName;
-			tankOptionName = currentOption==null? String.Empty : currentOption.tankName;			
-			if(updateMass){updatePartMass();}
-		}
-		
-		/// <summary>
-		/// Updates the part mass from the current config and option config (if any).
-		/// </summary>
-		private void updatePartMass()
-		{		
-			if(modifyPartMass)
+			tankOptionName = currentOption==null? String.Empty : currentOption.tankName;
+			persistentCost = currentConfig == null? defaultTankCost : currentConfig.tankCost;
+			persistentCost += currentOption==null ? 0 : currentOption.tankCost;
+			persistentMass = currentConfig==null ? defaultTankMass : currentConfig.tankDryMass;
+			persistentMass += currentOption==null ? 0 : currentOption.tankDryMass;
+			part.mass = persistentMass;
+			print ("SSTUREsourceSwitch set mass to: "+part.mass);
+			if(HighLogic.LoadedSceneIsEditor)
 			{
-				part.mass = currentConfig.tankDryMass;
-				if(currentOption!=null){part.mass+=currentOption.tankDryMass;}				
-				if(HighLogic.LoadedSceneIsEditor)
-				{
-					GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-				}	
+				GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+			}
+			else if(HighLogic.LoadedSceneIsFlight)
+			{
+				GameEvents.onVesselWasModified.Fire(part.vessel);
 			}
 		}
-						
+							
 		/// <summary>
 		/// Updates the parts resources from the current config and option config (if any).
 		/// </summary>
@@ -306,7 +303,11 @@ namespace SSTUTools
 			if(HighLogic.LoadedSceneIsEditor)
 			{
 				GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-			}	
+			}
+			else if(HighLogic.LoadedSceneIsFlight)
+			{
+				GameEvents.onVesselWasModified.Fire(part.vessel);
+			}
 		}
 		
 		private void loadConfigFromNode(ConfigNode node)

@@ -488,6 +488,14 @@ namespace SSTUTools
 			}
 		}
 		
+		public static void printAttachNodes(Part part)
+		{
+			foreach(AttachNode node in part.attachNodes)
+			{
+				MonoBehaviour.print (" part: "+part.name+" has attach node of:"+node.position+" with orientation of: "+node.orientation);
+			}
+		}
+		
 		public class DebugBoundsRender
 		{
 			private GameObject gameObject;

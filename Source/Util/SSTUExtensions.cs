@@ -116,6 +116,11 @@ namespace SSTUTools
 		{
 			return GetVector3 (node, name, Vector3.zero);
 		}
+
+		public static Vector3 CopyVector(this Vector3 input)
+		{
+			return new Vector3(input.x, input.y, input.z);
+		}
 	}
 }
 

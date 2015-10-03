@@ -393,12 +393,7 @@ namespace SSTUTools
 			if (fairingEnabled)
 			{
 				updateShieldStatus ();
-			}
-			else if (jettisoned)//else if not enabled and jettisoned, remove fairing mass from parent part
-			{
-				removeFairingMass();
-			}
-			
+			}			
 			//update gui status for current fairing status (enable/disable buttons, update text labels)
 			updateGuiState ();
 				
