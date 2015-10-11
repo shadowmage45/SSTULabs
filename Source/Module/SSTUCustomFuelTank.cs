@@ -1,0 +1,787 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace SSTUTools
+{
+
+	public class SSTUCustomFuelTank : PartModule, IPartCostModifier//, IPartSizeModifier
+	{
+		//CSV string of fuel types
+		[KSPField]
+		public String fuelTypes = String.Empty;
+
+		[KSPField]
+		public String defaultTankName = String.Empty;
+
+		[KSPField]
+		public String defaultTopCapName = String.Empty;
+
+		[KSPField]
+		public String defaultBottomCapName = String.Empty;
+
+		[KSPField]
+		public String defaultFuelType = String.Empty;
+
+		[KSPField]
+		public String prefabTankName = String.Empty;		
+		
+		[KSPField]
+		public String topNodeGroupName = "top";
+		
+		[KSPField]
+		public String bottomNodeGroupName = "bottom";
+
+		[KSPField]
+		public bool canChangeInFlight = false;
+		
+		[KSPField]
+		public float tankDiameter = 5f;
+
+		//persistent data storage for config node data -- workaround for KSP never allowing access to base node data after prefab construction
+		[Persistent]
+		public String configNodeData = String.Empty;
+		
+		//persistent data storage for currently set values
+		[KSPField(isPersistant=true, guiActiveEditor=true, guiName = "Fuel Type")]
+		public String currentFuelType = String.Empty;
+
+		[KSPField(isPersistant=true, guiActiveEditor=true, guiName = "Main Tank")]
+		public String mainTankName = String.Empty;
+
+		[KSPField(isPersistant=true, guiActiveEditor=true, guiName = "Top Cap")]
+		public String topCapName = String.Empty;
+
+		[KSPField(isPersistant=true, guiActiveEditor=true, guiName = "Bottom Cap")]
+		public String bottomCapName = String.Empty;
+		
+		private float maxHeight = 0;
+		private MainTankDef mainTankDef;
+		private TankCapDef topCapDef;
+		private TankCapDef bottomCapDef;
+		private NodeGroup topNodeGroup;
+		private NodeGroup bottomNodeGroup;
+		private List<String> fuelTypeList = new List<String>();
+		private List<MainTankDef> mainTankDefs = new List<MainTankDef>();
+		private List<TankCapDef> topCapDefs = new List<TankCapDef>();
+		private List<TankCapDef> bottomCapDefs = new List<TankCapDef>();
+		
+		//calculated stats from updateTankStats() -- used by other methods and to display info to user
+		[KSPField(guiActiveEditor=true, guiName = "Tank Cost")]
+		public float tankCost = 0;
+		[KSPField(guiActiveEditor=true, guiName = "Tank Dry Mass")]
+		public float tankDryMass = 0;
+		[KSPField(guiActiveEditor=true, guiName = "Tank Usable Vol. (m^3)")]
+		public float tankVolume = 0;
+
+		//DONE
+		[KSPEvent(guiName="Jettison Contents", guiActive=false, guiActiveEditor=false, guiActiveUnfocused=false)]
+		public void jettisonContentsEvent()
+		{
+			emptyTankContents ();
+		}
+
+		//DONE
+		[KSPEvent(guiName="Next Fuel Type", guiActive=false, guiActiveEditor=true, guiActiveUnfocused=false)]
+		public void nextFuelEvent()
+		{
+			if (canChangeTank())
+			{
+				setFuelType(findNextFuelType(currentFuelType, false));
+			}
+		}
+
+		//DONE
+		[KSPEvent(guiName="Next Main Tank Type", guiActive=false, guiActiveEditor=true, guiActiveUnfocused=false)]
+		public void nextTankEvent()
+		{
+			MainTankDef mtd = findNextAvailableDef(mainTankDef, mainTankDefs, false);
+			if (mtd != null)
+			{
+				setMainVariant(mtd);
+			}
+		}
+
+		//DONE
+		[KSPEvent(guiName="Next Top Cap Type", guiActive=false, guiActiveEditor=true, guiActiveUnfocused=false)]
+		public void nextTopEvent()
+		{
+			TankCapDef tcd = findNextAvailableDef (topCapDef, topCapDefs, false);
+			if (tcd != null)
+			{
+				setTopVariant(tcd);
+			}
+		}
+
+		//DONE
+		[KSPEvent(guiName="Next Bottom Cap Type", guiActive=false, guiActiveEditor=true, guiActiveUnfocused=false)]
+		public void nextBottomEvent()
+		{
+			TankCapDef bcd = findNextAvailableDef (bottomCapDef, bottomCapDefs, false);
+			if (bcd != null)
+			{
+				setBottomVariant(bcd);
+			}
+		}
+
+		//DONE
+		public override void OnLoad (ConfigNode node)
+		{
+			base.OnLoad (node);
+			if(node.HasNode("TANK"))//only prefab instance config node should contain this data...but whatever, grab it whenever it is present
+			{
+				configNodeData = node.ToString();
+			}
+			if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
+			{
+				initialize ();
+			}
+			else
+			{
+				initializePrefab();
+			}
+		}
+
+		//DONE
+		public override void OnStart (StartState state)
+		{
+			base.OnStart (state);
+			if(mainTankDef==null)//uninitialized
+			{
+				initialize ();				
+			}
+			if (canChangeInFlight)
+			{
+				Events["nextFuelEvent"].guiActive = true;
+				Events["jettisonContentsEvent"].active = Events["jettisonContentsEvent"].guiActive = true;
+			}
+		}
+		
+		//DONE
+		public override string GetInfo ()
+		{
+			if(mainTankDef!=null){mainTankDef.disable(part);}//disable the model for default main tank
+			mainTankDef = null;
+			//TODO ^^ the same for caps...
+			return base.GetInfo ();
+		}
+
+		//DONE
+		public float GetModuleCost(float defaultCost)
+		{
+			return tankCost;
+		}
+
+		//DONE
+		private bool canChangeTank()
+		{
+			if (HighLogic.LoadedSceneIsFlight)
+			{
+				if(!canChangeInFlight){return false;}
+				foreach (PartResource res in part.Resources.list)
+				{
+					if(res.amount>0){return false;}
+				}
+				return true;
+			}
+			return true;
+		}
+
+		//DONE
+		private void emptyTankContents()
+		{
+			//TODO add in delayed timer, enforce button must be pressed twice in twenty seconds in order to trigger
+			foreach (PartResource res in part.Resources.list)
+			{
+				res.amount = 0;
+			}
+		}
+
+		//DONE
+		private void initialize()
+		{
+			loadPersistentConfigData ();
+			if(String.IsNullOrEmpty(mainTankName))
+			{				
+				initializeTankDefaults();
+			}
+			else
+			{		
+				restoreSavedTankData();			
+			}
+		}
+
+		//DONE
+		private void initializePrefab()
+		{
+			loadPersistentConfigData ();
+			prefabTankName = String.IsNullOrEmpty (prefabTankName) ? defaultTankName : prefabTankName;
+			mainTankDef = findDef(prefabTankName, mainTankDefs);
+			topCapDef = findDef(defaultTopCapName, topCapDefs);
+			bottomCapDef = findDef(defaultBottomCapName, bottomCapDefs);
+			enableTankDef(mainTankDef, mainTankDefs);
+			enableTankDef(topCapDef, topCapDefs);
+			enableTankDef(bottomCapDef, bottomCapDefs);
+			currentFuelType = defaultFuelType;
+
+			updateCapsAndNodes ();
+			updateTankStats ();
+
+			//now clear resources and such... otherwise it creates havok when parts are cloned from the prefab; could potentially just clear them whenever the part is initialized, prior to setting of fuel type
+			part.Resources.list.Clear ();
+			PartResource[] resources = part.GetComponents<PartResource> ();
+			int len = resources.Length;
+			for (int i = 0; i < len; i++)
+			{
+				GameObject.Destroy(resources[i]);
+			}			
+		}
+		
+		//DONE
+		private void restoreSavedTankData()
+		{
+			mainTankDef = findDef(mainTankName, mainTankDefs);
+			topCapDef = findDef(topCapName, topCapDefs);
+			bottomCapDef = findDef(bottomCapName, bottomCapDefs);
+			enableTankDef(mainTankDef, mainTankDefs);
+			enableTankDef(topCapDef, topCapDefs);
+			enableTankDef(bottomCapDef, bottomCapDefs);
+			updateCapsAndNodes ();
+			updateTankStats ();	
+			updateDragCube ();
+		}
+
+		//DONE
+		private void initializeTankDefaults()
+		{
+			mainTankDef = findDef(defaultTankName, mainTankDefs);
+			topCapDef = findDef(defaultTopCapName, topCapDefs);
+			bottomCapDef = findDef(defaultBottomCapName, bottomCapDefs);
+			mainTankName = mainTankDef.tankName;
+			topCapName = topCapDef.tankName;
+			bottomCapName = bottomCapDef.tankName;
+			enableTankDef(mainTankDef, mainTankDefs);
+			enableTankDef(topCapDef, topCapDefs);
+			enableTankDef(bottomCapDef, bottomCapDefs);
+			currentFuelType = defaultFuelType;
+			updateCapsAndNodes ();
+			updateTankStats ();		
+			updatePartResources();
+			updateDragCube ();
+		}
+		
+		//DONE
+		private void loadPersistentConfigData()
+		{
+			mainTankDefs.Clear ();
+			topCapDefs.Clear ();
+			bottomCapDefs.Clear ();
+			
+			ConfigNode node = SSTUNodeUtils.parseConfigNode (configNodeData);
+			
+			float mainMaxHeight = 0;
+			float bottomMaxHeight = 0;
+			float topMaxHeight = 0;		
+
+			ConfigNode[] mainTankNodes = node.GetNodes ("TANK");
+			if (mainTankNodes == null){print("ERROR -- no nodes defined for main tank setups, bad things are about to happen");}
+			MainTankDef mtd;
+			foreach (ConfigNode mtn in mainTankNodes)
+			{				
+				mtd = new MainTankDef(mtn, part);
+				if(mtd.tankHeight>mainMaxHeight){mainMaxHeight=mtd.tankHeight;}
+				mainTankDefs.Add (mtd);
+			}
+			
+			ConfigNode[] nodeGroupNodes = node.GetNodes("NODEGROUP");
+			if(nodeGroupNodes==null){print ("ERROR -- no node groups defined, bad things are about to happen");}			
+			foreach(ConfigNode ngn in nodeGroupNodes)
+			{
+				String n = ngn.GetStringValue("name");
+				if(n.Equals(topNodeGroupName)){topNodeGroup = new NodeGroup(ngn);}
+				else if(n.Equals(bottomNodeGroupName)){bottomNodeGroup = new NodeGroup(ngn);}				
+			}
+
+			ConfigNode[] capNodes = node.GetNodes ("CAP");
+			if (capNodes == null){print("ERROR -- no nodes defined for tank cap setups, bad things are about to happen");}			
+			
+			TankCapDef tcd;
+			foreach (ConfigNode capNode in capNodes)
+			{			
+				tcd = new TankCapDef(capNode, part, false, topNodeGroup);
+				if(tcd.tankHeight>topMaxHeight){topMaxHeight=tcd.tankHeight;}
+				topCapDefs.Add (tcd);
+				tcd = new TankCapDef(capNode, part, true, bottomNodeGroup);
+				if(tcd.tankHeight>bottomMaxHeight){bottomMaxHeight=tcd.tankHeight;}
+				bottomCapDefs.Add (tcd);
+			}
+			
+			maxHeight = mainMaxHeight + topMaxHeight + bottomMaxHeight;
+			
+			String[] fuelTypes = this.fuelTypes.Split(new String[]{","}, StringSplitOptions.None);
+			foreach(String val in fuelTypes)
+			{
+				fuelTypeList.Add(val.Trim());
+			}
+		}
+		
+		//DONE
+		private void updateTankStats()
+		{	
+			//update tank mass, cost, and volume from the currently selected tank and caps
+			tankVolume = mainTankDef.tankVolume + topCapDef.tankVolume + bottomCapDef.tankVolume;			
+			SSTUFuelType fuelType = SSTUFuelTypes.INSTANCE.getFuelType(currentFuelType);
+			if(fuelType!=null)
+			{
+				tankDryMass = fuelType.tankageVolumeLoss * fuelType.tankageMassFactor * tankVolume;//tankage mass based off of raw volume			
+				tankVolume -= fuelType.tankageVolumeLoss * tankVolume;//subtract tankage loss from raw volume to derive usable volume, all other calculations will use 'usable volume'
+				tankCost = fuelType.costPerDryTon * tankDryMass + fuelType.getResourceCost(tankVolume);
+			}
+			part.mass = tankDryMass;
+		}
+		
+		//DONE
+		private void updatePartResources()
+		{
+			SSTUFuelType type = SSTUFuelTypes.INSTANCE.getFuelType(currentFuelType);
+			if(type!=null)
+			{
+				type.setResourcesInPart(part, tankVolume, !HighLogic.LoadedSceneIsFlight);
+			}
+		}
+		
+		//DONE
+		private void updateDragCube()
+		{
+			DragCube newCube = DragCubeSystem.Instance.RenderProceduralDragCube (part);
+			newCube.Name = part.DragCubes.Cubes [0].Name;
+			part.DragCubes.ClearCubes ();
+			part.DragCubes.Cubes.Add (newCube);
+			part.DragCubes.ResetCubeWeights ();
+			part.DragCubes.SetCubeWeight ("Default", 1f);
+		}
+
+		//DONE
+		private void updateCapsAndNodes()
+		{
+			float topHeight = mainTankDef.tankHeight * 0.5f;
+			float bottomHeight = -topHeight;
+			topCapDef.updateCapHeight(part, topHeight);
+			bottomCapDef.updateCapHeight(part, bottomHeight);
+		}
+		
+		//DONE
+		private void setFuelType(String fuelType)
+		{
+			currentFuelType = fuelType;
+			updateTankStats();
+			updatePartResources();
+		}
+
+		//DONE
+		private void setMainVariant(MainTankDef def)
+		{
+			if(mainTankDef!=null){mainTankDef.disable(part);}
+			mainTankName = def.tankName;
+			mainTankDef = def;
+			enableTankDef (def, mainTankDefs);
+			updateCapsAndNodes();
+			updateTankStats ();
+			updatePartResources();
+			updateDragCube ();
+		}
+
+		//DONE
+		private void setTopVariant(TankCapDef def)
+		{
+			if(topCapDef!=null){topCapDef.disable(part);}
+			topCapName = def.tankName;
+			topCapDef = def;
+			enableTankDef(def, topCapDefs);
+			updateCapsAndNodes ();
+			updateTankStats ();
+			updatePartResources();
+			updateDragCube ();
+		}
+
+		//DONE
+		private void setBottomVariant(TankCapDef def)
+		{
+			if(bottomCapDef!=null){bottomCapDef.disable(part);}
+			bottomCapName = def.tankName;
+			bottomCapDef = def;
+			enableTankDef(def, bottomCapDefs);
+			updateCapsAndNodes ();
+			updateTankStats ();
+			updatePartResources();
+			updateDragCube ();
+		}		
+
+		//DONE
+		private void enableTankDef<T>(T def, List<T> defs)
+			where T : TankDef
+		{
+			foreach (T d in defs)
+			{
+				if(d==def){continue;}
+				d.disable(part);
+			}
+			def.enable (part);
+		}
+
+		//DONE
+		private T findNextAvailableDef<T>(T current, List<T> list, bool iterateBackwards)
+			where T : TankDef
+		{
+			int index = -1;
+			int len = list.Count;
+			int iter = iterateBackwards ? -1 : 1;
+
+			for (int i = 0; i < len; i++)
+			{
+				if(list[i]==current)
+				{
+					index = i;
+				}
+			}
+
+			int c = 0;
+			for (int i = 1; i < len; i++)//start at index offset 1, to skip 'current', only iterate for 'len' iterations, to prevent infinite wraparound
+			{
+				c = i * iter + index;
+				if(c < 0){c += len;}//wrap backwards
+				if(c >= len){c -= len;}//wrap forwards
+				if(list[c].canApply(part))
+				{
+					return list[c];//return first valid from list in given search direction
+				}
+			}
+
+			return null;//return null for no other variants available
+		}
+		
+		//DONE
+		private T findDef<T>(String name, List<T> list)
+			where T : TankDef
+		{
+			foreach(TankDef t in list)
+			{
+				if(t.tankName.Equals(name))
+				{
+					return (T)t;
+				}
+			}
+			print ("ERROR: Could not locate tank/cap by name of: "+name);
+			return null;
+		}
+				
+		//DONE
+		private String findNextFuelType(String currentType, bool iterateBackwards)
+		{
+			int index = -1;
+			int len = fuelTypeList.Count;
+			int iter = iterateBackwards ? -1 : 1;
+			for (int i = 0; i < len; i++)
+			{
+				if(fuelTypeList[i].Equals(currentType))
+				{
+					index = i;
+				}
+			}			
+			if(index==-1)
+			{
+				MonoBehaviour.print ("Could not locate current fuel type, returning first fuel type");				
+				return fuelTypeList[0];
+			}
+			index += iter;
+			if(index<0){index+=len;}
+			if(index>=len){index-=len;}
+			return fuelTypeList[index];
+		}		
+	}
+
+	public class TankDef
+	{
+		//the name of the tank, as seen in the config/definition
+		public String tankName;
+		//name of the root mesh object
+		public String modelName;
+		//used to scale the model
+		public float scale = 1f;
+		//used to define node offsets for main tank and cap tanks
+		public float tankHeight;		
+		//raw volume of the tank, used to calculate fuel quantities, mass, and cost
+		public float tankVolume;
+		//the name of the tech-node that unlocks this length
+		public String techNodeName;
+
+		//reference to root transform of the model controlled by this tankDef
+		protected Transform modelRoot;
+
+		//DONE
+		public TankDef(ConfigNode node, Part part)
+		{
+			tankName = node.GetStringValue ("name");
+			modelName = node.GetStringValue ("mesh");
+			tankHeight = node.GetFloatValue ("height");
+			tankVolume = node.GetFloatValue ("volume");
+			techNodeName = node.GetStringValue ("tech");
+			scale = node.GetFloatValue("scale", scale);
+		}
+		
+		//DONE
+		public virtual void disable(Part part)
+		{			
+			if(modelRoot==null){return;}
+			GameObject.Destroy(modelRoot.gameObject);
+		}
+		
+		//TODO
+		public virtual void enable(Part part)
+		{
+			if(modelRoot!=null){return;}
+			if(String.IsNullOrEmpty(modelName)){return;}
+			GameObject newModel = (GameObject)GameObject.Instantiate(GameDatabase.Instance.GetModelPrefab(modelName));
+			Transform baseModelTransform = part.FindModelTransform("model");
+			if(baseModelTransform==null)//TODO add a new one
+			{
+				GameObject go = new GameObject();
+				go.transform.NestToParent(part.transform);
+				baseModelTransform = go.transform;
+			}			
+			newModel.transform.NestToParent(baseModelTransform);
+			newModel.transform.localScale = new Vector3(scale, scale, scale);
+			newModel.SetActive(true);
+			modelRoot = newModel.transform;
+		}
+		
+		//DONE
+		public virtual bool canApply(Part part)
+		{		
+			if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER)
+			{
+				if (!String.IsNullOrEmpty (techNodeName))
+				{
+					RDTech.State st = ResearchAndDevelopment.GetTechnologyState (techNodeName);
+					if(st==RDTech.State.Available){return true;}
+					return false;
+				}
+			}
+			return true;
+		}
+
+	}
+
+	public class MainTankDef : TankDef
+	{
+		//erm...no custom data for main-tank? will persist custom class for ease of expansion in the future...		
+		public MainTankDef(ConfigNode node, Part part) : base(node, part)
+		{
+			//NOOP currently
+		}
+	}
+
+	public class TankCapDef : TankDef
+	{
+		private NodeDef[] nodeDefs;	
+		public NodeGroup nodeGroup;
+		public bool invertModel = false;
+		public bool bottom = false;
+		
+		//DONE
+		public TankCapDef(ConfigNode node, Part part, bool bottom, NodeGroup nodeGroup) : base(node, part)
+		{
+			this.nodeGroup = nodeGroup;
+			this.bottom = bottom;
+			invertModel = node.GetBoolValue("invertModel");
+			
+			List<NodeDef> defs = new List<NodeDef>();
+			String nodeName;
+			foreach(ConfigNode.Value val in node.values)
+			{
+				if(val.name.StartsWith("node_stack_"))
+				{
+					nodeName = val.name.Replace("node_stack_","").Trim();
+					if(nodeGroup.nodeNames.Contains(nodeName))//only build node defs for nodes that you control for the given node group
+					{
+						defs.Add (new NodeDef(val.name, val.value));						
+					}
+				}	
+			}
+			int len = defs.Count;
+			nodeDefs = new NodeDef[len];
+			for(int i = 0; i < len; i++)
+			{				
+				nodeDefs[i] = defs[i];
+			}	
+		}
+		
+		//DONE
+		public override void enable(Part part)
+		{
+			base.enable(part);
+			if(modelRoot==null){return;}
+			if((invertModel || bottom) && !(bottom && invertModel))
+			{
+				modelRoot.transform.Rotate(180, 0, 0, Space.Self);
+			}
+		}
+		
+		//DONE
+		public void updateCapHeight(Part part, float height)
+		{			
+			if(HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
+			{
+				nodeGroup.updateNodes(part, height, nodeDefs);			
+			}
+			if(modelRoot!=null)
+			{
+				if(invertModel)
+				{
+					height += bottom? -tankHeight : tankHeight;					
+				}
+				modelRoot.localPosition = new Vector3(modelRoot.localPosition.x, height, modelRoot.localPosition.z);
+			}
+		}
+
+		//DONE
+		public override bool canApply(Part part)
+		{			
+			if (!base.canApply (part)){return false;}
+			return nodeGroup.canApplyNodeConfig(part, nodeDefs);
+		}
+		
+	}
+
+	public class NodeDef
+	{
+		public String nodeName;		
+		public int nodeSize;
+		public Vector3 nodePosition;
+		public Vector3 nodeOrientation;
+		
+		public NodeDef(String rawName, String rawData)
+		{
+			nodeName = rawName.Replace("node_stack_", "").Trim();//turns ' node_stack_xxx ' into 'xxx', and assigns to nodeName
+			String[] dataVals = rawData.Split(new String[]{","}, StringSplitOptions.None);
+			nodePosition = new Vector3(SSTUUtils.safeParseFloat(dataVals[0].Trim()),SSTUUtils.safeParseFloat(dataVals[1].Trim()),SSTUUtils.safeParseFloat(dataVals[2].Trim()));
+			nodeOrientation = new Vector3(SSTUUtils.safeParseFloat(dataVals[3].Trim()),SSTUUtils.safeParseFloat(dataVals[4].Trim()),SSTUUtils.safeParseFloat(dataVals[5].Trim()));
+			nodeSize = dataVals.Length>=6 ? SSTUUtils.safeParseInt(dataVals[6]) : 2;
+		}
+
+		public NodeDef(ConfigNode node)
+		{
+			nodeName = node.GetStringValue ("name");
+			nodeSize = node.GetIntValue("size", 2);
+			nodePosition = node.GetVector3 ("position");
+			nodeOrientation = node.GetVector3 ("orientation");
+		}
+	}
+	
+	public class NodeGroup
+	{
+		public readonly String name;
+		public String nodeNamesRaw;
+		public List<String> nodeNames = new List<String>();
+		
+		public NodeGroup(ConfigNode node)
+		{
+			this.name = node.GetStringValue("name");
+			this.nodeNamesRaw = node.GetStringValue("nodes");
+			String[] split = nodeNamesRaw.Split(new String[]{","},StringSplitOptions.None);
+			foreach(String name in split)
+			{
+				nodeNames.Add(name.Trim ());
+			}
+		}	
+		
+		//DONE
+		public bool canApplyNodeConfig(Part part, NodeDef[] potentialNodes)
+		{			
+			List<String> allNodeNames = new List<String>();
+			allNodeNames.AddRange(nodeNames);
+			foreach(NodeDef def in potentialNodes)
+			{
+				allNodeNames.Remove(def.nodeName);
+			}
+			foreach(String nodeName in allNodeNames)
+			{
+				AttachNode node = part.findAttachNode(nodeName);
+				if(node!=null && node.attachedPart!=null)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		
+		//DONE
+		public void updateNodes(Part part, float baseHeight, NodeDef[] activeNodes)
+		{
+			List<String> managedNodeNames = new List<String>();
+			managedNodeNames.AddRange(nodeNames);
+			foreach(NodeDef def in activeNodes)
+			{
+				managedNodeNames.Remove(def.nodeName);
+				updateAttachNode(part, baseHeight, def);
+			}
+			foreach(String nodeName in managedNodeNames)//the remaining names should be eligible to be removed, if present
+			{
+				AttachNode node = part.findAttachNode(nodeName);
+				if(node!=null)
+				{
+					part.attachNodes.Remove (node);
+					node.owner = null;
+					if(node.icon!=null)
+					{
+						GameObject.Destroy(node.icon);						
+					}
+				}
+			}
+		}
+		
+		//DONE
+		private void updateAttachNode(Part part, float baseHeight, NodeDef nodeDef)
+		{
+			AttachNode node = part.findAttachNode(nodeDef.nodeName);			
+			Vector3 finalPos = nodeDef.nodePosition.CopyVector ();
+			finalPos.y += baseHeight;
+			
+			if(node==null)//create new node
+			{
+				AttachNode newNode = new AttachNode();
+				node = newNode;
+				newNode.id = nodeDef.nodeName;
+				newNode.owner = part;
+				newNode.nodeType = AttachNode.NodeType.Stack;
+				newNode.size = nodeDef.nodeSize;
+				newNode.originalPosition = newNode.position = finalPos.CopyVector();
+				newNode.originalOrientation = newNode.orientation = nodeDef.nodeOrientation.CopyVector();
+				part.attachNodes.Add (newNode);
+			}
+			else//move current node, offset attached part/this part
+			{
+				Vector3 diff = finalPos - node.position;
+				node.position = node.originalPosition = finalPos.CopyVector();
+				node.orientation = node.originalOrientation = nodeDef.nodeOrientation.CopyVector();
+				if(node.attachedPart!=null)
+				{
+					diff = part.transform.TransformPoint(diff);
+					diff -= part.transform.position;
+					if(node.attachedPart.parent == part)//is a child of this part, move it the entire offset distance
+					{
+						node.attachedPart.attPos0 += diff;
+						node.attachedPart.transform.position += diff;
+					}
+					else//is a parent of this part, do not move it, instead move this part the full amount
+					{
+						part.attPos0 -= diff;
+						part.transform.position -= diff;
+					}
+				}
+			}
+		}
+	}
+	
+}
+

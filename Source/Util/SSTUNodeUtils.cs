@@ -34,6 +34,8 @@ namespace SSTUTools
 		public static ConfigNode parseConfigNode(String input)
 		{
 			ConfigNode baseCfn = ConfigNode.Parse(input);
+			if(baseCfn==null){MonoBehaviour.print("Base config node was null!!\n"+input);}
+			else if(baseCfn.nodes.Count<=0){MonoBehaviour.print ("Base config node has node nodes!!\n"+input);}
 			return baseCfn.nodes[0];
 //			String[] lines = input.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);	
 //			List<String> baseLines = new List<String>();

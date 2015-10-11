@@ -33,7 +33,21 @@ namespace SSTUTools
 			}
 			catch(Exception e)
 			{
-				MonoBehaviour.print ("could not parse double value from: "+val+"\n"+e.Message);
+				MonoBehaviour.print ("could not parse double value from: '"+val+"'\n"+e.Message);
+			}
+			return returnVal;
+		}
+
+		public static float safeParseFloat(String val)
+		{
+			float returnVal = 0;
+			try
+			{
+				returnVal = float.Parse(val);
+			}
+			catch(Exception e)
+			{
+				MonoBehaviour.print ("could not parse float value from: '"+val+"'\n"+e.Message);
 			}
 			return returnVal;
 		}
@@ -47,9 +61,14 @@ namespace SSTUTools
 			}
 			catch(Exception e)
 			{
-				MonoBehaviour.print ("could not parse double value from: "+val+"\n"+e.Message);
+				MonoBehaviour.print ("could not parse int value from: '"+val+"'\n"+e.Message);
 			}
 			return returnVal;
+		}
+		
+		public static String[] parseCSV(String input)
+		{
+			return input.Split(new String[]{","}, StringSplitOptions.None);
 		}
 		
 		public static String concatArray(float[] array)

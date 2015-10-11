@@ -48,7 +48,7 @@ namespace SSTUTools
 		public int cylinderSides = 24;
 		
 		[KSPField]
-		public float radiusAdjust = 0.3125f;
+		public float radiusAdjust = 0.625f;
 		
 		[KSPField]
 		public float heightAdjust = 0.1f;
@@ -75,14 +75,14 @@ namespace SSTUTools
 		public float maxHeight = 0.5f;
 		
 		[KSPField]
-		public float massPerCubicMeter = 1;
+		public float massPerCubicMeter = 10;
 		
 		[KSPField]
-		public float costPerCubicMeter = 1;
+		public float costPerCubicMeter = 10;
 
 		[KSPField]
-		public float forcePerKg = 1;
-
+		public float forcePerKg = 10;		
+		
 		public float modifiedMass = 0;
 		
 		public float modifiedCost = 0;
@@ -183,6 +183,8 @@ namespace SSTUTools
 			restoreEditorFields ();
 			prepModel ();
 			updateGuiState();
+			Fields["ejectionForce"].guiName = "Ejection Force";
+			Fields["ejectionForce"].guiActiveEditor = true;
 		}
 
 		//DONE

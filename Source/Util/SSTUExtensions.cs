@@ -100,7 +100,6 @@ namespace SSTUTools
 			String value = node.GetValue (name);
 			if (value == null)
 			{
-				MonoBehaviour.print ("No value for name: "+name+" found in config node: "+node);
 				return defaultValue;
 			}
 			String[] vals = value.Split (',');
@@ -114,7 +113,19 @@ namespace SSTUTools
 
 		public static Vector3 GetVector3(this ConfigNode node, String name)
 		{
-			return GetVector3 (node, name, Vector3.zero);
+			String value = node.GetValue (name);
+			if (value == null)
+			{
+				MonoBehaviour.print ("No value for name: "+name+" found in config node: "+node);
+				return Vector3.zero;
+			}
+			String[] vals = value.Split (',');
+			if (vals.Length < 3)
+			{
+				MonoBehaviour.print ("ERROR parsing values for Vector3 from input: "+value+". found less than 3 values, cannot create Vector3");
+				return Vector3.zero;
+			}
+			return new Vector3((float)SSTUUtils.safeParseDouble(vals[0]), (float)SSTUUtils.safeParseDouble(vals[1]), (float)SSTUUtils.safeParseDouble(vals[2]));
 		}
 
 		public static Vector3 CopyVector(this Vector3 input)

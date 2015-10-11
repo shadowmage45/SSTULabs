@@ -5,6 +5,20 @@ using UnityEngine;
 namespace SSTUTools
 {
 	
+	//Needed capabilities
+	// * Swap out render meshes and colliders
+	// * Swap main part resources
+	// * Swap / move attach nodes per mesh config
+	// Swap texture of individual meshes for a specific variant
+	// -- can be added as additional config node in the mesh config definition (similar to attach-node config defs)
+	// Allow list of tank setups for each mesh
+	// -- can be listed in each mesh config setup as 'alternate tanks'
+	// -- can track what 'alternate tank' number is currently in use, and try to use that alternate tank when switching mesh variants (if the new variant has that #)
+	// Allow specific texture per tank setup (e.g. specific texture for a fuel type)	
+	// Allow in-field switching of resources (and textures), but not huge mesh changes (config defined/restricted)
+	// ??create stand-alone texture-switch module that is responsible for storing/managing textures?
+	// ----would need to come before the resource/mesh switch modules, to be controlled from either
+	
 	//mesh switch module
 	//driven by config node system, can be linked to resource switch through config specification
 	//TODO
@@ -12,38 +26,46 @@ namespace SSTUTools
 	// -- have an externally accessible var/method in SSTUResourceSwitch that accepts a tankName for default instantiation?
 	public class SSTUMeshSwitch : PartModule, IPartCostModifier//, IPartMassModifier
 	{
-		//used to suffix the part-name in order to store persistent config data in static dictionary
+		//used to suffix the part-name in order to store persistent config data in static dictionary		
+		//deprecated, needs removed
 		[KSPField]
 		public int moduleID = 0;
-					
-		[KSPField]
+				
+		//the default variant to be shown in the editor icon
+		[KSPField]		
 		public String defaultVariantName;
 		
+		//persistent storage of current config index; -1 indicates uninitialized
 		[KSPField(isPersistant=true)]
 		public int currentConfiguration = -1;
 		
+		//currently displayed mesh/variant name
 		[KSPField(guiActive=true, guiActiveEditor = true, guiName = "Variant")]
 		public String meshDisplayName = String.Empty;
 		
+		//the 'name' of the variant type in the editor (e.g. nose-cone, tank geometry, whatever); this is just to present info to user
 		[KSPField]
 		public String variantLabel = "Variant";
-
+		
+		//if true, this specific module will be responsible for controlling 'optional' tank setups in the resource switch module
 		[KSPField]
 		public bool controlsTankOptions = false;
-
+		
+		//if true, the 'prev variant' button will be enabled in the editor
 		[KSPField]
 		public bool enablePrevButton = true;
-
-
+		
+		//working var, used to store persistent information from the original config as it is parsed during prefab loading
 		[Persistent]
 		public String configNodeString;
 
-		//current mesh configuration data
+		//current mesh configuration data, the total set of configs, and the specific current config
 		private MeshConfig[] meshConfigurations;
 		private MeshConfig currentConfig;
 		
 		//linked resource switch module, if any
 		private SSTUResourceSwitch resourceSwitch;
+		//linked module control module, if any
 		private SSTUModuleControl moduleControl;
 					
 		[KSPEvent(name="nextMeshEvent", guiName="Next Variant", guiActiveEditor=true)]
@@ -419,6 +441,12 @@ namespace SSTUTools
 			}
 			return true;
 		}
+	}
+	
+	public class MeshTextureData
+	{
+		public String meshName;
+		public String textureName;
 	}
 
 	//data for one manipulatable node in a mesh
