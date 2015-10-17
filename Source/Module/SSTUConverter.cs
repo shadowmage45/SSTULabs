@@ -96,7 +96,6 @@ namespace SSTUTools
 		{
 			if(node.HasNode("CONVERTERRECIPE"))//load the recipe config for the prefab part instance;
 			{
-				print ("prefab init, creating prefab test instances!");
 				loadRecipeFromNode(node);
 				configNodeString = node.ToString();				
 			}

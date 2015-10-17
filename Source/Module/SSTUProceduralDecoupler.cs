@@ -75,13 +75,13 @@ namespace SSTUTools
 		public float maxHeight = 0.5f;
 		
 		[KSPField]
-		public float massPerCubicMeter = 10;
+		public float massPerCubicMeter = 0.4f;
 		
 		[KSPField]
-		public float costPerCubicMeter = 10;
+		public float costPerCubicMeter = 50000f;
 
 		[KSPField]
-		public float forcePerKg = 10;		
+		public float forcePerKg = 0.8f;
 		
 		public float modifiedMass = 0;
 		
@@ -337,10 +337,11 @@ namespace SSTUTools
 			volume = outerCylVolume - innerCylVolume;
 			modifiedMass = volume * massPerCubicMeter;
 			modifiedCost = volume * costPerCubicMeter;
+			part.mass = modifiedMass;
 			if (HighLogic.LoadedSceneIsEditor)
 			{
 				GameEvents.onEditorShipModified.Fire (EditorLogic.fetch.ship);
-			}
+			}	
 		}
 
 		//TODO
@@ -357,7 +358,7 @@ namespace SSTUTools
 		//DONE
 		private void updateDecouplerForce()
 		{
-			ejectionForce = forcePerKg * (modifiedMass / 1000f);
+			ejectionForce = forcePerKg * (modifiedMass * 1000f);
 		}
 		
 		//TODO

@@ -253,7 +253,6 @@ namespace SSTUTools
 		/// </summary>
 		private void updateTankStats()
 		{				
-			print ("Updating tank stats from SSTUResourceSwitch");
 			currentConfig = configs[tankType];
 			currentOption = optionType==-1 ? null : optionConfigs[optionType];
 			tankTypeName = currentConfig.tankName;
@@ -263,7 +262,6 @@ namespace SSTUTools
 			persistentMass = currentConfig==null ? defaultTankMass : currentConfig.tankDryMass;
 			persistentMass += currentOption==null ? 0 : currentOption.tankDryMass;
 			part.mass = persistentMass;
-			print ("SSTUREsourceSwitch set mass to: "+part.mass);
 			if(HighLogic.LoadedSceneIsEditor)
 			{
 				GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);

@@ -124,7 +124,7 @@ namespace SSTUTools
 			for(int i = 0; i < len; i++)
 			{
 				GameObject go = tr.GetChild(i).gameObject;
-				MonoBehaviour.print ("destroying GO: "+go);
+//				MonoBehaviour.print ("destroying GO: "+go);
 				GameObject.Destroy(go);
 			}
 //			while(tr.childCount>0)

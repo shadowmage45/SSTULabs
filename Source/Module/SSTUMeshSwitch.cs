@@ -132,12 +132,6 @@ namespace SSTUTools
 			Fields["meshDisplayName"].guiName = variantLabel;
 		}
 		
-		public override string GetInfo ()
-		{
-			print ("SSTUMeshSwitch GetInfo "+GetHashCode());
-			return base.GetInfo ();
-		}
-		
 		public float GetModuleCost (float defaultCost)
 		{
 			return currentConfig==null? 0 : currentConfig.variantCost;
@@ -227,12 +221,12 @@ namespace SSTUTools
 					{
 						if(i==currentConfiguration)
 						{
-							print ("enabling module: "+modules[k]);
+//							print ("enabling module: "+modules[k]);
 							moduleControl.enableControlledModule(modules[k]);
 						}
 						else
 						{
-							print ("disabling module: "+modules[k]);
+//							print ("disabling module: "+modules[k]);
 							moduleControl.disableControlledModule(modules[k]);
 						}
 					}
@@ -256,7 +250,6 @@ namespace SSTUTools
 			if(resourceSwitch!=null){mass+=resourceSwitch.GetModuleMass(0);}
 			if(mass==0){mass=part.mass;}//if mass not set in config, use existing part mass
 			part.mass = mass;
-			print ("SSTUMeshSwitch set part mass to : "+part.mass);
 		}
 		
 //		private void enableAllMeshes()
@@ -401,13 +394,11 @@ namespace SSTUTools
 		
 		public void enable(bool updateNodes)
 		{		
-			MonoBehaviour.print ("enablig mesh config: "+variantName);
 			foreach(MeshData md in meshData)
 			{
 				md.enable();
 			}
 			if(!updateNodes){return;}
-			MonoBehaviour.print ("setting up config nodes for mesh config: "+variantName);
 			foreach (MeshNodeData mnd in nodeData)
 			{
 				mnd.enableConfig();

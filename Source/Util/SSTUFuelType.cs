@@ -81,7 +81,7 @@ namespace SSTUTools
 				costPerUnit += PartResourceLibrary.Instance.GetDefinition(e.resourceName).unitCost * e.ratio;
 			}
 			unitsPerCubicMeter = 1000f / litersPerUnit;
-			MonoBehaviour.print("Loaded SSTU_FUEL TYPE: "+name+"  units/m3: "+unitsPerCubicMeter+"  costPerUnit: "+costPerUnit +"  costPerM3: "+(unitsPerCubicMeter*costPerUnit));
+//			MonoBehaviour.print("Loaded SSTU_FUEL TYPE: "+name+"  units/m3: "+unitsPerCubicMeter+"  costPerUnit: "+costPerUnit +"  costPerM3: "+(unitsPerCubicMeter*costPerUnit));
 		}
 		
 		public override string ToString ()

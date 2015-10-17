@@ -35,8 +35,7 @@ namespace SSTUTools
 						print ("Found duplicate control ID when setting up SSTUModuleControl.  Duplicate ID: "+id+" for module: "+cm.GetType());
 					}
 					else
-					{
-						print ("ModuleControl found module to control: "+cm.GetType());
+					{						
 						modulesByID.Add(id, cm);
 					}
 				}
@@ -45,12 +44,10 @@ namespace SSTUTools
 
 		public void enableControlledModule(int id)
 		{
-			print ("ModuleControl enabling module: "+id);
 			IControlledModule cm = getControlledModule (id);
 			if (cm != null && !cm.isControlEnabled())
 			{
 				cm.enableModule();
-				print ("Module "+cm.GetType()+"was enabled");
 			}
 			else if(cm==null)
 			{
@@ -60,12 +57,10 @@ namespace SSTUTools
 
 		public void disableControlledModule(int id)
 		{
-			print ("ModuleControl disabling module: "+id);
 			IControlledModule cm = getControlledModule (id);
 			if (cm != null && cm.isControlEnabled())
 			{
 				cm.disableModule();
-				print ("Module "+cm.GetType()+"was disabled");
 			}
 			else if(cm==null)
 			{
