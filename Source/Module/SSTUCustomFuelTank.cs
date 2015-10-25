@@ -395,7 +395,7 @@ namespace SSTUTools
 		private void updateDragCube()
 		{
 			DragCube newCube = DragCubeSystem.Instance.RenderProceduralDragCube (part);
-			newCube.Name = part.DragCubes.Cubes [0].Name;
+			newCube.Name = "Default";
 			part.DragCubes.ClearCubes ();
 			part.DragCubes.Cubes.Add (newCube);
 			part.DragCubes.ResetCubeWeights ();
