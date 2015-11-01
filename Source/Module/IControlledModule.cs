@@ -10,12 +10,12 @@
 using System;
 namespace SSTUTools
 {
-	public interface IControlledModule
-	{
-		int getControlID ();
-		bool isControlEnabled();
-		void enableModule();
-		void disableModule();
-	}
+    public interface IControlledModule
+    {
+        int getControlID();
+        bool isControlEnabled();
+        void enableModule();
+        void disableModule();
+    }
 }
 

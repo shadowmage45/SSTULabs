@@ -10,15 +10,15 @@
 using System;
 namespace SSTUTools
 {
-	public class SSTUWeldingDockingPort : PartModule
-	{
-		public string weldedNodeName = "top";
+    public class SSTUWeldingDockingPort : PartModule
+    {
+        public string weldedNodeName = "top";
 
-		public SSTUWeldingDockingPort ()
-		{
+        public SSTUWeldingDockingPort()
+        {
 
-		}
+        }
 
-	}
+    }
 }
 
