@@ -128,19 +128,6 @@ namespace SSTUTools
         #endregion
 
         #region working vars, not user editable
-        ///// <summary>
-        ///// Basic persistent top radius, to persist the editor fields
-        ///// TODO deprecate, replace with the per-fairing values.  But -how- to replace this functionality?
-        ///// Seems like I should just leave this field in-place and just multi-update -all- fairings that have topRadius defined.
-        ///// during init, any fairing with topRadiusAdjust will all be set to the same common radius; all fairings with radius adjust will be adjusted at the same time.
-        ///// </summary>
-        //[KSPField(isPersistant = true)]
-        //public float persistentTopRadius;
-
-        ////used to persist user-edited top/bottom radius data
-        //[KSPField(isPersistant = true)]
-        //public float persistentBottomRadius;
-
         //radius adjustment fields, mostly used in editor
         //these values are restored during the OnStart operation, and only used in the editor
         //the 'live' values for the fairing are stored persistently and used directly to update the
@@ -317,7 +304,6 @@ namespace SSTUTools
                 sb.Append(fairingParts[i].getPersistence());
             }
             persistentDataString = sb.ToString();
-            print("saved persistent data: " + persistentDataString);
         }
 
         public override void OnStart(StartState state)
@@ -351,7 +337,7 @@ namespace SSTUTools
             buildFairing();
 
             //update the visible and attachment status for the fairing
-            updateFairingStatus();
+            updateFairingStatus(true);
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
@@ -372,7 +358,7 @@ namespace SSTUTools
         public void onVesselModified(Vessel v)
         {
             if (HighLogic.LoadedSceneIsEditor) { return; }
-            updateFairingStatus();
+            updateFairingStatus(false);
         }
 
         public void onEditorVesselModified(ShipConstruct ship)
@@ -387,7 +373,7 @@ namespace SSTUTools
                 lastBottomExtra = bottomRadiusExtra;
                 rebuildFairing();
             }
-            updateFairingStatus();
+            updateFairingStatus(false);
         }
 
         public void onVesselUnpack(Vessel v)
@@ -452,7 +438,7 @@ namespace SSTUTools
         {
             if (!HighLogic.LoadedSceneIsEditor || fairingParts == null) { return; }
             jettisoned = !enable;
-            updateFairingStatus();
+            updateFairingStatus(false);
         }
 
         private FairingData findFairingData(String name)
@@ -628,7 +614,7 @@ namespace SSTUTools
             }
             if (!String.IsNullOrEmpty(persistentDataString))
             {
-                String[] datas = SSTUUtils.parseCSV(persistentDataString, ";");
+                String[] datas = SSTUUtils.parseCSV(persistentDataString, ":");
                 int length = datas.Length;
                 for (int i = 0; i < length; i++)
                 {
@@ -640,9 +626,9 @@ namespace SSTUTools
         /// <summary>
         /// Blanket method to update the attached/visible status of the fairing based on its fairing type, current jettisoned status, and if a part is present on the fairings watched node (if any/applicable)
         /// </summary>
-        private void updateFairingStatus()
+        private void updateFairingStatus(bool start)
         {
-            //if jettisoned, fairing is never enabled; jettisoned means -fucking gone-, no coming back from that one
+            //if jettisoned, fairing is never enabled; jettisoned means -gone-, no coming back from that one
             if (jettisoned)
             {
                 fairingEnabled = false;
@@ -699,7 +685,10 @@ namespace SSTUTools
                     fairingEnabled = watchedNode != null && watchedNode.attachedPart != null;
                 }
             }
-            enableFairingRender(fairingEnabled);
+            if (start || HighLogic.LoadedSceneIsEditor)
+            {
+                enableFairingRender(fairingEnabled);
+            }
             updateShieldStatus();
             updateGuiState();
         }

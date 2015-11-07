@@ -18,14 +18,20 @@ namespace SSTUTools
         public float draperPoint = 400;
 
         //maximum amount of heat allowed in this engine
+        //will reach max glow at this temp, and begin dissipating even faster past this point
         [KSPField]
         public float maxHeat = 2400;
+
+        //maxStoredHeat
+        //storedHeat will not go beyond this, sets retention period for maximum glow
+        [KSPField]
+        public float maxStoredHeat = 3600;
 
         //curve to adjust heat dissipation; should generally expel heat faster when hotter
         [KSPField]
         public FloatCurve heatDissipationCurve = new FloatCurve();
 
-        //the heat-output curve for an engine, in case it is not linear
+        //the heat-output curve for an engine (varies with thrust/throttle), in case it is not linear
         [KSPField]
         public FloatCurve heatAccumulationCurve = new FloatCurve();
 
@@ -51,7 +57,7 @@ namespace SSTUTools
 
         private ModuleEngines engineModule;
 
-        private Transform animatedTransform;
+        private Transform[] animatedTransforms;
 
         private Color emissiveColor = new Color(0f, 0f, 0f, 1f);
 
@@ -63,7 +69,7 @@ namespace SSTUTools
 
             heatAccumulationCurve.Add(0f, 0f);
             heatAccumulationCurve.Add(1f, 1f);
-
+            
             redCurve.Add(0f, 0f);
             redCurve.Add(1f, 1f);
 
@@ -79,8 +85,8 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            animatedTransform = part.FindModelTransform(meshName);
-            if (animatedTransform == null) { print("ERROR: Could not locate transform for name: " + meshName); }
+            animatedTransforms = part.FindModelTransforms(meshName);
+            if (animatedTransforms == null || animatedTransforms.Length==0) { print("ERROR: Could not locate transform(s) for name: " + meshName); }
             locateEngineModule();
         }
 
@@ -119,13 +125,13 @@ namespace SSTUTools
 
             //dissipate heat
             float heatPercent = currentHeat / maxHeat;
-            if (heatPercent > 1f) { heatPercent = 1f; }
             if (currentHeat > 0f)
             {
                 float heatOut = heatDissipationCurve.Evaluate(heatPercent) * heatDissipation * TimeWarp.fixedDeltaTime;
                 if (heatOut > currentHeat) { heatOut = currentHeat; }
                 currentHeat -= heatOut;
             }
+            if (currentHeat > maxStoredHeat) { currentHeat = maxStoredHeat; }
 
             float emissivePercent = 0f;
 
@@ -143,9 +149,12 @@ namespace SSTUTools
 
         private void setEmissiveColors()
         {
-            if (animatedTransform != null)
+            if (animatedTransforms != null)
             {
-                setTransfromEmissive(animatedTransform, emissiveColor);
+                foreach (Transform tr in animatedTransforms)
+                {
+                    setTransfromEmissive(tr, emissiveColor);
+                }                
             }
         }
 

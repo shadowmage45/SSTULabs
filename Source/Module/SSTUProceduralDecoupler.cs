@@ -307,7 +307,7 @@ namespace SSTUTools
             AttachNode bottomNode = part.findAttachNode("bottom");
             if (bottomNode != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, topNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation);
+                SSTUUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation);
             }
         }
 

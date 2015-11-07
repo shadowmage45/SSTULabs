@@ -17,6 +17,9 @@ namespace SSTUTools
         public String layoutName = String.Empty;
 
         [KSPField]
+        public String smokeTransformName = "SmokeTransform";
+
+        [KSPField]
         public float mountSpacing = 3f;
 
         [KSPField]
@@ -30,6 +33,9 @@ namespace SSTUTools
 
         [KSPField]
         public float engineHeight = 1f;
+
+        [KSPField]
+        public float smokeTransformOffset = -1f;
 
         //transforms of these names are removed from the model after it is cloned
         //this is to be used to remove stock fairing transforms from stock engine models
@@ -46,15 +52,16 @@ namespace SSTUTools
         //below here are private-local tracking fields for various data
         private List<SSTUEngineMount> engineMounts = new List<SSTUEngineMount>();//mount-link-definitions
         public List<GameObject> models = new List<GameObject>();//actual engine models; kept so they can be repositioned //made public in hopes that unity will clone the fields, and that models need not be recreated after prefab is instantiated
-        private List<GameObject> mountModels = new List<GameObject>();//mount models, kept so they can be easily deleted
+        public List<GameObject> mountModels = new List<GameObject>();//mount models, kept so they can be easily deleted //public for unity serialization between prefab...
 
-        //all public fields get serialized from the prefab
-        public int numOfEngines = 1;
+        //all public fields get serialized from the prefab...hopefully
         public bool engineModelsSetup = false;//don't recreate engine models if they were already setup, it causes problems with other modules
         public float engineY = 0;
         public float fairingTopY = 0;
         public float fairingBottomY = 0;
         public float partDefaultMass = 0;
+
+        private SSTUEngineLayout engineLayout = null;
         
         [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void nextMountEvent()
@@ -97,7 +104,7 @@ namespace SSTUTools
         /// <returns></returns>
         public override string GetInfo()
         {
-            //clearExistingModels();
+            //clearMountModels();
             return "This part may have multiple model variants, right click for more info.";
         }
 
@@ -162,7 +169,6 @@ namespace SSTUTools
             }
             setupEngineModels();
             removeTransforms();
-            //part.InitializeEffects();
         }
 
         /// <summary>
@@ -179,7 +185,8 @@ namespace SSTUTools
 
         /// <summary>
         /// Sets up the engine models into the intial positions defined by the raw layout config.  Does not handle vertical offset, that is handled through updateModelPositions() method.<para/>
-        /// This should only ever be called once for a given PartModule instance, and it should be called during the initial OnStart method.
+        /// This should only ever be called once for a given PartModule instance, and it should be called during the initial OnStart method.<para/>
+        /// Additionally sets up the SmokeTransform for smoke particle effects (this transform will be cloned from prefab into live parts)
         /// </summary>
         private void setupEngineModels()
         {
@@ -192,16 +199,13 @@ namespace SSTUTools
             }
             engineModelsSetup = true;
             clearExistingModels();
-            print("Cleared existing models");
-            SSTUEngineLayout layout = null;
-            layoutMap.TryGetValue(layoutName, out layout);
-            if (layout == null) { print("ERROR: could not locate engine layout for name: " + layoutName); }
+            print("SSTUEngineCluster Cleared existing models from part.  This should only happen during prefab construction.");
+            SSTUEngineLayout layout = getEngineLayout();
 
             GameObject engineModel = GameDatabase.Instance.GetModelPrefab(modelName);
             Transform modelBase = part.FindModelTransform("model");
 
             GameObject engineClone;
-            numOfEngines = layout.positions.Count;
             foreach (SSTUEnginePosition position in layout.positions)
             {
                 engineClone = (GameObject)GameObject.Instantiate(engineModel);
@@ -212,8 +216,16 @@ namespace SSTUTools
                 engineClone.SetActive(true);
                 models.Add(engineClone);
             }
+
+            //add the smoke transform point, parented to the model base transform ('model')
+            GameObject smokeObject = new GameObject();
+            smokeObject.name = smokeTransformName;
+            smokeObject.transform.name = smokeTransformName;
+            Transform smokeTransform = smokeObject.transform;
+            smokeTransform.NestToParent(modelBase);
+            smokeTransform.localRotation = Quaternion.AngleAxis(90, new Vector3(1, 0, 0));//set it to default pointing downwards, as-per a thrust transform
+
             enableMount(currentMountOption);
-            numOfEngines = layout.positions.Count;
         }
 
         /// <summary>
@@ -235,16 +247,17 @@ namespace SSTUTools
             fairingTopY = partTopY;
             if (index >= engineMounts.Count || index < 0)//invalid selection, set engines to default positioning
             {
-                updateEngineModelPositions(mountSpacing);
+                updateEngineModelPositions(this.layoutName, mountSpacing, true);
                 updateFairingPosition(true);
                 updateNodePositions();
                 part.mass = partDefaultMass;
                 return;
             }
+
             SSTUEngineMount mountDef = engineMounts[index];
             if (mountDef == null || String.IsNullOrEmpty(mountDef.mountDefinition.modelName))//no mount def, or no model
             {
-                updateEngineModelPositions(mountSpacing);
+                updateEngineModelPositions(this.layoutName, mountSpacing, true);
                 updateFairingPosition(true);
                 updateNodePositions();
                 part.mass = partDefaultMass;
@@ -254,7 +267,11 @@ namespace SSTUTools
             float mountY = partTopY + (mountDef.scale * mountDef.mountDefinition.verticalOffset);
             float mountScaledHeight = mountDef.mountDefinition.height * mountDef.scale;
             float localMountSpacing = 0;
-            if (mountDef.mountDefinition.mountSpacing > 0 && mountDef.useSpacingOverride)
+            if (mountDef.mountSpacing > 0)
+            {
+                localMountSpacing = mountDef.mountSpacing;
+            }
+            else if (mountDef.mountDefinition.mountSpacing > 0 && mountDef.useSpacingOverride)
             {
                 localMountSpacing = mountDef.mountDefinition.mountSpacing * mountDef.scale;
             }
@@ -265,7 +282,12 @@ namespace SSTUTools
 
             engineY -= mountScaledHeight;
             fairingBottomY -= mountScaledHeight;
-            updateEngineModelPositions(localMountSpacing);
+            String localLayoutName = this.layoutName;
+            if (!String.IsNullOrEmpty(mountDef.layoutName))
+            {
+                localLayoutName = mountDef.layoutName;
+            }
+            updateEngineModelPositions(localLayoutName, localMountSpacing, mountDef.mountSpacing<=0);
             fairingTopY = partTopY + (mountDef.mountDefinition.fairingTopOffset * mountDef.scale);
             updateFairingPosition(!mountDef.mountDefinition.fairingDisabled);
             updateNodePositions();
@@ -289,7 +311,7 @@ namespace SSTUTools
             else
             {
                 SSTUEngineLayout layout = null;
-                layoutMap.TryGetValue(layoutName, out layout);
+                layoutMap.TryGetValue(localLayoutName, out layout);
                 float posX, posZ, rot;
                 float spacingScale = engineScale * mountSpacing;
                 GameObject mountClone;
@@ -315,13 +337,18 @@ namespace SSTUTools
         /// <summary>
         /// Updates the vertical position of the engine models based on the current engineY value.  That value should be pre-computed for scale and verticalOffset value.
         /// </summary>
-        private void updateEngineModelPositions(float mountSpacing)
+        private void updateEngineModelPositions(String layoutName, float mountSpacing, bool useScale)
         {
             SSTUEngineLayout layout = null;
             layoutMap.TryGetValue(layoutName, out layout);
 
+            if (layout.positions.Count != getNumOfEngines())
+            {
+                layout = getEngineLayout();
+            }
+
             float posX, posZ, rot;
-            float spacingScale = engineScale * mountSpacing;
+            float spacingScale = mountSpacing * (useScale ? engineScale : 1);
 
             GameObject model;
             SSTUEnginePosition position;
@@ -336,6 +363,45 @@ namespace SSTUTools
                 model.transform.localPosition = new Vector3(posX, engineY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
             }
+                        
+            Transform smokeTransform = part.FindModelTransform(smokeTransformName);
+            if (smokeTransform != null)
+            {
+                Vector3 pos = smokeTransform.localPosition;
+                pos.y = engineY + (engineScale * smokeTransformOffset);
+                smokeTransform.localPosition = pos;
+            }
+        }
+
+        /// <summary>
+        /// Proper method to return number of engines that this engine cluster supports.  To be used by editor-part-group testing code?
+        /// </summary>
+        /// <returns></returns>
+        private int getNumOfEngines()
+        {
+            SSTUEngineLayout engineLayout = getEngineLayout();
+            if (engineLayout != null)
+            {
+                return engineLayout.positions.Count;
+            }
+            return 1;
+        }
+
+        /// <summary>
+        /// 'Safe' method to get the current engine layout, with very basic caching of result.
+        /// </summary>
+        /// <returns></returns>
+        private SSTUEngineLayout getEngineLayout()
+        {
+            loadMap();
+            if (engineLayout == null)
+            {
+                if (!layoutMap.TryGetValue(layoutName, out engineLayout))
+                {
+                    print("ERROR: Could not locate engine layout for definition name: " + layoutName);
+                }
+            }
+            return engineLayout;
         }
 
         /// <summary>
@@ -397,21 +463,28 @@ namespace SSTUTools
     /// </summary>
     public class SSTUEngineMount
     {
-        //not used, pretty much for reference only, and to allow for non-empty, but logically empty, definition entries
-        public String mountName = String.Empty;
+        //name of the mount definition to load
+        public String name = String.Empty;
+        //engine layout override for this mount option; -must- have the same number of engines, or will be ignored
+        public String layoutName = String.Empty;
         //scale to render model at
         public float scale = 1f;
-        //if should use the spacing override defined in the mount definition
+        //local mount spacing override; will -always- be used if it is >0
+        //it is an -unscaled- value, as it is a config-local option; it uses neither engine scale, nor mount scale; and must be scaled manually
+        public float mountSpacing = 0f;
+        //if should use the spacing override defined in the base mount definition
         public bool useSpacingOverride = true;
         //local cached reference to the full mount definition for this mount link
         public SSTUEngineMountDefinition mountDefinition = null;
 
         public SSTUEngineMount(ConfigNode node)
         {
-            mountName = node.GetStringValue("name");
+            name = node.GetStringValue("name");
+            layoutName = node.GetStringValue("layoutName", String.Empty);
             scale = node.GetFloatValue("scale", scale);
+            mountSpacing = node.GetFloatValue("mountSpacing", mountSpacing);
             useSpacingOverride = node.GetBoolValue("useSpacingOverride", useSpacingOverride);
-            SSTUEngineCluster.mountMap.TryGetValue(mountName, out mountDefinition);
+            SSTUEngineCluster.mountMap.TryGetValue(name, out mountDefinition);
         }
     }
 
