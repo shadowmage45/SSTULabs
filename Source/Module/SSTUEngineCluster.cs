@@ -60,9 +60,7 @@ namespace SSTUTools
         public float fairingTopY = 0;
         public float fairingBottomY = 0;
         public float partDefaultMass = 0;
-
-        private SSTUEngineLayout engineLayout = null;
-        
+                
         [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void nextMountEvent()
         {
@@ -245,7 +243,7 @@ namespace SSTUTools
             engineY = partTopY + (engineYOffset * engineScale);
             fairingBottomY = partTopY - (engineHeight * engineScale);
             fairingTopY = partTopY;
-            if (index >= engineMounts.Count || index < 0)//invalid selection, set engines to default positioning
+            if (index >= engineMounts.Count || index < 0 || engineMounts[index]==null)//invalid selection, set engines to default positioning
             {
                 updateEngineModelPositions(this.layoutName, mountSpacing, true);
                 updateFairingPosition(true);
@@ -255,14 +253,6 @@ namespace SSTUTools
             }
 
             SSTUEngineMount mountDef = engineMounts[index];
-            if (mountDef == null || String.IsNullOrEmpty(mountDef.mountDefinition.modelName))//no mount def, or no model
-            {
-                updateEngineModelPositions(this.layoutName, mountSpacing, true);
-                updateFairingPosition(true);
-                updateNodePositions();
-                part.mass = partDefaultMass;
-                return;
-            }
 
             float mountY = partTopY + (mountDef.scale * mountDef.mountDefinition.verticalOffset);
             float mountScaledHeight = mountDef.mountDefinition.height * mountDef.scale;
@@ -292,45 +282,53 @@ namespace SSTUTools
             updateFairingPosition(!mountDef.mountDefinition.fairingDisabled);
             updateNodePositions();
 
-            GameObject mountModel = GameDatabase.Instance.GetModelPrefab(mountDef.mountDefinition.modelName);
-            Transform modelBase = part.FindModelTransform("model");
-            if (mountModel == null || modelBase == null) { return; }
+            SSTUEngineLayout layout = getEngineLayout(localLayoutName);
             if (mountDef.mountDefinition.singleModel)
             {
-                GameObject mountClone = (GameObject)GameObject.Instantiate(mountModel);
-                mountClone.name = mountModel.name;
-                mountClone.transform.name = mountModel.transform.name;
-                mountClone.transform.NestToParent(modelBase);
-                mountClone.transform.localPosition = new Vector3(0, mountY, 0);
-                mountClone.transform.localRotation = mountDef.mountDefinition.invertModel ? Quaternion.AngleAxis(180, Vector3.forward) : Quaternion.AngleAxis(0, Vector3.up);
-                mountClone.transform.localScale = new Vector3(mountDef.scale, mountDef.scale, mountDef.scale);
-                mountClone.SetActive(true);
-                mountModels.Add(mountClone);
                 part.mass = partDefaultMass + mountDef.mountDefinition.mountMass;
             }
             else
             {
-                SSTUEngineLayout layout = null;
-                layoutMap.TryGetValue(localLayoutName, out layout);
-                float posX, posZ, rot;
-                float spacingScale = engineScale * mountSpacing;
-                GameObject mountClone;
-                foreach (SSTUEnginePosition position in layout.positions)
+                part.mass = partDefaultMass + (mountDef.mountDefinition.mountMass * layout.positions.Count);
+            }
+            if (!String.IsNullOrEmpty(mountDef.mountDefinition.modelName))//has mount model
+            {
+                GameObject mountModel = GameDatabase.Instance.GetModelPrefab(mountDef.mountDefinition.modelName);
+                Transform modelBase = part.FindModelTransform("model");
+                if (mountModel == null || modelBase == null) { return; }
+                if (mountDef.mountDefinition.singleModel)
                 {
-                    posX = position.scaledX(spacingScale);
-                    posZ = position.scaledZ(spacingScale);
-                    rot = position.rotation;
-                    mountClone = (GameObject)GameObject.Instantiate(mountModel);
+                    GameObject mountClone = (GameObject)GameObject.Instantiate(mountModel);
                     mountClone.name = mountModel.name;
                     mountClone.transform.name = mountModel.transform.name;
                     mountClone.transform.NestToParent(modelBase);
-                    mountClone.transform.localPosition = new Vector3(posX, mountY, posZ);
-                    mountClone.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
+                    mountClone.transform.localPosition = new Vector3(0, mountY, 0);
+                    mountClone.transform.localRotation = mountDef.mountDefinition.invertModel ? Quaternion.AngleAxis(180, Vector3.forward) : Quaternion.AngleAxis(0, Vector3.up);
                     mountClone.transform.localScale = new Vector3(mountDef.scale, mountDef.scale, mountDef.scale);
                     mountClone.SetActive(true);
                     mountModels.Add(mountClone);
                 }
-                part.mass = partDefaultMass + (mountDef.mountDefinition.mountMass * layout.positions.Count);
+                else
+                {
+                    float posX, posZ, rot;
+                    float spacingScale = engineScale * mountSpacing;
+                    GameObject mountClone;
+                    foreach (SSTUEnginePosition position in layout.positions)
+                    {
+                        posX = position.scaledX(spacingScale);
+                        posZ = position.scaledZ(spacingScale);
+                        rot = position.rotation;
+                        mountClone = (GameObject)GameObject.Instantiate(mountModel);
+                        mountClone.name = mountModel.name;
+                        mountClone.transform.name = mountModel.transform.name;
+                        mountClone.transform.NestToParent(modelBase);
+                        mountClone.transform.localPosition = new Vector3(posX, mountY, posZ);
+                        mountClone.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
+                        mountClone.transform.localScale = new Vector3(mountDef.scale, mountDef.scale, mountDef.scale);
+                        mountClone.SetActive(true);
+                        mountModels.Add(mountClone);
+                    }
+                }
             }
         }
  
@@ -388,18 +386,21 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// 'Safe' method to get the current engine layout, with very basic caching of result.
+        /// 'Safe' method to get the current default engine layout
         /// </summary>
         /// <returns></returns>
         private SSTUEngineLayout getEngineLayout()
         {
+            return getEngineLayout(layoutName);
+        }
+
+        private SSTUEngineLayout getEngineLayout(String layoutName)
+        {
             loadMap();
-            if (engineLayout == null)
+            SSTUEngineLayout engineLayout = null;
+            if (!layoutMap.TryGetValue(layoutName, out engineLayout))
             {
-                if (!layoutMap.TryGetValue(layoutName, out engineLayout))
-                {
-                    print("ERROR: Could not locate engine layout for definition name: " + layoutName);
-                }
+                print("ERROR: Could not locate engine layout for definition name: " + layoutName);
             }
             return engineLayout;
         }

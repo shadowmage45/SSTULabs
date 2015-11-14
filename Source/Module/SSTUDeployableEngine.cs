@@ -11,7 +11,7 @@ namespace SSTUTools
 
         private SSTUAnimateControlled animationControl;
 
-        [KSPAction("Toggle Deploy")]
+        [KSPAction("Toggle Engine Deployment")]
         public void toggleDeployment(KSPActionParam param)
         {
             if (animationControl != null)
@@ -60,10 +60,7 @@ namespace SSTUTools
                 setAnimationState(SSTUAnimState.PLAYING_FORWARD);
             }
         }
-
-        #warning this causes NREs in the editor
-        //TODO fix ^^
-        //hopefully unity is smart about calling the proper FixedUpdate method, this... seems to work so far
+        
         new public void FixedUpdate()
         {
             base.FixedUpdate();
@@ -133,7 +130,10 @@ namespace SSTUTools
         {
             if (state == SSTUAnimState.STOPPED_END)
             {
-                base.Activate();
+                if (HighLogic.LoadedSceneIsFlight)
+                {
+                    base.Activate();
+                }
             }
         }
         
