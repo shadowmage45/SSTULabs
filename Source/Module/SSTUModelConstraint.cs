@@ -68,10 +68,7 @@ namespace SSTUTools
 
         private void updateLookConstraint(SSTULookConstraint lookConst)
         {
-            foreach (Transform mover in lookConst.movers)
-            {
-                mover.LookAt(lookConst.target, part.transform.up);
-            }
+            lookConst.mover.LookAt(lookConst.target, lookConst.mover.up);
         }
 
         private void loadLookConstraint(ConfigNode node)
@@ -79,41 +76,25 @@ namespace SSTUTools
             String transformName = node.GetStringValue("transformName");
             String targetName = node.GetStringValue("targetName");
             bool singleTarget = node.GetBoolValue("singleTarget", false);
-            Vector3 axis = node.GetVector3("axis", Vector3.forward);
             Transform[] movers = part.FindModelTransforms(transformName);
             Transform[] targets = part.FindModelTransforms(targetName);
             int len = movers.Length;
             SSTULookConstraint lookConst;
-            if (singleTarget)
+            for (int i = 0; i < len; i++)
             {
                 lookConst = new SSTULookConstraint();
-                lookConst.target = targets[0];
-                for (int i = 0; i < len; i++)
-                {
-                    lookConst.movers.Add(movers[i]);
-                }
-                lookConst.axis = axis;
+                lookConst.target = singleTarget ? targets[0] : targets[i];
+                lookConst.mover = movers[i];                
                 lookConstraints.Add(lookConst);
-            }
-            else
-            {
-                for (int i = 0; i < len; i++)
-                {
-                    lookConst = new SSTULookConstraint();
-                    lookConst.target = targets[i];
-                    lookConst.movers.Add(movers[i]);
-                    lookConst.axis = axis;
-                    lookConstraints.Add(lookConst);
-                }
             }
         }
     }
 
     public class SSTULookConstraint
     {
-        public List<Transform> movers = new List<Transform>();
+        public Transform mover;
         public Transform target;
-        public Vector3 axis = Vector3.forward;
+        public Vector3 upAxis = Vector3.forward;
     }
 
     public class SSTUPosConstraint

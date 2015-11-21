@@ -69,6 +69,12 @@ namespace SSTUTools
             if (index >= engineMounts.Count) { index = 0; }
             if (index < 0) { index = 0; }
             enableMount(index);
+
+            int moduleIndex = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).enableMount(index);
+            }
         }
 
         public override void OnStart(PartModule.StartState state)

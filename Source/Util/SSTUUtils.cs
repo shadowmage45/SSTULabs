@@ -125,6 +125,7 @@ namespace SSTUTools
 
         public static void destroyChildren(Transform tr)
         {
+            if (tr == null) { return; }
             int len = tr.childCount;
             for (int i = 0; i < len; i++)
             {

@@ -144,11 +144,6 @@ namespace SSTUTools
         private float lastBottomRadiusExtra;
         private float lastHeightExtra;
 
-        //quick references to part attach nodes
-        private AttachNode lowerNode;
-        private AttachNode upperNode;
-        private AttachNode innerNode;
-
         //reference to the base transform for the display model for the part
         //used to parent the fairing root to this
         private Transform modelBase;
@@ -270,9 +265,6 @@ namespace SSTUTools
         public override void OnStart(PartModule.StartState state)
         {
             base.OnStart(state);
-            upperNode = part.findAttachNode(topNodeName);
-            lowerNode = part.findAttachNode(bottomNodeName);
-            innerNode = part.findAttachNode(internalNodeName);
 
             modelBase = part.FindModelTransform(modelMeshName);
             SSTUUtils.enableRenderRecursive(modelBase, false);
@@ -284,9 +276,7 @@ namespace SSTUTools
                 boundsCollider = null;
             }
 
-            restoreEditorFields();
-            updateModelParameters();
-            updateFairingHeight();//will restore previously saved fairing configuration
+            initialize();
 
             if (HighLogic.LoadedSceneIsFlight)//if in flight, selectively enable/disable the actions/gui events
             {
@@ -323,6 +313,7 @@ namespace SSTUTools
             base.OnLoad(node);
             restoreEditorFields();
             updateModelParameters();
+            updateNodePositions();
             if (HighLogic.LoadedSceneIsFlight)
             {
                 boundsCollider = part.gameObject.AddComponent<BoxCollider>();
@@ -330,8 +321,14 @@ namespace SSTUTools
                 float diameter = bottomRadius > topRadius ? bottomRadius : topRadius;
                 boundsCollider.size = new Vector3(diameter, currentHeight + baseHeight, diameter);
             }
-
             loadMaterial();//reload the material, to catch a case where the material name differs from the prefab config
+        }
+
+        private void initialize()
+        {
+            restoreEditorFields();
+            updateModelParameters();
+            updateFairingHeight();//will restore previously saved fairing configuration
         }
 
         public override void OnAwake()
@@ -586,8 +583,6 @@ namespace SSTUTools
 
             if (HighLogic.LoadedSceneIsEditor)
             {
-                GameEvents.onEditorPartEvent.Fire(ConstructionEventType.PartTweaked, part);
-
                 EditorLogic el = EditorLogic.fetch;
                 if (el != null)
                 {
@@ -677,15 +672,26 @@ namespace SSTUTools
             float lowestY = -halfDistance;
             float innerY = -halfDistance + baseHeight;
             float topY = halfDistance;
-            Vector3 bottomPos = lowerNode.position.CopyVector();
-            bottomPos.y = lowestY;
-            Vector3 innerPos = innerNode.position.CopyVector();
-            innerPos.y = innerY;
-            Vector3 topPos = upperNode.position.CopyVector();
-            topPos.y = topY;
-            SSTUUtils.updateAttachNodePosition(part, lowerNode, bottomPos, lowerNode.orientation);
-            SSTUUtils.updateAttachNodePosition(part, innerNode, innerPos, innerNode.orientation);
-            SSTUUtils.updateAttachNodePosition(part, upperNode, topPos, upperNode.orientation);
+
+            Vector3 topLocal = new Vector3(0, topY, 0);
+            Vector3 innerLocal = new Vector3(0, innerY, 0);
+            Vector3 bottomLocal = new Vector3(0, lowestY, 0);
+
+            AttachNode node = part.findAttachNode(bottomNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, bottomLocal, node.orientation);
+            }
+            node = part.findAttachNode(internalNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, innerLocal, node.orientation);
+            }
+            node = part.findAttachNode(topNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, topLocal, node.orientation);
+            }
         }
 
         #endregion
@@ -695,7 +701,8 @@ namespace SSTUTools
         private void updateShieldStatus()
         {
             clearShieldedParts();
-            if (!deployed && upperNode.attachedPart != null)
+            AttachNode upperNode = part.findAttachNode(topNodeName);
+            if (!deployed && upperNode!=null && upperNode.attachedPart != null)
             {
                 findShieldedParts();
             }
@@ -720,7 +727,8 @@ namespace SSTUTools
             {
                 clearShieldedParts();
             }
-            if (upperNode.attachedPart == null)//nothing on upper node to do the shielding...
+            AttachNode upperNode = part.findAttachNode(topNodeName);
+            if (upperNode==null || upperNode.attachedPart == null)//nothing on upper node to do the shielding...
             {
                 return;
             }

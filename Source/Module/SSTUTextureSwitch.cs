@@ -35,6 +35,11 @@ namespace SSTUTools
         public void nextTextureSetEvent()
         {
             enableTextureSet(findNextTextureSet(currentTextureSet, false));
+            int index = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                ((SSTUTextureSwitch)p.Modules[index]).enableTextureSet(currentTextureSet);
+            }
         }
 
         public override void OnLoad(ConfigNode node)
@@ -90,7 +95,7 @@ namespace SSTUTools
             {
                 ts.enable(part);
             }
-            currentTextureSet = name;
+            currentTextureSet = name;           
         }
 
         private String findNextTextureSet(String currentType, bool iterateBackwards)
