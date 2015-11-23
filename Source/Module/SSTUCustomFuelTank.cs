@@ -562,6 +562,7 @@ namespace SSTUTools
                 if (list[i] == current)
                 {
                     index = i;
+                    break;
                 }
             }
 
@@ -604,6 +605,7 @@ namespace SSTUTools
                 if (fuelTypeList[i].Equals(currentType))
                 {
                     index = i;
+                    break;
                 }
             }
             if (index == -1)

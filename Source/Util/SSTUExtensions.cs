@@ -15,6 +15,18 @@ namespace SSTUTools
             return GetStringValue(node, name, "");
         }
 
+        public static bool[] GetBoolValues(this ConfigNode node, String name)
+        {
+            String[] values = node.GetValues(name);
+            int len = values.Length;
+            bool[] vals = new bool[len];            
+            for (int i = 0; i < len; i++)
+            {
+                vals[i] = SSTUUtils.safeParseBool(values[i]);
+            }
+            return vals;
+        }
+
         public static bool GetBoolValue(this ConfigNode node, String name, bool defaultValue)
         {
             String value = node.GetValue(name);

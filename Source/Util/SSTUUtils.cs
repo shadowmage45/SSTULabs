@@ -38,6 +38,20 @@ namespace SSTUTools
             return returnVal;
         }
 
+        internal static bool safeParseBool(string v)
+        {
+            bool value = false;
+            try
+            {
+                value = Boolean.Parse(v);
+            }
+            catch (Exception e)
+            {
+                MonoBehaviour.print("could not parse bool value from : " + v);
+            }
+            return value;
+        }
+
         public static float safeParseFloat(String val)
         {
             float returnVal = 0;

@@ -12,7 +12,7 @@ namespace SSTUTools
         internal string category = "Filter by Function";
         internal string subCategoryTitle = "SSTU - Engine Clusters";
         internal string defaultTitle = "SSTU";
-        internal string iconName = "R&D_node_icon_start";
+        internal string iconName = "R&D_node_icon_advrocketry";
 
         void Awake()
         {
