@@ -22,7 +22,7 @@ namespace SSTUTools
         public bool removeMass = true; //if true, fairing mass is removed from parent part when jettisoned (and on part reload)
         public float fairingJettisonMass = 0.1f;//mass of the fairing to be jettisoned; combined with jettisonForce this determines how energetically they are jettisoned
         public float jettisonForce = 10;//force in N to apply to jettisonDirection to each of the jettisoned panel sections
-        public Vector3 jettisonDirection = new Vector3(0, -1, 0);//default jettison direction is negative Y (downwards)
+        public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is negative Y (downwards)
 
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node)
@@ -97,15 +97,6 @@ namespace SSTUTools
         {
             theFairing.enablePanelColliders(enable, convex);
         }
-    }
-
-    public enum FairingType
-    {
-        MANUAL_JETTISON,//manually deployed fairing of any/all type.  always present until user jettisons (in editor or flight)
-        NODE_ATTACHED,//watches node, only present if part is on node.  stays attached to -other- part
-        NODE_JETTISON,//watches node, only present if part is on node.  jettisons to float freely when part detached (true interstage)
-        NODE_DESPAWN,//watches node, only present if part is on node.  despawns when part attached to node is decoupled
-        NODE_STATIC,//watches node, only present if part is on node.  remains present on parent part regardless of decoupled status
     }
 }
 

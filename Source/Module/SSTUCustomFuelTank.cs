@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Collections.ObjectModel;
 using UnityEngine;
 
 namespace SSTUTools
@@ -366,33 +364,15 @@ namespace SSTUTools
             tankVolume = mainTankDef.tankVolume + topCapDef.tankVolume + bottomCapDef.tankVolume;
             if (useRF)
             {
-                Type moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
-                if (moduleFuelTank == null)
-                {
-                    print("Fuel tank is set to use RF, but RF not installed!!");
-                    return;
-                }
-                PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
-                if (pm == null)
-                {
-                    print("ERROR! could not find fuel tank module in part for RealFuels");
-                    return;
-                }
-                MethodInfo mi = moduleFuelTank.GetMethod("ChangeTotalVolume");
-                double val = tankVolume * 1000f;
-                mi.Invoke(pm, new System.Object[] { val, false });
-                print("set RF total tank volume to: " + val);
-                MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
-                mi2.Invoke(pm, new System.Object[] { });
-
+                SSTUUtils.updateRealFuelsPartVolume(part, tankVolume);
             }
             else
             {
                 SSTUFuelType fuelType = SSTUFuelTypes.INSTANCE.getFuelType(currentFuelType);
                 if (fuelType != null)
                 {
-                    tankDryMass = fuelType.tankageVolumeLoss * fuelType.tankageMassFactor * tankVolume;//tankage mass based off of raw volume			
                     tankVolume -= fuelType.tankageVolumeLoss * tankVolume;//subtract tankage loss from raw volume to derive usable volume, all other calculations will use 'usable volume'
+                    tankDryMass = fuelType.tankageMassFactor * tankVolume;//tankage mass based off of total volume			
                     tankCost = fuelType.costPerDryTon * tankDryMass + fuelType.getResourceCost(tankVolume);
                 }
                 part.mass = tankDryMass;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Reflection;
 
 namespace SSTUTools
 {
@@ -22,6 +23,46 @@ namespace SSTUTools
                 }
             }
             return interfacesList.ToArray();
+        }
+
+        public static T findNext<T>(T[] array, System.Predicate<T> alg, bool iterateBackwards)
+        {
+            int index = findIndex<T>(array, alg);
+            int len = array.Length;
+            if (index < 0 || index >= len)
+            {
+                return default(T);//invalid
+            }
+            int iter = iterateBackwards ? -1 : 1;
+            index += iter;
+            if (index < 0) { index = len - 1; }
+            if (index >= len) { index = 0; }
+            return array[index];
+        }
+
+        public static T findNext<T>(List<T> list, System.Predicate<T> alg, bool iterateBackwards)
+        {
+            int index = findIndex<T>(list, alg);
+            int len = list.Count;
+            if (index < 0 || index >= len)
+            {
+                return default(T);//invalid
+            }
+            int iter = iterateBackwards ? -1 : 1;
+            index += iter;
+            if (index < 0) { index = len - 1; }
+            if (index >= len) { index = 0; }
+            return list[index];
+        }
+
+        public static int findIndex<T>(T[] array, System.Predicate<T> alg)
+        {            
+            return Array.FindIndex<T>(array, alg);
+        }
+
+        public static int findIndex<T>(List<T> list, System.Predicate<T> alg)
+        {
+            return list.FindIndex(alg);
         }
 
         public static double safeParseDouble(String val)
@@ -47,7 +88,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("could not parse bool value from : " + v);
+                MonoBehaviour.print("could not parse bool value from : " + v+"\n" + e.Message);
             }
             return value;
         }
@@ -516,6 +557,56 @@ namespace SSTUTools
                     GameObject.Destroy(tr.gameObject);
                 }
             }
+        }
+
+        public static GameObject cloneModel(String modelURL)
+        {
+            GameObject clonedModel = null;
+            GameObject prefabModel = GameDatabase.Instance.GetModelPrefab(modelURL);
+            if (prefabModel != null)
+            {
+                clonedModel = (GameObject)GameObject.Instantiate(prefabModel);
+                clonedModel.name = modelURL;
+                clonedModel.transform.name = modelURL;
+                clonedModel.SetActive(true); 
+            }
+            else
+            {
+                MonoBehaviour.print("Could not clone model by name: " + modelURL);
+            }
+            return clonedModel;
+        }
+
+        public static void updateRealFuelsPartVolume(Part part, float cubicMeters)
+        {
+            Type moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
+            if (moduleFuelTank == null)
+            {
+                MonoBehaviour.print("Fuel tank is set to use RF, but RF not installed!!");
+                return;
+            }
+            PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
+            if (pm == null)
+            {
+                MonoBehaviour.print("ERROR! could not find fuel tank module in part for RealFuels");
+                return;
+            }
+            MethodInfo mi = moduleFuelTank.GetMethod("ChangeTotalVolume");
+            double val = cubicMeters * 1000f;
+            mi.Invoke(pm, new System.Object[] { val, false });
+            MonoBehaviour.print("set RF total tank volume to: " + val);
+            MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
+            mi2.Invoke(pm, new System.Object[] { });
+        }
+        
+        public static double toRadians(double val)
+        {
+            return (Math.PI / 180d) * val;
+        }
+
+        public static double toDegrees(double val)
+        {
+            return val * (180d / Math.PI);
         }
 
     }

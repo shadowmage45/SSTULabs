@@ -4,6 +4,8 @@ namespace SSTUTools
 {
     public static class SSTUExtensions
     {
+        #region ConfigNode extension methods
+
         public static string GetStringValue(this ConfigNode node, String name, String defaultValue)
         {
             String value = node.GetValue(name);
@@ -107,6 +109,8 @@ namespace SSTUTools
             return GetIntValue(node, name, 0);
         }
 
+        
+
         public static Vector3 GetVector3(this ConfigNode node, String name, Vector3 defaultValue)
         {
             String value = node.GetValue(name);
@@ -140,10 +144,17 @@ namespace SSTUTools
             return new Vector3((float)SSTUUtils.safeParseDouble(vals[0]), (float)SSTUUtils.safeParseDouble(vals[1]), (float)SSTUUtils.safeParseDouble(vals[2]));
         }
 
+        #endregion
+
+        #region Vector3 extensionMethods
+
         public static Vector3 CopyVector(this Vector3 input)
         {
             return new Vector3(input.x, input.y, input.z);
         }
+
+        #endregion
+
     }
 }
 

@@ -9,52 +9,76 @@ namespace SSTUTools
     /// </summary>           
     public class SSTUNodeFairing : PartModule, IAirstreamShield
     {
+        #region REGION - Standard KSP Config Fields
+        
+        [KSPField]
+        public String diffuseTextureName = "UNKNOWN";
 
-        #region KSP Part Module config vars for entire fairing
-
-        [KSPField(isPersistant = true, guiName = "Fairing Type", guiActiveEditor = true)]
-        public string fairingType = FairingType.NODE_ATTACHED.ToString();
+        [KSPField]
+        public String normalTextureName = "UNKNOWN";        
+                
+        /// <summary>
+        /// CSV List of transforms to remove from the model, to be used to override stock engine fairing configuration
+        /// </summary>
+        [KSPField]
+        public String rendersToRemove = String.Empty;
 
         /// <summary>
-        /// Is the fairing -currently- enabled? this may change in VAB from user adding/removing parts, or in-flight from disconnect.  this will be force-set to false if jettisioned is true.  
-        /// This var basically just tracks the visible status at any moment
+        /// Name used for GUI actions for this fairing
         /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool fairingEnabled = false;
+        [KSPField]
+        public String fairingName = "Fairing";
+        
+        /// <summary>
+        /// If can manually jettison, this will be the action name in the GUI (combined with fairing name above)
+        /// </summary>
+        [KSPField]
+        public String actionName = "Jettison";
 
         /// <summary>
-        /// Has the fairing been jettisoned?  It may not be recovered once jettisoned; this flag will keep the node-watching from respawning the fairing
+        /// The node that this fairing will watch if fairing type == node
         /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool jettisoned = false;
+        [KSPField]
+        public String nodeName = String.Empty;
 
         [KSPField]
-        public string diffuseTextureName = "UNKNOWN";
+        public bool snapToNode = true;
 
         [KSPField]
-        public string normalTextureName = "UNKNOWN";
-
-        //watch this node, if a part is attached, spawn the fairing
-        //only enabled if 'watchNode==true'
-        [KSPField]
-        public string nodeName = "bottom";
-
-        //CSV list of transform names to disable renders on (to override stock ModuleJettison mechanics) - should also MM patch remove the ModuleJettsion from the part...
-        [KSPField]
-        public string rendersToRemove = string.Empty;
+        public bool snapToSecondNode = false;
 
         [KSPField]
-        public string fairingName = "Fairing";
+        public bool canDisableInEditor = true;
 
-        //if manual deploy is enabled, this will be the button/action group text
+        /// <summary>
+        /// Can user jettison fairing manually when in flight? - should mostly be used for non-node attached fairings
+        /// </summary>
         [KSPField]
-        public string actionName = "Jettison";
+        public bool canManuallyJettison = false;
+
+        /// <summary>
+        /// If the fairing will automatically jettison/reparent when its attached node is decoupled
+        /// </summary>
+        [KSPField]
+        public bool canAutoJettison = true;
+
+        [KSPField]
+        public bool canAdjustTop = false;
+
+        [KSPField]
+        public bool canAdjustBottom = false; 
 
         /// <summary>
         /// Can user adjust the enabled/disabled and fairing type?
         /// </summary>
         [KSPField]
-        public bool canAdjustToggles = false;
+        public bool canAdjustType = false;
+
+        /// <summary>
+        /// Can user adjust how many fairing sections this fairing consists of?
+        /// </summary>
+        [KSPField]
+        public bool canAdjustSections = true;
 
         /// <summary>
         /// Increment to be used when adjusting top radius
@@ -92,15 +116,73 @@ namespace SSTUTools
         [KSPField]
         public float minBottomRadius = 0.625f;
 
+        #endregion
+
+        #region REGION - GUI Visible Config Fields
+
         /// <summary>
         /// UI field to tell user how many parts are shielded by fairing.  Only enabled on those fairings that have shielding enabled
         /// </summary>
         [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Shielded Part Count")]
         public int shieldedPartCount = 0;
 
+        /// <summary>
+        /// Number of sections for the fairing, only enabled for editing if 'canAdjustSections' == true
+        /// </summary>
+        [KSPField(guiActiveEditor = true, guiName = "Fairing Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f)]
+        public float numOfSections = 1;
+
+        /// <summary>
+        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
+        /// </summary>
+        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        public float topRadiusExtra;
+
+        /// <summary>
+        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
+        /// </summary>
+        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        public float bottomRadiusExtra;
+        
         #endregion
 
-        #region fairing airstream shield vars
+        #region REGION - Persistent config fields
+                                
+        /// <summary>
+        /// Has the fairing been jettisoned?  If true, no further interaction is possible.  Only set to true by in-flight jettison actions
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public bool fairingJettisoned = false;
+        
+        /// <summary>
+        /// If fairing has been 'force' disabled by user or external plugin interaction - overrides all other enabled/disabled settings
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public bool fairingEnabled = true;
+
+        /// <summary>
+        /// Persistent tracking of if the fairing has removed its 'jettision mass' from the parent part (and added it to its attached part, if a node-attached fairing)
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public bool removedMass = false;
+
+        //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
+        /// <summary>
+        /// Persistent data from fairing parts; stores their current top/bottom positions and radius data
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public String persistentDataString = String.Empty;
+        
+        /// <summary>
+        /// The raw config node for this PartModule, stashed during prefab initialization, public/peristent so that unity will serialize it to non-prefab parts correctly
+        /// </summary>
+        [Persistent]
+        public String configNodeData = String.Empty;
+
+        #endregion
+
+        #region REGION - fairing airstream shield vars
+
         /// <summary>
         /// Determines if this fairing should check for part shielding.
         /// If true, the shieldTopY, shieldBottomY, shieldTopRadius, and shieldBottomRadius fields will need to be properly populated in the config
@@ -119,15 +201,9 @@ namespace SSTUTools
 
         [KSPField]
         public float shieldBottomRadius;
-
-        /// <summary>
-        /// Persistent tracking of if the fairing has removed its 'jettision mass' from the parent part (and added it to its attached part, if a node-attached fairing)
-        /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool removedMass = false;
         #endregion
 
-        #region working vars, not user editable
+        #region REGION - private working vars, not user editable
         //radius adjustment fields, mostly used in editor
         //these values are restored during the OnStart operation, and only used in the editor
         //the 'live' values for the fairing are stored persistently and used directly to update the
@@ -137,138 +213,110 @@ namespace SSTUTools
         private float editorBottomRadius = 0;
         private float lastTopExtra = 0;
         private float lastBottomExtra = 0;
+        private float prevNumOfSections = 0;
 
-        /// <summary>
-        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
-        /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float topRadiusExtra;
-
-        /// <summary>
-        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
-        /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float bottomRadiusExtra;
-
-        //The current user-selected or config designated fairing type
-        private FairingType typeEnum = FairingType.NODE_ATTACHED;
-
-        //the part attached to this fairings watched node, if applicable.  null either means no part, or not applicable for this fairing.
-        private Part attachedPart = null;
-
+        private bool currentlyEnabled = false;
+        private bool renderingJettisonedFairing = false;
+        
         //the current fairing panels
         private SSTUNodeFairingData[] fairingParts;
 
         private bool canAdjustBottomRadius;
         private bool canAdjustTopRadius;
-
-        //quick reference to the currently watched attach node, if any
-        private AttachNode watchedNode;
-
+        
         //material used for procedural fairing, created from the texture references above
         private Material fairingMaterial;
 
         //list of shielded parts
         private List<Part> shieldedParts = new List<Part>();
 
-        //only marked public so that it can be serialized from prefab into instance parts
-        [Persistent]
-        public String configNodeString = String.Empty;
+        private Part prevAttachedPart = null;
 
-        //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
-        [KSPField(isPersistant = true)]
-        public String persistentDataString = String.Empty;
+        private bool needsShieldUpdate = false;
 
+        private bool needsRebuilt = false;
+
+        private bool needsGuiUpdate = false;
+
+        private bool currentRenderEnabled = true;
+        
         #endregion
 
-        #region gui actions
+        #region REGION - Gui Interaction Methods
 
         [KSPAction("Jettison Fairing")]
         public void jettisonAction(KSPActionParam param)
         {
-            onJettisonEvent();
+            jettisonFairing();
+            updateGuiState();
         }
 
-        [KSPEvent(name = "jettisonEvent", guiName = "Jettison Fairing", guiActive = true, guiActiveEditor = true)]
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Jettison Fairing", guiActive = true, guiActiveEditor = true)]
         public void jettisonEvent()
         {
-            onJettisonEvent();
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                enableFairing(!fairingEnabled);
+            }
+            else
+            {
+                jettisonFairing();
+            }
+            updateGuiState();
         }
 
-        [KSPEvent(name = "increaseTopRadiusEvent", guiName = "Top Rad +", guiActiveEditor = true)]
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Top Rad +", guiActiveEditor = true)]
         public void increaseTopRadiusEvent()
         {
             if (canAdjustTopRadius && editorTopRadius < maxTopRadius)
             {
                 editorTopRadius += topRadiusAdjustSize;
                 if (editorTopRadius > maxTopRadius) { editorTopRadius = maxTopRadius; }
-                rebuildFairing();
+                needsRebuilt = true;
             }
         }
 
-        [KSPEvent(name = "decreaseTopRadiusEvent", guiName = "Top Rad -", guiActiveEditor = true)]
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Top Rad -", guiActiveEditor = true)]
         public void decreaseTopRadiusEvent()
         {
             if (canAdjustTopRadius && editorTopRadius > minTopRadius)
             {
                 editorTopRadius -= topRadiusAdjustSize;
                 if (editorTopRadius < minTopRadius) { editorTopRadius = minTopRadius; }
-                rebuildFairing();
+                needsRebuilt = true;
             }
         }
 
-        [KSPEvent(name = "increaseBottomRadiusEvent", guiName = "Bottom Rad +", guiActiveEditor = true)]
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Bottom Rad +", guiActiveEditor = true)]
         public void increaseBottomRadiusEvent()
         {
             if (canAdjustBottomRadius && editorBottomRadius < maxBottomRadius)
             {
                 editorBottomRadius += bottomRadiusAdjustSize;
                 if (editorBottomRadius > maxBottomRadius) { editorBottomRadius = maxBottomRadius; }
-                rebuildFairing();
+                needsRebuilt = true;
             }
         }
 
-        [KSPEvent(name = "decreaseBottomRadiusEvent", guiName = "Bottom Rad -", guiActiveEditor = true)]
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Bottom Rad -", guiActiveEditor = true)]
         public void decreaseBottomRadiusEvent()
         {
             if (canAdjustBottomRadius && editorBottomRadius > minBottomRadius)
             {
                 editorBottomRadius -= bottomRadiusAdjustSize;
                 if (editorBottomRadius < minBottomRadius) { editorBottomRadius = minBottomRadius; }
-                rebuildFairing();
+                needsRebuilt = true;
             }
         }
-
-        [KSPEvent(name = "changeTypeEvent", guiName = "Next Fairing Type", guiActiveEditor = true)]
-        public void changeTypeEvent()
-        {
-            switch (typeEnum)
-            {
-                case FairingType.NODE_ATTACHED:
-                    {
-                        typeEnum = FairingType.NODE_DESPAWN;
-                        break;
-                    }
-                case FairingType.NODE_DESPAWN:
-                    {
-                        typeEnum = FairingType.NODE_JETTISON;
-                        break;
-                    }
-                case FairingType.NODE_JETTISON:
-                    {
-                        typeEnum = FairingType.NODE_ATTACHED;
-                        break;
-                    }
-                    //NOOP FOR MANUAL_JETTISON OR NODE_STATIC
-            }
-            fairingType = typeEnum.ToString();//update enum state; it is only ever altered through this method, so this -should- keep things synched
-            updateGuiState();
-        }
-
+        
         #endregion
-
-
-        #region ksp overrides
+        
+        #region REGION - ksp overrides
 
         //on load, not called properly on 'revertToVAB'
         public override void OnLoad(ConfigNode node)
@@ -277,15 +325,13 @@ namespace SSTUTools
             //if prefab, load persistent config data into config node string
             if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
             {
-                configNodeString = node.ToString();
+                configNodeData = node.ToString();
             }
             //load the material...uhh...for use in prefab?? no clue why it is loaded here...probably some reason
             if (fairingMaterial == null)
             {
                 loadMaterial();
             }
-
-            loadFairingType();
         }
 
         public override void OnSave(ConfigNode node)
@@ -309,6 +355,9 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+
+            print("starting up fairing. currently enabled: " + fairingEnabled);
+
             //remove any stock transforms for engine-fairing overrides
             if (rendersToRemove != null && rendersToRemove.Length > 0)
             {
@@ -321,11 +370,8 @@ namespace SSTUTools
                 loadMaterial();
             }
 
-            //reload any previously persistent fairing-type data, e.g. from config for in-editor new parts (cannot rely on OnLoad for new parts)
-            loadFairingType();
-
             //load FairingData instances from config values (persistent data nodes also merged in)
-            loadFairingData(SSTUNodeUtils.parseConfigNode(configNodeString));
+            loadFairingData(SSTUNodeUtils.parseConfigNode(configNodeData));
 
             //restore the editor field values from the loaded fairing (radius adjust stuff)
             if (HighLogic.LoadedSceneIsEditor)
@@ -337,28 +383,26 @@ namespace SSTUTools
             buildFairing();
 
             //update the visible and attachment status for the fairing
-            updateFairingStatus(true);
+            updateFairingStatus();
+            updateGuiState();
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onVesselUnpack));
-            GameEvents.onVesselGoOnRails.Add(new EventData<Vessel>.OnEvent(onVesselPack));
             GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
+            
         }
-
+        
         public void OnDestroy()
         {
             GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Remove(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onVesselUnpack));
-            GameEvents.onVesselGoOnRails.Remove(new EventData<Vessel>.OnEvent(onVesselPack));
             GameEvents.onPartDie.Remove(new EventData<Part>.OnEvent(onPartDestroyed));
         }
 
         public void onVesselModified(Vessel v)
         {
             if (HighLogic.LoadedSceneIsEditor) { return; }
-            updateFairingStatus(false);
+            updateFairingStatus();
         }
 
         public void onEditorVesselModified(ShipConstruct ship)
@@ -366,470 +410,63 @@ namespace SSTUTools
             if (canAdjustTopRadius && topRadiusExtra != lastTopExtra)
             {
                 lastTopExtra = topRadiusExtra;
-                rebuildFairing();
+                needsRebuilt = true;
             }
             if (canAdjustBottomRadius && bottomRadiusExtra != lastBottomExtra)
             {
                 lastBottomExtra = bottomRadiusExtra;
-                rebuildFairing();
+                needsRebuilt = true;
             }
-            updateFairingStatus(false);
+            if (numOfSections != prevNumOfSections)
+            {
+                prevNumOfSections = numOfSections;
+                needsRebuilt = true;
+            }
+            updateFairingStatus();
         }
-
-        public void onVesselUnpack(Vessel v)
-        {
-            updateShieldStatus();
-            updateGuiState();
-        }
-
-        public void onVesselPack(Vessel v)
-        {
-            clearShieldedParts();
-            updateGuiState();
-        }
-
-        //TODO - how to best handle this?
+        
         public void onPartDestroyed(Part p)
         {
             clearShieldedParts();
             if (p != part)
             {
+                needsShieldUpdate = true;
+            }
+        }
+
+        public void Update()
+        {
+            if (needsRebuilt)
+            {
+                needsRebuilt = false;
+                rebuildFairing();
+                needsShieldUpdate = true;
+                needsGuiUpdate = true;
+            }
+            if (needsShieldUpdate)
+            {
+                needsShieldUpdate = false;
                 updateShieldStatus();
+                needsGuiUpdate = true;
             }
-            updateGuiState();
+            if (needsGuiUpdate)
+            {
+                needsGuiUpdate = false;
+                updateGuiState();
+            }
+        }
+
+        public bool initialized()
+        {
+            return fairingParts != null;
         }
 
         #endregion
 
-        #region external interaction methods
-
-        public void setFairingTopY(String fairingName, float newValue)
-        {
-            FairingData data = findFairingData(fairingName);
-            if (data != null)
-            {
-                updateFairingPosition(data, newValue, data.bottomY);
-            }
-        }
-
-        public void setFairingBottomY(String fairingName, float newValue)
-        {
-            FairingData data = findFairingData(fairingName);
-            if (data != null)
-            {
-                updateFairingPosition(data, data.topY, newValue);
-            }
-        }
-
-        public void updateFairingPosition(String fairingName, float newTop, float newBottom)
-        {
-            FairingData data = findFairingData(fairingName);
-            if (data != null)
-            {
-                updateFairingPosition(data, newTop, newBottom);
-            }
-        }
-
-        /// <summary>
-        /// Only works in editor.  Intended to be used for other PartModules to interface with, so that they can dynamically adjust if the fairing is present or not.
-        /// </summary>
-        /// <param name="enable"></param>                      
-        public void enableFairing(bool enable)
-        {
-            if (!HighLogic.LoadedSceneIsEditor || fairingParts == null) { return; }
-            jettisoned = !enable;
-            updateFairingStatus(false);
-        }
-
-        private FairingData findFairingData(String name)
-        {
-            if (fairingParts == null) { return null; }
-            foreach (FairingData data in fairingParts)
-            {
-                if (String.Equals(data.fairingName, name))
-                {
-                    return data;
-                }
-            }
-            return null;
-        }
-
-        private void updateFairingPosition(FairingData data, float topY, float bottomY)
-        {
-            data.topY = topY;
-            data.bottomY = bottomY;
-            rebuildFairing();
-            updateDragCube();
-            updateShieldStatus();
-        }
-
-        #endregion
-
-        #region fairingJettison methods
-
-        /// <summary>
-        /// only called from UI, which is only available for manual-deployed fairing type
-        /// </summary>
-        private void onJettisonEvent()
-        {
-            if (jettisoned)
-            {
-                print("Cannot jettison already jettisoned fairing");
-                return;
-            }
-            if (!fairingEnabled)
-            {
-                print("Cannot jettison disabled fairing");
-                return;
-            }
-            bool jettison = HighLogic.LoadedSceneIsFlight;
-            jettisonFairing(jettison, jettison, true, false);
-        }
-
-        private void jettisonFairing(bool jettisonPanels, bool render, bool removeMass, bool addMass)
-        {
-            if (jettisonPanels && HighLogic.LoadedSceneIsFlight)
-            {
-                foreach (FairingData fd in fairingParts)
-                {
-                    fd.jettisonPanels(part);
-                }
-            }
-            jettisoned = true;
-            fairingEnabled = false;
-            enableFairingRender(render);
-            if (removeMass)
-            {
-                removeFairingMass();
-            }
-            if (addMass && attachedPart != null)
-            {
-                addFairingMass(attachedPart);
-            }
-            updateDragCube();
-            updateShieldStatus();
-            updateGuiState();
-        }
-
-        private void removeFairingMass()
-        {
-            if (removedMass) { return; }
-            removedMass = true;
-            foreach (FairingData fd in fairingParts)
-            {
-                if (fd.removeMass)
-                {
-                    part.mass -= fd.fairingJettisonMass;
-                }
-            }
-        }
-
-        private void addFairingMass(Part part)
-        {
-            if (part == null)
-            {
-                return;
-            }
-            foreach (FairingData fd in fairingParts)
-            {
-                if (fd.removeMass)
-                {
-                    part.mass += fd.fairingJettisonMass;
-                }
-            }
-        }
-
-        #endregion
-
-        //TODO updateDragCube
-        #region private utility methods
-
-        //restores the values to the editor size-adjust fields from the loaded values from the fairing
-        private void restoreEditorFields()
-        {
-            float topRadius = 0;
-            float bottomRadius = 0;
-            foreach (FairingData data in fairingParts)
-            {
-                if (data.canAdjustTop && data.topRadius > topRadius) { topRadius = data.topRadius; }
-                if (data.canAdjustBottom && data.bottomRadius > bottomRadius) { bottomRadius = data.bottomRadius; }
-            }
-            foreach (FairingData data in fairingParts)//loop a second time to fix any adjustable fairings that were below the adjustment size for whatever reason
-            {
-                if (data.canAdjustTop && data.topRadius < topRadius) { data.topRadius =  topRadius; }
-                if (data.canAdjustBottom && data.bottomRadius < bottomRadius) { data.bottomRadius = bottomRadius; }
-            }
-            float div, whole, extra;
-            if (canAdjustTopRadius)
-            {
-                div = topRadius / topRadiusAdjustSize;
-                whole = (int)div;
-                extra = div - whole;
-                editorTopRadius = whole * topRadiusAdjustSize;
-                topRadiusExtra = extra;
-                lastTopExtra = topRadiusExtra;
-            }
-            if (canAdjustBottomRadius)
-            {
-                div = bottomRadius / bottomRadiusAdjustSize;
-                whole = (int)div;
-                extra = div - whole;
-                editorBottomRadius = whole * bottomRadiusAdjustSize;
-                bottomRadiusExtra = extra;
-                lastBottomExtra = bottomRadiusExtra;
-            }
-        }
-
-        private void loadFairingType()
-        {
-            try
-            {
-                typeEnum = (FairingType)Enum.Parse(typeof(FairingType), fairingType);
-            }
-            catch (Exception e)
-            {
-                print(e.Message);
-                fairingType = FairingType.NODE_ATTACHED.ToString();
-                typeEnum = FairingType.NODE_ATTACHED;
-            }
-        }
-
-        //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
-        private void loadFairingData(ConfigNode node)
-        {
-            ConfigNode[] fairingNodes = node.GetNodes("FAIRING");
-            fairingParts = new SSTUNodeFairingData[fairingNodes.Length];
-            for (int i = 0; i < fairingNodes.Length; i++)
-            {
-                fairingParts[i] = new SSTUNodeFairingData();
-                fairingParts[i].load(fairingNodes[i]);
-                if (fairingParts[i].canAdjustTop)
-                {
-                    canAdjustTopRadius = true;
-                }
-                if (fairingParts[i].canAdjustBottom)
-                {
-                    canAdjustBottomRadius = true;
-                }
-            }
-            if (!String.IsNullOrEmpty(persistentDataString))
-            {
-                String[] datas = SSTUUtils.parseCSV(persistentDataString, ":");
-                int length = datas.Length;
-                for (int i = 0; i < length; i++)
-                {
-                    fairingParts[i].loadPersistence(datas[i]);
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Blanket method to update the attached/visible status of the fairing based on its fairing type, current jettisoned status, and if a part is present on the fairings watched node (if any/applicable)
-        /// </summary>
-        private void updateFairingStatus(bool start)
-        {
-            //if jettisoned, fairing is never enabled; jettisoned means -gone-, no coming back from that one
-            if (jettisoned)
-            {
-                fairingEnabled = false;
-            }
-            else if (typeEnum == FairingType.MANUAL_JETTISON)
-            {
-                fairingEnabled = !jettisoned;
-            }
-            else if (typeEnum == FairingType.NODE_DESPAWN || typeEnum == FairingType.NODE_JETTISON || typeEnum == FairingType.NODE_ATTACHED)
-            {
-                watchedNode = part.findAttachNode(nodeName);
-                if (watchedNode == null || watchedNode.attachedPart == null)//fairing should be disabled; there is no lower-part to trigger it being present
-                {
-                    if (HighLogic.LoadedSceneIsEditor)
-                    {
-                        fairingEnabled = false;
-                    }
-                    else if (HighLogic.LoadedSceneIsFlight)
-                    {
-                        if (typeEnum == FairingType.NODE_JETTISON)//should jettison and float freely
-                        {
-                            jettisonFairing(true, true, true, false);
-                        }
-                        else if (typeEnum == FairingType.NODE_DESPAWN)//should immediately despawn
-                        {
-                            jettisonFairing(false, false, true, false);
-                        }
-                        else if (typeEnum == FairingType.NODE_ATTACHED)//should remain attached to other part, transfer mass to attached part
-                        {
-                            jettisonFairing(false, true, true, true);
-                        }
-                    }
-                }
-                else//else has attached node and part, mark as fairingEnabled, and update parentage (if not in editor)
-                {
-                    fairingEnabled = true;
-                    if (HighLogic.LoadedSceneIsFlight)//only reparent the fairing panels if in active flight
-                    {
-                        attachedPart = null;
-                        attachedPart = watchedNode.attachedPart;
-                        foreach (FairingData fd in fairingParts)
-                        {
-                            fd.theFairing.root.transform.parent = watchedNode.attachedPart.transform;
-                        }
-                    }
-                }
-            }
-            else if (typeEnum == FairingType.NODE_STATIC)
-            {
-                watchedNode = part.findAttachNode(nodeName);
-                attachedPart = null;
-                if (HighLogic.LoadedSceneIsEditor)
-                {
-                    fairingEnabled = watchedNode != null && watchedNode.attachedPart != null;
-                }
-            }
-            if (start || HighLogic.LoadedSceneIsEditor)
-            {
-                enableFairingRender(fairingEnabled);
-            }
-            updateShieldStatus();
-            updateGuiState();
-        }
-
-        /// <summary>
-        /// Updates GUI labels and action availability based on current module state (jettisoned, watchedNode attached status, canAdjustRadius, etc)
-        /// </summary>
-        private void updateGuiState()
-        {
-            bool topAdjustEnabled = canAdjustTopRadius;
-            bool bottomAdjustEnabled = canAdjustBottomRadius;
-            if (jettisoned)//adjustment not possible if faring jettisoned
-            {
-                topAdjustEnabled = bottomAdjustEnabled = false;
-            }
-            else if (typeEnum != FairingType.MANUAL_JETTISON)//update status for node-attached fairing....
-            {
-                if (watchedNode == null || watchedNode.attachedPart == null)//ajustment not possible when fairing not visible (node-watching fairing, with nothing attached to node)
-                {
-                    topAdjustEnabled = bottomAdjustEnabled = false;
-                }
-            }
-
-            Events["decreaseTopRadiusEvent"].guiName = fairingName + " Top Rad -";
-            Events["increaseTopRadiusEvent"].guiName = fairingName + " Top Rad +";
-            Events["decreaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad -";
-            Events["increaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad +";
-
-            Events["decreaseTopRadiusEvent"].active = topAdjustEnabled;
-            Events["increaseTopRadiusEvent"].active = topAdjustEnabled;
-            Fields["topRadiusExtra"].guiActiveEditor = topAdjustEnabled;
-            Events["decreaseBottomRadiusEvent"].active = bottomAdjustEnabled;
-            Events["increaseBottomRadiusEvent"].active = bottomAdjustEnabled;
-            Fields["bottomRadiusExtra"].guiActiveEditor = bottomAdjustEnabled;
-
-            Events["changeTypeEvent"].guiName = fairingName + " Type";
-
-            Events["changeTypeEvent"].guiActiveEditor = fairingEnabled && canAdjustToggles && !jettisoned;
-
-            Events["jettisonEvent"].guiName = Actions["jettisonAction"].guiName = actionName + " " + fairingName;
-
-            Events["jettisonEvent"].active = Actions["jettisonAction"].active = fairingEnabled && !jettisoned && typeEnum == FairingType.MANUAL_JETTISON;
-
-            Fields["shieldedPartCount"].guiActive = Fields["shieldedPartCount"].guiActiveEditor = fairingEnabled && shieldParts && !jettisoned;
-            Fields["fairingType"].guiActiveEditor = canAdjustToggles;
-
-            shieldedPartCount = shieldedParts.Count;
-        }
-
-        private void enableFairingRender(bool val)
-        {
-            foreach (FairingData fd in fairingParts)
-            {
-                fd.enableRenders(val);
-            }
-        }
-
-        private void rebuildFairing()
-        {
-            foreach (FairingData fd in fairingParts)
-            {
-                fd.destroyFairing();
-            }
-            buildFairing();
-        }
-
-        private void buildFairing()
-        {
-            if (HighLogic.LoadedSceneIsEditor)//only enforce editor sizing while in the editor;
-            {
-                foreach (SSTUNodeFairingData fd in fairingParts)
-                {
-                    if (fd.canAdjustTop)
-                    {
-                        fd.topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjustSize);
-                    }
-                    if (fd.canAdjustBottom)
-                    {
-                        fd.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);
-                    }
-                }
-            }            
-            foreach (FairingData fd in fairingParts)
-            {
-                fd.createFairing(part, fairingMaterial);
-            }
-            updateDragCube();
-            updateShieldStatus();
-        }
-
-        private void loadMaterial()
-        {
-            if (fairingMaterial != null)
-            {
-                Material.Destroy(fairingMaterial);
-                fairingMaterial = null;
-            }
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName);
-        }
-
-        //TODO need to finish drag cube update code for NodeFairing
-        private void updateDragCube()
-        {
-            if (!part.DragCubes.Procedural)
-            {                
-                if (part.DragCubes.Cubes.Count > 1)
-                {
-                    //has multiple cubes; no clue...
-                    //ask modules to re-render their cubes?
-                }
-                else if (part.DragCubes.Cubes.Count == 1)//has only one cube, update it!
-                {
-                    DragCube c = part.DragCubes.Cubes[0];
-                    String name = c.Name;
-                    DragCube c2 = DragCubeSystem.Instance.RenderProceduralDragCube(part);
-                    c2.Name = name;
-                    part.DragCubes.ClearCubes();
-                    part.DragCubes.ResetCubeWeights();
-                    part.DragCubes.Cubes.Add(c2);
-                    part.DragCubes.SetCubeWeight(name, 1.0f);//set the cube to full weight...
-                }
-            }
-        }
-
-        //removes any existing render transforms, for removal/overwriting of stock fairing module
-        private void removeTransforms()
-        {
-            if (!String.IsNullOrEmpty(rendersToRemove))
-            {
-                String[] names = SSTUUtils.parseCSV(rendersToRemove);
-                SSTUUtils.removeTransforms(part, names);
-            }
-        }
-
-        #endregion
-
-        
-        #region KSP AirstreamShield update methods
+        #region REGION - KSP AirstreamShield update methods
 
         //IAirstreamShield override
-        public bool ClosedAndLocked() { return fairingEnabled && !jettisoned; }
+        public bool ClosedAndLocked() { return currentlyEnabled; }
 
         //IAirstreamShield override
         public Vessel GetVessel() { return part.vessel; }
@@ -840,7 +477,7 @@ namespace SSTUTools
         private void updateShieldStatus()
         {
             clearShieldedParts();
-            if (shieldParts && !jettisoned && fairingEnabled)
+            if (shieldParts && currentlyEnabled)
             {
                 findShieldedParts();
             }
@@ -872,7 +509,437 @@ namespace SSTUTools
             }
         }
         #endregion
+        
+        #region REGION - external interaction methods
+            
+        public void setFairingTopY(float newValue)
+        {
+            print("updating fairing part top positions to: " + newValue);
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustTop)
+                {
+                    data.topY = newValue;
+                    print("set part topY to: " + data.topY);
+                }
+            }
+            needsRebuilt = true;
+        }
+        
+        public void setFairingBottomY(float newValue)
+        {
+            print("updating fairing part bottom positions to: " + newValue);
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustBottom)
+                {
+                    data.bottomY = newValue;
+                    print("set part bottomY to: " + data.bottomY);
+                }
+            }
+            needsRebuilt = true;
+        }
+        
+        public void setFairingTopRadius(float topRadius)
+        {
+            print("updating fairing top radius: "+topRadius);
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustTop)
+                {
+                    data.topRadius = topRadius;
+                }
+            }
+            restoreEditorFields();
+            needsRebuilt = true;
+        }
+        
+        public void setFairingBottomRadius(float bottomRadius)
+        {
+            print("updating fairing bottom radius: " + bottomRadius);
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustBottom)
+                {
+                    data.bottomRadius = bottomRadius;
+                }
+            }
+            restoreEditorFields();
+            needsRebuilt = true;
+        }
+        
+        /// <summary>
+        /// Only works in editor.  Intended to be used for other PartModules to interface with, so that they can dynamically adjust if the fairing is present or not.
+        /// </summary>
+        /// <param name="enable"></param>                      
+        public void enableFairingFromEditor(bool enable)
+        {
+            enableFairing(enable);
+        }
+          
+        #endregion
+        
+        //TODO updateDragCube
+        #region REGION - private utility methods
 
+        #region REGION - Initialization methods
+
+        //restores the values to the editor size-adjust fields from the loaded values from the fairing
+        private void restoreEditorFields()
+        {
+            float topRadius = 0;
+            float bottomRadius = 0;
+            foreach (FairingData data in fairingParts)
+            {
+                if (data.canAdjustTop && data.topRadius > topRadius) { topRadius = data.topRadius; }
+                if (data.canAdjustBottom && data.bottomRadius > bottomRadius) { bottomRadius = data.bottomRadius; }
+                if (data.numOfSections > numOfSections) { numOfSections = data.numOfSections; }
+            }
+            foreach (FairingData data in fairingParts)//loop a second time to fix any adjustable fairings that were below the adjustment size for whatever reason
+            {
+                if (data.canAdjustTop && data.topRadius < topRadius) { data.topRadius =  topRadius; }
+                if (data.canAdjustBottom && data.bottomRadius < bottomRadius) { data.bottomRadius = bottomRadius; }
+                if (data.numOfSections < numOfSections) { data.numOfSections = (int)Math.Round(numOfSections); }
+            }
+            float div, whole, extra;
+            prevNumOfSections = numOfSections;
+            if (canAdjustTopRadius)
+            {
+                div = topRadius / topRadiusAdjustSize;
+                whole = (int)div;
+                extra = div - whole;
+                editorTopRadius = whole * topRadiusAdjustSize;
+                topRadiusExtra = extra;
+                lastTopExtra = topRadiusExtra;
+            }
+            if (canAdjustBottomRadius)
+            {
+                div = bottomRadius / bottomRadiusAdjustSize;
+                whole = (int)div;
+                extra = div - whole;
+                editorBottomRadius = whole * bottomRadiusAdjustSize;
+                bottomRadiusExtra = extra;
+                lastBottomExtra = bottomRadiusExtra;
+            }
+            
+        }
+
+        //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
+        private void loadFairingData(ConfigNode node)
+        {
+            ConfigNode[] fairingNodes = node.GetNodes("FAIRING");
+            fairingParts = new SSTUNodeFairingData[fairingNodes.Length];
+            for (int i = 0; i < fairingNodes.Length; i++)
+            {
+                fairingParts[i] = new SSTUNodeFairingData();
+                fairingParts[i].load(fairingNodes[i]);
+                if (fairingParts[i].canAdjustTop)
+                {
+                    canAdjustTopRadius = true;
+                }
+                if (fairingParts[i].canAdjustBottom)
+                {
+                    canAdjustBottomRadius = true;
+                }
+            }
+            if (!String.IsNullOrEmpty(persistentDataString))
+            {
+                String[] datas = SSTUUtils.parseCSV(persistentDataString, ":");
+                int length = datas.Length;
+                for (int i = 0; i < length; i++)
+                {
+                    fairingParts[i].loadPersistence(datas[i]);
+                }
+            }
+        }
+
+        private void loadMaterial()
+        {
+            if (fairingMaterial != null)
+            {
+                Material.Destroy(fairingMaterial);
+                fairingMaterial = null;
+            }
+            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName);
+        } 
+        
+        //removes any existing render transforms, for removal/overwriting of stock fairing module
+        private void removeTransforms()
+        {
+            if (!String.IsNullOrEmpty(rendersToRemove))
+            {
+                String[] names = SSTUUtils.parseCSV(rendersToRemove);
+                SSTUUtils.removeTransforms(part, names);
+            }
+        }
+
+        #endregion
+
+        #region REGION - Fairing Update Methods
+        
+        /// <summary>
+        /// Blanket method to update the attached/visible status of the fairing based on its fairing type, current jettisoned status, and if a part is present on the fairings watched node (if any/applicable)
+        /// </summary>
+        private void updateFairingStatus()
+        {            
+            if (!fairingEnabled || fairingJettisoned)
+            {
+                currentlyEnabled = false;
+                if (!renderingJettisonedFairing)
+                {
+                    enableFairingRender(false);
+                }
+            }
+            else
+            {
+                if (!String.IsNullOrEmpty(nodeName))//should watch node
+                {
+                    AttachNode node = part.findAttachNode(nodeName);
+                    if (node != null)
+                    {
+                        float fairingPos = node.position.y;
+                        Part attachedPart = node.attachedPart;
+                        if (snapToSecondNode)
+                        {
+                            if (attachedPart != null)
+                            {
+                                AttachNode newNode = null;
+                                foreach (AttachNode n in attachedPart.attachNodes)
+                                {
+                                    if (newNode == null || n.position.y < newNode.position.y)
+                                    {
+                                        newNode = n;
+                                    }
+                                }
+                                
+                                AttachNode otn = attachedPart.findAttachNodeByPart(part);
+                                Vector3 pos = newNode.position;
+                                pos = attachedPart.transform.TransformPoint(pos);
+                                pos = part.transform.InverseTransformPoint(pos);
+                                fairingPos = pos.y;
+                                node = newNode;
+                                attachedPart = node == null ? null : node.attachedPart;
+                            }
+                        }
+
+                        if (attachedPart != null)
+                        {
+                            currentlyEnabled = true;
+                            enableFairingRender(true);
+                            prevAttachedPart = attachedPart;
+                        }
+                        else//nothing -currently- attached; if there -was- something attached, either jettison or disable the fairing
+                        {
+                            currentlyEnabled = false;
+                            if (prevAttachedPart != null)//had part previously attached, jettison it
+                            {
+                                if (HighLogic.LoadedSceneIsFlight)
+                                {
+                                    if (canAutoJettison)
+                                    {
+                                        jettisonFairing();
+                                    }
+                                    else
+                                    {
+                                        renderingJettisonedFairing = true;
+                                    }
+                                }
+                            }
+
+                            if (!renderingJettisonedFairing)
+                            {
+                                enableFairingRender(false);
+                            }
+                        }
+
+                        if (currentlyEnabled && snapToNode && node!=null)
+                        {
+                            setFairingBottomY(fairingPos);
+                        }
+                    }
+                }
+                else//manual fairing
+                {
+                    currentlyEnabled = true;
+                    enableFairingRender(true);
+                }
+            }
+
+            needsShieldUpdate = true;
+            updateGuiState();
+        }
+        
+        /// <summary>
+        /// Reparents the fairing panel parts to the input part; should only be used on jettison of the fairings when they stay attached to the part below
+        /// </summary>
+        /// <param name="newParent"></param>
+        private void reparentFairing(Part newParent)
+        {
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                data.theFairing.root.transform.parent = newParent.transform;
+            }
+        }
+        
+        private void jettisonFairing()
+        {
+            renderingJettisonedFairing = true;
+            if (numOfSections == 1 && prevAttachedPart!=null)
+            {
+                reparentFairing(prevAttachedPart);
+            }
+            else
+            {
+                foreach (SSTUNodeFairingData data in fairingParts)
+                {
+                    data.jettisonPanels(part);
+                }
+            }
+            fairingJettisoned = true;
+            currentlyEnabled = false;
+        }
+        
+        private void enableFairing(bool enable)
+        {
+            fairingEnabled = enable;
+            updateFairingStatus();
+        }
+
+        private void removeFairingMass()
+        {
+            if (removedMass) { return; }
+            removedMass = true;
+            foreach (FairingData fd in fairingParts)
+            {
+                if (fd.removeMass)
+                {
+                    part.mass -= fd.fairingJettisonMass;
+                }
+            }
+        }
+
+        private void addFairingMass(Part part)
+        {
+            if (part == null)
+            {
+                return;
+            }
+            foreach (FairingData fd in fairingParts)
+            {
+                if (fd.removeMass)
+                {
+                    part.mass += fd.fairingJettisonMass;
+                }
+            }
+        }
+
+        private void enableFairingRender(bool val)
+        {
+            currentRenderEnabled = val;
+            print("setting render status to: " + val);
+            foreach (FairingData fd in fairingParts)
+            {
+                fd.enableRenders(val);
+            }
+        }
+
+        private void buildFairing()
+        {
+            if (HighLogic.LoadedSceneIsEditor)//only enforce editor sizing while in the editor;
+            {
+                foreach (SSTUNodeFairingData fd in fairingParts)
+                {
+                    if (fd.canAdjustTop)
+                    {
+                        fd.topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjustSize);
+                    }
+                    if (fd.canAdjustBottom)
+                    {
+                        fd.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);
+                    }
+                    fd.numOfSections = (int)Math.Round(numOfSections);
+                }
+            }
+            foreach (FairingData fd in fairingParts)
+            {
+                fd.createFairing(part, fairingMaterial);
+            }
+            updateDragCube();
+            needsShieldUpdate = true;
+        }
+
+        private void rebuildFairing()
+        {
+            foreach (FairingData fd in fairingParts)
+            {
+                fd.destroyFairing();
+            }
+            buildFairing();
+            enableFairingRender(currentRenderEnabled);
+        }
+
+        //TODO need to finish drag cube update code for NodeFairing
+        private void updateDragCube()
+        {
+            if (!part.DragCubes.Procedural)
+            {
+                if (part.DragCubes.Cubes.Count > 1)
+                {
+                    //has multiple cubes; no clue...
+                    //ask modules to re-render their cubes?
+                }
+                else if (part.DragCubes.Cubes.Count == 1)//has only one cube, update it!
+                {
+                    DragCube c = part.DragCubes.Cubes[0];
+                    String name = c.Name;
+                    DragCube c2 = DragCubeSystem.Instance.RenderProceduralDragCube(part);
+                    c2.Name = name;
+                    part.DragCubes.ClearCubes();
+                    part.DragCubes.ResetCubeWeights();
+                    part.DragCubes.Cubes.Add(c2);
+                    part.DragCubes.SetCubeWeight(name, 1.0f);//set the cube to full weight...
+                }
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Updates GUI labels and action availability based on current module state (jettisoned, watchedNode attached status, canAdjustRadius, etc)
+        /// </summary>
+        private void updateGuiState()
+        {
+            bool topAdjustEnabled = canAdjustTop;
+            bool bottomAdjustEnabled = canAdjustBottom;
+            if (!currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
+            {
+                topAdjustEnabled = bottomAdjustEnabled = false;
+            }
+
+            Events["decreaseTopRadiusEvent"].guiName = fairingName + " Top Rad -";
+            Events["increaseTopRadiusEvent"].guiName = fairingName + " Top Rad +";
+            Events["decreaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad -";
+            Events["increaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad +";
+
+            Events["decreaseTopRadiusEvent"].active = topAdjustEnabled;
+            Events["increaseTopRadiusEvent"].active = topAdjustEnabled;
+            Fields["topRadiusExtra"].guiActiveEditor = topAdjustEnabled;
+            Events["decreaseBottomRadiusEvent"].active = bottomAdjustEnabled;
+            Events["increaseBottomRadiusEvent"].active = bottomAdjustEnabled;
+            Fields["bottomRadiusExtra"].guiActiveEditor = bottomAdjustEnabled;
+
+            Fields["numOfSections"].guiActiveEditor = currentlyEnabled;
+
+            String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable" ) : actionName;
+            Events["jettisonEvent"].guiName = Actions["jettisonAction"].guiName = guiActionName + " " + fairingName;
+            Events["jettisonEvent"].active = Actions["jettisonAction"].active = (HighLogic.LoadedSceneIsEditor && canDisableInEditor) || (currentlyEnabled && canManuallyJettison);
+
+            Fields["shieldedPartCount"].guiActive = Fields["shieldedPartCount"].guiActiveEditor = currentlyEnabled && shieldParts;
+
+            shieldedPartCount = shieldedParts.Count;
+        }
+        
+        #endregion
     }
 
     public class SSTUNodeFairingData : FairingData
@@ -891,7 +958,6 @@ namespace SSTUTools
             return topY + "," + bottomY + "," + topRadius + "," + bottomRadius;
         }
     }
-
 
 }
 
