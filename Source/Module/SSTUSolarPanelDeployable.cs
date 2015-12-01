@@ -21,12 +21,11 @@ namespace SSTUTools
             BROKEN,
         }
 
-        public class PanelData
+        private class PanelData
         {
             public Transform pivotTransform;
             public Transform rayCastTransform;
             public Quaternion defaultOrientation;
-            public float angle;
         }
 
         //config field, should contain CSV of transform names for ray cast checks
@@ -92,7 +91,11 @@ namespace SSTUTools
 
         private SSTUAnimateControlled animationController;
 
+        private float retractLerp = 0;
+
         private bool initialized = false;
+
+        private bool hasSetupDefaultRotations = false;
 
         //KSP Action Group 'Extend Panels' action, will only trigger when panels are actually retracted/ing
         [KSPAction("Extend Panels")]
@@ -143,8 +146,7 @@ namespace SSTUTools
             this.temperatureEfficCurve.Add(2500f, 0.01f, 0f, 0f);
             initializeState();
         }
-
-        //load saved persistent data... this should really only be the panel status (broken/extend/retract)
+        
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
@@ -173,10 +175,22 @@ namespace SSTUTools
             }
             energyFlow = 0.0f;
             occluderName = String.Empty;
-            if (panelState == SSTUPanelState.EXTENDED && HighLogic.LoadedSceneIsFlight)
+            if (retractLerp > 0)
             {
-                updatePowerStatus();
-                checkForBreak();
+                updateRetractLerp();
+            }
+            else if (panelState == SSTUPanelState.EXTENDED)
+            {
+                if (!hasSetupDefaultRotations)
+                {
+                    hasSetupDefaultRotations = true;
+                    setupDefaultRotations();
+                }
+                if (HighLogic.LoadedSceneIsFlight)
+                {
+                    updatePowerStatus();
+                    checkForBreak();
+                }
             }
             updateGuiData();
         }
@@ -186,6 +200,7 @@ namespace SSTUTools
             if (state == SSTUAnimState.STOPPED_END)
             {
                 setPanelState(SSTUPanelState.EXTENDED);
+                foreach (PanelData pd in panelData) { print(pd.pivotTransform.localRotation); }
             }
             else if (state == SSTUAnimState.STOPPED_START)
             {
@@ -204,11 +219,11 @@ namespace SSTUTools
             initialized = true;
             findTransforms();
             animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
+            setupDefaultRotations();
             setPanelState(panelState);
             updateGuiData();
         }
-
-        //triggers retract or deploy final action depending upon which is needed
+        
         private void toggle()
         {
             if (panelState == SSTUPanelState.BROKEN)
@@ -224,25 +239,54 @@ namespace SSTUTools
                 deploy();
             }
         }
-
-        //final deploy activation action, sets animation speed and panel state to trigger deployment
+        
         private void deploy()
         {
             if (!canDeployShrouded && part.ShieldedFromAirstream)
             {
+                //TODO print screen-message
                 print("Cannot deploy while shielded from airstream!!");
                 return;
             }
-            setPanelState(SSTUPanelState.EXTENDING);
+            if (retractLerp > 0)
+            {
+                retractLerp = 0;
+                setPanelState(SSTUPanelState.EXTENDED);
+            }
+            else
+            {
+                setPanelState(SSTUPanelState.EXTENDING);
+            }
         }
-
-        //final retract activation action, sets animation speed and panel state to trigger retraction, additionally resets panel pivot transforms to default orientations when retract is triggered
+        
         private void retract()
         {
             setPanelState(SSTUPanelState.RETRACTING);
         }
 
-        //update power status every tick if panels are extended (and not broken)
+        private void updateRetractLerp()
+        {
+            float fixedTick = TimeWarp.fixedDeltaTime;
+
+            float percent = fixedTick / retractLerp;//need to move this percent of total remaining move
+            if (percent > 1) { percent = 1; }
+            if (percent < 0) { percent = 0; }
+
+            foreach (PanelData data in panelData)
+            {
+                data.pivotTransform.localRotation = Quaternion.Lerp(data.pivotTransform.localRotation, data.defaultOrientation, percent);
+            }
+
+            retractLerp -= fixedTick;
+
+            if (retractLerp <= 0)
+            {
+                retractLerp = 0;
+                setPanelsToDefaultOrientation();
+                setAnimationState(SSTUAnimState.PLAYING_BACKWARD);//start retract animation playing
+            }
+        }
+
         private void updatePowerStatus()
         {
             energyFlow = 0.0f;
@@ -259,19 +303,21 @@ namespace SSTUTools
                 part.RequestResource(resourceName, -energyFlow);
             }
         }
-
-        //based on stock solar panel sun tracking code
+        
         private void updatePanelRotation(PanelData pd)
         {
-            //vector from pivot to sun
-            Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
+            if (vessel.solarFlux > 0)
+            {
+                //vector from pivot to sun
+                Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
 
-            //finding angle to turn towards based on direction of vector on a single axis
-            float y = Mathf.Atan2(vector.x, vector.z) * 57.29578f;
+                //finding angle to turn towards based on direction of vector on a single axis
+                float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));// * 57.29578f;
 
-            //lerp towards destination rotation by trackingSpeed amount		
-            Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
-            pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
+                //lerp towards destination rotation by trackingSpeed amount		
+                Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
+                pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
+            }
         }
 
         private void updatePanelPower(PanelData pd)
@@ -306,8 +352,7 @@ namespace SSTUTools
             }
             return false;
         }
-
-        //set the panel state enum, updates persistent saved state variable and gui data and buttons
+        
         private void setPanelState(SSTUPanelState newState)
         {
             SSTUPanelState oldState = panelState;
@@ -331,7 +376,6 @@ namespace SSTUTools
                 case SSTUPanelState.EXTENDING:
                     {
                         setAnimationState(SSTUAnimState.PLAYING_FORWARD);
-                        setPanelsToDefaultOrientation();
                         break;
                     }
 
@@ -342,12 +386,10 @@ namespace SSTUTools
                     }
 
                 case SSTUPanelState.RETRACTING:
-                    {
-                        setAnimationState(SSTUAnimState.PLAYING_BACKWARD);
-                        setPanelsToDefaultOrientation();
+                    {                        
+                        retractLerp = 2f;//two second retract lerp time; decremented during lerp update                     
                         break;
                     }
-
             }
 
             energyFlow = 0.0f;
@@ -359,13 +401,12 @@ namespace SSTUTools
         {
             if (animationController != null) { animationController.setToState(state); }
         }
-
-        //sets each panels pivotTransform to its default orientation, to be used on panel retract
+                        
         private void setPanelsToDefaultOrientation()
         {
             foreach (PanelData panel in panelData)
             {
-                panel.pivotTransform.localRotation = new Quaternion(panel.defaultOrientation.x, panel.defaultOrientation.y, panel.defaultOrientation.z, panel.defaultOrientation.w);
+                panel.pivotTransform.localRotation = panel.defaultOrientation;
             }
         }
 
@@ -407,8 +448,7 @@ namespace SSTUTools
                 SSTUUtils.enableRenderRecursive(pd.pivotTransform, true);
             }
         }
-
-        //loads transforms from model given the transform names specified in config
+        
         private void findTransforms()
         {
             panelData.Clear();
@@ -439,8 +479,7 @@ namespace SSTUTools
                 pd = new PanelData();
                 pd.pivotTransform = t1;
                 pd.rayCastTransform = t2;
-                pd.angle = 0;
-                pd.defaultOrientation = new Quaternion(t1.localRotation.x, t1.localRotation.y, t1.localRotation.z, t1.localRotation.w);//set a copy of original rotation, to restore when panels are retracted
+                pd.defaultOrientation = pd.pivotTransform.localRotation;
                 panelData.Add(pd);
             }
 
@@ -458,7 +497,14 @@ namespace SSTUTools
             }//else it will use default vessel transform
         }
 
-        //updates GUI information and buttons from panel state and energy flow values
+        private void setupDefaultRotations()
+        {
+            foreach (PanelData data in panelData)
+            {
+                data.defaultOrientation = data.pivotTransform.localRotation;
+            }
+        }
+        
         private void updateGuiData()
         {
             if (!moduleControlEnabled)

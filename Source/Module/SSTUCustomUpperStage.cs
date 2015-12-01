@@ -321,23 +321,39 @@ namespace SSTUTools
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
-
-        [KSPEvent(guiName = "Next Mount", guiActive = false, guiActiveEditor = true, active = true)]
-        public void nextMountEvent()
+        
+        [KSPEvent(guiName = "Prev Mount", guiActive = false, guiActiveEditor = true, active = true)]
+        public void prevMountEvent()
         {
-            SSTUCustomUpperStageMount nextDef = SSTUUtils.findNext(mountModules, l => l == currentMountModule, false);
-            updateMountModelFromEditor(nextDef);
+            SSTUCustomUpperStageMount newDef = SSTUUtils.findNext(mountModules, l => l == currentMountModule, true);
+            updateMountModelFromEditor(newDef);
 
             int moduleIndex = part.Modules.IndexOf(this);
             SSTUCustomUpperStage cus = null;
             foreach (Part p in part.symmetryCounterparts)
             {
                 cus = (SSTUCustomUpperStage)p.Modules[moduleIndex];
-                cus.updateMountModelFromEditor(nextDef);
+                cus.updateMountModelFromEditor(newDef);
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
-        
+
+        [KSPEvent(guiName = "Next Mount", guiActive = false, guiActiveEditor = true, active = true)]
+        public void nextMountEvent()
+        {
+            SSTUCustomUpperStageMount newDef = SSTUUtils.findNext(mountModules, l => l == currentMountModule, false);
+            updateMountModelFromEditor(newDef);
+
+            int moduleIndex = part.Modules.IndexOf(this);
+            SSTUCustomUpperStage cus = null;
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                cus = (SSTUCustomUpperStage)p.Modules[moduleIndex];
+                cus.updateMountModelFromEditor(newDef);
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
         [KSPEvent(guiName = "Next Intertank", guiActive = false, guiActiveEditor = true, active = true)]
         public void nextIntertankEvent()
         {
@@ -391,7 +407,6 @@ namespace SSTUTools
             updateModels();
             updateTankStats();
             updatePartResources();
-            updatePartMass();
             updateGuiState();
         }
         
@@ -418,7 +433,6 @@ namespace SSTUTools
             updateModels();
             updateTankStats();
             updatePartResources();
-            updatePartMass();
             updateGuiState();
         }
         
@@ -438,25 +452,23 @@ namespace SSTUTools
             updateModels();
             updateFuelVolume();
             updatePartResources();
-            updatePartMass();
             updateGuiState();
         }
         
         /// <summary>
         /// Updates the current intertank mesh/model from user input
         /// </summary>
-        /// <param name="nextDef"></param>
-        private void updateIntertankModelFromEditor(SSTUCustomUpperStageIntertank nextDef)
+        /// <param name="newDef"></param>
+        private void updateIntertankModelFromEditor(SSTUCustomUpperStageIntertank newDef)
         {
             removeCurrentModel(currentIntertankModule);
-            currentIntertankModule = nextDef;
-            currentIntertank = nextDef.name;
+            currentIntertankModule = newDef;
+            currentIntertank = newDef.name;
             setupModel(currentIntertankModule, part.FindModelTransform("model"));
             updateModules();
             updateModels();
             updateTankStats();
             updatePartResources();
-            updatePartMass();
             updateGuiState();
         }
                 
@@ -470,7 +482,6 @@ namespace SSTUTools
             currentFuelType = newFuelType.fuelType.name;
             updateTankStats();
             updatePartResources();
-            updatePartMass();
             updateGuiState();
         }
 
@@ -597,7 +608,6 @@ namespace SSTUTools
             if ((HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor) && !initializedResources)
             {
                 updatePartResources();
-                updatePartMass();
                 initializedResources = true;
             }
             restoreEditorFields();
@@ -920,6 +930,7 @@ namespace SSTUTools
             updateModuleMass();
             updateModuleCost();
             updateRCSThrust();
+            updatePartMass();
         }
         
         /// <summary>
