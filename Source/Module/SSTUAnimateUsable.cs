@@ -59,13 +59,13 @@ namespace SSTUTools
         [KSPEvent(guiName = "Deploy", guiActive = true, guiActiveEditor = true)]
         public void deployEvent()
         {
-            setAnimationState(SSTUAnimState.PLAYING_FORWARD);
+            setAnimationState(AnimState.PLAYING_FORWARD);
         }
 
         [KSPEvent(guiName = "Retract", guiActive = true, guiActiveEditor = true)]
         public void retractEvent()
         {
-            setAnimationState(SSTUAnimState.PLAYING_BACKWARD);
+            setAnimationState(AnimState.PLAYING_BACKWARD);
         }
 
         [KSPAction("Deploy")]
@@ -90,7 +90,7 @@ namespace SSTUTools
         }
 
         //DONE
-        private void updateGuiDataFromState(SSTUAnimState state)
+        private void updateGuiDataFromState(AnimState state)
         {
             if (!moduleControlEnabled)
             {
@@ -103,7 +103,7 @@ namespace SSTUTools
             }
             switch (state)
             {
-                case SSTUAnimState.PLAYING_BACKWARD:
+                case AnimState.PLAYING_BACKWARD:
                     {
                         Events["deployEvent"].active = true;
                         Events["retractEvent"].active = false;
@@ -112,7 +112,7 @@ namespace SSTUTools
                         displayState = retractingStateName;
                         break;
                     }
-                case SSTUAnimState.PLAYING_FORWARD:
+                case AnimState.PLAYING_FORWARD:
                     {
                         Events["deployEvent"].active = false;
                         Events["retractEvent"].active = true;
@@ -121,7 +121,7 @@ namespace SSTUTools
                         displayState = deployingStateName;
                         break;
                     }
-                case SSTUAnimState.STOPPED_END:
+                case AnimState.STOPPED_END:
                     {
                         Events["deployEvent"].active = false;
                         Events["retractEvent"].active = true;
@@ -130,7 +130,7 @@ namespace SSTUTools
                         displayState = deployedStateName;
                         break;
                     }
-                case SSTUAnimState.STOPPED_START:
+                case AnimState.STOPPED_START:
                     {
                         Events["deployEvent"].active = true;
                         Events["retractEvent"].active = false;
@@ -169,13 +169,13 @@ namespace SSTUTools
         }
 
         //DONE
-        public void onAnimationStatusChanged(SSTUAnimState state)
+        public void onAnimationStatusChanged(AnimState state)
         {
             updateGuiDataFromState(state);
         }
 
         //DONE
-        private void setAnimationState(SSTUAnimState state)
+        private void setAnimationState(AnimState state)
         {
             if (animationControl != null) { animationControl.setToState(state); }
             updateGuiDataFromState(state);

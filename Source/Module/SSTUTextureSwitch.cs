@@ -10,9 +10,6 @@ namespace SSTUTools
     // may be controlled through external module (e.g resource or mesh-switch) through the two methods restoreDefaultTexture() and enableTextureSet(String setName)
     public class SSTUTextureSwitch : PartModule
     {
-        [KSPField]
-        public String textureSets = String.Empty;
-
         //the default texture set to apply, only needed if you want to change the default texture of a mesh from whatever was compiled in the model
         [KSPField]
         public String defaultTextureSet = String.Empty;
@@ -27,6 +24,9 @@ namespace SSTUTools
         //currently selected texture set, by name
         [KSPField(isPersistant = true)]
         public String currentTextureSet = String.Empty;
+
+        [Persistent]
+        public String configNodeData = String.Empty;
 
         //actual texture set names
         private String[] textureSetNames;
@@ -45,10 +45,11 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
+            if (node.HasNode("TEXTURESET"))
             {
-                initialize();
+                configNodeData = node.ToString();
             }
+            initialize();
         }
 
         public override void OnStart(PartModule.StartState state)
@@ -65,19 +66,33 @@ namespace SSTUTools
         //restores texture set data and either loads default texture set or saved texture set (if any)
         private void initialize()
         {
-            textureSetNames = textureSets.Split(new String[] { "," }, StringSplitOptions.None);
+            loadConfigData();
             int len = textureSetNames.Length;
             for (int i = 0; i < len; i++)
             {
                 textureSetNames[i] = textureSetNames[i].Trim();
             }
-            if (String.IsNullOrEmpty(currentTextureSet))//uninitialized, use defaults
+            if (!externalControl)
             {
-                enableTextureSet(defaultTextureSet);
-            }
-            else
+                if (String.IsNullOrEmpty(currentTextureSet))//uninitialized, use defaults
+                {
+                    enableTextureSet(defaultTextureSet);
+                }
+                else
+                {
+                    enableTextureSet(currentTextureSet);
+                }
+            }            
+        }
+
+        private void loadConfigData()
+        {
+            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode[] textureSets = node.GetNodes("TEXTURESET");
+            textureSetNames = new String[textureSets.Length];
+            for (int i = 0; i < textureSets.Length; i++)
             {
-                enableTextureSet(currentTextureSet);
+                textureSetNames[i] = textureSets[i].GetStringValue("name");
             }
         }
 
@@ -90,7 +105,8 @@ namespace SSTUTools
         //enables a specific texture set, by name
         public void enableTextureSet(String name)
         {
-            TextureSet ts = SSTUTextureSets.INSTANCE.getTextureSet(name);
+            print("enabling texture set: " + name);
+            TextureSet ts = TextureSets.INSTANCE.getTextureSet(name);
             if (ts != null)
             {
                 ts.enable(part);

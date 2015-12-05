@@ -80,6 +80,9 @@ namespace SSTUTools
         [KSPField]
         public String transformsToRemove = String.Empty;
 
+        [KSPField]
+        public String interstageNodeName = "interstage";
+
         /// <summary>
         /// How much to increment the diameter with every step of the main diameter slider
         /// </summary>
@@ -140,12 +143,11 @@ namespace SSTUTools
         public String configNodeData = String.Empty;
 
         //below here are private-local tracking fields for various data
-        private List<SSTUEngineMount> engineMounts = new List<SSTUEngineMount>();//mount-link-definitions
-        private SSTUEngineMount currentMountOption = null;
+        private List<EngineMount> engineMounts = new List<EngineMount>();//mount-link-definitions
+        private EngineMount currentMountOption = null;
         private float editorMountSize = 0;
         private float prevMountSizeAdjust = 0;
         private float prevEngineSpacingAdjust = 0;
-        private bool needsInitialFairingUpdate = false;
         
         //all public fields get serialized from the prefab...hopefully
         public List<GameObject> models = new List<GameObject>();//actual engine models; kept so they can be repositioned //made public in hopes that unity will clone the fields, and that models need not be recreated after prefab is instantiated
@@ -155,19 +157,56 @@ namespace SSTUTools
         public float fairingTopY = 0;
         public float fairingBottomY = 0;
         public float partDefaultMass = 0;
-                
-        [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
-        public void nextMountEvent()
+
+        [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
+        public void clearMountEvent()
         {
-            int index = getNextMountIndex(currentMountName);
-            enableMount(index);
+            int index = SSTUUtils.findIndex(engineMounts, m=>m.name=="None");
+            if (index >= 0)
+            {
+                enableMount(index, true);
+                updateFairing();
+                updateGuiState();
+
+                int moduleIndex = part.Modules.IndexOf(this);
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    ((SSTUEngineCluster)p.Modules[moduleIndex]).enableMount(index, true);
+                    ((SSTUEngineCluster)p.Modules[moduleIndex]).updateFairing();
+                    ((SSTUEngineCluster)p.Modules[moduleIndex]).updateGuiState();
+                }
+            }
+        }
+
+        [KSPEvent(guiName = "Prev Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
+        public void prevMountEvent()
+        {
+            int index = getNextMountIndex(currentMountName, true);
+            enableMount(index, true);
             updateFairing();
             updateGuiState();
 
             int moduleIndex = part.Modules.IndexOf(this);
             foreach (Part p in part.symmetryCounterparts)
             {
-                ((SSTUEngineCluster)p.Modules[moduleIndex]).enableMount(index);
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).enableMount(index, true);
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).updateFairing();
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).updateGuiState();
+            }
+        }
+
+        [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
+        public void nextMountEvent()
+        {
+            int index = getNextMountIndex(currentMountName);
+            enableMount(index, true);
+            updateFairing();
+            updateGuiState();
+
+            int moduleIndex = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).enableMount(index, true);
                 ((SSTUEngineCluster)p.Modules[moduleIndex]).updateFairing();
                 ((SSTUEngineCluster)p.Modules[moduleIndex]).updateGuiState();
             }
@@ -177,13 +216,13 @@ namespace SSTUTools
         public void nextLayoutEvent()
         {            
             currentEngineLayout = currentMountOption.getNextLayout(currentEngineLayout);
-            updateMountPositions();
+            updateMountPositions(true);
 
             int moduleIndex = part.Modules.IndexOf(this);
             foreach (Part p in part.symmetryCounterparts)
             {
                 ((SSTUEngineCluster)p.Modules[moduleIndex]).currentEngineLayout = currentEngineLayout;
-                ((SSTUEngineCluster)p.Modules[moduleIndex]).updateMountPositions();
+                ((SSTUEngineCluster)p.Modules[moduleIndex]).updateMountPositions(true);
             }
 
         }
@@ -251,9 +290,9 @@ namespace SSTUTools
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
+            bool updated = false;
             if (prevMountSizeAdjust != editorMountSizeAdjust)
             {
-                print("updating size from event...");
                 prevMountSizeAdjust = editorMountSizeAdjust;
                 updateMountSizeFromEditor();
 
@@ -266,10 +305,10 @@ namespace SSTUTools
                     module.editorMountSize = editorMountSize;                    
                     module.updateMountSizeFromEditor();
                 }
+                updated = true;
             }
             if (prevEngineSpacingAdjust != editorEngineSpacingAdjust)
             {
-                print("updating spacing from event...");
                 prevEngineSpacingAdjust = editorEngineSpacingAdjust;
                 updateEngineSpacingFromEditor();
 
@@ -281,6 +320,11 @@ namespace SSTUTools
                     module.prevEngineSpacingAdjust = module.editorEngineSpacingAdjust = editorEngineSpacingAdjust;
                     updateEngineSpacingFromEditor();
                 }
+                updated = true;
+            }
+            if (!updated)
+            {
+                updateNodePositions(true);
             }
         }
 
@@ -331,7 +375,7 @@ namespace SSTUTools
             float defSpacing = defaultEngineSpacing;
             if (currentMountOption.engineSpacing > 0) { defSpacing = currentMountOption.engineSpacing; }
             currentEngineSpacing = editorEngineSpacingAdjust * defSpacing;
-            updateMountPositions();
+            updateMountPositions(true);
         }
 
         /// <summary>
@@ -343,7 +387,7 @@ namespace SSTUTools
             currentMountSize = editorMountSize + diameterMainIncrement * editorMountSizeAdjust;
             if (currentMountSize > currentMountOption.maxDiameter) { currentMountSize = currentMountOption.maxDiameter; }
             if (currentMountSize < currentMountOption.minDiameter) { currentMountSize = currentMountOption.minDiameter; }
-            updateMountPositions();
+            updateMountPositions(true);
         }
 
         /// <summary>
@@ -369,7 +413,6 @@ namespace SSTUTools
         {
             foreach (GameObject go in models)
             {
-                print("destroying existing model: " + go);
                 GameObject.Destroy(go);
             }
             models.Clear();
@@ -379,7 +422,6 @@ namespace SSTUTools
             Transform[] trs = part.FindModelTransforms(modelName);
             foreach (Transform tr in trs)
             {
-                print("destroying existing model from transform: " + tr.gameObject);
                 GameObject.Destroy(tr.gameObject);
             }
         }
@@ -417,7 +459,7 @@ namespace SSTUTools
                 engineMounts.Clear();
                 foreach (ConfigNode mn in mountNodes)
                 {
-                    engineMounts.Add(new SSTUEngineMount(mn));
+                    engineMounts.Add(new EngineMount(mn));
                 }
             }
             setupEngineModels();
@@ -449,13 +491,12 @@ namespace SSTUTools
             if (engineModelsSetup)
             {
                 //go ahead and re-enable the mount though...
-                enableMount(mountIndex);
+                enableMount(mountIndex, false);
                 return;
             }
 
             engineModelsSetup = true;
             clearExistingModels();
-            print("SSTUEngineCluster Cleared existing models from part.  This should only happen during prefab construction.");
             SSTUEngineLayout layout = getEngineLayout(defaultLayoutName);
             currentEngineLayout = defaultLayoutName;
             currentEngineSpacing = defaultEngineSpacing;
@@ -481,10 +522,8 @@ namespace SSTUTools
             smokeObject.transform.name = smokeTransformName;
             Transform smokeTransform = smokeObject.transform;
             smokeTransform.NestToParent(modelBase);
-            smokeTransform.localRotation = Quaternion.AngleAxis(90, new Vector3(1, 0, 0));//set it to default pointing downwards, as-per a thrust transform
-
-            needsInitialFairingUpdate = true;
-            enableMount(mountIndex);
+            smokeTransform.localRotation = Quaternion.AngleAxis(90, new Vector3(1, 0, 0));//set it to default pointing downwards, as-per a thrust transform            
+            enableMount(mountIndex, false);
         }
 
         /// <summary>
@@ -492,7 +531,7 @@ namespace SSTUTools
         /// Updates the engine mount positions based on their definitions, and adjusts mass of the part based on the default part mass + mass for the mount.
         /// </summary>
         /// <param name="index"></param>
-        private void enableMount(int index)
+        private void enableMount(int index, bool userInput)
         {
             //remove existing mount models
             clearMountModels();
@@ -505,11 +544,6 @@ namespace SSTUTools
             currentMountSize = init? currentMountOption.defaultDiameter : currentMountSize;
             currentEngineSpacing = init? (currentMountOption.engineSpacing > 0 ? currentMountOption.engineSpacing : defaultEngineSpacing) : currentEngineSpacing;
             restoreEditorFields();//this updates the editor adjust values for the new-updated mount size
-            if (init)
-            {
-                needsInitialFairingUpdate = true;
-                print("signalling needs initial fairing update = true");
-            }
             bool hasLayout = currentMountOption.layoutNames != null && currentMountOption.layoutNames.Length > 0;
             String localLayoutName = init ? (hasLayout ? currentMountOption.layoutNames[0] : defaultLayoutName) : (currentEngineLayout);
             SSTUEngineLayout layout = getEngineLayout(localLayoutName);
@@ -545,7 +579,7 @@ namespace SSTUTools
             }
 
             //update the current mount positions and cached vars for stuff like fairing and engine position
-            updateMountPositions();
+            updateMountPositions(userInput);
             
             if (currentMountOption.mountDefinition.singleModel)
             {
@@ -610,7 +644,7 @@ namespace SSTUTools
         /// <summary>
         /// Positions the existing mount models according the the current mount scale.  Subsequently calls updateEnginePositions, updateFairingPosition, and updateNodePosition as a result of the model udpates.
         /// </summary>
-        private void updateMountPositions()
+        private void updateMountPositions(bool userInput)
         {            
             SSTUEngineLayout layout = null;
             layoutMap.TryGetValue(currentEngineLayout, out layout);
@@ -644,7 +678,7 @@ namespace SSTUTools
             updateEngineModelPositions(currentEngineLayout);
             
             //udpate attach node positions based on values calced in updateMountPositions()
-            updateNodePositions();
+            updateNodePositions(userInput);
         }
 
         /// <summary>
@@ -689,13 +723,22 @@ namespace SSTUTools
         /// <summary>
         /// Updates attach node position based on the current mount/parameters
         /// </summary>
-        private void updateNodePositions()
+        private void updateNodePositions(bool userInput)
         {
             AttachNode bottomNode = part.findAttachNode("bottom");
             if (bottomNode == null) { print("ERROR, could not locate bottom node"); return; }
             Vector3 pos = bottomNode.position;
             pos.y = fairingBottomY;
-            SSTUUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation);
+            SSTUUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+
+            AttachNode interstage = part.findAttachNode(interstageNodeName);
+            if (interstage != null)
+            {
+                float y = partTopY + (currentMountOption.mountDefinition.fairingTopOffset * getCurrentMountScale());
+                pos = new Vector3(0, y, 0);
+                Vector3 orientation = new Vector3(0, -1, 0);
+                SSTUUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+            }
         }
 
         /// <summary>
@@ -703,10 +746,9 @@ namespace SSTUTools
         /// </summary>
         private void updateFairing()
         {
-            print("updating fairing position: " + fairingTopY + ", " + fairingBottomY);
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
-            if (fairing == null) { print("could not update fairing position, module could not be located"); return; }
-            else if (!fairing.initialized()) { print("fairing uninitialzed, not ready for updates"); return; }
+            if (fairing == null) { return; }
+            else if (!fairing.initialized()) { return; }
             bool enable = !currentMountOption.mountDefinition.fairingDisabled;
             fairing.canDisableInEditor = enable;
             if (enable)

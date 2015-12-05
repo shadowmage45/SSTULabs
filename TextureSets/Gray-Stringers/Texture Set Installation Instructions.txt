@@ -1,0 +1,3 @@
+1.) Install SSTU as-per-normal methods.  This should create the GameData/SSTU base folder, and all needed subfolders.
+2.) Extract the texture-set folder just as you would any other mod.  Open up the zip folder, navigate into the GameData folder, and drop those contents into your main GameData folder.  The SSTU folder from the texture set should be -merged with- the existing SSTU folder in your GameData setup.
+3.) Start Up KSP.  Your new texture sets will now be available for selection with the 'Next Texture' option on parts with texture-sets enabled.

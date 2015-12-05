@@ -195,14 +195,14 @@ namespace SSTUTools
             updateGuiData();
         }
 
-        public void onAnimationStatusChanged(SSTUAnimState state)
+        public void onAnimationStatusChanged(AnimState state)
         {
-            if (state == SSTUAnimState.STOPPED_END)
+            if (state == AnimState.STOPPED_END)
             {
                 setPanelState(SSTUPanelState.EXTENDED);
                 foreach (PanelData pd in panelData) { print(pd.pivotTransform.localRotation); }
             }
-            else if (state == SSTUAnimState.STOPPED_START)
+            else if (state == AnimState.STOPPED_START)
             {
                 setPanelState(SSTUPanelState.RETRACTED);
             }
@@ -283,7 +283,7 @@ namespace SSTUTools
             {
                 retractLerp = 0;
                 setPanelsToDefaultOrientation();
-                setAnimationState(SSTUAnimState.PLAYING_BACKWARD);//start retract animation playing
+                setAnimationState(AnimState.PLAYING_BACKWARD);//start retract animation playing
             }
         }
 
@@ -362,26 +362,26 @@ namespace SSTUTools
 
                 case SSTUPanelState.BROKEN:
                     {
-                        setAnimationState(SSTUAnimState.STOPPED_END);
+                        setAnimationState(AnimState.STOPPED_END);
                         breakPanels();
                         break;
                     }
 
                 case SSTUPanelState.EXTENDED:
                     {
-                        setAnimationState(SSTUAnimState.STOPPED_END);
+                        setAnimationState(AnimState.STOPPED_END);
                         break;
                     }
 
                 case SSTUPanelState.EXTENDING:
                     {
-                        setAnimationState(SSTUAnimState.PLAYING_FORWARD);
+                        setAnimationState(AnimState.PLAYING_FORWARD);
                         break;
                     }
 
                 case SSTUPanelState.RETRACTED:
                     {
-                        setAnimationState(SSTUAnimState.STOPPED_START);
+                        setAnimationState(AnimState.STOPPED_START);
                         break;
                     }
 
@@ -397,7 +397,7 @@ namespace SSTUTools
             updateGuiData();
         }
 
-        private void setAnimationState(SSTUAnimState state)
+        private void setAnimationState(AnimState state)
         {
             if (animationController != null) { animationController.setToState(state); }
         }

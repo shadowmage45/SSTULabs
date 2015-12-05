@@ -215,7 +215,19 @@ namespace SSTUTools
 
         }
 
-        //generates a vertical strip for a sidewall of a cylinder, e.g. the flat vertical side wall of a fairing panel
+        /// <summary>
+        /// generates a vertical strip for a sidewall of a cylinder, e.g. the flat vertical side wall of a fairing panel
+        /// </summary>
+        /// <param name="centerX"></param>
+        /// <param name="centerZ"></param>
+        /// <param name="bottomY"></param>
+        /// <param name="height"></param>
+        /// <param name="topOuterRadius"></param>
+        /// <param name="topInnerRadius"></param>
+        /// <param name="bottomOuterRadius"></param>
+        /// <param name="bottomInnerRadius"></param>
+        /// <param name="angle"></param>
+        /// <param name="invertTris"></param>
         public void generateCylinderPanelSidewall(float centerX, float centerZ, float bottomY, float height, float topOuterRadius, float topInnerRadius, float bottomOuterRadius, float bottomInnerRadius, float angle, bool invertTris)
         {
             float x, z, nx, ny, nz;

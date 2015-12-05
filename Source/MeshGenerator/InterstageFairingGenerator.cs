@@ -8,17 +8,41 @@ namespace SSTUTools
     {
         #region publicReadOnlyVars
         public String panelsColliderName = "FairingCollider";
-
+        
         public readonly float baseHeight;
         #endregion
 
         public UVArea baseTopCap = new UVArea(13, 691, 13 + 320, 691 + 320, 1024);
         public UVArea baseBottomCap = new UVArea(345, 691, 345 + 320, 691 + 320, 1024);
+                
+        private CylinderMeshGenerator genB;
+        
 
-        public InterstageFairingGenerator(float startHeight, float baseHeight, float boltPanelHeight, float totalPanelHeight, float maxPanelSectionHeight, float bottomRadius, float topRadius, float wallThickness, int numOfPanels, int cylinderSides)
+        public InterstageFairingGenerator(float startHeight, float baseHeight, float straightHeight, float boltPanelHeight, float totalPanelHeight, float maxPanelSectionHeight, float bottomRadius, float topRadius, float wallThickness, int numOfPanels, int cylinderSides)
             : base(startHeight, boltPanelHeight, totalPanelHeight, maxPanelSectionHeight, bottomRadius, topRadius, wallThickness, numOfPanels, cylinderSides)
         {
             this.baseHeight = baseHeight;
+            if (this.topRadius != this.bottomRadius && straightHeight>0)
+            {
+                this.topBoltPanel = false;
+                this.topRadius = this.bottomRadius;
+                this.totalPanelHeight = straightHeight;
+
+                float bStart, bTotal;
+                bStart = startHeight + baseHeight + straightHeight;
+                bTotal = totalPanelHeight - straightHeight;
+                genB = new CylinderMeshGenerator(bStart, boltPanelHeight, bTotal, maxPanelSectionHeight, bottomRadius, topRadius, wallThickness, numOfPanels, cylinderSides);
+                genB.bottomBoltPanel = false;
+                
+                topOuterRadius = this.topRadius;
+                topInnerRadius = this.topRadius - wallThickness;
+                bottomOuterRadius = this.bottomRadius;
+                bottomInnerRadius = this.bottomRadius - wallThickness;
+                bottomOuterCirc = Mathf.PI * bottomOuterRadius * 2f;
+                topOuterCirc = Mathf.PI * topOuterRadius * 2f;
+                centerX = 0;
+                centerZ = -bottomRadius;
+            }
         }
 
         public FairingBase buildFairing()
@@ -28,6 +52,14 @@ namespace SSTUTools
             GameObject[] panels = generateFairingPanels(gen, root);
             FairingBase fairing = new FairingBase(root, panels);
             fairing.editorColliders = generateEditorTopCollider(gen, root);
+            if (genB != null)
+            {
+                FairingBase fb2 = genB.buildFairing();
+                for (int i = 0; i < numOfPanels; i++)
+                {
+                    fb2.panels[i].panel.transform.parent = panels[i].transform;
+                }
+            }
             return fairing;
         }
 
@@ -81,7 +113,6 @@ namespace SSTUTools
                 panels[i].transform.rotation = root.transform.rotation;
                 panels[i].transform.localPosition = new Vector3(x, startHeight + baseHeight, z);
                 panels[i].transform.localRotation = Quaternion.AngleAxis(90.0f + (float)i * anglePerPanel, new Vector3(0, 1, 0));
-
             }
             return panels;
         }

@@ -36,8 +36,7 @@ namespace SSTUTools
             int length = panels.Length;
             for (int i = 0; i < length; i++)
             {
-                panels[i].panel.renderer.material.SetFloat("_Opacity", val);
-                panels[i].panel.renderer.material.renderQueue = val >= 1f ? 2000 : 3000;
+                SSTUUtils.setOpacityRecursive(panels[i].panel.transform, val);
             }
         }
 
@@ -51,7 +50,7 @@ namespace SSTUTools
             int length = panels.Length;
             for (int i = 0; i < length; i++)
             {
-                panels[i].panel.renderer.material = mat;
+                SSTUUtils.setMaterialRecursive(panels[i].panel.transform, mat);
             }
         }
 

@@ -355,9 +355,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-
-            print("starting up fairing. currently enabled: " + fairingEnabled);
-
+            
             //remove any stock transforms for engine-fairing overrides
             if (rendersToRemove != null && rendersToRemove.Length > 0)
             {
@@ -388,8 +386,7 @@ namespace SSTUTools
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
-            
+            GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));            
         }
         
         public void OnDestroy()
@@ -436,23 +433,29 @@ namespace SSTUTools
 
         public void Update()
         {
+           
+        }
+
+        public void LateUpdate()
+        {
             if (needsRebuilt)
             {
-                needsRebuilt = false;
+                updateFairingStatus();
                 rebuildFairing();
                 needsShieldUpdate = true;
                 needsGuiUpdate = true;
+                needsRebuilt = false;
             }
             if (needsShieldUpdate)
             {
-                needsShieldUpdate = false;
                 updateShieldStatus();
                 needsGuiUpdate = true;
+                needsShieldUpdate = false;
             }
             if (needsGuiUpdate)
             {
-                needsGuiUpdate = false;
                 updateGuiState();
+                needsGuiUpdate = false;
             }
         }
 
@@ -505,7 +508,7 @@ namespace SSTUTools
             for (int i = 0; i < shieldedParts.Count; i++)
             {
                 shieldedParts[i].AddShield(this);
-                print("SSTUNodeFairing is shielding: " + shieldedParts[i].name);
+                //print("SSTUNodeFairing is shielding: " + shieldedParts[i].name);
             }
         }
         #endregion
@@ -514,13 +517,11 @@ namespace SSTUTools
             
         public void setFairingTopY(float newValue)
         {
-            print("updating fairing part top positions to: " + newValue);
             foreach (SSTUNodeFairingData data in fairingParts)
             {
                 if (data.canAdjustTop)
                 {
                     data.topY = newValue;
-                    print("set part topY to: " + data.topY);
                 }
             }
             needsRebuilt = true;
@@ -528,13 +529,11 @@ namespace SSTUTools
         
         public void setFairingBottomY(float newValue)
         {
-            print("updating fairing part bottom positions to: " + newValue);
             foreach (SSTUNodeFairingData data in fairingParts)
             {
                 if (data.canAdjustBottom)
                 {
                     data.bottomY = newValue;
-                    print("set part bottomY to: " + data.bottomY);
                 }
             }
             needsRebuilt = true;
@@ -542,7 +541,6 @@ namespace SSTUTools
         
         public void setFairingTopRadius(float topRadius)
         {
-            print("updating fairing top radius: "+topRadius);
             foreach (SSTUNodeFairingData data in fairingParts)
             {
                 if (data.canAdjustTop)
@@ -556,7 +554,6 @@ namespace SSTUTools
         
         public void setFairingBottomRadius(float bottomRadius)
         {
-            print("updating fairing bottom radius: " + bottomRadius);
             foreach (SSTUNodeFairingData data in fairingParts)
             {
                 if (data.canAdjustBottom)
@@ -836,7 +833,6 @@ namespace SSTUTools
         private void enableFairingRender(bool val)
         {
             currentRenderEnabled = val;
-            print("setting render status to: " + val);
             foreach (FairingData fd in fairingParts)
             {
                 fd.enableRenders(val);
@@ -857,11 +853,11 @@ namespace SSTUTools
                     {
                         fd.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);
                     }
-                    fd.numOfSections = (int)Math.Round(numOfSections);
                 }
             }
             foreach (FairingData fd in fairingParts)
             {
+                fd.numOfSections = (int)Math.Round(numOfSections);
                 fd.createFairing(part, fairingMaterial);
             }
             updateDragCube();

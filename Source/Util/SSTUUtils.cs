@@ -7,6 +7,25 @@ namespace SSTUTools
 {
     public class SSTUUtils
     {
+        public static bool isTechUnlocked(String techName)
+        {
+            if (HighLogic.CurrentGame == null) { return true; }
+            else if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX)
+            {
+                if (ResearchAndDevelopment.Instance == null) { return true; }
+                RDTech.State techState = ResearchAndDevelopment.GetTechnologyState(techName);
+                return techState == RDTech.State.Available;
+            }
+            return false;
+        }
+
+        public static bool isResearchGame()
+        {
+            if (HighLogic.CurrentGame == null) { return false; }
+            if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX) { return true; }
+            return false;
+        }
+
         //retrieve an array of Components that implement <T>/ extend <T>;
         //<T> may be an interface or class
         public static T[] getComponentsImplementing<T>(GameObject obj) where T : class
@@ -53,6 +72,48 @@ namespace SSTUTools
             if (index < 0) { index = len - 1; }
             if (index >= len) { index = 0; }
             return list[index];
+        }
+
+        public static T findNextEligible<T>(List<T> list, System.Predicate<T> matchCurrent, System.Predicate<T> matchEligible, bool iterateBackwards)
+        {
+
+            int iter = iterateBackwards ? -1 : 1;
+            int startIndex = findIndex(list, matchCurrent);
+            int length = list.Count;
+            int index;
+            for (int i = 1; i <= length; i++)//will always loop around to catch the start index...
+            {
+                index = startIndex + iter * i;
+                while (index >= length) { index -= length; }
+                while (index < 0) { index += length; }
+
+                if (matchEligible.Invoke(list[index]))
+                {
+                    return list[index];
+                }
+            }
+            return default(T);
+        }
+
+        public static T findNextEligible<T>(T[] list, System.Predicate<T> matchCurrent, System.Predicate<T> matchEligible, bool iterateBackwards)
+        {
+
+            int iter = iterateBackwards ? -1 : 1;
+            int startIndex = findIndex(list, matchCurrent);
+            int length = list.Length;
+            int index;
+            for (int i = 1; i <= length; i++)//will always loop around to catch the start index...
+            {
+                index = startIndex + iter * i;
+                while (index >= length) { index -= length; }
+                while (index < 0) { index += length; }
+
+                if (matchEligible.Invoke(list[index]))
+                {
+                    return list[index];
+                }
+            }
+            return default(T);
         }
 
         public static int findIndex<T>(T[] array, System.Predicate<T> alg)
@@ -128,7 +189,13 @@ namespace SSTUTools
 
         public static String[] parseCSV(String input, String split)
         {
-            return input.Split(new String[] { split }, StringSplitOptions.None);
+            String[] vals = input.Split(new String[] { split }, StringSplitOptions.None);
+            int len = vals.Length;
+            for (int i = 0; i < len; i++)
+            {
+                vals[i] = vals[i].Trim();
+            }
+            return vals;
         }
 
         public static String concatArray(float[] array)
@@ -180,12 +247,14 @@ namespace SSTUTools
 
         public static void destroyChildren(Transform tr)
         {
-            if (tr == null) { return; }
+            if (tr == null || tr.childCount<=0) { return; }
+
             int len = tr.childCount;
             for (int i = 0; i < len; i++)
             {
                 GameObject go = tr.GetChild(i).gameObject;
                 GameObject.Destroy(go);
+                MonoBehaviour.print("Destroying game object: " + go);
             }
         }
 
@@ -200,7 +269,7 @@ namespace SSTUTools
 
         public static void recursePrintComponents(GameObject go, String prefix)
         {
-            MonoBehaviour.print("Found gameObject: " + prefix + go.name);
+            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " :: " +go.activeInHierarchy+" :: "+go.active);
             int childCount = go.transform.childCount;
             Component[] comps = go.GetComponents<Component>();
             foreach (Component comp in comps)
@@ -250,92 +319,7 @@ namespace SSTUTools
             {
                 addMeshCollidersRecursive(tr.GetChild(i), enabled, convex);
             }
-        }
-
-        public static void recursePrintOjbectTree(GameObject go)
-        {
-            MonoBehaviour.print("Object graph for: " + go.name);
-            printObjectTree(go, "", true);
-        }
-
-        public static ConfigNode findModuleNode(Part part, String moduleName, String idField, String idValue)
-        {
-            ConfigNode partNode = PartLoader.Instance.GetDatabaseConfig(part);
-            if (partNode == null)
-            {
-                MonoBehaviour.print("partNode==null!!");
-            }
-            else
-            {
-                MonoBehaviour.print("Found part node: \n" + partNode);
-            }
-            if (moduleName == null)
-            {
-                MonoBehaviour.print("moduleName==null!!");
-            }
-            ConfigNode[] moduleNodes = partNode.GetNodes("MODULE", "name", moduleName);
-            int len = moduleNodes.Length;
-            String val;
-            for (int i = 0; i < len; i++)
-            {
-                if (moduleNodes[i].HasValue(idField))
-                {
-                    val = moduleNodes[i].GetValue(idField);
-                    if (idValue.Equals(val))
-                    {
-                        return moduleNodes[i];
-                    }
-                }
-            }
-            return null;
-        }
-
-        private static void printObjectTree(GameObject go, String prefix, bool isTail)
-        {
-
-            //			http://stackoverflow.com/questions/4965335/how-to-print-binary-tree-diagram
-            //			final String name;
-            //			final List<TreeNode> children;
-            //			
-            //			public TreeNode(String name, List<TreeNode> children) {
-            //				this.name = name;
-            //				this.children = children;
-            //			}
-            //			
-            //			public void print() {
-            //				print("", true);
-            //			}
-            //			
-            //			private void print(String prefix, boolean isTail) {
-            //				System.out.println(prefix + (isTail ? "└── " : "├── ") + name);
-            //				for (int i = 0; i < children.size() - 1; i++) {
-            //					children.get(i).print(prefix + (isTail ? "    " : "│   "), false);
-            //				}
-            //				if (children.size() > 0) {
-            //					children.get(children.size() - 1).print(prefix + (isTail ?"    " : "│   "), true);
-            //				}
-            //			}
-
-            //alternative to investigate:
-            //http://stackoverflow.com/questions/1649027/how-do-i-print-out-a-tree-structure
-
-            MonoBehaviour.print(prefix + (isTail ? "└── " : "├── " + go + ":" + go.GetType()));
-            Component[] comps = go.GetComponents<MonoBehaviour>();
-            bool compTail = false;
-            for (int i = 0; i < comps.Length; i++)
-            {
-                compTail = i >= comps.Length - 1;
-                MonoBehaviour.print(prefix + (compTail ? "    " : "|   ") + comps[i].GetType());
-            }
-            for (int i = 0; i < go.transform.childCount - 1; i++)
-            {
-                printObjectTree(go.transform.GetChild(i).gameObject, prefix + (isTail ? "    " : "|   "), false);
-            }
-            if (go.transform.childCount > 0)
-            {
-                printObjectTree(go.transform.GetChild(go.transform.childCount - 1).gameObject, prefix + (isTail ? "    " : "│   "), true);
-            }
-        }
+        }        
 
         public static void enableRenderRecursive(Transform tr, bool val)
         {
@@ -408,6 +392,16 @@ namespace SSTUTools
             {
                 setMaterialRecursive(tr.GetChild(i), mat);
             }
+        }
+
+        public static void setOpacityRecursive(Transform tr, float opacity)
+        {
+            if (tr.renderer != null && tr.renderer.material != null)
+            {
+                tr.renderer.material.SetFloat("_Opacity", opacity);
+                tr.renderer.material.renderQueue = opacity >= 1f ? 2000 : 3000;
+            }
+            foreach (Transform child in tr) { setOpacityRecursive(child, opacity); }
         }
 
         public static Bounds getRendererBoundsRecursive(GameObject gameObject)
@@ -524,12 +518,12 @@ namespace SSTUTools
         /// <param name="node"></param>
         /// <param name="newPos"></param>
         /// <param name="orientation"></param>
-        public static void updateAttachNodePosition(Part part, AttachNode node, Vector3 newPos, Vector3 orientation)
+        public static void updateAttachNodePosition(Part part, AttachNode node, Vector3 newPos, Vector3 orientation, bool updatePartPosition)
         {
             Vector3 diff = newPos - node.position;
             node.position = node.originalPosition = newPos;
             node.orientation = node.originalOrientation = orientation;
-            if (node.attachedPart != null)
+            if (updatePartPosition && node.attachedPart != null)
             {
                 diff = part.transform.TransformPoint(diff);
                 diff -= part.transform.position;
@@ -542,6 +536,47 @@ namespace SSTUTools
                 {
                     part.attPos0 -= diff;
                     part.transform.position -= diff;
+                }
+            }
+        }
+
+        public static AttachNode createAttachNode(Part part, String id, Vector3 pos, Vector3 orient, int size)
+        {
+            AttachNode newNode = new AttachNode();            
+            newNode.id = id;
+            newNode.owner = part;
+            newNode.nodeType = AttachNode.NodeType.Stack;
+            newNode.size = size;
+            newNode.originalPosition = newNode.position = pos;
+            newNode.originalOrientation = newNode.orientation = orient;            
+            part.attachNodes.Add(newNode);
+            return newNode;
+        }
+
+        public static void destroyAttachNode(Part part, AttachNode node)
+        {
+            if (node == null) { return; }
+            part.attachNodes.Remove(node);
+            node.owner = null;
+            if (node.icon != null)
+            {
+                GameObject.Destroy(node.icon);
+            }
+        }
+
+        public static void updateSurfaceAttachedChildren(Part part, float oldDiameter, float newDiameter)
+        {
+            float delta = newDiameter - oldDiameter;
+            float percentage = newDiameter / oldDiameter;
+
+            //TODO change this to use the parts current position to determine angle, create a new vector using the previous position + delta
+            //this current implementation will magnify any user-set offset by the percentage scale factor.
+            foreach (Part child in part.children)
+            {
+                if (child.srfAttachNode!=null && child.srfAttachNode.attachedPart == part)//has surface attach node, and surface attach node is attached to the input part
+                {
+                    child.transform.localPosition *= percentage;
+                    child.attPos0 *= percentage;
                 }
             }
         }

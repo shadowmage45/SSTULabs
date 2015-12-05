@@ -124,7 +124,7 @@ namespace SSTUTools
             editorHeight += heightAdjust;
             if (editorHeight > maxHeight) { editorHeight = maxHeight; }
             recreateModel();
-            updateAttachNodePositions();
+            updateAttachNodePositions(true);
         }
 
         [KSPEvent(guiName = "Height -", guiActiveEditor = true)]
@@ -133,7 +133,7 @@ namespace SSTUTools
             editorHeight -= heightAdjust;
             if (editorHeight < minHeight) { editorHeight = minHeight; }
             recreateModel();
-            updateAttachNodePositions();
+            updateAttachNodePositions(true);
         }
 
         [KSPEvent(guiName = "Thickness +", guiActiveEditor = true)]
@@ -171,7 +171,7 @@ namespace SSTUTools
             model.destroyModel();
             SSTUUtils.destroyChildren(part.FindModelTransform("model"));//remove the original empty proxy model and any created models
             model = null;
-            return base.GetInfo();
+            return "This part has configurable diameter, height, thickness, and ejection force.";
         }
 
         public override void OnStart(PartModule.StartState state)
@@ -182,6 +182,34 @@ namespace SSTUTools
             updateGuiState();
             Fields["ejectionForce"].guiName = "Ejection Force";
             Fields["ejectionForce"].guiActiveEditor = true;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            }
+        }
+
+        public void OnDestroy()
+        {
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            }
+        }
+
+        public void onEditorVesselModified(ShipConstruct ship)
+        {
+            if (lastRadiusExtra != radiusExtra || lastHeightExtra != heightExtra || lastThicknessExtra != thicknessExtra)
+            {
+                lastRadiusExtra = radiusExtra;
+                lastHeightExtra = heightExtra;
+                lastThicknessExtra = thicknessExtra;
+                recreateModel();
+                updatePhysicalAttributes();
+                updateAttachNodePositions(true);
+                updateDragCube();
+                updateDecouplerForce();
+                updateGuiState();
+            }
         }
 
         public float GetModuleCost(float defaultCost)
@@ -191,24 +219,7 @@ namespace SSTUTools
 
         public float GetModuleMass(float defaultMass)
         {
-            return modifiedMass;
-        }
-
-        public void Update()
-        {
-            if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (lastRadiusExtra != radiusExtra || lastHeightExtra != heightExtra || lastThicknessExtra != thicknessExtra)
-            {
-                lastRadiusExtra = radiusExtra;
-                lastHeightExtra = heightExtra;
-                lastThicknessExtra = thicknessExtra;
-                recreateModel();
-                updatePhysicalAttributes();
-                updateAttachNodePositions();
-                updateDragCube();
-                updateDecouplerForce();
-                updateGuiState();
-            }
+            return -defaultMass + modifiedMass;
         }
 
         #endregion
@@ -296,18 +307,18 @@ namespace SSTUTools
             Fields["thicknessExtra"].guiActiveEditor = canAdjustThickness;
         }
 
-        public void updateAttachNodePositions()
+        public void updateAttachNodePositions(bool userInput)
         {
             float h = (height + heightExtra * heightAdjust) * 0.5f;
             AttachNode topNode = part.findAttachNode("top");
             if (topNode != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, topNode, new Vector3(topNode.position.x, h, topNode.position.z), topNode.orientation);
+                SSTUUtils.updateAttachNodePosition(part, topNode, new Vector3(topNode.position.x, h, topNode.position.z), topNode.orientation, userInput);
             }
             AttachNode bottomNode = part.findAttachNode("bottom");
             if (bottomNode != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation);
+                SSTUUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation, userInput);
             }
         }
 

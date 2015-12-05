@@ -1,10 +1,17 @@
 using System;
 using UnityEngine;
+using System.Collections.Generic;
 namespace SSTUTools
 {
     public static class SSTUExtensions
     {
         #region ConfigNode extension methods
+
+        public static String[] GetStringValues(this ConfigNode node, String name)
+        {
+            String[] values = node.GetValues(name);
+            return values == null ? new String[0] : values;
+        }
 
         public static string GetStringValue(this ConfigNode node, String name, String defaultValue)
         {
@@ -108,9 +115,7 @@ namespace SSTUTools
         {
             return GetIntValue(node, name, 0);
         }
-
         
-
         public static Vector3 GetVector3(this ConfigNode node, String name, Vector3 defaultValue)
         {
             String value = node.GetValue(name);
@@ -142,6 +147,40 @@ namespace SSTUTools
                 return Vector3.zero;
             }
             return new Vector3((float)SSTUUtils.safeParseDouble(vals[0]), (float)SSTUUtils.safeParseDouble(vals[1]), (float)SSTUUtils.safeParseDouble(vals[2]));
+        }
+
+        #endregion
+
+        #region Transform extensionMethods
+
+        public static Transform[] FindChildren(this Transform transform, String name)
+        {
+            List<Transform> trs = new List<Transform>();
+            if (transform.name == name) { trs.Add(transform); }
+            locateTransformsRecursive(transform, name, trs);
+            return trs.ToArray();
+        }
+
+        private static void locateTransformsRecursive(Transform tr, String name, List<Transform> output)
+        {
+            foreach (Transform child in tr)
+            {
+                if (child.name == name) { output.Add(child); }
+                locateTransformsRecursive(child, name, output);
+            }
+        }
+
+        public static Transform FindRecursive(this Transform transform, String name)
+        {
+            if (transform.name == name) { return transform; }//was the original input transform
+            Transform tr = transform.Find(name);//found as a direct child
+            if (tr != null) { return tr; }
+            foreach(Transform child in transform)
+            {
+                tr = child.FindRecursive(name);
+                if (tr != null) { return tr; }
+            }
+            return null;
         }
 
         #endregion

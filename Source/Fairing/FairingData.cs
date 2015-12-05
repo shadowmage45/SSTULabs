@@ -27,7 +27,7 @@ namespace SSTUTools
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node)
         {
-            rotationOffset = node.GetVector3("rotationOffset");
+            rotationOffset = node.GetVector3("rotationOffset", Vector3.zero);
             topY = node.GetFloatValue("topY", topY);
             bottomY = node.GetFloatValue("bottomY", bottomY);
             capSize = node.GetFloatValue("capSize", capSize);
@@ -44,7 +44,6 @@ namespace SSTUTools
             jettisonForce = node.GetFloatValue("jettisonForce", jettisonForce);
             jettisonDirection = node.GetVector3("jettisonDirection", jettisonDirection);
             fairingName = node.GetStringValue("name", fairingName);
-            MonoBehaviour.print("loaded fairing name of: " + fairingName);
         }
 
         public void createFairing(Part part, Material material)

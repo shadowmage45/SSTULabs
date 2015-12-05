@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace SSTUTools
 {
+
     /// <summary>
     /// Generic animation module intended to be controlled by other PartModules.
     /// <para>Does not include any GUI or direct-user-interactivity; all state changes
@@ -30,16 +31,16 @@ namespace SSTUTools
         public float animationSpeed = 1;
 
         [KSPField(isPersistant = true)]
-        public String persistentState = SSTUAnimState.STOPPED_START.ToString();
+        public String persistentState = AnimState.STOPPED_START.ToString();
 
-        private SSTUAnimState currentAnimState = SSTUAnimState.STOPPED_START;
+        private AnimState currentAnimState = AnimState.STOPPED_START;
 
-        private List<Action<SSTUAnimState>> onAnimStateChangeCallbacks = new List<Action<SSTUAnimState>>();
+        private List<Action<AnimState>> onAnimStateChangeCallbacks = new List<Action<AnimState>>();
 
         private Animation[] anims;
 
         //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
-        public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<SSTUAnimState> callback)
+        public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<AnimState> callback)
         {
             if (id < 0)
             {
@@ -76,11 +77,11 @@ namespace SSTUTools
             base.OnLoad(node);
             try
             {
-                currentAnimState = (SSTUAnimState)Enum.Parse(typeof(SSTUAnimState), persistentState);
+                currentAnimState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
             }
             catch (Exception e)
             {
-                currentAnimState = SSTUAnimState.STOPPED_START;
+                currentAnimState = AnimState.STOPPED_START;
                 persistentState = currentAnimState.ToString();
                 print(e.Message);
             }
@@ -88,26 +89,26 @@ namespace SSTUTools
             restorePreviousAnimationState(currentAnimState);
         }
 
-        public void addCallback(Action<SSTUAnimState> cb)
+        public void addCallback(Action<AnimState> cb)
         {
             onAnimStateChangeCallbacks.Add(cb);
         }
 
         //External method to set the state; does not callback on this state change, as this is supposed to originate -from- the callback;
         //it should be aware of its own instigated state changes
-        public void setToState(SSTUAnimState newState)
+        public void setToState(AnimState newState)
         {
             setAnimState(newState, false);
         }
 
-        public SSTUAnimState getAnimationState()
+        public AnimState getAnimationState()
         {
             return currentAnimState;
         }
 
         public void Update()
         {
-            if (currentAnimState == SSTUAnimState.PLAYING_BACKWARD || currentAnimState == SSTUAnimState.PLAYING_FORWARD)
+            if (currentAnimState == AnimState.PLAYING_BACKWARD || currentAnimState == AnimState.PLAYING_FORWARD)
             {
                 bool playing = false;
                 foreach (Animation a in anims)
@@ -121,44 +122,44 @@ namespace SSTUTools
                 //if no longer playing, set the new animation state and inform the callback of the change
                 if (!playing)
                 {
-                    SSTUAnimState newState = currentAnimState == SSTUAnimState.PLAYING_BACKWARD ? SSTUAnimState.STOPPED_START : SSTUAnimState.STOPPED_END;
+                    AnimState newState = currentAnimState == AnimState.PLAYING_BACKWARD ? AnimState.STOPPED_START : AnimState.STOPPED_END;
                     setAnimState(newState, true);
                 }
             }
         }
 
-        private void setAnimState(SSTUAnimState newState, bool callback)
+        private void setAnimState(AnimState newState, bool callback)
         {
             switch (newState)
             {
-                case SSTUAnimState.PLAYING_BACKWARD:
+                case AnimState.PLAYING_BACKWARD:
                     {
                         setAnimSpeed(-1f);
-                        if (currentAnimState == SSTUAnimState.STOPPED_END)//enforce play backwards from end
+                        if (currentAnimState == AnimState.STOPPED_END)//enforce play backwards from end
                         {
                             setAnimTime(1f);
                         }
                         playAnimation();
                         break;
                     }
-                case SSTUAnimState.PLAYING_FORWARD:
+                case AnimState.PLAYING_FORWARD:
                     {
                         setAnimSpeed(1f);
-                        if (currentAnimState == SSTUAnimState.STOPPED_START)//enforce play forwards from beginning
+                        if (currentAnimState == AnimState.STOPPED_START)//enforce play forwards from beginning
                         {
                             setAnimTime(0f);
                         }
                         playAnimation();
                         break;
                     }
-                case SSTUAnimState.STOPPED_END:
+                case AnimState.STOPPED_END:
                     {
-                        setAnimTime(1f);
+                        setAnimTime(1);
                         setAnimSpeed(1);
                         playAnimation();
                         break;
                     }
-                case SSTUAnimState.STOPPED_START:
+                case AnimState.STOPPED_START:
                     {
                         setAnimTime(0);
                         setAnimSpeed(-1);
@@ -236,15 +237,15 @@ namespace SSTUTools
             }
         }
 
-        private void restorePreviousAnimationState(SSTUAnimState state)
+        private void restorePreviousAnimationState(AnimState state)
         {
-            if (state == SSTUAnimState.PLAYING_BACKWARD)
+            if (state == AnimState.PLAYING_BACKWARD)
             {
-                state = SSTUAnimState.STOPPED_START;
+                state = AnimState.STOPPED_START;
             }
-            else if (state == SSTUAnimState.PLAYING_FORWARD)
+            else if (state == AnimState.PLAYING_FORWARD)
             {
-                state = SSTUAnimState.STOPPED_END;
+                state = AnimState.STOPPED_END;
             }
             setAnimState(state, false);
         }

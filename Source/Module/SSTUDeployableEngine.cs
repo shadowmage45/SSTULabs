@@ -16,8 +16,8 @@ namespace SSTUTools
         {
             if (animationControl != null)
             {
-                SSTUAnimState state = animationControl.getAnimationState();
-                if (state == SSTUAnimState.PLAYING_BACKWARD || state == SSTUAnimState.STOPPED_START)//either playing retract anim, or already retracted; deploy it
+                AnimState state = animationControl.getAnimationState();
+                if (state == AnimState.PLAYING_BACKWARD || state == AnimState.STOPPED_START)//either playing retract anim, or already retracted; deploy it
                 {
                     deployEngineEvent();
                 }
@@ -31,51 +31,51 @@ namespace SSTUTools
         [KSPEvent(name = "deployEngineEvent", guiName = "Deploy Engine", guiActive = true, guiActiveEditor = true)]
         public void deployEngineEvent()
         {
-            setAnimationState(SSTUAnimState.PLAYING_FORWARD);
+            setAnimationState(AnimState.PLAYING_FORWARD);
         }
 
         [KSPEvent(name = "retractEngineEvent", guiName = "Retract Engine", guiActive = true, guiActiveEditor = true)]
         public void retractEngineEvent()
         {
             Shutdown();
-            setAnimationState(SSTUAnimState.PLAYING_BACKWARD);
+            setAnimationState(AnimState.PLAYING_BACKWARD);
         }
         
         public override void OnStart(PartModule.StartState state)
         {
             animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
             base.OnStart(state);
-            setupGuiFields(animationControl == null ? SSTUAnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
+            setupGuiFields(animationControl == null ? AnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
         }
 
         //check for control enabled and deployment status (if animated)
         public override void OnActive()
         {
-            if (animationControl == null || animationControl.getAnimationState() == SSTUAnimState.STOPPED_END)
+            if (animationControl == null || animationControl.getAnimationState() == AnimState.STOPPED_END)
             {
                 base.OnActive();
             }
             else
             {
-                setAnimationState(SSTUAnimState.PLAYING_FORWARD);
+                setAnimationState(AnimState.PLAYING_FORWARD);
             }
         }
         
         new public void FixedUpdate()
         {
             base.FixedUpdate();
-            setupGuiFields(animationControl == null ? SSTUAnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
+            setupGuiFields(animationControl == null ? AnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
         }
 
         //TODO - stuff for non-restartable and non-stoppable engines
-        private void setupGuiFields(SSTUAnimState state, bool engineActive)
+        private void setupGuiFields(AnimState state, bool engineActive)
         {
             bool hasAnim = animationControl != null;
             bool isEditor = HighLogic.LoadedSceneIsEditor;
             switch (state)
             {
 
-                case SSTUAnimState.PLAYING_BACKWARD://retracting
+                case AnimState.PLAYING_BACKWARD://retracting
                     {
                         Events["Activate"].active = false;
                         Events["Shutdown"].active = false;
@@ -87,7 +87,7 @@ namespace SSTUTools
                         break;
                     }
 
-                case SSTUAnimState.PLAYING_FORWARD://deploying
+                case AnimState.PLAYING_FORWARD://deploying
                     {
                         Events["Activate"].active = false;
                         Events["Shutdown"].active = false;
@@ -99,7 +99,7 @@ namespace SSTUTools
                         break;
                     }
 
-                case SSTUAnimState.STOPPED_END://deployed or no anim
+                case AnimState.STOPPED_END://deployed or no anim
                     {
                         Events["Activate"].active = !engineActive;
                         Events["Shutdown"].active = engineActive;
@@ -111,7 +111,7 @@ namespace SSTUTools
                         break;
                     }
 
-                case SSTUAnimState.STOPPED_START://retracted
+                case AnimState.STOPPED_START://retracted
                     {
                         Events["Activate"].active = false;
                         Events["Shutdown"].active = false;
@@ -126,9 +126,9 @@ namespace SSTUTools
             }
         }
         
-        public void onAnimationStatusChanged(SSTUAnimState state)
+        public void onAnimationStatusChanged(AnimState state)
         {
-            if (state == SSTUAnimState.STOPPED_END)
+            if (state == AnimState.STOPPED_END)
             {
                 if (HighLogic.LoadedSceneIsFlight)
                 {
@@ -137,14 +137,14 @@ namespace SSTUTools
             }
         }
         
-        private void setAnimationState(SSTUAnimState state)
+        private void setAnimationState(AnimState state)
         {
             if (animationControl != null)
             {
-                SSTUAnimState currentState = animationControl.getAnimationState();
+                AnimState currentState = animationControl.getAnimationState();
                 //exceptions below fix issues of OnActive being called by moduleEngine during startup
-                if (currentState == SSTUAnimState.STOPPED_END && state == SSTUAnimState.PLAYING_FORWARD) { return; }//don't allow deploying from deployed
-                else if (currentState == SSTUAnimState.STOPPED_START && state == SSTUAnimState.PLAYING_BACKWARD) { return; }//don't allow retracting from retracted
+                if (currentState == AnimState.STOPPED_END && state == AnimState.PLAYING_FORWARD) { return; }//don't allow deploying from deployed
+                else if (currentState == AnimState.STOPPED_START && state == AnimState.PLAYING_BACKWARD) { return; }//don't allow retracting from retracted
                 animationControl.setToState(state);
             }
         }

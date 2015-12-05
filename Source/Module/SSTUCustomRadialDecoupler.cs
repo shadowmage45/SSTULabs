@@ -8,7 +8,7 @@ namespace SSTUTools.Module
     {
 
         [KSPField(isPersistant = true)]
-        public float height = 1f;
+        public float height = 2f;
 
         [KSPField(isPersistant = true)]
         public float radius = 1.25f;
@@ -19,21 +19,22 @@ namespace SSTUTools.Module
         [KSPField]
         public float radiusIncrement = 0.625f;
 
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorHeightExtra;
 
-        [KSPField(guiActiveEditor = true, guiName = "Radius Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Radius Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorRadiusExtra;
 
         //this is used to determine actual resultant scale from input for radius
+        //should match the model default scale geometry being used...
         [KSPField]
-        public float defaultRadius = 1.25f;
-
-        [KSPField]
-        public float maxHeight = 100f;
+        public float modelRadius = 1.25f;
 
         [KSPField]
         public float minHeight = 0.5f;
+
+        [KSPField]
+        public float maxHeight = 100f;
 
         [KSPField]
         public float minRadius = 0.625f;
@@ -62,65 +63,67 @@ namespace SSTUTools.Module
         [Persistent]
         public String configNodeData = String.Empty;
 
+        private TechLimitDiameterHeight[] techLimits;
+        // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
+        private float techLimitMaxHeight;
+        private float techLimitMaxDiameter;
+
         [KSPEvent(guiName = "Height-", guiActiveEditor = true)]
         public void prevHeightEvent()
         {
-            editorHeight -= heightIncrement;
-            if (editorHeight <= minHeight)
-            {
-                editorHeight = minHeight;
-            }
-            updateModule();
+            setHeightFromEditor(height - heightIncrement, true);
         }
 
         [KSPEvent(guiName = "Height+", guiActiveEditor = true)]
         public void nextHeightEvent()
         {
-            editorHeight += heightIncrement;
-            if (editorHeight >= maxHeight)
-            {
-                editorHeight = maxHeight;
-            }
-            updateModule();
+            setHeightFromEditor(height + heightIncrement, true);
         }
 
         [KSPEvent(guiName = "Size-", guiActiveEditor = true)]
         public void prevRadiusEvent()
         {
-            editorRadius -= radiusIncrement;
-            if (editorRadius < minRadius)
-            {
-                editorRadius = minRadius;
-            }
-            updateModule();
+            setRadiusFromEditor(radius - radiusIncrement, true);
         }
 
         [KSPEvent(guiName = "Size+", guiActiveEditor = true)]
         public void nextRadiusEvent()
         {
-            editorRadius += radiusIncrement;
-            if (editorRadius > maxRadius)
-            {
-                editorRadius = maxRadius;
-            }
-            updateModule();
+            setRadiusFromEditor(radius + radiusIncrement, true);
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            restoreEditorFields();
+            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
+            int len = limitNodes.Length;
+            techLimits = new TechLimitDiameterHeight[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+
+            updateTechLimits();
+            if (radius * 2 > techLimitMaxDiameter) { radius = techLimitMaxDiameter * 0.5f; }
+            if (height > techLimitMaxHeight) { height = techLimitMaxHeight; }
+
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             locateTransforms();
-            updateStats();
             updateModelPositions();
             updateModelScales();
+            restoreEditorFields();
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            restoreEditorFields();
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
+            {
+                configNodeData = node.ToString();
+            }
+        }
+
+        public override string GetInfo()
+        {
+            return "This part has configurable diameter, height, and ejection force.  Includes separation motors for the attached payload.";
         }
 
         public void OnDestroy()
@@ -131,9 +134,15 @@ namespace SSTUTools.Module
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (editorRadiusExtra != lastRadiusExtra || editorHeightExtra != lastHeightExtra)
+            if (editorRadiusExtra != lastRadiusExtra)
             {
-                updateModule();
+                float newRadius = editorRadius + (editorRadiusExtra * radiusIncrement);
+                setRadiusFromEditor(newRadius, true);
+            }
+            if (editorHeightExtra != lastHeightExtra)
+            {
+                float newHeight = editorHeight + (editorHeightExtra * heightIncrement);
+                setHeightFromEditor(newHeight, true);
             }
         }
 
@@ -171,37 +180,8 @@ namespace SSTUTools.Module
 
         private void updateModule()
         {
-            updateStats();
             updateModelPositions();
             updateModelScales();
-            SSTUCustomRadialDecoupler mod;
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                mod = p.GetComponent<SSTUCustomRadialDecoupler>();
-                updateModule(mod);
-            }
-        }
-
-        private void updateModule(SSTUCustomRadialDecoupler mod)
-        {
-            if (mod != this)
-            {
-                mod.editorHeight = editorHeight;
-                mod.editorRadius = editorRadius;
-                mod.editorHeightExtra = editorHeightExtra;
-                mod.editorRadiusExtra = editorRadiusExtra;
-            }
-            mod.updateStats();
-            mod.updateModelPositions();
-            mod.updateModelScales();
-        }
-
-        private void updateStats()
-        {
-            height = editorHeight + editorHeightExtra * heightIncrement;
-            radius = editorRadius + editorRadiusExtra * radiusIncrement;
-            lastHeightExtra = editorHeightExtra;
-            lastRadiusExtra = editorRadiusExtra;
         }
 
         private void updateModelPositions()
@@ -220,10 +200,7 @@ namespace SSTUTools.Module
 
         private float getScale()
         {
-            updateStats();
-            float defRad = defaultRadius;
-            float curRad = radius;
-            return curRad / defRad;
+            return radius / modelRadius;
         }
 
         private void locateTransforms()
@@ -232,6 +209,60 @@ namespace SSTUTools.Module
             bottomMountTransform = part.FindModelTransform(bottomMountName);
         }
 
+        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > maxHeight) { newHeight = maxHeight; }
+            if (newHeight < minHeight) { newHeight = minHeight; }
+            if (SSTUUtils.isResearchGame() && newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
+            height = newHeight;
+            restoreEditorFields();
+            updateModule();
+            if (updateSymmetry)
+            {
+                foreach(Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomRadialDecoupler>().setHeightFromEditor(newHeight, false);
+                }
+            }
+        }
+
+        private void setRadiusFromEditor(float newRadius, bool updateSymmetry)
+        {
+            if (newRadius > maxRadius) { newRadius = maxRadius; }
+            if (newRadius < minRadius) { newRadius = minRadius; }
+            if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
+            radius = newRadius;
+            restoreEditorFields();
+            updateModule();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomRadialDecoupler>().setRadiusFromEditor(newRadius, false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Update the tech limitations for this part
+        /// </summary>
+        private void updateTechLimits()
+        {
+            techLimitMaxDiameter = float.PositiveInfinity;
+            techLimitMaxHeight = float.PositiveInfinity;
+            if (!SSTUUtils.isResearchGame()) { return; }
+            if (HighLogic.CurrentGame == null) { return; }
+            techLimitMaxDiameter = 0;
+            techLimitMaxHeight = 0;
+            foreach (TechLimitDiameterHeight limit in techLimits)
+            {
+                if (limit.isUnlocked())
+                {
+                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
+                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
+                }
+            }
+        }
     }
 
 }

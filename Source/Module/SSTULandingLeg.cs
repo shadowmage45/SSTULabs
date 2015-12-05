@@ -285,13 +285,13 @@ namespace SSTUTools
 
         #region SSTUAnimateControlled interface
 
-        public void onAnimationStatusChanged(SSTUAnimState state)
+        public void onAnimationStatusChanged(AnimState state)
         {
-            if (state == SSTUAnimState.STOPPED_START)
+            if (state == AnimState.STOPPED_START)
             {
                 setLegState(LegState.RETRACTED);
             }
-            else if (state == SSTUAnimState.STOPPED_END)
+            else if (state == AnimState.STOPPED_END)
             {
                 setLegState(LegState.DEPLOYED);
             }
@@ -349,7 +349,7 @@ namespace SSTUTools
                 decompressTime = 0;
                 resetSuspensionPosition();
                 enableWheelColliders(false);
-                animationController.setToState(SSTUAnimState.PLAYING_BACKWARD);
+                animationController.setToState(AnimState.PLAYING_BACKWARD);
             }
         }
 
@@ -410,14 +410,14 @@ namespace SSTUTools
                     {
                         enableWheelColliders(false);
                         enableFootColliders(false);
-                        animationController.setToState(SSTUAnimState.STOPPED_START);
+                        animationController.setToState(AnimState.STOPPED_START);
                         decompressTime = 0;
                         break;
                     }
 
                 case LegState.DEPLOYED:
                     {
-                        animationController.setToState(SSTUAnimState.STOPPED_END);
+                        animationController.setToState(AnimState.STOPPED_END);
                         decompressTime = 0;
                         if (HighLogic.LoadedSceneIsFlight)
                         {
@@ -432,7 +432,7 @@ namespace SSTUTools
                         enableWheelColliders(false);
                         enableFootColliders(false);
                         decompressTime = 0;
-                        animationController.setToState(SSTUAnimState.STOPPED_START);
+                        animationController.setToState(AnimState.STOPPED_START);
                         break;
                     }
 
@@ -454,12 +454,12 @@ namespace SSTUTools
                             if (HighLogic.LoadedSceneIsFlight)
                             {
                                 enableFootColliders(true);
-                                animationController.setToState(SSTUAnimState.PLAYING_FORWARD);
+                                animationController.setToState(AnimState.PLAYING_FORWARD);
                             }
                             else//we are in editor
                             {
                                 legState = LegState.DEPLOYED;
-                                animationController.setToState(SSTUAnimState.STOPPED_END);
+                                animationController.setToState(AnimState.STOPPED_END);
                             }
                             break;
                         }
@@ -479,7 +479,7 @@ namespace SSTUTools
                             {
                                 //else we are in editor, go straight to retracted state
                                 resetSuspensionPosition();
-                                animationController.setToState(SSTUAnimState.STOPPED_START);
+                                animationController.setToState(AnimState.STOPPED_START);
                                 legState = LegState.RETRACTED;
                             }
                         }
@@ -489,12 +489,12 @@ namespace SSTUTools
                             {
                                 resetSuspensionPosition();
                                 enableWheelColliders(false);
-                                animationController.setToState(SSTUAnimState.PLAYING_BACKWARD);
+                                animationController.setToState(AnimState.PLAYING_BACKWARD);
                             }
                             else
                             {
                                 resetSuspensionPosition();
-                                animationController.setToState(SSTUAnimState.STOPPED_START);
+                                animationController.setToState(AnimState.STOPPED_START);
                                 legState = LegState.RETRACTED;
                             }
                         }

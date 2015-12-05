@@ -11,15 +11,17 @@ namespace SSTUTools
         public String baseName = "FairingBase";
         public String panelName = "FairingPanel";
         #region publicReadOnlyVars		
-        public readonly float startHeight;
-        public readonly float boltPanelHeight;
-        public readonly float totalPanelHeight;
-        public readonly float maxPanelSectionHeight;
-        public readonly int numOfPanels;
-        public readonly int cylinderSides;
-        public readonly float topRadius;
-        public readonly float bottomRadius;
-        public readonly float wallThickness;
+        protected float startHeight;
+        protected float boltPanelHeight;
+        protected float totalPanelHeight;
+        protected float maxPanelSectionHeight;
+        protected int numOfPanels;
+        protected int cylinderSides;
+        protected float topRadius;
+        protected float bottomRadius;
+        protected float wallThickness;
+        public bool topBoltPanel = true;
+        public bool bottomBoltPanel = true;
         #endregion
 
         #region publicUVvars
@@ -33,18 +35,18 @@ namespace SSTUTools
 
         #region privateWorkingVars
         //private internal working vars
-        public readonly int sidesPerPanel;
-        public readonly float anglePerPanel;
-        public readonly float anglePerSide;
-        public readonly float startAngle;
-        public readonly float topOuterRadius;
-        public readonly float topInnerRadius;
-        public readonly float bottomOuterRadius;
-        public readonly float bottomInnerRadius;
-        public readonly float bottomOuterCirc;
-        public readonly float topOuterCirc;
-        public readonly float centerX;
-        public readonly float centerZ;
+        protected int sidesPerPanel;
+        protected float anglePerPanel;
+        protected float anglePerSide;
+        protected float startAngle;
+        protected float topOuterRadius;
+        protected float topInnerRadius;
+        protected float bottomOuterRadius;
+        protected float bottomInnerRadius;
+        protected float bottomOuterCirc;
+        protected float topOuterCirc;
+        protected float centerX;
+        protected float centerZ;
         #endregion
 
         public BasicFairingGenerator(float startHeight, float boltPanelHeight, float totalPanelHeight, float maxPanelSectionHeight, float bottomRadius,
@@ -71,17 +73,7 @@ namespace SSTUTools
             bottomOuterCirc = Mathf.PI * bottomOuterRadius * 2f;
             topOuterCirc = Mathf.PI * topOuterRadius * 2f;
             centerX = 0;
-            centerZ = -bottomRadius;
-
-            //			MonoBehaviour.print("Fairing mesh config: \n"+
-            //			                    "spp:  "+sidesPerPanel+"\n"+
-            //			                    "app:  "+anglePerPanel+"\n"+
-            //			                    "aps:  "+anglePerSide+"\n"+
-            //			                    "sa:   "+startAngle+"\n"+
-            //			                    "trad: "+topOuterRadius+"\n"+ 
-            //			                    "brad: "+bottomOuterRadius+"\n"+
-            //			                    "boc:  "+bottomOuterCirc+"\n"+
-            //			                    "toc:  "+topOuterCirc);
+            centerZ = -bottomRadius;            
         }
 
         #region privateGeneration methods
@@ -128,13 +120,17 @@ namespace SSTUTools
         {
             UVArea capUVCopy = new UVArea(capUV);
             UVArea panelUVCopy = new UVArea(panelUV);
-            Vector2 start = new Vector2(bottomRadius, startY);//1.25, 0			
+            Vector2 start = new Vector2(bottomRadius, startY);		
             Vector2 topOffset = new Vector2(topRadius - bottomRadius, totalHeight);
 
-            float vlen = topOffset.magnitude;
-            float capPercent = boltPanelHeight / vlen;
-            float fullPanelPercent = maxHeightPerPanel / vlen;
-            float panelHeight = vlen - boltPanelHeight * 2.0f;
+            float totalPanelHeight = topOffset.magnitude;
+            float capPercent = boltPanelHeight / totalPanelHeight;
+            float fullPanelPercent = maxHeightPerPanel / totalPanelHeight;
+            float mainPanelHeight = totalPanelHeight;
+            if (topBoltPanel) { mainPanelHeight -= boltPanelHeight; }
+            if (bottomBoltPanel) { mainPanelHeight -= boltPanelHeight; }
+
+            
 
             float height;
             Vector2 pBottom;
@@ -147,22 +143,29 @@ namespace SSTUTools
                 float capVScale = capVHeight / boltPanelHeight;
                 float capU = (bottomOuterCirc / (float)this.numOfPanels) * capVScale;
                 capUVCopy.u2 = capU;
+                
+                if (bottomBoltPanel)
+                {
+                    //bottom cap
+                    pBottom = start;
+                    pTop = start + (topOffset * capPercent);
+                    height = pTop.y - pBottom.y;
+                    gen.setUVArea(capUVCopy);
+                    gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);
 
-                //top cap
-                pBottom = start;
-                pTop = start + (topOffset * capPercent);
-                height = pTop.y - pBottom.y;
-                gen.setUVArea(capUVCopy);
-                gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);
+                }
 
-                capU = (topOuterCirc / (float)this.numOfPanels) * capVScale;
-                capUVCopy.u2 = capU;
-                //bottom cap
-                pBottom = start + topOffset - (topOffset * capPercent);
-                pTop = start + topOffset;
-                height = pTop.y - pBottom.y;
-                gen.setUVArea(capUVCopy);
-                gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);
+                if (topBoltPanel)
+                {
+                    capU = (topOuterCirc / (float)this.numOfPanels) * capVScale;
+                    capUVCopy.u2 = capU;
+                    //bottom cap
+                    pBottom = start + topOffset - (topOffset * capPercent);
+                    pTop = start + topOffset;
+                    height = pTop.y - pBottom.y;
+                    gen.setUVArea(capUVCopy);
+                    gen.generateCylinderWallSection(centerX, centerZ, pBottom.y, height, pTop.x, pBottom.x, sides, anglePerSide, startAngle, outsideWall);
+                }
             }
 
 
@@ -175,11 +178,15 @@ namespace SSTUTools
 
             gen.setUVArea(panelUVCopy);
             // modulus operation to get the whole and remainder
-            float extraPanelHeight = panelHeight / maxHeightPerPanel;
+            float extraPanelHeight = mainPanelHeight / maxHeightPerPanel;
             int numOfVerticalSections = (int)extraPanelHeight;
             extraPanelHeight -= numOfVerticalSections;
 
-            pBottom = start + (topOffset * capPercent);
+            pBottom = start;
+            if (bottomBoltPanel)
+            {
+                pBottom += (topOffset * capPercent);
+            }
             for (int i = 0; i < numOfVerticalSections; i++)//generate full panels
             {
                 pTop = pBottom + (fullPanelPercent * topOffset);
@@ -199,7 +206,7 @@ namespace SSTUTools
                 float panelV = panelUVCopy.v1 + panelVScale * extraPanelHeight;
                 panelUVCopy.v2 = panelV;//scale v area
 
-                float extraPanelPercent = extraPanelHeight / vlen;
+                float extraPanelPercent = extraPanelHeight / totalPanelHeight;
                 pTop = pBottom + (extraPanelPercent * topOffset);
                 height = pTop.y - pBottom.y;
                 gen.setUVArea(panelUVCopy);

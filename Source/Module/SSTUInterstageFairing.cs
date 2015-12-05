@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Linq;
 
 namespace SSTUTools
 {
@@ -50,6 +49,10 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
 
+        //if top radius !=bottom radius, this will create a 'split' panel at this position, for a straight-up-then-tapered/flared fairing
+        [KSPField(isPersistant = true)]
+        public float currentStraightHeight = 0f;
+        
         //how tall is the decoupler base-cap
         [KSPField]
         public float baseHeight = 0.25f;
@@ -73,6 +76,12 @@ namespace SSTUTools
         //minimum height
         [KSPField]
         public float minHeight = 1.0f;
+
+        [KSPField]
+        public float minRadius = 0.3125f;
+
+        [KSPField]
+        public float maxRadius = 5f;
 
         //are planels deployed and upper node decoupled?
         //toggled to true as soon as deploy action is activated
@@ -124,35 +133,41 @@ namespace SSTUTools
         [KSPField]
         float heightAdjust = 1;
 
-        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float topRadiusExtra;
 
-        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float bottomRadiusExtra;
 
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float heightExtra;
+
+        [KSPField(guiActiveEditor = true, guiName = "Straight Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float straightExtra;
 
         #endregion
 
         #region private working variables
 
+        /// <summary>
+        /// Stashed copy of the raw config node data, to hack around KSP not passing in the modules base node data after prefab construction
+        /// </summary>
+        [Persistent]
+        public String configNodeData = String.Empty;
+
         private float editorTopRadius;
         private float editorBottomRadius;
         private float editorHeight;
+        private float editorStraightHeight;
         private float lastTopRadiusExtra;
         private float lastBottomRadiusExtra;
         private float lastHeightExtra;
+        private float lastStraightExtra;
 
-        //reference to the base transform for the display model for the part
-        //used to parent the fairing root to this
-        private Transform modelBase;
+        private bool initialized;
 
         //the current fairing object, contains the base, panels, and temporary editor-only colliders
         private FairingBase fairingBase;
-
-        //temporary bounds collider used for 'put to ground' on vessel launch/unpack
-        private BoxCollider boundsCollider;
 
         //material used for procedural fairing, created from the texture references above
         private Material fairingMaterial;
@@ -161,10 +176,15 @@ namespace SSTUTools
         //rebuilt whenever vessel is modified
         private List<Part> shieldedParts = new List<Part>();
 
+        // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
+        private float techLimitMaxHeight;
+        private float techLimitMaxDiameter;
+        private TechLimitDiameterHeight[] techLimits;
+
         //lerp between the two cubes depending upon deployed state
         //re-render the cubes on fairing rebuild
         private DragCube closedCube;
-        private DragCube openCube;
+        private DragCube openCube;                
 
         #endregion
 
@@ -173,21 +193,49 @@ namespace SSTUTools
         [KSPEvent(name = "increaseHeightEvent", guiName = "Increase Height", guiActiveEditor = true)]
         public void increaseHeightEvent()
         {
-            if (editorHeight < maxHeight)
-            {
-                editorHeight += heightAdjust;
-                updateFairingHeight();
-            }
+            setHeightFromEditor(currentHeight + heightAdjust, true);
         }
 
         [KSPEvent(name = "decreaseHeightEvent", guiName = "Decrease Height", guiActiveEditor = true)]
         public void decreaseHeightEvent()
         {
-            if (editorHeight > minHeight)
-            {
-                editorHeight -= heightAdjust;
-                updateFairingHeight();
-            }
+            setHeightFromEditor(currentHeight - heightAdjust, true);
+        }
+
+        [KSPEvent(guiName = "Increase Straight Height", guiActiveEditor = true)]
+        public void increaseStraightHeightEvent()
+        {
+            setStraightHeightFromEditor(currentStraightHeight + heightAdjust, true);
+        }
+
+        [KSPEvent(guiName = "Decrease Straight Height", guiActiveEditor = true)]
+        public void decreaseStraightHeightEvent()
+        {
+            setStraightHeightFromEditor(currentStraightHeight - heightAdjust, true);
+        }
+
+        [KSPEvent(name = "increaseTopRadiusEvent", guiName = "Top Radius +", guiActiveEditor = true)]
+        public void increaseTopRadiusEvent()
+        {
+            setTopRadiusFromEditor(topRadius + topRadiusAdjust, true);
+        }
+
+        [KSPEvent(name = "decreaseTopRadiusEvent", guiName = "Top Radius -", guiActiveEditor = true)]
+        public void decreaseTopRadiusEvent()
+        {
+            setTopRadiusFromEditor(topRadius - topRadiusAdjust, true);
+        }
+
+        [KSPEvent(name = "increaseBottomRadiusEvent", guiName = "Bottom Radius +", guiActiveEditor = true)]
+        public void increaseBottomRadiusEvent()
+        {
+            setBottomRadiusFromEditor(bottomRadius + bottomRadiusAdjust, true);
+        }
+
+        [KSPEvent(name = "decreaseBottomRadiusEvent", guiName = "Bottom Radius -", guiActiveEditor = true)]
+        public void decreaseBottomRadiusEvent()
+        {
+            setBottomRadiusFromEditor(bottomRadius - bottomRadiusAdjust, true);
         }
 
         [KSPEvent(name = "deployEvent", guiName = "Deploy Panels", guiActive = true)]
@@ -200,50 +248,6 @@ namespace SSTUTools
         public void decoupleEvent()
         {
             onDecoupleEvent();
-        }
-
-        [KSPEvent(name = "increaseTopRadiusEvent", guiName = "Top Radius +", guiActiveEditor = true)]
-        public void increaseTopRadiusEvent()
-        {
-            if (editorTopRadius < 5.0f)
-            {
-                editorTopRadius += topRadiusAdjust;
-                if (editorTopRadius > 5.0f) { editorTopRadius = 5.0f; }
-                updateFairingHeight();
-            }
-        }
-
-        [KSPEvent(name = "decreaseTopRadiusEvent", guiName = "Top Radius -", guiActiveEditor = true)]
-        public void decreaseTopRadiusEvent()
-        {
-            if (editorTopRadius > topRadiusAdjust)
-            {
-                editorTopRadius -= topRadiusAdjust;
-                if (topRadius < topRadiusAdjust) { topRadius = topRadiusAdjust; }
-                updateFairingHeight();
-            }
-        }
-
-        [KSPEvent(name = "increaseBottomRadiusEvent", guiName = "Bottom Radius +", guiActiveEditor = true)]
-        public void increaseBottomRadiusEvent()
-        {
-            if (editorBottomRadius < 5.0f)
-            {
-                editorBottomRadius += bottomRadiusAdjust;
-                if (editorBottomRadius > 5.0f) { editorBottomRadius = 5.0f; }
-                updateFairingHeight();
-            }
-        }
-
-        [KSPEvent(name = "decreaseBottomRadiusEvent", guiName = "Bottom Radius -", guiActiveEditor = true)]
-        public void decreaseBottomRadiusEvent()
-        {
-            if (editorBottomRadius > bottomRadiusAdjust)
-            {
-                editorBottomRadius -= bottomRadiusAdjust;
-                if (editorBottomRadius < bottomRadiusAdjust) { bottomRadius = bottomRadiusAdjust; }
-                updateFairingHeight();
-            }
         }
 
         [KSPAction("Deploy and release")]
@@ -262,28 +266,24 @@ namespace SSTUTools
 
         #region KSP overrides
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
+            {
+                configNodeData = node.ToString();
+            }
+            initialize();
+        }
+
         public override void OnStart(PartModule.StartState state)
         {
-            base.OnStart(state);
-
-            modelBase = part.FindModelTransform(modelMeshName);
-            SSTUUtils.enableRenderRecursive(modelBase, false);
-            SSTUUtils.enableColliderRecursive(modelBase, false);
-
-            if (boundsCollider != null)
-            {
-                Component.Destroy(boundsCollider);
-                boundsCollider = null;
-            }
-
+            base.OnStart(state);  
+                                  
             initialize();
 
-            if (HighLogic.LoadedSceneIsFlight)//if in flight, selectively enable/disable the actions/gui events
+            if (HighLogic.LoadedSceneIsFlight)
             {
-                Events["deployEvent"].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
-                Events["decoupleEvent"].active = deployed && !decoupled;//only available if deployed but not decoupled
-                Actions["deployAction"].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
-                Actions["decoupleAction"].active = deployed && !decoupled;//only available if deployed but not decoupled				
                 enableEditorColliders(false);
             }
 
@@ -308,40 +308,11 @@ namespace SSTUTools
             }
         }
 
-        public override void OnLoad(ConfigNode node)
+        public override string GetInfo()
         {
-            base.OnLoad(node);
-            restoreEditorFields();
-            updateModelParameters();
-            updateNodePositions();
-            if (HighLogic.LoadedSceneIsFlight)
-            {
-                boundsCollider = part.gameObject.AddComponent<BoxCollider>();
-                boundsCollider.center = Vector3.zero;//part.transform.localPosition;
-                float diameter = bottomRadius > topRadius ? bottomRadius : topRadius;
-                boundsCollider.size = new Vector3(diameter, currentHeight + baseHeight, diameter);
-            }
-            loadMaterial();//reload the material, to catch a case where the material name differs from the prefab config
+            return "This part has configurable diameter (independent top/bottom) and height.";
         }
-
-        private void initialize()
-        {
-            restoreEditorFields();
-            updateModelParameters();
-            updateFairingHeight();//will restore previously saved fairing configuration
-        }
-
-        public override void OnAwake()
-        {
-            base.OnAwake();
-            //loads the material immediately after part init; this will get whatever name was specified in the config file initially/from the prefab
-            //only load once, as OnAwake() is called multiple times
-            if (fairingMaterial == null)
-            {
-                loadMaterial();
-            }
-        }
-
+               
         public void OnDestroy()
         {
             GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
@@ -384,10 +355,7 @@ namespace SSTUTools
         }
 
         //IMultipleDragCube override
-        public bool UsesProceduralDragCubes()
-        {
-            return false;
-        }
+        public bool UsesProceduralDragCubes() { return false; }
 
         //IAirstreamShield override
         public bool ClosedAndLocked() { return !deployed; }
@@ -402,7 +370,7 @@ namespace SSTUTools
         public float GetModuleCost(float cost) { return fairingCost; }
 
         //IPartMassModifier override
-        public float GetModuleMass(float mass) { return part.mass; }
+        public float GetModuleMass(float mass) { return -mass + fairingMass; }
 
         #endregion
 
@@ -410,12 +378,22 @@ namespace SSTUTools
 
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            if (lastTopRadiusExtra != topRadiusExtra || lastBottomRadiusExtra != bottomRadiusExtra || lastHeightExtra != heightExtra)
+            if (lastTopRadiusExtra != topRadiusExtra )
             {
-                updateModelParameters();
-                updateFairingHeight();
+                setTopRadiusFromEditor(editorTopRadius + (topRadiusExtra * topRadiusAdjust), true);
             }
-            updateShieldStatus();
+            if (lastBottomRadiusExtra != bottomRadiusExtra )
+            {
+                setBottomRadiusFromEditor(editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjust), true);
+            }
+            if ( lastHeightExtra != heightExtra)
+            {
+                setHeightFromEditor(editorHeight + (heightExtra * heightAdjust), true);
+            }
+            if (lastStraightExtra != straightExtra)
+            {
+                setStraightHeightFromEditor(editorStraightHeight + (straightExtra * heightAdjust), true);
+            }
             setPanelOpacity(0.25f);
         }
 
@@ -453,12 +431,9 @@ namespace SSTUTools
             {
                 animating = true;
                 deployed = true;
-                Events["deployEvent"].active = false;
-                Actions["deployAction"].active = false;
-                Events["decoupleEvent"].active = true;
-                Actions["decoupleAction"].active = true;
                 decoupleNode(part.findAttachNode(topNodeName));
                 updateShieldStatus();
+                updateGuiState();
             }
         }
 
@@ -467,11 +442,8 @@ namespace SSTUTools
             if (deployed && !decoupled)
             {
                 decoupled = true;
-                Events["deployEvent"].active = false;
-                Actions["deployAction"].active = false;
-                Events["decoupleEvent"].active = false;
-                Actions["decoupleAction"].active = false;
                 decoupleNode(part.findAttachNode(internalNodeName));
+                updateGuiState();
             }
         }
 
@@ -535,82 +507,26 @@ namespace SSTUTools
                 SSTUUtils.enableColliderRecursive(fairingBase.editorColliders.transform, val);
             }
         }
-
+                
         #endregion
 
-        #region fairing rebuild methods
+        #region fairing rebuild methods            
 
-        private void restoreEditorFields()
+        private void rebuildFairing(bool userInput)
         {
-            float div = topRadius / topRadiusAdjust;
-            float whole = (int)div;
-            float extra = div - whole;
-            editorTopRadius = whole * topRadiusAdjust;
-            topRadiusExtra = extra;
-            lastTopRadiusExtra = extra;
-
-            div = bottomRadius / bottomRadiusAdjust;
-            whole = (int)div;
-            extra = div - whole;
-            editorBottomRadius = whole * bottomRadiusAdjust;
-            bottomRadiusExtra = extra;
-            lastBottomRadiusExtra = extra;
-
-            div = currentHeight / heightAdjust;
-            whole = (int)div;
-            extra = div - whole;
-            editorHeight = whole * heightAdjust;
-            heightExtra = extra;
-            lastHeightExtra = extra;
-        }
-
-        private void updateModelParameters()
-        {
-            lastTopRadiusExtra = topRadiusExtra;
-            lastBottomRadiusExtra = bottomRadiusExtra;
-            lastHeightExtra = heightExtra;
-            topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjust);
-            bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjust);
-            currentHeight = editorHeight + (heightExtra * heightAdjust);
-        }
-
-        private void updateFairingHeight()
-        {
-            recreateFairing();
-            updateNodePositions();
-            recreateDragCubes();
-            updateShieldStatus();
-
-            if (HighLogic.LoadedSceneIsEditor)
+            if (fairingBase != null)
             {
-                EditorLogic el = EditorLogic.fetch;
-                if (el != null)
-                {
-                    if (el.ship != null)
-                    {
-                        GameEvents.onEditorShipModified.Fire(el.ship);
-                    }
-                }
+                fairingBase.root.transform.parent = null;
+                GameObject.Destroy(fairingBase.root);
+                fairingBase = null;
             }
-        }
-
-        private void recreateFairing()
-        {
-            destroyPanels();
-            updateModelParameters();
             createPanels();
             setPanelRotations(currentRotation);//set animation status to whatever is current
             fairingBase.enablePanelColliders(false, false);
             updateFairingMassAndCost();
-        }
-
-        //destroy any procedurally created panel sections
-        private void destroyPanels()
-        {
-            if (fairingBase == null) { return; }
-            fairingBase.root.transform.parent = null;
-            GameObject.Destroy(fairingBase.root);
-            fairingBase = null;
+            updateNodePositions(userInput);
+            recreateDragCubes();
+            updateShieldStatus();
         }
 
         //create procedural panel sections for the current part configuration (radialSection count), with orientation set from base panel orientation
@@ -624,9 +540,9 @@ namespace SSTUTools
             bRad = bottomRadius;
             height = currentHeight;
 
-            InterstageFairingGenerator fg = new InterstageFairingGenerator(startHeight, baseHeight, boltPanelHeight, height, maxPanelSectionHeight, bRad, tRad, wallThickness, numOfRadialSections, cylinderSides);
+            InterstageFairingGenerator fg = new InterstageFairingGenerator(startHeight, baseHeight, currentStraightHeight, boltPanelHeight, height, maxPanelSectionHeight, bRad, tRad, wallThickness, numOfRadialSections, cylinderSides);
             fairingBase = fg.buildFairing();
-            Transform modelTransform = part.partTransform.FindChild("model");
+            Transform modelTransform = part.transform.FindRecursive("model");
             fairingBase.root.transform.NestToParent(modelTransform);
             fairingBase.root.transform.rotation = modelTransform.rotation;
             fairingBase.setMaterial(fairingMaterial);
@@ -636,6 +552,7 @@ namespace SSTUTools
 
         private void recreateDragCubes()
         {
+            if (part.partInfo == null) { return; }
             setPanelRotations(deployedRotation);
             this.openCube = DragCubeSystem.Instance.RenderProceduralDragCube(part);
             setPanelRotations(0);
@@ -665,35 +582,7 @@ namespace SSTUTools
 
             part.mass = fairingMass;
         }
-
-        private void updateNodePositions()
-        {
-            float halfDistance = (currentHeight + baseHeight) * 0.5f;
-            float lowestY = -halfDistance;
-            float innerY = -halfDistance + baseHeight;
-            float topY = halfDistance;
-
-            Vector3 topLocal = new Vector3(0, topY, 0);
-            Vector3 innerLocal = new Vector3(0, innerY, 0);
-            Vector3 bottomLocal = new Vector3(0, lowestY, 0);
-
-            AttachNode node = part.findAttachNode(bottomNodeName);
-            if (node != null)
-            {
-                SSTUUtils.updateAttachNodePosition(part, node, bottomLocal, node.orientation);
-            }
-            node = part.findAttachNode(internalNodeName);
-            if (node != null)
-            {
-                SSTUUtils.updateAttachNodePosition(part, node, innerLocal, node.orientation);
-            }
-            node = part.findAttachNode(topNodeName);
-            if (node != null)
-            {
-                SSTUUtils.updateAttachNodePosition(part, node, topLocal, node.orientation);
-            }
-        }
-
+              
         #endregion
 
         #region shield update methods
@@ -751,6 +640,54 @@ namespace SSTUTools
 
         #region private helper methods
 
+        private void initialize()
+        {
+            if (initialized) { return; }
+            initialized = true;
+            SSTUUtils.destroyChildren(part.transform.FindRecursive("model"));
+            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
+            int len = limitNodes.Length;
+            techLimits = new TechLimitDiameterHeight[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+
+            loadMaterial();
+            updateTechLimits();
+            if (topRadius * 2 > techLimitMaxDiameter) { topRadius = techLimitMaxDiameter * 0.5f; }
+            if (bottomRadius * 2 > techLimitMaxDiameter) { bottomRadius = techLimitMaxDiameter * 0.5f; }
+            rebuildFairing(false);//will create fairing using default / previously saved fairing configuration
+
+            restoreEditorFields();
+            updateGuiState();
+        }
+
+        private void restoreEditorFields()
+        {
+            float div = topRadius / topRadiusAdjust;
+            float whole = (int)div;
+            float extra = div - whole;
+            editorTopRadius = whole * topRadiusAdjust;
+            topRadiusExtra = lastTopRadiusExtra = extra;
+
+            div = bottomRadius / bottomRadiusAdjust;
+            whole = (int)div;
+            extra = div - whole;
+            editorBottomRadius = whole * bottomRadiusAdjust;
+            bottomRadiusExtra = lastBottomRadiusExtra = extra;
+
+            div = currentHeight / heightAdjust;
+            whole = (int)div;
+            extra = div - whole;
+            editorHeight = whole * heightAdjust;
+            heightExtra = lastHeightExtra = extra;
+
+            div = currentStraightHeight / heightAdjust;
+            whole = (int)div;
+            extra = div - whole;
+            editorStraightHeight = whole * heightAdjust;
+            straightExtra = lastStraightExtra = extra;
+        }
+
         private void loadMaterial()
         {
             if (fairingMaterial != null)
@@ -759,6 +696,140 @@ namespace SSTUTools
                 fairingMaterial = null;
             }
             fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName, "KSP/Bumped Specular");
+        }
+
+        private void setTopRadiusFromEditor(float newRadius, bool updateSymmetry)
+        {
+            if (newRadius > maxRadius) { newRadius = maxRadius; }
+            if (newRadius < minRadius) { newRadius = minRadius; }
+            if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
+            topRadius = newRadius;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setTopRadiusFromEditor(newRadius, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setBottomRadiusFromEditor(float newRadius, bool updateSymmetry)
+        {
+            if (newRadius > maxRadius) { newRadius = maxRadius; }
+            if (newRadius < minRadius) { newRadius = minRadius; }
+            if (SSTUUtils.isResearchGame() && newRadius*2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter*0.5f; }
+            bottomRadius = newRadius;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setBottomRadiusFromEditor(newRadius, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > maxHeight) { newHeight = maxHeight; }
+            if (newHeight < minHeight) { newHeight = minHeight; }
+            if (SSTUUtils.isResearchGame() && newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
+            if (currentStraightHeight > newHeight) { currentStraightHeight = newHeight; }
+            currentHeight = newHeight;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setStraightHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > currentHeight) { newHeight = currentHeight; }
+            if (newHeight < 0) { newHeight = 0; }
+            currentStraightHeight = newHeight;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        /// <summary>
+        /// Update the tech limitations for this part
+        /// </summary>        
+        private void updateTechLimits()
+        {
+            techLimitMaxDiameter = float.PositiveInfinity;
+            techLimitMaxHeight = float.PositiveInfinity;
+            if (!SSTUUtils.isResearchGame()) { return; }
+            if (HighLogic.CurrentGame == null) { return; }
+            techLimitMaxDiameter = 0;
+            techLimitMaxHeight = 0;
+            foreach (TechLimitDiameterHeight limit in techLimits)
+            {
+                if (limit.isUnlocked())
+                {
+                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
+                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
+                }
+            }
+        }
+
+        private void updateNodePositions(bool userInput)
+        {
+            float halfDistance = (currentHeight + baseHeight) * 0.5f;
+            float lowestY = -halfDistance;
+            float innerY = -halfDistance + baseHeight;
+            float topY = halfDistance;
+
+            Vector3 topLocal = new Vector3(0, topY, 0);
+            Vector3 innerLocal = new Vector3(0, innerY, 0);
+            Vector3 bottomLocal = new Vector3(0, lowestY, 0);
+
+            AttachNode node = part.findAttachNode(bottomNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, bottomLocal, node.orientation, userInput);
+            }
+            node = part.findAttachNode(internalNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, innerLocal, node.orientation, userInput);
+            }
+            node = part.findAttachNode(topNodeName);
+            if (node != null)
+            {
+                SSTUUtils.updateAttachNodePosition(part, node, topLocal, node.orientation, userInput);
+            }
+        }
+
+        private void updateGuiState()
+        {
+            Events["deployEvent"].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
+            Events["decoupleEvent"].active = deployed && !decoupled;//only available if deployed but not decoupled
+            Actions["deployAction"].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
+            Actions["decoupleAction"].active = deployed && !decoupled;//only available if deployed but not decoupled			
         }
 
         #endregion
