@@ -567,16 +567,27 @@ namespace SSTUTools
         public static void updateSurfaceAttachedChildren(Part part, float oldDiameter, float newDiameter)
         {
             float delta = newDiameter - oldDiameter;
-            float percentage = newDiameter / oldDiameter;
-
-            //TODO change this to use the parts current position to determine angle, create a new vector using the previous position + delta
-            //this current implementation will magnify any user-set offset by the percentage scale factor.
+            delta *= 0.5f;
+            Vector3 parentPosWorldSpace = part.transform.position;
+            Vector3 parentPosChildSpace;
+            Vector3 diff;
+            float originalLen;
+            float newLen;
+            float newX, newY, newZ;
             foreach (Part child in part.children)
             {
                 if (child.srfAttachNode!=null && child.srfAttachNode.attachedPart == part)//has surface attach node, and surface attach node is attached to the input part
                 {
-                    child.transform.localPosition *= percentage;
-                    child.attPos0 *= percentage;
+                    parentPosChildSpace = child.transform.InverseTransformPoint(parentPosWorldSpace);
+                    diff = child.transform.localPosition - parentPosChildSpace;
+                    originalLen = new Vector2(parentPosChildSpace.x, parentPosChildSpace.z).magnitude;
+                    newLen = originalLen + delta;
+                    float dp = newLen / originalLen;
+                    newX = child.transform.localPosition.x * dp;
+                    newY = child.transform.localPosition.y;
+                    newZ = child.transform.localPosition.z * dp;                    
+                    child.transform.localPosition = new Vector3(newX, newY, newZ);
+                    child.attPos0 = new Vector3(newX, newY, newZ);
                 }
             }
         }

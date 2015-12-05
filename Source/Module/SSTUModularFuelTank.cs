@@ -262,7 +262,7 @@ namespace SSTUTools
             {
                 Events["nextFuelEvent"].active = false;
                 Fields["guiTankCost"].guiActiveEditor = false;
-                Fields["guiTankDryMass"].guiActiveEditor = false;
+                Fields["guiDryMass"].guiActiveEditor = false;
                 Fields["guiTankVolume"].guiActiveEditor = false;
             }
             if (textureSets.Length <= 1)
@@ -663,9 +663,9 @@ namespace SSTUTools
             restoreEditorFields();
 
             updateEditorStats(true);
-            
-            //SSTUUtils.updateSurfaceAttachedChildren(part, oldDiameter, newDiameter); 
-            
+
+            SSTUUtils.updateSurfaceAttachedChildren(part, oldDiameter, newDiameter);
+
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -767,7 +767,7 @@ namespace SSTUTools
         {
             currentNoseModule.updateAttachNodes(part, topNodeNames, userInput);
             currentMountModule.updateAttachNodes(part, bottomNodeNames, userInput);
-            AttachNode surface = part.findAttachNode("srf");
+            AttachNode surface = part.srfAttachNode;
             if (surface != null)
             {
                 Vector3 pos = new Vector3(currentTankDiameter * 0.5f, 0, 0);
