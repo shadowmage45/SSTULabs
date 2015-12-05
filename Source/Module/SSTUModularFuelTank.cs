@@ -664,7 +664,7 @@ namespace SSTUTools
 
             updateEditorStats(true);
             
-            SSTUUtils.updateSurfaceAttachedChildren(part, oldDiameter, newDiameter);
+            //SSTUUtils.updateSurfaceAttachedChildren(part, oldDiameter, newDiameter); 
             
             if (updateSymmetry)
             {
@@ -731,30 +731,20 @@ namespace SSTUTools
 
         private void updateModuleTexture(SingleModelData module, TextureSet set)
         {
+            if (module.model == null) { return; }//model may be null if the module has no model (e.g. 'None' mount type)
             set.enable(module.model.transform);
         }
 
         private void updateTextureSet(bool updateSymmetry)
         {
             updateFlagTransform();
-            SSTUTextureSwitch[] texSwitches = part.GetComponents<SSTUTextureSwitch>();
-            if (texSwitches == null || texSwitches.Length == 0)
-            {
-                return;
-            }
-            foreach (SSTUTextureSwitch ts in texSwitches)
-            {
-                ts.enableTextureSet(ts.currentTextureSet);
-            }
+            updateModuleTexture(currentNoseModule, Array.Find(textureSets, m=>m.setName==currentNoseTexture));
+            updateModuleTexture(currentMainTankModule, Array.Find(textureSets, m => m.setName == currentTankTexture));
+            updateModuleTexture(currentMountModule, Array.Find(textureSets, m => m.setName == currentMountTexture));
+
             if (updateSymmetry)
             {
-                SSTUModularFuelTank tank = null;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    tank = p.GetComponent<SSTUModularFuelTank>();
-                    if (tank == null) { continue; }
-                    tank.updateTextureSet(false);
-                }
+                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularFuelTank>().updateTextureSet(false); }
             }
         }
 

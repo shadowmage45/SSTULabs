@@ -959,6 +959,10 @@ namespace SSTUTools
                 totalTankVolume += lowerBottomCapModule.getModuleVolume();
             }
             totalTankVolume += currentMountModule.getModuleVolume();
+            if (useRF)
+            {
+                SSTUUtils.updateRealFuelsPartVolume(part, totalTankVolume);
+            }
             //update usable fuel volume, tankage mass, dry mass, etc
             totalFuelVolume = currentFuelTypeData.getUsableVolume(totalTankVolume);
         }
@@ -1094,7 +1098,10 @@ namespace SSTUTools
         /// </summary>
         private void updatePartMass()
         {
-            part.mass = tankageMass + moduleMass;
+            if (!useRF)
+            {
+                part.mass = tankageMass + moduleMass;
+            }
         }
         
         #endregion
