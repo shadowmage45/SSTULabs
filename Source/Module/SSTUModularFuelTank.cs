@@ -228,13 +228,13 @@ namespace SSTUTools
         [KSPEvent(guiName = "Next Nose Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextNoseTextureEvent()
         {
-            setNoseTextureFromEditor(SSTUUtils.findNext(textureSets, m => m.setName == currentTankTexture, false), true);
+            setNoseTextureFromEditor(SSTUUtils.findNext(textureSets, m => m.setName == currentNoseTexture, false), true);
         }
 
         [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextMountTextureEvent()
         {
-            setMountTextureFromEditor(SSTUUtils.findNext(textureSets, m => m.setName == currentTankTexture, false), true);
+            setMountTextureFromEditor(SSTUUtils.findNext(textureSets, m => m.setName == currentMountTexture, false), true);
         }
 
         #endregion
@@ -363,7 +363,7 @@ namespace SSTUTools
                 currentTankDiameter = defaultTankDiameter;
                 currentTankTexture = defaultTankTexture;
                 currentNoseTexture = defaultNoseTexture;
-                currentMountTexture = defaultMountTexture;
+                currentMountTexture = defaultMountTexture;                
             }
 
             removeExistingModels();
