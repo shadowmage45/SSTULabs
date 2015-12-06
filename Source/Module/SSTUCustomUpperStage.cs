@@ -119,6 +119,13 @@ namespace SSTUTools
 
         [KSPField]
         public String interstageNodeName = "interstage";
+
+        [KSPField]
+        public String baseTransformName = "SSTUCustomUpperStageBaseTransform";
+
+        [KSPField]
+        public String rcsTransformName = "SSTUCustomUpperStageRCSTransform";
+
         #endregion
 
         #region ----------------- REGION - GUI visible fields and fine tune adjustment contols - do not edit through config ----------------- 
@@ -258,6 +265,7 @@ namespace SSTUTools
         private TechLimitDiameterHeight[] techLimits;
 
         private bool initialized = false;
+        private bool initialFairingUpdate = false;
         #endregion
 
         #region ----------------- REGION - GUI methods ----------------- 
@@ -396,7 +404,7 @@ namespace SSTUTools
         /// </summary>
         public void Start()
         {
-            updateFairing();
+            updateFairing(initialFairingUpdate);
             updateRCSThrust();
         }
         
@@ -467,7 +475,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            SSTUUtils.destroyChildren(part.transform.FindRecursive("model"));
+            SSTUUtils.destroyChildren(part.transform.FindRecursive(baseTransformName));
             if (currentTankDiameter==-1f)
             {
                 //should only run once, on the prefab part; which is fine, as the models/settings will be cloned and carried over to the editor part
@@ -497,9 +505,10 @@ namespace SSTUTools
             updateModels();
             updateTankStats();
             //determine if this is the first time the part-instance has ever been initialized; skip the prefab part (so, must be flight or editor).            
-            if (!initializedResources && HighLogic.LoadedSceneIsEditor)
+            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
                 updatePartResources();
+                initialFairingUpdate = true;
                 initializedResources = true;
             }
             restoreEditorFields();
@@ -683,13 +692,13 @@ namespace SSTUTools
             updateModuleScales();
             updateModulePositions();
             updateNodePositions(userInput);
-            updateFairing();
+            updateFairing(userInput);
         }
                 
         /// <summary>
         /// Update the fairing module height and position based on current tank parameters
         /// </summary>
-        private void updateFairing()
+        private void updateFairing(bool userInput)
         {
             SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
             if (modules == null || modules.Length < 2) { return; }
@@ -698,7 +707,10 @@ namespace SSTUTools
             {
                 topFairing.setFairingTopY(partTopY);
                 topFairing.setFairingBottomY(topFairingBottomY);
-                topFairing.setFairingTopRadius(currentTankDiameter * 0.5f);
+                if (userInput)
+                {
+                    topFairing.setFairingTopRadius(currentTankDiameter * 0.5f);
+                }
                 topFairing.setFairingBottomRadius(currentTankDiameter * 0.5f);
                 
             }            
@@ -707,6 +719,7 @@ namespace SSTUTools
             {
                 bottomFairing.setFairingTopRadius(currentTankDiameter * 0.5f);
                 bottomFairing.setFairingTopY(bottomFairingTopY);
+                if (userInput) { bottomFairing.setFairingBottomRadius(currentTankDiameter * 0.5f); }
             }
         }
 
@@ -742,32 +755,13 @@ namespace SSTUTools
         /// </summary>
         private void buildSavedModel()
         {
-            Transform modelBase = part.transform.FindRecursive("model");
+            Transform modelBase = part.transform.FindOrCreate(baseTransformName);
 
             setupModel(upperTopCapModule, modelBase);
             setupModel(upperModule, modelBase);
             setupModel(upperBottomCapModule, modelBase);
-
-            if (splitTank)
-            {
-                if (currentIntertankModule.name != defaultIntertank)
-                {
-                    SSTUCustomUpperStageIntertank dim = Array.Find<SSTUCustomUpperStageIntertank>(intertankModules, l => l.name == defaultIntertank);
-                    dim.setupModel(part, modelBase);
-                    removeCurrentModel(dim);
-                }
-                setupModel(currentIntertankModule, modelBase);
-                setupModel(lowerModule, modelBase);
-                setupModel(lowerBottomCapModule, modelBase);
-            }
-            if (currentMountModule.name != defaultMount)
-            {
-                MountModelData dmm = Array.Find<MountModelData>(mountModules, l => l.name == defaultMount);
-                dmm.setupModel(part, modelBase);
-                removeCurrentModel(dmm);
-            }
             setupModel(currentMountModule, modelBase);
-            setupModel(rcsModule, modelBase);
+            setupModel(rcsModule, part.transform.FindOrCreate(rcsTransformName));
         }
 
         /// <summary>
@@ -1013,7 +1007,7 @@ namespace SSTUTools
             {
                 float scale = currentTankDiameter / defaultTankDiameter;
                 rcsThrust = defaultRcsThrust * scale * scale;
-                rcsMod.thrusterPower = rcsThrust;
+                rcsMod.thrusterPower = rcsThrust;                
             }
         }
 
@@ -1151,10 +1145,21 @@ namespace SSTUTools
         public override void setupModel(Part part, Transform parent)
         {
             models = new GameObject[4];
-            for (int i = 0; i < 4; i++)
+            Transform[] trs = part.transform.FindChildren(modelName);
+            if (trs != null && trs.Length>0)
             {
-                models[i] = SSTUUtils.cloneModel(modelName);
+                for (int i = 0; i < 4; i++)
+                {
+                    models[i] = trs[i].gameObject;
+                }
             }
+            else
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    models[i] = SSTUUtils.cloneModel(modelName);
+                }
+            }            
             foreach (GameObject go in models)
             {
                 go.transform.NestToParent(parent);

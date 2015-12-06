@@ -7,6 +7,14 @@ namespace SSTUTools
 {
     public class SSTUUtils
     {
+        //TODO figure out how to re-init the highlighter...
+        public static void updatePartHighlighting(Part part)
+        {
+            //if (part.highlighter == null || !(HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)) { return; }
+            //part.highlighter.ReinitMaterials();
+            //part.highlighter.Highlight();
+        }
+
         public static bool isTechUnlocked(String techName)
         {
             if (HighLogic.CurrentGame == null) { return true; }

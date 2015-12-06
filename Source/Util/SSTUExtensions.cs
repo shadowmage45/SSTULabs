@@ -183,6 +183,16 @@ namespace SSTUTools
             return null;
         }
 
+        public static Transform FindOrCreate(this Transform transform, String name)
+        {
+            Transform newTr = transform.FindRecursive(name);
+            if(newTr!= null) { return newTr; }
+            GameObject newGO = new GameObject(name);
+            newGO.name = newGO.transform.name = name;
+            newGO.transform.NestToParent(transform);
+            return newGO.transform;
+        }
+
         #endregion
 
         #region Vector3 extensionMethods

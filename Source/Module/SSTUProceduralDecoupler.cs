@@ -256,7 +256,7 @@ namespace SSTUTools
             {
                 return;
             }
-            Transform tr = part.FindModelTransform("model");
+            Transform tr = part.transform.FindRecursive("model");
             SSTUUtils.destroyChildren(tr);//remove the original empty proxy model, and any models that may have been attached during prefab init
             model = new ProceduralCylinderModel();
             updateModelParameters();
@@ -268,7 +268,7 @@ namespace SSTUTools
             updatePhysicalAttributes();
             updateDecouplerForce();
             updateDragCube();
-            resetHighlighter();
+            SSTUUtils.updatePartHighlighting(part);
         }
 
         public void recreateModel()
@@ -279,7 +279,7 @@ namespace SSTUTools
             updatePhysicalAttributes();
             updateDecouplerForce();
             updateDragCube();
-            resetHighlighter();
+            SSTUUtils.updatePartHighlighting(part);
         }
 
         private void updateModelParameters()
@@ -357,15 +357,6 @@ namespace SSTUTools
         private void updateDecouplerForce()
         {
             ejectionForce = forcePerKg * (modifiedMass * 1000f);
-        }
-
-        //TODO
-        private void resetHighlighter()
-        {
-            if (part.highlighter != null)
-            {
-                //	part.highlighter.ReinitMaterials();
-            }
         }
 
         #endregion
