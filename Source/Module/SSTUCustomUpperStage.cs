@@ -485,7 +485,6 @@ namespace SSTUTools
                 currentIntertank = defaultIntertank;
                 currentRcsThrust = defaultRcsThrust;
                 currentFuelType = defaultFuelType;
-
             }
             loadConfigData();
             updateTechLimits();
@@ -573,7 +572,6 @@ namespace SSTUTools
             {
                 //fields that are only populated by split-tank type upper-stages
                 ConfigNode tankLowerNode = node.GetNode("TANKLOWER");
-                ConfigNode lowerTopCapNode = node.GetNode("TANKLOWERTOPCAP");
                 ConfigNode lowerBottomCapNode = node.GetNode("TANKLOWERBOTTOMCAP");
                 ConfigNode[] intertankNodes = node.GetNodes("INTERTANK");
                 lowerModule = new SSTUCustomUpperStagePart(tankLowerNode);
@@ -591,6 +589,8 @@ namespace SSTUTools
             len = limitNodes.Length;
             techLimits = new TechLimitDiameterHeight[len];
             for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+
+            print("loaded config data, split tank: " + splitTank);
         }
 
         #endregion
@@ -760,6 +760,27 @@ namespace SSTUTools
             setupModel(upperTopCapModule, modelBase);
             setupModel(upperModule, modelBase);
             setupModel(upperBottomCapModule, modelBase);
+
+
+            if (splitTank)
+            {
+                if (currentIntertankModule.name != defaultIntertank)
+                {
+                    SSTUCustomUpperStageIntertank dim = Array.Find<SSTUCustomUpperStageIntertank>(intertankModules, l => l.name == defaultIntertank);
+                    dim.setupModel(part, modelBase);
+                    removeCurrentModel(dim);
+                }
+                setupModel(currentIntertankModule, modelBase);
+                setupModel(lowerModule, modelBase);
+                setupModel(lowerBottomCapModule, modelBase);
+            }
+            if (currentMountModule.name != defaultMount)
+            {
+                MountModelData dmm = Array.Find<MountModelData>(mountModules, l => l.name == defaultMount);
+                dmm.setupModel(part, modelBase);
+                removeCurrentModel(dmm);
+            }
+
             setupModel(currentMountModule, modelBase);
             setupModel(rcsModule, part.transform.FindOrCreate(rcsTransformName));
         }
@@ -881,7 +902,7 @@ namespace SSTUTools
             removeCurrentModel(currentMountModule);
             currentMountModule = nextDef;
             currentMount = nextDef.name;
-            setupModel(currentMountModule, part.transform.FindRecursive("model"));
+            setupModel(currentMountModule, part.transform.FindOrCreate(baseTransformName));
             updateModules(true);
             updateModels();
             updateFuelVolume();
@@ -898,7 +919,7 @@ namespace SSTUTools
             removeCurrentModel(currentIntertankModule);
             currentIntertankModule = newDef;
             currentIntertank = newDef.name;
-            setupModel(currentIntertankModule, part.transform.FindRecursive("model"));
+            setupModel(currentIntertankModule, part.transform.FindOrCreate(baseTransformName));
             updateModules(true);
             updateModels();
             updateTankStats();
