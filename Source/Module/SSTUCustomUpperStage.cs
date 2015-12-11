@@ -124,7 +124,7 @@ namespace SSTUTools
         public String baseTransformName = "SSTUCustomUpperStageBaseTransform";
 
         [KSPField]
-        public String rcsTransformName = "SSTUCustomUpperStageRCSTransform";
+        public String rcsTransformName = "SSTUMUSRCS";
 
         #endregion
 
@@ -470,7 +470,6 @@ namespace SSTUTools
         /// <summary>
         /// Basic initialization code, should only be ran once per part-instance (though, is safe to call from both start and load)
         /// </summary>
-        /// <param name="buildModels"></param>
         private void initialize()
         {
             if (initialized) { return; }
@@ -755,13 +754,12 @@ namespace SSTUTools
         /// </summary>
         private void buildSavedModel()
         {
-            Transform modelBase = part.transform.FindOrCreate(baseTransformName);
+            Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
 
             setupModel(upperTopCapModule, modelBase);
             setupModel(upperModule, modelBase);
             setupModel(upperBottomCapModule, modelBase);
-
-
+            
             if (splitTank)
             {
                 if (currentIntertankModule.name != defaultIntertank)
@@ -782,7 +780,7 @@ namespace SSTUTools
             }
 
             setupModel(currentMountModule, modelBase);
-            setupModel(rcsModule, part.transform.FindOrCreate(rcsTransformName));
+            setupModel(rcsModule, part.transform.FindRecursive("model").FindOrCreate(rcsTransformName));
         }
 
         /// <summary>
@@ -902,7 +900,7 @@ namespace SSTUTools
             removeCurrentModel(currentMountModule);
             currentMountModule = nextDef;
             currentMount = nextDef.name;
-            setupModel(currentMountModule, part.transform.FindOrCreate(baseTransformName));
+            setupModel(currentMountModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName));
             updateModules(true);
             updateModels();
             updateFuelVolume();
@@ -919,7 +917,7 @@ namespace SSTUTools
             removeCurrentModel(currentIntertankModule);
             currentIntertankModule = newDef;
             currentIntertank = newDef.name;
-            setupModel(currentIntertankModule, part.transform.FindOrCreate(baseTransformName));
+            setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName));
             updateModules(true);
             updateModels();
             updateTankStats();
@@ -1180,11 +1178,11 @@ namespace SSTUTools
                 {
                     models[i] = SSTUUtils.cloneModel(modelName);
                 }
-            }            
+            }
             foreach (GameObject go in models)
             {
                 go.transform.NestToParent(parent);
-            }
+            }            
         }
 
         public override void updateModel()

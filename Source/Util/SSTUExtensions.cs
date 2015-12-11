@@ -188,6 +188,7 @@ namespace SSTUTools
             Transform newTr = transform.FindRecursive(name);
             if(newTr!= null) { return newTr; }
             GameObject newGO = new GameObject(name);
+            newGO.SetActive(true);
             newGO.name = newGO.transform.name = name;
             newGO.transform.NestToParent(transform);
             return newGO.transform;
