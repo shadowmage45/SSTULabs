@@ -15,6 +15,25 @@ namespace SSTUTools
             //part.highlighter.Highlight();
         }
 
+        public static GameObject createJettisonedObject(GameObject toJettison, Vector3 velocity, Vector3 force, float mass)
+        {
+            GameObject jettisonedObject = new GameObject("JettisonedDebris");
+            Transform parent = toJettison.transform.parent;
+            if (parent != null)
+            {
+                jettisonedObject.transform.position = parent.position;
+                jettisonedObject.transform.rotation = parent.rotation;
+            }
+            toJettison.transform.NestToParent(jettisonedObject.transform);
+            jettisonedObject.AddComponent<physicalObject>();
+            Rigidbody rb = jettisonedObject.AddComponent<Rigidbody>();
+            rb.velocity = velocity;
+            rb.mass = mass;            
+            rb.AddForce(force);
+            rb.useGravity = false;
+            return jettisonedObject;
+        }
+
         public static bool isTechUnlocked(String techName)
         {
             if (HighLogic.CurrentGame == null) { return true; }
@@ -277,7 +296,7 @@ namespace SSTUTools
 
         public static void recursePrintComponents(GameObject go, String prefix)
         {
-            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " :: " +go.activeInHierarchy+" :: "+go.active);
+            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " :: " +go.activeInHierarchy);
             int childCount = go.transform.childCount;
             Component[] comps = go.GetComponents<Component>();
             foreach (Component comp in comps)
