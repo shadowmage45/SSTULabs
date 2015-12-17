@@ -431,11 +431,6 @@ namespace SSTUTools
             }
         }
 
-        public void Update()
-        {
-           
-        }
-
         public void LateUpdate()
         {
             if (needsRebuilt)
@@ -521,10 +516,13 @@ namespace SSTUTools
             {
                 if (data.canAdjustTop)
                 {
+                    if (newValue != data.topY)
+                    {
+                        needsRebuilt = true;
+                    }
                     data.topY = newValue;
                 }
             }
-            needsRebuilt = true;
         }
         
         public void setFairingBottomY(float newValue)
@@ -533,10 +531,13 @@ namespace SSTUTools
             {
                 if (data.canAdjustBottom)
                 {
+                    if (newValue != data.bottomY)
+                    {
+                        needsRebuilt = true;
+                    }
                     data.bottomY = newValue;
                 }
             }
-            needsRebuilt = true;
         }
         
         public void setFairingTopRadius(float topRadius)
@@ -545,11 +546,14 @@ namespace SSTUTools
             {
                 if (data.canAdjustTop)
                 {
+                    if (topRadius != data.topRadius)
+                    {
+                        needsRebuilt = true;
+                    }
                     data.topRadius = topRadius;
                 }
             }
             restoreEditorFields();
-            needsRebuilt = true;
         }
         
         public void setFairingBottomRadius(float bottomRadius)
@@ -558,11 +562,14 @@ namespace SSTUTools
             {
                 if (data.canAdjustBottom)
                 {
+                    if (bottomRadius != data.bottomRadius)
+                    {
+                        needsRebuilt = true;
+                    }
                     data.bottomRadius = bottomRadius;
                 }
             }
             restoreEditorFields();
-            needsRebuilt = true;
         }
         
         /// <summary>
