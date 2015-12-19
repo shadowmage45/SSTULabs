@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {    
-    public class SSTUModularParachute : PartModule, IMultipleDragCube
+    public class SSTUModularParachute : SSTUPartModuleConfigEnabled, IMultipleDragCube
     {
 
         private enum ChuteDragCube
@@ -18,87 +18,124 @@ namespace SSTUTools
 
         private Dictionary<ChuteDragCube, String> cubeToNameMap = new Dictionary<ChuteDragCube, String>();
 
+        /// <summary>
+        /// Custom name for the full-retracted drag-cube
+        /// </summary>
         [KSPField]
         public String retractedDragCubeName = ChuteDragCube.RETRACTED.ToString();
 
+        /// <summary>
+        /// Custom name for the drogue semi-deployed drag cube
+        /// </summary>
         [KSPField]
         public String drogueSemiDragCubeName = ChuteDragCube.DROGUESEMI.ToString();
 
+        /// <summary>
+        /// Custom name for the drogue full deployed drag cube
+        /// </summary>
         [KSPField]
         public String drogueFullDragCubeName = ChuteDragCube.DROGUEFULL.ToString();
 
+        /// <summary>
+        /// Custom name for the main semi-deployed drag cube
+        /// </summary>
         [KSPField]
         public String mainSemiDragCubeName = ChuteDragCube.MAINSEMI.ToString();
 
+        /// <summary>
+        /// Custom name for the main full deployed drag cube
+        /// </summary>
         [KSPField]
         public String mainFullDragCubeName = ChuteDragCube.MAINFULL.ToString();
 
+        /// <summary>
+        /// How much random wobble should be applied to the parachtues?  This is an arbitrary scalar factor; 0=no wobble, +infinity = 100% random orientation; general usable range should be from 0-100
+        /// </summary>
         [KSPField]
         public float wobbleMultiplier = 10f;
 
+        /// <summary>
+        /// How fast should the parachutes track changes in direction of drag?
+        /// </summary>
         [KSPField]
         public float lerpDegreePerSecond = 45f;
 
+        /// <summary>
+        /// Below this speed (in m/s), the parachutes will auto-cut if the vessel is in a landed or splashed state.
+        /// </summary>
         [KSPField]
         public float autoCutSpeed = 0.5f;
 
+        /// <summary>
+        /// The base transform name to be created; all parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
+        /// </summary>
         [KSPField]
-        public float mainSemiDeploySpeed = 2f;
+        public String baseTransformName = "SSTUModularParachuteBaseTransform";
 
+        //mains config data
+
+        /// <summary>
+        /// The name of the mesh within the model that should be jettisoned when main parachutes are activated.  May be a separate mesh from the drogue mesh, and will stay attached until mains are activated.
+        /// </summary>
         [KSPField]
-        public float mainFullDeploySpeed = 2f;
+        public String mainCapName = "MainCap";
 
-        [KSPField]
-        public float mainSemiMinAtm = 0.01f;
-
-        [KSPField]
-        public float mainSemiAutoAlt = 8000f;
-
-        [KSPField]
-        public float mainFullMinAtm = 0.2f;
-
-        [KSPField]
-        public float mainFullAutoAlt = 750f;
-
+        /// <summary>
+        /// The maximum temperature that the mains parachute may experience before burning up.  Beyond this temp and the parachute will be cut (burn up).  'Current' temp is calculated as a simple factor of surface area vs mach factor * exterior heat value
+        /// </summary>
         [KSPField]
         public float mainMaxTemp = 800f;
 
         [KSPField]
-        public float drogueSemiMinAtm = 0.001f;
+        public float mainMaxQ = 4000;
 
         [KSPField]
-        public float drogueSemiAutoAlt = 25000f;
+        public float mainMinAtm = 0.25f;
 
+        /// <summary>
+        /// The scale factor to use for the mains model when in retracted state.  Rendering is disabled when in this state, so any 'small' value should be usable; when deployment starts, this scale will be set and rendering will be enabled.
+        /// </summary>
         [KSPField]
-        public float drogueFullMinAtm = 0.005f;
+        public Vector3 mainRetractedScale = new Vector3(0.005f, 0.005f, 0.005f);
 
+        /// <summary>
+        /// The scale factor to use for the mains model when in semi-deployed state
+        /// </summary>
         [KSPField]
-        public float drogueFullAutoAlt = 17000f;
+        public Vector3 mainSemiDeployedScale = new Vector3(0.2f, 1.0f, 0.2f);
 
+        /// <summary>
+        /// The number of seconds it takes the mains to go from retracted to semi-deployed state
+        /// </summary>
         [KSPField]
-        public float drogueMaxTemp = 1400f;
+        public float mainSemiDeploySpeed = 2f;
+        
+        /// <summary>
+        /// The scale of the model to use when the mains are at full deployment
+        /// </summary>
+        [KSPField]
+        public Vector3 mainFullDeployedScale = new Vector3(1.0f, 1.0f, 1.0f);
 
+        /// <summary>
+        /// The number of seconds it takes the mains to go from semi to full deployed
+        /// </summary>
         [KSPField]
-        public float drogueSemiDeploySpeed = 2f;
-
-        [KSPField]
-        public float drogueFullDeploySpeed = 2f;
+        public float mainFullDeploySpeed = 2f;
+        
+        //drogues config data
 
         [KSPField]
         public String drogueCapName = "DrogueCap";
 
         [KSPField]
-        public String mainCapName = "MainCap";
+        public float drogueMaxTemp = 1400f;
 
         [KSPField]
-        public String baseTransformName = "SSTUModularParachuteBaseTransform";
+        public float drogueMinAtm = 0.005f;
 
         [KSPField]
-        public String removableDrogueCapName = String.Empty;
-
-        [KSPField]
-        public String removableMainCapName = String.Empty;
-
+        public float drogueMaxQ = 20000f;
+        
         [KSPField]
         public Vector3 drogueRetractedScale = new Vector3(0.005f, 0.005f, 0.005f);
 
@@ -106,78 +143,118 @@ namespace SSTUTools
         public Vector3 drogueSemiDeployedScale = new Vector3(0.2f, 1.0f, 0.2f);
 
         [KSPField]
-        public Vector3 drogueFullDeployedScale = new Vector3(1.0f, 1.0f, 1.0f);
+        public float drogueSemiDeploySpeed = 2f;
+        
+        [KSPField]
+        public Vector3 drogueFullDeployedScale = new Vector3(1.0f, 1.0f, 1.0f);        
 
         [KSPField]
-        public Vector3 mainRetractedScale = new Vector3(0.005f, 0.005f, 0.005f);
-
-        [KSPField]
-        public Vector3 mainSemiDeployedScale = new Vector3(0.2f, 1.0f, 0.2f);
-
-        [KSPField]
-        public Vector3 mainFullDeployedScale = new Vector3(1.0f, 1.0f, 1.0f);        
-
-        [KSPField(isPersistant = true)]
-        public bool hasDrogueBeenDeployed = false;
-
+        public float drogueFullDeploySpeed = 2f;
+        
+        /// <summary>
+        /// Used to track the ChuteState variable for the drogue chutes; restored during OnLoad
+        /// </summary>
         [KSPField(isPersistant = true)]
         public String drogueChutePersistence = ChuteState.RETRACTED.ToString();
 
+        /// <summary>
+        /// Used to track the ChuteState variable for the main chutes; restored during OnLoad
+        /// </summary>
         [KSPField(isPersistant = true)]
         public String mainChutePersistence = ChuteState.RETRACTED.ToString();
 
+        /// <summary>
+        /// Used to track if the mains jettison cap has already been jettisoned (to prevent re-jettisoning it on part-reload if it was previously removed)
+        /// </summary>
         [KSPField(isPersistant = true)]
         public bool hasJettisonedMainCap = false;
+
+        /// <summary>
+        /// Used to track if the d jettison cap has already been jettisoned (to prevent re-jettisoning it on part-reload if it was previously removed)
+        /// </summary>
         [KSPField(isPersistant = true)]
         public bool hasJettisonedDrogueCap = false;
 
+        /// <summary>
+        /// Has the 'deploy' action been triggered, and just waiting for safe/atm requirements to be met?
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public bool triggered = false;
+
         #region private working variables
-
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+        
         private ChuteState mainChuteState = ChuteState.RETRACTED;
         private ChuteState drogueChuteState = ChuteState.RETRACTED;
                 
         private ParachuteModelData[] mainChuteModules;
         private ParachuteModelData[] drogueChuteModules;
-
+        
         private float deployTime = 0f;
-        private bool hasDrogeChute = false;
+        private bool hasDrogueChute = false;
         private bool initialized = false;
+        private bool configLoaded = false;
         private Transform baseTransform;
         private Transform rotatorTransform;
 
+        private double atmoDensity;
+        private double squareVelocity;
+        private double dynamicPressure;
+        private double externalTemp;
+
         #endregion
 
-        #region GUI events and actions
+        #region GUI fields, events, actions
+        
+        [KSPField(isPersistant = true, guiName = "Drogue Deploy Alt", guiActive = true, guiActiveEditor =true ), UI_FloatRange(minValue = 2000f, stepIncrement = 100f, maxValue = 12000f)]
+        public float drogueSafetyAlt = 7500f;
+
+        [KSPField(isPersistant =true, guiName ="Main Deploy Alt", guiActive = true, guiActiveEditor = true), UI_FloatRange(minValue = 500f, stepIncrement = 100f, maxValue = 5500f)]
+        public float mainSafetyAlt = 1200f;
+
         [KSPField(guiName = "Safe For Chutes", guiActive = true, guiActiveEditor = false)]
         public String safeToDeploy = "Unknown";
 
+        [KSPAction("Deploy Chute")]
+        public void deployChuteAction(KSPActionParam param)
+        {
+            deployChuteEvent();
+        }
+
+        [KSPAction("Cut Chute")]
+        public void cutChuteAction(KSPActionParam param)
+        {
+            cutChuteEvent();
+        }
+
         [KSPEvent(guiName = "Deploy Chute", guiActive = true, guiActiveEditor = false)]
         public void deployChuteEvent()
-        {            
-            if (hasDrogeChute)
+        {
+            if (isDrogueReady())
             {
-                if (drogueChuteState == ChuteState.RETRACTED)
+                triggered = true;
+                if (!updateAutoCut(false))
                 {
                     setChuteStates(ChuteState.RETRACTED, ChuteState.DEPLOYING_SEMI);
-                }                
+                }
             }
-            else if(mainChuteState == ChuteState.RETRACTED)//has no drogue, main is retracted and ready to deploy
+            else if (isMainReady())
             {
-                setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                triggered = true;
+                if (!updateAutoCut(false))
+                {
+                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                }
             }
         }
 
         [KSPEvent(guiName = "Cut Chute", guiActive = true, guiActiveEditor = false)]
         public void cutChuteEvent()
         {
-            if (drogueChuteState != ChuteState.RETRACTED && drogueChuteState != ChuteState.CUT)
+            if (isDrogueChuteDeployed())
             {
                 setChuteStates(mainChuteState, ChuteState.CUT);
             }
-            if (mainChuteState != ChuteState.RETRACTED && mainChuteState != ChuteState.CUT)
+            if (isMainChuteDeployed())
             {
                 setChuteStates(ChuteState.CUT, drogueChuteState);
             }
@@ -190,7 +267,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { configNodeData = node.ToString(); }
             mainChuteState = (ChuteState)Enum.Parse(typeof(ChuteState), mainChutePersistence);
             drogueChuteState = (ChuteState)Enum.Parse(typeof(ChuteState), drogueChutePersistence);
             initialize();
@@ -201,6 +277,11 @@ namespace SSTUTools
             base.OnStart(state);
             initialize();
             GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onUnpackEvent));
+            if (!hasDrogueChute)
+            {
+                BaseField f = Fields["drogueSafetyAlt"];
+                f.guiActive = f.guiActiveEditor = false;
+            }
         }
 
         public void OnDestroy()
@@ -217,34 +298,7 @@ namespace SSTUTools
         {
             if (HighLogic.LoadedSceneIsFlight)
             {
-                if (mainChuteState != ChuteState.CUT && mainChuteState != ChuteState.RETRACTED)
-                {
-                    if (updateAutoCut(true))
-                    {
-                        setChuteStates(ChuteState.CUT, ChuteState.CUT);
-                    }
-                    else
-                    {
-                        updateParachuteTargets(-part.dragVectorDir);
-                        if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
-                        if (deployTime < 0) { deployTime = 0; }
-                        updateAnimationStatus(true);
-                    }
-                }
-                else if (drogueChuteState != ChuteState.CUT && drogueChuteState != ChuteState.RETRACTED)
-                {
-                    if (updateAutoCut(false))
-                    {                        
-                        setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                    }
-                    else
-                    {
-                        updateParachuteTargets(-part.dragVectorDir);
-                        if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
-                        if (deployTime < 0) { deployTime = 0; }
-                        updateAnimationStatus(false);
-                    }
-                }
+                updateFlight();
             }
         }
 
@@ -256,11 +310,9 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;            
-            loadConfigData(SSTUNodeUtils.parseConfigNode(configNodeData));
             initializeModels();
             setChuteStates(mainChuteState, drogueChuteState);
             print("SSTUModularParachute initialized");
-            print("hashcode: " + GetHashCode());
             printDragCubes();
         }
 
@@ -275,8 +327,10 @@ namespace SSTUTools
             }
         }
 
-        private void loadConfigData(ConfigNode node)
+        protected override void loadConfigData(ConfigNode node)
         {
+            if (configLoaded) { return; }
+            configLoaded = true;
             ConfigNode[] drogueNodes = node.GetNodes("DROGUECHUTE");
             ConfigNode[] mainNodes = node.GetNodes("MAINCHUTE");
             int len = drogueNodes.Length;
@@ -306,7 +360,7 @@ namespace SSTUTools
             targetRotator.transform.rotation = Quaternion.LookRotation(part.transform.up, part.transform.forward);
             foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, baseTransform, rotatorTransform); }
             foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, baseTransform, rotatorTransform); }
-            hasDrogeChute = drogueChuteModules.Length > 0;            
+            hasDrogueChute = drogueChuteModules.Length > 0;
         }
 
         #endregion
@@ -320,19 +374,16 @@ namespace SSTUTools
                 if (c != a && c != b)//not one of the active cubes
                 {
                     part.DragCubes.SetCubeWeight(cubeToNameMap[c], 0);
-                    print("setting drag cube: " + c + " to: " + 0);
                 }
             }
             if (a == b)// a and b are the same, all others deactivated already, so just set a to full
             {
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1.0f);
-                print("set single drag cube to full progress: " + a);
             }
             else//lerp between A and B by _progress_
             {
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1f - progress);
                 part.DragCubes.SetCubeWeight(cubeToNameMap[b], progress);
-                print("setting drag cubes to: " + a + " : " + b + "  at progress: " + progress);
             }
         }
 
@@ -347,6 +398,7 @@ namespace SSTUTools
         /// <param name="name"></param>
         public void AssumeDragCubePosition(string name)
         {
+            forceReloadConfig();
             initialize();
             updateParachuteTargets(part.transform.up);
             switch (name)
@@ -397,23 +449,98 @@ namespace SSTUTools
 
         #region update methods
 
+        private void updateFlight()
+        {
+            updateParachuteStats();
+            if (isMainChuteDeployed())
+            {
+                if (updateAutoCut(true))
+                {
+                    setChuteStates(ChuteState.CUT, ChuteState.CUT);
+                }
+                else
+                {
+                    updateParachuteTargets(-part.dragVectorDir);
+                    if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
+                    if (deployTime < 0) { deployTime = 0; }
+                    updateAnimationStatus(true);
+                }
+            }
+            else if (isDrogueChuteDeployed())
+            {
+                if (updateAutoCut(false))
+                {
+                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                }
+                else
+                {
+                    updateParachuteTargets(-part.dragVectorDir);
+                    if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
+                    if (deployTime < 0) { deployTime = 0; }
+                    updateAnimationStatus(false);
+                    updateSafeToDeploy(true);
+                }
+            }
+            else if (isDrogueReady() || isMainReady())
+            {  
+                updateSafeToDeploy(!hasDrogueChute);
+                if (triggered)
+                {   
+                    print("triggered, checking alt/atm");
+                    if (vessel.altitude <= mainSafetyAlt && !isMainChuteDeployed() && !updateAutoCut(true))
+                    {
+                        setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                    }
+                    else if (vessel.altitude <= drogueSafetyAlt && isDrogueReady() && !updateAutoCut(false))
+                    {
+                        setChuteStates(ChuteState.RETRACTED, ChuteState.DEPLOYING_SEMI);
+                    }
+                }
+            }
+            //print("alt: " +vessel.altitude+ " : vel: " + Math.Sqrt(squareVelocity) + " dens: " + atmoDensity + " Q: " + dynamicPressure + " shock: " + externalTemp+" mFlux: "+vessel.convectiveMachFlux+" mach: "+vessel.mach+" ext temp: "+vessel.externalTemperature);
+        }
+
         private bool updateAutoCut(bool main)
         {
-            //TODO calc chute temp differently from base vessel temp, as a simple formula of area and speed (whichever that is), cut if exceeds max for that chute type
-            if (part.atmDensity <= 0)
+            if (atmoDensity<=0)
             {
                 return true;
             }
-            if ((Krakensbane.GetFrameVelocity() + part.rigidbody.velocity).sqrMagnitude < (autoCutSpeed * autoCutSpeed))
+            else
             {
-                return vessel.LandedOrSplashed;
+                if (squareVelocity < autoCutSpeed * autoCutSpeed)
+                {
+                    if (vessel.LandedOrSplashed) { return true; }
+                }
+                double max = main ? mainMaxQ : drogueMaxQ;
+                if (dynamicPressure > max)
+                {
+                    return true;
+                }
+                double chuteTemp = main ? mainMaxTemp : drogueMaxTemp;
+                if (externalTemp > chuteTemp)
+                {
+                    return true;
+                }
             }
             return false;
         }
 
         private void updateSafeToDeploy(bool main)
         {
+            bool wouldBeDestroyed = updateAutoCut(main);
+            safeToDeploy = wouldBeDestroyed ? "Unsafe" : "Safe";
+        }
 
+        /// <summary>
+        /// Updates internal cached vars for external physical state -- velocity, dynamic pressure, etc.
+        /// </summary>
+        private void updateParachuteStats()
+        {
+            atmoDensity = part.atmDensity;
+            squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rigidbody.velocity.sqrMagnitude;
+            externalTemp = vessel.externalTemperature;
+            dynamicPressure = atmoDensity * squareVelocity * 0.5d;
         }
 
         private void removeParachuteCap(String name, bool jettison)
@@ -454,7 +581,6 @@ namespace SSTUTools
                         {
                             if (main) { setChuteStates(ChuteState.SEMI_DEPLOYED, drogueChuteState); }
                             else { setChuteStates(mainChuteState, ChuteState.SEMI_DEPLOYED); }
-                            print("toggling to next state from semi deploying");
                             updateDragCube = false;
                             updateAnim = false;
                         }
@@ -474,7 +600,6 @@ namespace SSTUTools
                         {
                             if (main) { setChuteStates(ChuteState.FULL_DEPLOYED, drogueChuteState); }
                             else { setChuteStates(mainChuteState, ChuteState.FULL_DEPLOYED); }
-                            print("toggling to next state from full deploying");
                             updateDragCube = false;
                             updateAnim = false;
                         }
@@ -493,22 +618,13 @@ namespace SSTUTools
                         updateAnim = true;
                         updateDragCube = false;
                         double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
-                        float nextAlt = main ? mainFullAutoAlt : drogueFullAutoAlt;
-                        if (alt < nextAlt)
+                        double transitionAlt = (main ? mainSafetyAlt : drogueSafetyAlt)*0.75d;
+                        if (alt <= transitionAlt)
                         {
                             updateAnim = false;
-                            if (main)
-                            {
-                                print("toggling to next state from semi deployed");
-                                setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState);
-                            }
-                            else
-                            {
-                                print("toggling to next state from semi deployed");
-                                setChuteStates(mainChuteState, ChuteState.DEPLOYING_FULL);
-                            }
+                            if (main) { setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState); }
+                            else { setChuteStates(mainChuteState, ChuteState.DEPLOYING_FULL); }
                         }
-                        //TODO check if should full deploy
                         break;
                     }
                 case ChuteState.FULL_DEPLOYED:
@@ -516,14 +632,13 @@ namespace SSTUTools
                         progress = 1f;
                         updateAnim = true;
                         updateDragCube = false;
-                        if (!main)
+                        if (!main)//drogue chute, check for mains deploy
                         {
                             double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
                             //TODO check if should auto-deploy main
-                            float nextAlt = mainSemiAutoAlt;
-                            if (alt < nextAlt)
+                            float nextAlt = mainSafetyAlt;
+                            if (alt <= mainSafetyAlt && !updateAutoCut(true))
                             {
-                                print("toggling to main deploy state from drogue deployed");
                                 setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
                                 updateAnim = false;
                             }
@@ -698,12 +813,8 @@ namespace SSTUTools
 
             updatePartDragCube(a, b, progress);
 
-            bool canDeploy = (hasDrogeChute && (drogueChuteState==ChuteState.RETRACTED || (drogueChuteState==ChuteState.CUT && mainChuteState==ChuteState.RETRACTED)))
-                             ||
-                             (!hasDrogeChute && (mainChuteState==ChuteState.RETRACTED));
-            bool canCut = (drogueChuteState!=ChuteState.RETRACTED && drogueChuteState!=ChuteState.CUT) 
-                          ||
-                          (mainChuteState!=ChuteState.RETRACTED && mainChuteState!=ChuteState.CUT);
+            bool canDeploy = isDrogueReady() || isMainReady();
+            bool canCut = isDrogueChuteDeployed() || isMainChuteDeployed();
             updateGuiState(canDeploy, canCut);
         }
 
@@ -731,6 +842,46 @@ namespace SSTUTools
             Events["deployChuteEvent"].guiActive = deploy;
             Events["cutChuteEvent"].guiActive = cut;
             Fields["safeToDeploy"].guiActive = deploy;
+            if (mainChuteState != ChuteState.RETRACTED)
+            {
+                BaseField f = Fields["mainSafetyAlt"];
+                f.guiActive = f.guiActiveEditor = false;
+            }
+            if (drogueChuteState != ChuteState.RETRACTED)
+            {
+                BaseField f = Fields["drogueSafetyAlt"];
+                f.guiActive = f.guiActiveEditor = false;
+            }
+        }
+
+        private bool isMainChuteDeployed()
+        {
+            return mainChuteState != ChuteState.CUT && mainChuteState != ChuteState.RETRACTED;
+        }
+
+        private bool isDrogueChuteDeployed()
+        {
+            return drogueChuteState != ChuteState.CUT && drogueChuteState != ChuteState.RETRACTED;
+        }
+
+        private bool isDrogueReady()
+        {
+            return hasDrogueChute && drogueChuteState == ChuteState.RETRACTED;
+        }
+
+        private bool isMainReady()
+        {
+            return mainChuteState==ChuteState.RETRACTED && ((hasDrogueChute && drogueChuteState==ChuteState.CUT) || (!hasDrogueChute));
+        }
+
+        private bool canDrogueDeploy()
+        {
+            return atmoDensity >= drogueMinAtm*0.75f;
+        }
+
+        private bool canMainDeploy()
+        {
+            return atmoDensity >= mainMinAtm*0.75f;
         }
 
         #endregion        
@@ -750,13 +901,13 @@ namespace SSTUTools
         public Vector3 retractedUpVector;
         public Vector3 semiDeployedUpVector;
         public Vector3 fullDeployedUpVector;
+        public String texture = String.Empty;
 
         public bool debug = false;
         
         public Vector3 retractedScale = Vector3.zero;
         public Vector3 semiDeployedScale = new Vector3(0.2f, 1, 0.2f);
         public Vector3 fullDeployedScale = new Vector3(0.2f, 1, 0.2f);
-        public float animationProgress = 0f;
 
         private Transform partTransform;
         private GameObject retractedTarget;
@@ -773,6 +924,7 @@ namespace SSTUTools
             retractedUpVector = node.GetVector3("retractedUpVector");
             semiDeployedUpVector = node.GetVector3("semiDeployedUpVector");
             fullDeployedUpVector = node.GetVector3("fullDeployedUpVector");
+            texture = node.GetStringValue("texture", texture);
             debug = node.GetBoolValue("debug");
             retractedScale = retracted;
             semiDeployedScale = semi;
@@ -801,6 +953,10 @@ namespace SSTUTools
                         
             baseModel = SSTUUtils.cloneModel(modelName);
             baseModel.transform.NestToParent(parachutePivot.transform);
+            if (!String.IsNullOrEmpty(texture))
+            {
+                SSTUUtils.setMainTextureRecursive(baseModel.transform, GameDatabase.Instance.GetTexture(texture, false));
+            }
             
             Transform tr = baseModel.transform.FindRecursive(definition.capName);
             if (tr == null) { MonoBehaviour.print("ERROR: Could not locate transform for cap name: " + definition.capName); }

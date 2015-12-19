@@ -39,7 +39,12 @@ namespace SSTUTools
 
         protected virtual void loadConfigData(ConfigNode node)
         {
-            throw new NotImplementedException("ERROR: Load config data is not implemented for: "+GetType());
+            throw new NotImplementedException("ERROR: Load config data is not implemented for: " + GetType());
+        }
+
+        protected void forceReloadConfig()
+        {
+            loadConfigData(SSTUNodeUtils.parseConfigNode(configNodeData));
         }
     }
 }

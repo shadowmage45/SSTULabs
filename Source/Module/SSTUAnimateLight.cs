@@ -57,6 +57,9 @@ namespace SSTUTools
         public float animationLoopTime = 0;
 
         [KSPField]
+        public String actionName = "Lights";
+
+        [KSPField]
         public String resourceToUse = "ElectricCharge";
 
         [KSPField]
@@ -77,6 +80,13 @@ namespace SSTUTools
         private Transform[] emissiveMeshes;
         private LightData[] lightTransforms;
         private int shaderEmissiveID;
+
+        [KSPAction("Toggle Lights", KSPActionGroup.Light)]
+        public void enableLightsAction(KSPActionParam param)
+        {
+            if ((param.type == KSPActionType.Deactivate && state == LightAnimationState.OFF) || (param.type==KSPActionType.Activate && state!=LightAnimationState.OFF)) { return; }
+            enableLightsEvent();
+        }
 
         [KSPEvent(guiName = "Enable Lights", guiActive = true, guiActiveEditor = true)]
         public void enableLightsEvent()
@@ -207,6 +217,7 @@ namespace SSTUTools
                     else
                     {
                         updateMeshEmissives(progress, false);
+                        updateLights(progress, false);
                     }
                     break;
                 case LightAnimationState.ON:
@@ -221,6 +232,7 @@ namespace SSTUTools
                     else
                     {
                         updateMeshEmissives(progress, true);
+                        updateLights(progress, true);
                     }
                     break;
                 case LightAnimationState.LOOPING_BACKWARD:
@@ -233,6 +245,7 @@ namespace SSTUTools
                     else
                     {
                         updateMeshEmissives(progress, true);
+                        updateLights(progress, true);
                     }
                     break;
                 case LightAnimationState.TURNING_OFF_LOOP:
@@ -247,6 +260,7 @@ namespace SSTUTools
                         else
                         {
                             updateMeshEmissives(progress, true);
+                            updateLights(progress, true);
                         }
                     }
                     break;
@@ -260,6 +274,7 @@ namespace SSTUTools
                     else
                     {
                         updateMeshEmissives(progress, false);
+                        updateLights(progress, false);
                     }
                     break;
             }
@@ -296,6 +311,7 @@ namespace SSTUTools
         {
             this.state = state;
             this.statePersistence = state.ToString();
+            String guiPrefix = String.Empty;
             switch (state)
             {
                 case LightAnimationState.OFF:
@@ -303,51 +319,58 @@ namespace SSTUTools
                     updateMeshEmissives(progress, false);
                     updateLights(progress, false);
                     enableLights(false);
+                    guiPrefix = "Enable";
                     break;
                 case LightAnimationState.TURNING_ON:
                     progress = 0;
                     updateMeshEmissives(progress, false);
                     updateLights(progress, false);
                     enableLights(true);
+                    guiPrefix = "Disable";
                     break;
                 case LightAnimationState.ON:
-                    progress = 1;
+                    progress = animationOnTime;
                     updateMeshEmissives(progress, false);
                     updateLights(progress, false);
                     enableLights(true);
+                    guiPrefix = "Disable";
                     break;
                 case LightAnimationState.LOOPING_FORWARD:
                     progress = 0;
                     updateMeshEmissives(progress, true);
                     updateLights(progress, true);
                     enableLights(true);
+                    guiPrefix = "Disable";
                     break;
                 case LightAnimationState.LOOPING_BACKWARD:
                     progress = animationLoopTime;
                     updateMeshEmissives(progress, true);
                     updateLights(progress, true);
                     enableLights(true);
+                    guiPrefix = "Disable";
                     break;
                 case LightAnimationState.TURNING_OFF_LOOP:
                     updateMeshEmissives(progress, true);
                     updateLights(progress, true);
                     enableLights(true);
+                    guiPrefix = "Enable";
                     break;
-                case LightAnimationState.TURNING_OFF:
+                case LightAnimationState.TURNING_OFF:                    
                     updateMeshEmissives(progress, false);
                     updateLights(progress, false);
                     enableLights(true);
+                    guiPrefix = "Enable";
                     break;
                 default:
                     break;
             }
             updateAnimationControllerState();
+            Events["enableLightsEvent"].guiName = guiPrefix+ " " + actionName;
         }
 
         private Color color = new Color(0, 0, 0);
         private void updateMeshEmissives(float progress, bool useLoop)
         {
-            if (color == null) { color = new Color(0, 0, 0); }
             float p = progress / (useLoop ? animationLoopTime : animationOnTime);
             FloatCurve rCurve = useLoop?emissiveOnRedCurve : emissiveLoopRedCurve, bCurve = useLoop?emissiveOnBlueCurve:emissiveLoopBlueCurve, gCurve=useLoop?emissiveOnGreenCurve:emissiveOnBlueCurve;
             color.r = rCurve.Evaluate(p);
@@ -359,17 +382,15 @@ namespace SSTUTools
                 if (tr.renderer != null)
                 {
                     tr.renderer.material.SetColor(shaderEmissiveID, color);
-                    print("set mesh emissive color to: "+color + " for progress: "+p);
                 }
             }
         }
 
         private void updateLights(float progress, bool useLoop)
         {
-            if (color == null) { color = new Color(0, 0, 0); }
             float p = progress / (useLoop ? animationLoopTime : animationOnTime);
             if (float.IsNaN(p)) { p = 0; }
-            FloatCurve rCurve = useLoop ? lightOnRedCurve : lightLoopRedCurve, bCurve = useLoop ? lightOnBlueCurve : lightLoopBlueCurve, gCurve = useLoop ? lightOnGreenCurve : lightOnBlueCurve;
+            FloatCurve rCurve = useLoop ? lightLoopRedCurve : lightOnRedCurve, bCurve = useLoop ? lightLoopBlueCurve : lightOnBlueCurve, gCurve = useLoop ? lightLoopGreenCurve : lightOnGreenCurve;
             color.r = rCurve.Evaluate(p);
             color.b = bCurve.Evaluate(p);
             color.g = gCurve.Evaluate(p);

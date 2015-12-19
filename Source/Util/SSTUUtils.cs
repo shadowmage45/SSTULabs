@@ -411,6 +411,29 @@ namespace SSTUTools
             return material;
         }
 
+        public static void setMainTextureRecursive(Transform tr, Texture tex)
+        {
+            setTextureRecursive(tr, tex, "_MainTex");
+        }
+
+        public static void setTextureRecursive(Transform tr, Texture tex, String texID)
+        {
+            int id = Shader.PropertyToID(texID);
+            setTextureRecursive(tr, tex, id);
+        }
+
+        public static void setTextureRecursive(Transform tr, Texture tex, int id)
+        {
+            if (tr != null && tr.renderer != null && tr.renderer.material != null)
+            {
+                tr.renderer.material.SetTexture(id, tex);
+            }
+            foreach (Transform tr1 in tr)
+            {
+                setTextureRecursive(tr1, tex, id);
+            }
+        }
+
         public static void setMaterialRecursive(Transform tr, Material mat)
         {
             if (tr.gameObject.renderer != null) { tr.gameObject.renderer.material = mat; }
