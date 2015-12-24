@@ -18,6 +18,8 @@ namespace SSTUTools
 
         private Dictionary<ChuteDragCube, String> cubeToNameMap = new Dictionary<ChuteDragCube, String>();
 
+        private static int TERRAIN_MASK = 1 << 15;
+
         /// <summary>
         /// Custom name for the full-retracted drag-cube
         /// </summary>
@@ -211,8 +213,10 @@ namespace SSTUTools
         [KSPField(isPersistant =true, guiName ="Main Deploy Alt", guiActive = true, guiActiveEditor = true), UI_FloatRange(minValue = 500f, stepIncrement = 100f, maxValue = 5500f)]
         public float mainSafetyAlt = 1200f;
 
-        [KSPField(guiName = "Safe For Chutes", guiActive = true, guiActiveEditor = false)]
-        public String safeToDeploy = "Unknown";
+        [KSPField(guiName = "Main Chute", guiActive = true, guiActiveEditor = false)]
+        public String mainChuteStatus = "Unknown";
+        [KSPField(guiName = "Drag Chute", guiActive = true, guiActiveEditor = false)]
+        public String dragChuteStatus = "Unknown";
 
         [KSPAction("Deploy Chute")]
         public void deployChuteAction(KSPActionParam param)
@@ -284,6 +288,12 @@ namespace SSTUTools
             }
         }
 
+        public override void OnActive()
+        {
+            base.OnActive();
+            deployChuteEvent();
+        }
+
         public void OnDestroy()
         {
             GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onUnpackEvent));
@@ -300,7 +310,7 @@ namespace SSTUTools
             {
                 updateFlight();
             }
-        }
+        }        
 
         #endregion
 
@@ -312,7 +322,6 @@ namespace SSTUTools
             initialized = true;            
             initializeModels();
             setChuteStates(mainChuteState, drogueChuteState);
-            print("SSTUModularParachute initialized");
             printDragCubes();
         }
 
@@ -478,26 +487,26 @@ namespace SSTUTools
                     if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
                     if (deployTime < 0) { deployTime = 0; }
                     updateAnimationStatus(false);
-                    updateSafeToDeploy(true);
                 }
             }
-            else if (isDrogueReady() || isMainReady())
+            else if (isDrogueReady() || isMainReady())//nothing deployed, but at least one is not cut available
             {  
-                updateSafeToDeploy(!hasDrogueChute);
-                if (triggered)
-                {   
-                    print("triggered, checking alt/atm");
-                    if (vessel.altitude <= mainSafetyAlt && !isMainChuteDeployed() && !updateAutoCut(true))
-                    {
-                        setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                    }
-                    else if (vessel.altitude <= drogueSafetyAlt && isDrogueReady() && !updateAutoCut(false))
+                if (triggered && atmoDensity >=0)
+                {
+                    if (vessel.altitude <= drogueSafetyAlt && isDrogueReady() && !updateAutoCut(false))//drogue is ready and should be deployed from triggered status
                     {
                         setChuteStates(ChuteState.RETRACTED, ChuteState.DEPLOYING_SEMI);
                     }
+                    else if (!updateAutoCut(true))
+                    {
+                        if (shouldDeployRaycast(mainSafetyAlt))
+                        {
+                            setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                        }
+                    }
                 }
             }
-            //print("alt: " +vessel.altitude+ " : vel: " + Math.Sqrt(squareVelocity) + " dens: " + atmoDensity + " Q: " + dynamicPressure + " shock: " + externalTemp+" mFlux: "+vessel.convectiveMachFlux+" mach: "+vessel.mach+" ext temp: "+vessel.externalTemperature);
+            updateParachuteStatusText();            
         }
 
         private bool updateAutoCut(bool main)
@@ -526,10 +535,71 @@ namespace SSTUTools
             return false;
         }
 
-        private void updateSafeToDeploy(bool main)
+        private bool shouldDeployRaycast(float height)
         {
-            bool wouldBeDestroyed = updateAutoCut(main);
-            safeToDeploy = wouldBeDestroyed ? "Unsafe" : "Safe";
+            return Physics.Raycast(part.transform.position, -FlightGlobals.getUpAxis(part.transform.position), height, TERRAIN_MASK);
+        }
+
+        private void updateParachuteStatusText()
+        {
+            bool noAtmo = atmoDensity<=0;
+            if (hasDrogueChute && drogueChuteState!=ChuteState.CUT)
+            {
+                switch (drogueChuteState)
+                {
+                    case ChuteState.RETRACTED:
+                        if (noAtmo) { dragChuteStatus = triggered? "Waiting-NoAtm":"NoAtm"; }
+                        else if (triggered) { dragChuteStatus = "Waiting-Unsafe"; }
+                        else { dragChuteStatus = "Waiting-" + (!updateAutoCut(false) ? "Alt" : "Unsafe"); }
+                        mainChuteStatus = "Waiting-DragChute";
+                        break;
+                    case ChuteState.DEPLOYING_SEMI:
+                        dragChuteStatus = "Semi-deploying";
+                        mainChuteStatus = "Waiting-DragChute";
+                        break;
+                    case ChuteState.SEMI_DEPLOYED:
+                        dragChuteStatus = "Semi-deployed";
+                        mainChuteStatus = "Waiting-DragChute";
+                        break;
+                    case ChuteState.DEPLOYING_FULL:
+                        dragChuteStatus = "Full-deploying";
+                        mainChuteStatus = "Waiting-DragChute";
+                        break;
+                    case ChuteState.FULL_DEPLOYED:
+                        dragChuteStatus = "Full-Deployed";
+                        mainChuteStatus = "Waiting-" + (!updateAutoCut(true) ? "Alt" : "Unsafe");
+                        break;
+                }
+            }
+            else//no drogue, or drogue cut
+            {
+                dragChuteStatus = hasDrogueChute ? "Cut" : "No Drag Chute";                
+                switch (mainChuteState)
+                {
+                    case ChuteState.RETRACTED:
+                        if (noAtmo) { mainChuteStatus = triggered ? "Waiting-NoAtm" : "NoAtm"; }
+                        else if (triggered) { mainChuteStatus = "Waiting-Unsafe"; }
+                        else { mainChuteStatus = "Packed-" + (!updateAutoCut(true) ? "Safe" : "Unsafe"); }
+                        break;
+                    case ChuteState.DEPLOYING_SEMI:
+                        mainChuteStatus = "Semi-Deploying";
+                        break;
+                    case ChuteState.SEMI_DEPLOYED:
+                        mainChuteStatus = "Semi-Deployed";
+                        break;
+                    case ChuteState.DEPLOYING_FULL:
+                        mainChuteStatus = "Full-Deploying";
+                        break;
+                    case ChuteState.FULL_DEPLOYED:
+                        mainChuteStatus = "Full-Deployed";
+                        break;
+                    case ChuteState.CUT:
+                        mainChuteStatus = "Cut";
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
 
         /// <summary>
@@ -563,7 +633,7 @@ namespace SSTUTools
         /// <summary>
         /// Updates the animation state and drag cubes for the modules current deployed state for whichever chute is input
         /// assumes state for other chute is set properly, and that the state was initiated properly through setState
-        /// Will transition to next state if animation final state is met
+        /// Will transition to next state if transition criteria are met (animation finished, altitude reached)
         /// </summary>
         private void updateAnimationStatus(bool main)
         {
@@ -619,11 +689,20 @@ namespace SSTUTools
                         updateDragCube = false;
                         double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
                         double transitionAlt = (main ? mainSafetyAlt : drogueSafetyAlt)*0.75d;
-                        if (alt <= transitionAlt)
+                        if (alt <= transitionAlt)//less than direct sea-level altitude check
                         {
                             updateAnim = false;
                             if (main) { setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState); }
                             else { setChuteStates(mainChuteState, ChuteState.DEPLOYING_FULL); }
+                        }
+                        else if (main)//for mains, also do a raycast check
+                        {                            
+                            if (shouldDeployRaycast((float)transitionAlt))
+                            {
+                                print("opening main chute full deploy from raycast hit for safety check altitude: " + transitionAlt);
+                                setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState);
+                                updateAnim = false;
+                            }
                         }
                         break;
                     }
@@ -635,9 +714,16 @@ namespace SSTUTools
                         if (!main)//drogue chute, check for mains deploy
                         {
                             double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
-                            //TODO check if should auto-deploy main
-                            float nextAlt = mainSafetyAlt;
-                            if (alt <= mainSafetyAlt && !updateAutoCut(true))
+                            if (alt > mainSafetyAlt)//still do a raycast check to see if within mains deploy range
+                            {
+                                if (shouldDeployRaycast(mainSafetyAlt))
+                                {
+                                    print("opening main chute from raycast hit for safety check altitude: " + mainSafetyAlt);
+                                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
+                                    updateAnim = false;
+                                }
+                            }
+                            else if (!updateAutoCut(true))//less than or equal to, by sea level
                             {
                                 setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
                                 updateAnim = false;
@@ -813,7 +899,7 @@ namespace SSTUTools
 
             updatePartDragCube(a, b, progress);
 
-            bool canDeploy = isDrogueReady() || isMainReady();
+            bool canDeploy = !triggered && (isDrogueReady() || isMainReady());
             bool canCut = isDrogueChuteDeployed() || isMainChuteDeployed();
             updateGuiState(canDeploy, canCut);
         }
@@ -841,13 +927,13 @@ namespace SSTUTools
         {
             Events["deployChuteEvent"].guiActive = deploy;
             Events["cutChuteEvent"].guiActive = cut;
-            Fields["safeToDeploy"].guiActive = deploy;
+            Fields["dragChuteStatus"].guiActive = hasDrogueChute;
             if (mainChuteState != ChuteState.RETRACTED)
             {
                 BaseField f = Fields["mainSafetyAlt"];
                 f.guiActive = f.guiActiveEditor = false;
             }
-            if (drogueChuteState != ChuteState.RETRACTED)
+            if (!hasDrogueChute || drogueChuteState != ChuteState.RETRACTED)
             {
                 BaseField f = Fields["drogueSafetyAlt"];
                 f.guiActive = f.guiActiveEditor = false;
