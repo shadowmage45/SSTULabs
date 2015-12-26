@@ -72,7 +72,10 @@ namespace SSTUTools
         /// The base transform name to be created; all parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
         /// </summary>
         [KSPField]
-        public String baseTransformName = "SSTUModularParachuteBaseTransform";
+        public String baseTransformName = "SSTUMPBaseTransform";
+
+        [KSPField]
+        public String targetTransformName = "SSTUMPTargetTransform";
 
         //mains config data
 
@@ -88,9 +91,15 @@ namespace SSTUTools
         [KSPField]
         public float mainMaxTemp = 800f;
 
+        /// <summary>
+        /// Max dynamic pressure for main chute safety
+        /// </summary>
         [KSPField]
         public float mainMaxQ = 4000;
 
+        /// <summary>
+        /// Minimum atmospheric pressure for main chute deployment
+        /// </summary>
         [KSPField]
         public float mainMinAtm = 0.25f;
 
@@ -130,13 +139,13 @@ namespace SSTUTools
         public String drogueCapName = "DrogueCap";
 
         [KSPField]
-        public float drogueMaxTemp = 1400f;
+        public float drogueMaxTemp = 1800f;
 
         [KSPField]
         public float drogueMinAtm = 0.005f;
 
         [KSPField]
-        public float drogueMaxQ = 20000f;
+        public float drogueMaxQ = 24000;
         
         [KSPField]
         public Vector3 drogueRetractedScale = new Vector3(0.005f, 0.005f, 0.005f);
@@ -154,16 +163,10 @@ namespace SSTUTools
         public float drogueFullDeploySpeed = 2f;
         
         /// <summary>
-        /// Used to track the ChuteState variable for the drogue chutes; restored during OnLoad
-        /// </summary>
-        [KSPField(isPersistant = true)]
-        public String drogueChutePersistence = ChuteState.RETRACTED.ToString();
-
-        /// <summary>
         /// Used to track the ChuteState variable for the main chutes; restored during OnLoad
         /// </summary>
         [KSPField(isPersistant = true)]
-        public String mainChutePersistence = ChuteState.RETRACTED.ToString();
+        public String chutePersistence = ChuteState.RETRACTED.ToString();
 
         /// <summary>
         /// Used to track if the mains jettison cap has already been jettisoned (to prevent re-jettisoning it on part-reload if it was previously removed)
@@ -177,26 +180,19 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool hasJettisonedDrogueCap = false;
 
-        /// <summary>
-        /// Has the 'deploy' action been triggered, and just waiting for safe/atm requirements to be met?
-        /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool triggered = false;
-
         #region private working variables
         
-        private ChuteState mainChuteState = ChuteState.RETRACTED;
-        private ChuteState drogueChuteState = ChuteState.RETRACTED;
+        private ChuteState chuteState = ChuteState.RETRACTED;
                 
         private ParachuteModelData[] mainChuteModules;
         private ParachuteModelData[] drogueChuteModules;
-        
+
+        private Transform targetTransform;
+
         private float deployTime = 0f;
         private bool hasDrogueChute = false;
         private bool initialized = false;
         private bool configLoaded = false;
-        private Transform baseTransform;
-        private Transform rotatorTransform;
 
         private double atmoDensity;
         private double squareVelocity;
@@ -213,10 +209,8 @@ namespace SSTUTools
         [KSPField(isPersistant =true, guiName ="Main Deploy Alt", guiActive = true, guiActiveEditor = true), UI_FloatRange(minValue = 500f, stepIncrement = 100f, maxValue = 5500f)]
         public float mainSafetyAlt = 1200f;
 
-        [KSPField(guiName = "Main Chute", guiActive = true, guiActiveEditor = false)]
-        public String mainChuteStatus = "Unknown";
-        [KSPField(guiName = "Drag Chute", guiActive = true, guiActiveEditor = false)]
-        public String dragChuteStatus = "Unknown";
+        [KSPField(guiName = "Chute", guiActive = true, guiActiveEditor = false)]
+        public String chuteStatusText = "Unknown";
 
         [KSPAction("Deploy Chute")]
         public void deployChuteAction(KSPActionParam param)
@@ -233,34 +227,20 @@ namespace SSTUTools
         [KSPEvent(guiName = "Deploy Chute", guiActive = true, guiActiveEditor = false)]
         public void deployChuteEvent()
         {
-            if (isDrogueReady())
+            if (chuteState == ChuteState.RETRACTED)
             {
-                triggered = true;
-                if (!updateAutoCut(false))
-                {
-                    setChuteStates(ChuteState.RETRACTED, ChuteState.DEPLOYING_SEMI);
-                }
-            }
-            else if (isMainReady())
-            {
-                triggered = true;
-                if (!updateAutoCut(false))
-                {
-                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                }
-            }
+                setChuteState(ChuteState.ARMED);
+                //TODO print output message to screen
+            }            
         }
 
         [KSPEvent(guiName = "Cut Chute", guiActive = true, guiActiveEditor = false)]
         public void cutChuteEvent()
         {
-            if (isDrogueChuteDeployed())
+            if (isDrogueChuteDeployed() || isMainChuteDeployed())
             {
-                setChuteStates(mainChuteState, ChuteState.CUT);
-            }
-            if (isMainChuteDeployed())
-            {
-                setChuteStates(ChuteState.CUT, drogueChuteState);
+                setChuteState(ChuteState.CUT);
+                //TODO print output message to screen
             }
         }
 
@@ -271,8 +251,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            mainChuteState = (ChuteState)Enum.Parse(typeof(ChuteState), mainChutePersistence);
-            drogueChuteState = (ChuteState)Enum.Parse(typeof(ChuteState), drogueChutePersistence);
+            chuteState = (ChuteState)Enum.Parse(typeof(ChuteState), chutePersistence);
             initialize();
         }
 
@@ -301,7 +280,7 @@ namespace SSTUTools
 
         public void onUnpackEvent(Vessel v)
         {
-            setChuteStates(mainChuteState, drogueChuteState);
+            setChuteState(chuteState);
         }
 
         public void FixedUpdate()
@@ -321,7 +300,7 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;            
             initializeModels();
-            setChuteStates(mainChuteState, drogueChuteState);
+            setChuteState(chuteState);
             printDragCubes();
         }
 
@@ -331,7 +310,7 @@ namespace SSTUTools
             {
                 foreach (DragCube cube in part.DragCubes.Cubes)
                 {
-                    print("Cube: "+cube.Name+ " weight: "+cube.Weight);
+                    print("Cube: "+cube.Name+ " weight: "+cube.Weight + " :: "+cube.SaveToString());
                 }
             }
         }
@@ -344,10 +323,10 @@ namespace SSTUTools
             ConfigNode[] mainNodes = node.GetNodes("MAINCHUTE");
             int len = drogueNodes.Length;
             drogueChuteModules = new ParachuteModelData[len];
-            for (int i = 0; i < len; i++){ drogueChuteModules[i] = new ParachuteModelData(drogueNodes[i], drogueRetractedScale, drogueSemiDeployedScale, drogueFullDeployedScale); }
+            for (int i = 0; i < len; i++){ drogueChuteModules[i] = new ParachuteModelData(drogueNodes[i], drogueRetractedScale, drogueSemiDeployedScale, drogueFullDeployedScale, i, false); }
             len = mainNodes.Length;
             mainChuteModules = new ParachuteModelData[len];
-            for (int i = 0; i < len; i++){ mainChuteModules[i] = new ParachuteModelData(mainNodes[i], mainRetractedScale, mainSemiDeployedScale, mainFullDeployedScale); }
+            for (int i = 0; i < len; i++){ mainChuteModules[i] = new ParachuteModelData(mainNodes[i], mainRetractedScale, mainSemiDeployedScale, mainFullDeployedScale, i, true); }
             cubeToNameMap.Clear();
             cubeToNameMap.Add(ChuteDragCube.RETRACTED, retractedDragCubeName);
             cubeToNameMap.Add(ChuteDragCube.DROGUESEMI, drogueSemiDragCubeName);
@@ -361,14 +340,15 @@ namespace SSTUTools
         /// </summary>
         private void initializeModels()
         {
-            baseTransform = part.transform.FindOrCreate(baseTransformName);
-            SSTUUtils.destroyChildren(baseTransform);
-            GameObject targetRotator = new GameObject("ParachuteTargetRotator");
-            rotatorTransform = targetRotator.transform;
-            targetRotator.transform.NestToParent(baseTransform);
-            targetRotator.transform.rotation = Quaternion.LookRotation(part.transform.up, part.transform.forward);
-            foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, baseTransform, rotatorTransform); }
-            foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, baseTransform, rotatorTransform); }
+            Transform baseTransform = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
+            baseTransform.NestToParent(part.transform.FindRecursive("model"));
+
+            targetTransform = baseTransform.FindOrCreate(targetTransformName);
+            targetTransform.NestToParent(baseTransform);
+            targetTransform.rotation = Quaternion.LookRotation(part.transform.up, part.transform.forward);
+                        
+            foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, baseTransform, targetTransform); }
+            foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, baseTransform, targetTransform); }
             hasDrogueChute = drogueChuteModules.Length > 0;
         }
 
@@ -385,21 +365,26 @@ namespace SSTUTools
                     part.DragCubes.SetCubeWeight(cubeToNameMap[c], 0);
                 }
             }
+            bool occlusionModifier = false;
             if (a == b)// a and b are the same, all others deactivated already, so just set a to full
             {
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1.0f);
+                if (a == ChuteDragCube.RETRACTED) { occlusionModifier = true; }
             }
             else//lerp between A and B by _progress_
             {
+                occlusionModifier = false;
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1f - progress);
                 part.DragCubes.SetCubeWeight(cubeToNameMap[b], progress);
             }
+            part.DragCubes.SetOcclusionMultiplier(occlusionModifier ? 1 : 0);
         }
 
         public string[] GetDragCubeNames()
         {
-            return new string[] { "RETRACTED","DROGUESEMI","DROGUEFULL","MAINSEMI", "MAINFULL" };
+            return new string[] { retractedDragCubeName, drogueSemiDragCubeName, drogueFullDragCubeName, mainSemiDragCubeName, mainFullDragCubeName };
         }
+        
         
         /// <summary>
         /// Used by drag cube system to render the pre-computed drag cubes.  Should update model into the position intended for the input drag cube name.  The name will be one of those returned by GetDragCubeNames
@@ -408,41 +393,47 @@ namespace SSTUTools
         public void AssumeDragCubePosition(string name)
         {
             forceReloadConfig();
-            initialize();
+            if (!initialized) { initializeModels(); initialized = true; print("initialized from drag cube render");}
             updateParachuteTargets(part.transform.up);
             switch (name)
             {
                 case "RETRACTED":
                     {
-                        updateDeployAnimation(mainChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
-                        updateDeployAnimation(drogueChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
+                        enableChuteRenders(false, false);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
                         break;
                     }
                 case "DROGUESEMI":
                     {
-                        updateDeployAnimation(mainChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
-                        updateDeployAnimation(drogueChuteModules, ChuteState.SEMI_DEPLOYED, 1.0f, 0, 0);
+                        enableChuteRenders(true, false);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1.0f, 0, 0);
                         break;
                     }
                 case "DROGUEFULL":
                     {
-                        updateDeployAnimation(mainChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
-                        updateDeployAnimation(drogueChuteModules, ChuteState.FULL_DEPLOYED, 1.0f, 0, 0);
+                        enableChuteRenders(true, false);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1.0f, 0, 0);
                         break;
                     }
                 case "MAINSEMI":
                     {
-                        updateDeployAnimation(mainChuteModules, ChuteState.SEMI_DEPLOYED, 1.0f, 0, 0);
-                        updateDeployAnimation(drogueChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
+                        enableChuteRenders(false, true);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1.0f, 0, 0);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
                         break;
                     }
                 case "MAINFULL":
                     {
-                        updateDeployAnimation(mainChuteModules, ChuteState.FULL_DEPLOYED, 1.0f, 0, 0);
-                        updateDeployAnimation(drogueChuteModules, ChuteState.RETRACTED, 1.0f, 0, 0);
+                        enableChuteRenders(false, true);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1.0f, 0, 0);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.RETRACTED, 1.0f, 0, 0);
                         break;
                     }
             }
+            print("render bounds: "+SSTUUtils.getRendererBoundsRecursive(part.gameObject));
         }
 
         /// <summary>
@@ -461,144 +452,366 @@ namespace SSTUTools
         private void updateFlight()
         {
             updateParachuteStats();
+            bool noAtmo = atmoDensity <= 0;
+            switch (chuteState)
+            {
+                case ChuteState.CUT:
+                    //NOOP
+                    //status text set from setState
+                    break;
+
+                case ChuteState.RETRACTED:
+                    chuteStatusText = "Packed-";
+                    if (noAtmo) { chuteStatusText += "No Atmo"; }
+                    else if (hasDrogueChute){chuteStatusText += shouldAutoCutDrogue() ? "Unsafe" : "Safe";}
+                    else { chuteStatusText += shouldAutoCutMain() ? "Unsafe" : "Safe"; }
+                    break;
+                
+                case ChuteState.ARMED:
+                    if (shouldDeployMains())
+                    {
+                        setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else if (shouldDeployDrogue())
+                    {
+                        setChuteState(ChuteState.DROGUE_DEPLOYING_SEMI);
+                    }
+                    else
+                    {
+                        chuteStatusText = "Armed-";
+                        if (noAtmo) { chuteStatusText += "No Atmo"; }
+                        else { chuteStatusText += "Unsfe"; }
+                    }                    
+                    break;
+                    
+                case ChuteState.DROGUE_DEPLOYING_SEMI:
+                    if (shouldAutoCutDrogue() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else if (shouldDeployMains())
+                    {
+                        setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else
+                    {
+                        deployTime -= TimeWarp.fixedDeltaTime;
+                        if (deployTime <= 0)
+                        {
+                            deployTime = 0;
+                            setChuteState(ChuteState.DROGUE_FULL_DEPLOYED);
+                        }
+                        else
+                        {
+                            updateParachuteTargets(-part.dragVectorDir);
+                            float progress = 1f - deployTime / drogueSemiDeploySpeed;
+                            updateDeployAnimation(drogueChuteModules, ChuteAnimationState.DEPLOYING_SEMI, progress);
+                            updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.DROGUESEMI, progress);
+                        }
+                    }
+                    //status text set from setState
+                    break;
+                    
+                case ChuteState.DROGUE_SEMI_DEPLOYED:
+                    if (shouldAutoCutDrogue() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else if (shouldDeployMains())
+                    {
+                        setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else
+                    {
+                        updateParachuteTargets(-part.dragVectorDir);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1f);
+                    }
+                    //status text set from setState
+                    //drag cubes set from setState
+                    break;
+                    
+                case ChuteState.DROGUE_DEPLOYING_FULL:
+                    if (shouldAutoCutDrogue() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else if (shouldDeployMains())
+                    {
+                        setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else
+                    {
+                        deployTime -= TimeWarp.fixedDeltaTime;
+                        if (deployTime <= 0)
+                        {
+                            deployTime = 0;
+                            setChuteState(ChuteState.DROGUE_FULL_DEPLOYED);
+                        }
+                        else
+                        {
+                            updateParachuteTargets(-part.dragVectorDir);
+                            float p = 1f - deployTime / drogueFullDeploySpeed;
+                            updateDeployAnimation(drogueChuteModules, ChuteAnimationState.DEPLOYING_FULL, p);
+                            updatePartDragCube(ChuteDragCube.DROGUESEMI, ChuteDragCube.DROGUEFULL, p);
+                        }
+                    }
+                    //status text set from setState
+                    break;
+                    
+                case ChuteState.DROGUE_FULL_DEPLOYED:
+                    if (shouldAutoCutDrogue() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    } 
+                    else if (shouldDeployMains())
+                    {
+                        setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else
+                    {
+                        updateParachuteTargets(-part.dragVectorDir);
+                        updateDeployAnimation(drogueChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1f);
+                    }
+                    //status text set from setState
+                    //drag cubes set from setState
+                    break;
+                    
+                case ChuteState.MAIN_DEPLOYING_SEMI:
+                    if (shouldAutoCutMain() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else
+                    {
+                        deployTime -= TimeWarp.fixedDeltaTime;
+                        if (deployTime <= 0)
+                        {
+                            deployTime = 0;
+                            setChuteState(ChuteState.MAIN_SEMI_DEPLOYED);
+                        }
+                        else
+                        {
+                            updateParachuteTargets(-part.dragVectorDir);
+                            updateDeployAnimation(mainChuteModules, ChuteAnimationState.DEPLOYING_SEMI, 1f - deployTime / mainSemiDeploySpeed);
+                            updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.MAINSEMI, 1f - deployTime / mainSemiDeploySpeed);
+                        }
+                    }
+                    //status text set from setState
+                    break;
+                    
+                case ChuteState.MAIN_SEMI_DEPLOYED:
+                    if (shouldAutoCutMain() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else
+                    {                        
+                        //check for if should full-deploy based on main full deploy altitude * 0.75f (possibly config scalar in the future)
+                        float tAlt = mainSafetyAlt * 0.75f;
+                        if (shouldDeployRadarAlt(tAlt))
+                        {
+                            setChuteState(ChuteState.MAIN_DEPLOYING_FULL);
+                        }
+                        else if (FlightGlobals.getAltitudeAtPos(part.transform.position) < tAlt)
+                        {
+                            setChuteState(ChuteState.MAIN_DEPLOYING_FULL);
+                        }
+                        else
+                        {
+                            updateParachuteTargets(-part.dragVectorDir);
+                            updateDeployAnimation(mainChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1f);
+                        }
+                    }
+                    //status text set from setState
+                    //drag cubes set from setState
+                    break;
+                    
+                case ChuteState.MAIN_DEPLOYING_FULL:
+                    if (shouldAutoCutMain())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else
+                    {
+                        deployTime -= TimeWarp.fixedDeltaTime;
+                        if (deployTime <= 0)
+                        {
+                            deployTime = 0;
+                            setChuteState(ChuteState.MAIN_FULL_DEPLOYED);
+                        }
+                        else
+                        {
+                            updateParachuteTargets(-part.dragVectorDir);
+                            updateDeployAnimation(mainChuteModules, ChuteAnimationState.DEPLOYING_FULL, 1f - deployTime / mainFullDeploySpeed);
+                            updatePartDragCube(ChuteDragCube.MAINSEMI, ChuteDragCube.MAINFULL, 1f - deployTime / mainFullDeploySpeed);
+                        }
+                    }
+                    //status text set from setState
+                    break;
+                    
+                case ChuteState.MAIN_FULL_DEPLOYED:
+                    if (shouldAutoCutMain() || shouldAutoCutAtmoOrSpeed())
+                    {
+                        setChuteState(ChuteState.CUT);
+                    }
+                    else
+                    {
+                        updateParachuteTargets(-part.dragVectorDir);
+                        updateDeployAnimation(mainChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1f);
+                    }
+                    //status text set from setState
+                    //drag cubes set from setState
+                    break;
+            }
+        }
+        
+        private void setChuteState(ChuteState newState)
+        {
+            chuteState = newState;
+            this.chutePersistence = chuteState.ToString();
+            
+            switch (chuteState)
+            {
+                case ChuteState.CUT:
+                    enableChuteRenders(false, false);
+                    chuteStatusText = "Cut";
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.RETRACTED, 1f);
+                    break;
+
+                case ChuteState.RETRACTED:
+                    enableChuteRenders(false, false);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.RETRACTED, 1f);
+                    //status text set during update tick
+                    break;
+
+                case ChuteState.ARMED:
+                    enableChuteRenders(false, false);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.RETRACTED, 1f);
+                    //status text set during update tick
+                    break;
+
+                case ChuteState.DROGUE_DEPLOYING_SEMI:
+                    enableChuteRenders(true, false);
+                    deployTime = drogueSemiDeploySpeed;
+                    chuteStatusText = "Drogue Semi-Deploying";
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.DROGUESEMI, 0f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.DEPLOYING_SEMI, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    break;
+
+                case ChuteState.DROGUE_SEMI_DEPLOYED:
+                    enableChuteRenders(true, false);
+                    chuteStatusText = "Drogue Semi-Deployed";
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.DROGUESEMI, 1f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1, wobbleMultiplier, lerpDegreePerSecond); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    break;
+
+                case ChuteState.DROGUE_DEPLOYING_FULL:
+                    enableChuteRenders(true, false);
+                    deployTime = drogueFullDeploySpeed;
+                    chuteStatusText = "Drogue Full-Deploying";
+                    updatePartDragCube(ChuteDragCube.DROGUESEMI, ChuteDragCube.DROGUEFULL, 0f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.DEPLOYING_FULL, 0, wobbleMultiplier, lerpDegreePerSecond); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    break;
+
+                case ChuteState.DROGUE_FULL_DEPLOYED:
+                    enableChuteRenders(true, false);
+                    chuteStatusText = "Drogue Full-Deployed";
+                    updatePartDragCube(ChuteDragCube.DROGUESEMI, ChuteDragCube.DROGUEFULL, 1f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1, wobbleMultiplier, lerpDegreePerSecond); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.RETRACTED, 0, 0, 0);
+                    break;
+
+                case ChuteState.MAIN_DEPLOYING_SEMI:
+                    enableChuteRenders(false, true);
+                    deployTime = mainSemiDeploySpeed;
+                    chuteStatusText = "Main Semi-Deploying";
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.MAINSEMI, 0f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.CUT, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.DEPLOYING_SEMI, 0, 0, 0);
+                    break;
+
+                case ChuteState.MAIN_SEMI_DEPLOYED:
+                    enableChuteRenders(false, true);
+                    chuteStatusText = "Main Semi-Deployed";
+                    updatePartDragCube(ChuteDragCube.RETRACTED, ChuteDragCube.MAINSEMI, 1f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.CUT, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.SEMI_DEPLOYED, 1, wobbleMultiplier, lerpDegreePerSecond);
+                    break;
+
+                case ChuteState.MAIN_DEPLOYING_FULL:
+                    enableChuteRenders(false, true);
+                    deployTime = mainFullDeploySpeed;
+                    chuteStatusText = "Main Full-Deploying";
+                    updatePartDragCube(ChuteDragCube.MAINSEMI, ChuteDragCube.MAINFULL, 0f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.CUT, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.DEPLOYING_FULL, 0, wobbleMultiplier, lerpDegreePerSecond);
+                    break;
+
+                case ChuteState.MAIN_FULL_DEPLOYED:
+                    enableChuteRenders(false, true);
+                    chuteStatusText = "Main Full-Deployed";
+                    updatePartDragCube(ChuteDragCube.MAINSEMI, ChuteDragCube.MAINFULL, 1f);
+                    if (hasDrogueChute) { updateDeployAnimation(drogueChuteModules, ChuteAnimationState.CUT, 0, 0, 0); }
+                    updateDeployAnimation(mainChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1, wobbleMultiplier, lerpDegreePerSecond);
+                    break;
+            }
+            
             if (isMainChuteDeployed())
             {
-                if (updateAutoCut(true))
-                {
-                    setChuteStates(ChuteState.CUT, ChuteState.CUT);
-                }
-                else
-                {
-                    updateParachuteTargets(-part.dragVectorDir);
-                    if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
-                    if (deployTime < 0) { deployTime = 0; }
-                    updateAnimationStatus(true);
-                }
+                removeParachuteCap(mainCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedMainCap);
+                removeParachuteCap(drogueCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap);
+                hasJettisonedMainCap = true;
+                hasJettisonedDrogueCap = true;
             }
             else if (isDrogueChuteDeployed())
             {
-                if (updateAutoCut(false))
-                {
-                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                }
-                else
-                {
-                    updateParachuteTargets(-part.dragVectorDir);
-                    if (deployTime > 0) { deployTime -= TimeWarp.fixedDeltaTime; }
-                    if (deployTime < 0) { deployTime = 0; }
-                    updateAnimationStatus(false);
-                }
+                removeParachuteCap(drogueCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap);
+                hasJettisonedDrogueCap = true;
             }
-            else if (isDrogueReady() || isMainReady())//nothing deployed, but at least one is not cut available
-            {  
-                if (triggered && atmoDensity >=0)
-                {
-                    if (vessel.altitude <= drogueSafetyAlt && isDrogueReady() && !updateAutoCut(false))//drogue is ready and should be deployed from triggered status
-                    {
-                        setChuteStates(ChuteState.RETRACTED, ChuteState.DEPLOYING_SEMI);
-                    }
-                    else if (!updateAutoCut(true))
-                    {
-                        if (shouldDeployRaycast(mainSafetyAlt))
-                        {
-                            setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                        }
-                    }
-                }
-            }
-            updateParachuteStatusText();            
+            updateGuiState();            
         }
 
-        private bool updateAutoCut(bool main)
+        private void updateDeployAnimation(ParachuteModelData[] modules, ChuteAnimationState state, float progress)
         {
-            if (atmoDensity<=0)
-            {
-                return true;
-            }
-            else
-            {
-                if (squareVelocity < autoCutSpeed * autoCutSpeed)
-                {
-                    if (vessel.LandedOrSplashed) { return true; }
-                }
-                double max = main ? mainMaxQ : drogueMaxQ;
-                if (dynamicPressure > max)
-                {
-                    return true;
-                }
-                double chuteTemp = main ? mainMaxTemp : drogueMaxTemp;
-                if (externalTemp > chuteTemp)
-                {
-                    return true;
-                }
-            }
-            return false;
+            updateDeployAnimation(modules, state, progress, wobbleMultiplier, lerpDegreePerSecond);
         }
 
-        private bool shouldDeployRaycast(float height)
+        private void updateDeployAnimation(ParachuteModelData[] modules, ChuteAnimationState state, float progress, float randomization, float lerpDps)
         {
-            return Physics.Raycast(part.transform.position, -FlightGlobals.getUpAxis(part.transform.position), height, TERRAIN_MASK);
+            foreach (ParachuteModelData data in modules) { data.updateDeployAnimation(state, progress, randomization, lerpDps); }
         }
 
-        private void updateParachuteStatusText()
+        private void updateParachuteTargets(Vector3 wind)
         {
-            bool noAtmo = atmoDensity<=0;
-            if (hasDrogueChute && drogueChuteState!=ChuteState.CUT)
+            Vector3 windLocal = part.transform.InverseTransformDirection(wind);
+            Vector3 scale = new Vector3(1, 1, 1);
+            if (windLocal.y <= 0) { scale.x = -scale.x; }
+            targetTransform.rotation = Quaternion.LookRotation(wind, part.transform.forward);
+            targetTransform.localScale = scale;
+        }
+
+        private void updateGuiState()
+        {
+            bool deploy = hasDrogueChute ? isDrogueReady() : isMainReady();
+            bool cut = isDrogueChuteDeployed() || isMainChuteDeployed();
+            Events["deployChuteEvent"].guiActive = deploy;
+            Events["cutChuteEvent"].guiActive = cut;
+            if (isMainChuteDeployed() || chuteState==ChuteState.CUT)
             {
-                switch (drogueChuteState)
-                {
-                    case ChuteState.RETRACTED:
-                        if (noAtmo) { dragChuteStatus = triggered? "Waiting-NoAtm":"NoAtm"; }
-                        else if (triggered) { dragChuteStatus = "Waiting-Unsafe"; }
-                        else { dragChuteStatus = "Waiting-" + (!updateAutoCut(false) ? "Alt" : "Unsafe"); }
-                        mainChuteStatus = "Waiting-DragChute";
-                        break;
-                    case ChuteState.DEPLOYING_SEMI:
-                        dragChuteStatus = "Semi-deploying";
-                        mainChuteStatus = "Waiting-DragChute";
-                        break;
-                    case ChuteState.SEMI_DEPLOYED:
-                        dragChuteStatus = "Semi-deployed";
-                        mainChuteStatus = "Waiting-DragChute";
-                        break;
-                    case ChuteState.DEPLOYING_FULL:
-                        dragChuteStatus = "Full-deploying";
-                        mainChuteStatus = "Waiting-DragChute";
-                        break;
-                    case ChuteState.FULL_DEPLOYED:
-                        dragChuteStatus = "Full-Deployed";
-                        mainChuteStatus = "Waiting-" + (!updateAutoCut(true) ? "Alt" : "Unsafe");
-                        break;
-                }
+                BaseField f = Fields["mainSafetyAlt"];
+                f.guiActive = f.guiActiveEditor = false;
             }
-            else//no drogue, or drogue cut
+            if (!hasDrogueChute || isDrogueChuteDeployed() || chuteState==ChuteState.CUT)
             {
-                dragChuteStatus = hasDrogueChute ? "Cut" : "No Drag Chute";                
-                switch (mainChuteState)
-                {
-                    case ChuteState.RETRACTED:
-                        if (noAtmo) { mainChuteStatus = triggered ? "Waiting-NoAtm" : "NoAtm"; }
-                        else if (triggered) { mainChuteStatus = "Waiting-Unsafe"; }
-                        else { mainChuteStatus = "Packed-" + (!updateAutoCut(true) ? "Safe" : "Unsafe"); }
-                        break;
-                    case ChuteState.DEPLOYING_SEMI:
-                        mainChuteStatus = "Semi-Deploying";
-                        break;
-                    case ChuteState.SEMI_DEPLOYED:
-                        mainChuteStatus = "Semi-Deployed";
-                        break;
-                    case ChuteState.DEPLOYING_FULL:
-                        mainChuteStatus = "Full-Deploying";
-                        break;
-                    case ChuteState.FULL_DEPLOYED:
-                        mainChuteStatus = "Full-Deployed";
-                        break;
-                    case ChuteState.CUT:
-                        mainChuteStatus = "Cut";
-                        break;
-                    default:
-                        break;
-                }
+                BaseField f = Fields["drogueSafetyAlt"];
+                f.guiActive = f.guiActiveEditor = false;
             }
         }
 
@@ -607,6 +820,9 @@ namespace SSTUTools
         /// </summary>
         private void updateParachuteStats()
         {
+            //print("kb: " + Krakensbane.GetFrameVelocity());
+            //print("pt: " + part.rigidbody);
+            //print("vs: " + vessel);
             atmoDensity = part.atmDensity;
             squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rigidbody.velocity.sqrMagnitude;
             externalTemp = vessel.externalTemperature;
@@ -627,337 +843,44 @@ namespace SSTUTools
             else
             {
                 GameObject.Destroy(tr.gameObject);
-            }         
-        }
-
-        /// <summary>
-        /// Updates the animation state and drag cubes for the modules current deployed state for whichever chute is input
-        /// assumes state for other chute is set properly, and that the state was initiated properly through setState
-        /// Will transition to next state if transition criteria are met (animation finished, altitude reached)
-        /// </summary>
-        private void updateAnimationStatus(bool main)
-        {
-            ChuteDragCube dragCubeA = ChuteDragCube.RETRACTED, dragCubeB = ChuteDragCube.RETRACTED;
-            bool updateDragCube = false;
-            bool updateAnim = false;
-            float progress = 0;
-            ChuteState state = main ? mainChuteState : drogueChuteState;
-            switch (state)
-            {
-                case ChuteState.DEPLOYING_SEMI:
-                    {
-                        progress = 1f - deployTime / (main? mainSemiDeploySpeed : drogueSemiDeploySpeed);
-                        if (deployTime <= 0)
-                        {
-                            if (main) { setChuteStates(ChuteState.SEMI_DEPLOYED, drogueChuteState); }
-                            else { setChuteStates(mainChuteState, ChuteState.SEMI_DEPLOYED); }
-                            updateDragCube = false;
-                            updateAnim = false;
-                        }
-                        else
-                        {
-                            dragCubeA = ChuteDragCube.RETRACTED;
-                            dragCubeB = main ? ChuteDragCube.MAINSEMI : ChuteDragCube.DROGUESEMI;
-                            updateDragCube = true;
-                            updateAnim = true;
-                        }
-                        break;
-                    }
-                case ChuteState.DEPLOYING_FULL:
-                    {
-                        progress = 1f - deployTime / (main? mainFullDeploySpeed : drogueFullDeploySpeed);
-                        if (deployTime <= 0)
-                        {
-                            if (main) { setChuteStates(ChuteState.FULL_DEPLOYED, drogueChuteState); }
-                            else { setChuteStates(mainChuteState, ChuteState.FULL_DEPLOYED); }
-                            updateDragCube = false;
-                            updateAnim = false;
-                        }
-                        else
-                        {
-                            dragCubeA = main ? ChuteDragCube.MAINSEMI : ChuteDragCube.DROGUESEMI;
-                            dragCubeB = main ? ChuteDragCube.DROGUEFULL : ChuteDragCube.DROGUEFULL;
-                            updateDragCube = true;
-                            updateAnim = true;
-                        }
-                        break;
-                    }
-                case ChuteState.SEMI_DEPLOYED:
-                    {
-                        progress = 1f;
-                        updateAnim = true;
-                        updateDragCube = false;
-                        double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
-                        double transitionAlt = (main ? mainSafetyAlt : drogueSafetyAlt)*0.75d;
-                        if (alt <= transitionAlt)//less than direct sea-level altitude check
-                        {
-                            updateAnim = false;
-                            if (main) { setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState); }
-                            else { setChuteStates(mainChuteState, ChuteState.DEPLOYING_FULL); }
-                        }
-                        else if (main)//for mains, also do a raycast check
-                        {                            
-                            if (shouldDeployRaycast((float)transitionAlt))
-                            {
-                                print("opening main chute full deploy from raycast hit for safety check altitude: " + transitionAlt);
-                                setChuteStates(ChuteState.DEPLOYING_FULL, drogueChuteState);
-                                updateAnim = false;
-                            }
-                        }
-                        break;
-                    }
-                case ChuteState.FULL_DEPLOYED:
-                    {
-                        progress = 1f;
-                        updateAnim = true;
-                        updateDragCube = false;
-                        if (!main)//drogue chute, check for mains deploy
-                        {
-                            double alt = FlightGlobals.getAltitudeAtPos(part.transform.position);
-                            if (alt > mainSafetyAlt)//still do a raycast check to see if within mains deploy range
-                            {
-                                if (shouldDeployRaycast(mainSafetyAlt))
-                                {
-                                    print("opening main chute from raycast hit for safety check altitude: " + mainSafetyAlt);
-                                    setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                                    updateAnim = false;
-                                }
-                            }
-                            else if (!updateAutoCut(true))//less than or equal to, by sea level
-                            {
-                                setChuteStates(ChuteState.DEPLOYING_SEMI, ChuteState.CUT);
-                                updateAnim = false;
-                            }
-                        }
-                        break;
-                    }
-            }
-            if (updateAnim)
-            {
-                updateDeployAnimation(main ? mainChuteModules : drogueChuteModules, main ? mainChuteState : drogueChuteState, progress);
-            }
-            if (updateDragCube)
-            {
-                updatePartDragCube(dragCubeA, dragCubeB, progress);
             }
         }
 
-        private void setChuteStates(ChuteState newMainState, ChuteState newDrogueState)
+        private void enableChuteRenders(bool drogue, bool main)
         {
-            this.mainChuteState = newMainState;
-            this.mainChutePersistence = mainChuteState.ToString();
-            this.drogueChuteState = newDrogueState;
-            this.drogueChutePersistence = drogueChuteState.ToString();
-            
-            bool updateDrogueCubes = true;
-            bool removeMainCap = newMainState!=ChuteState.RETRACTED;
-            bool removeDrogueCap = removeMainCap || newDrogueState!=ChuteState.RETRACTED;
-            
-            ChuteDragCube a = ChuteDragCube.RETRACTED, b = ChuteDragCube.RETRACTED;
-            float progress = 0;
-            
-            if (newMainState == ChuteState.CUT || newMainState == ChuteState.RETRACTED)
+            foreach (ParachuteModelData module in drogueChuteModules)
             {
-                //disable renders
-                foreach (ParachuteModelData module in mainChuteModules)
-                {
-                    SSTUUtils.enableRenderRecursive(module.baseModel.transform, false);
-                }
-                //dont worry about animation status, renders are disabled
-                //let drogue update drag cube
-                updateDeployAnimation(mainChuteModules, mainChuteState, 0, 0, 0);
-                if (newMainState != ChuteState.RETRACTED) { removeMainCap = true;  removeDrogueCap = true; }
+                SSTUUtils.enableRenderRecursive(module.baseModel.transform, drogue);
             }
-            else
+            foreach (ParachuteModelData module in mainChuteModules)
             {
-                updateDrogueCubes = false;
-                //enable renders, in case they were disabled by cut/retracted states
-                foreach (ParachuteModelData module in mainChuteModules)
-                {
-                    SSTUUtils.enableRenderRecursive(module.baseModel.transform, true);
-                }
-                if (newMainState == ChuteState.DEPLOYING_SEMI)
-                {
-                    a = ChuteDragCube.RETRACTED;
-                    b = ChuteDragCube.MAINSEMI;
-                    progress = 0;
-                    deployTime = mainSemiDeploySpeed;
-                    updateDeployAnimation(mainChuteModules, mainChuteState, 0, 0, 0);
-                    removeMainCap = true;
-                    removeDrogueCap = true;
-                }
-                else if (newMainState == ChuteState.DEPLOYING_FULL)
-                {
-                    a = ChuteDragCube.MAINSEMI;
-                    b = ChuteDragCube.MAINFULL;
-                    progress = 0;
-                    deployTime = mainFullDeploySpeed;
-                    updateDeployAnimation(mainChuteModules, mainChuteState, 0, wobbleMultiplier, lerpDegreePerSecond);
-                    removeMainCap = true;
-                    removeDrogueCap = true;
-                }
-                else if (newMainState == ChuteState.SEMI_DEPLOYED)
-                {
-                    a = ChuteDragCube.MAINSEMI;
-                    b = ChuteDragCube.MAINSEMI;
-                    progress = 1;
-                    deployTime = 0;
-                    updateDeployAnimation(mainChuteModules, mainChuteState, 1, wobbleMultiplier, lerpDegreePerSecond);
-                    removeMainCap = true;
-                    removeDrogueCap = true;
-                }
-                else if (newMainState == ChuteState.FULL_DEPLOYED)
-                {
-                    a = ChuteDragCube.MAINFULL;
-                    b = ChuteDragCube.MAINFULL;
-                    progress = 1;
-                    deployTime = 0;
-                    updateDeployAnimation(mainChuteModules, mainChuteState, 1, wobbleMultiplier, lerpDegreePerSecond);
-                    removeMainCap = true;
-                    removeDrogueCap = true;
-                }
-            }
-
-            if (newDrogueState == ChuteState.CUT || newDrogueState == ChuteState.RETRACTED)
-            {
-                //disable renders
-                foreach (ParachuteModelData module in drogueChuteModules)
-                {
-                    SSTUUtils.enableRenderRecursive(module.baseModel.transform, false);
-                }
-                updateDeployAnimation(drogueChuteModules, drogueChuteState, 0, wobbleMultiplier, 0);
-                if (updateDrogueCubes)
-                {
-                    a = ChuteDragCube.RETRACTED;
-                    b = ChuteDragCube.RETRACTED;
-                    progress = 0;
-                    deployTime = 0;
-                }
-            }
-            else
-            {
-                foreach (ParachuteModelData module in drogueChuteModules)
-                {
-                    SSTUUtils.enableRenderRecursive(module.baseModel.transform, true);
-                }
-                if (newDrogueState == ChuteState.DEPLOYING_SEMI)
-                {
-                    updateDeployAnimation(drogueChuteModules, drogueChuteState, 0, wobbleMultiplier, 0);
-                    if (updateDrogueCubes)
-                    {
-                        a = ChuteDragCube.RETRACTED;
-                        b = ChuteDragCube.DROGUESEMI;
-                        progress = 0;
-                        deployTime = drogueSemiDeploySpeed;
-                    }
-                }
-                else if (newDrogueState == ChuteState.DEPLOYING_FULL)
-                {
-                    updateDeployAnimation(drogueChuteModules, drogueChuteState, 0, wobbleMultiplier, lerpDegreePerSecond);
-                    if (updateDrogueCubes)
-                    {
-                        a = ChuteDragCube.DROGUESEMI;
-                        b = ChuteDragCube.DROGUEFULL;
-                        progress = 0;
-                        deployTime = drogueFullDeploySpeed;
-                    }
-                }
-                else if (newDrogueState == ChuteState.SEMI_DEPLOYED)
-                {
-                    updateDeployAnimation(drogueChuteModules, drogueChuteState, 1, wobbleMultiplier, lerpDegreePerSecond);
-                    if (updateDrogueCubes)
-                    {
-                        a = ChuteDragCube.DROGUESEMI;
-                        b = ChuteDragCube.DROGUESEMI;
-                        progress = 1;
-                        deployTime = 0;
-                    }
-                }
-                else if (newDrogueState == ChuteState.FULL_DEPLOYED)
-                {
-                    updateDeployAnimation(drogueChuteModules, drogueChuteState, 1, wobbleMultiplier, lerpDegreePerSecond);
-                    if (updateDrogueCubes)
-                    {
-                        a = ChuteDragCube.DROGUEFULL;
-                        b = ChuteDragCube.DROGUEFULL;
-                        progress = 1;
-                        deployTime = 0;
-                    }
-                }
-            }
-            
-            if (removeMainCap)
-            {
-                removeParachuteCap(mainCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedMainCap);
-                hasJettisonedMainCap = true;
-            }
-            if (removeDrogueCap)
-            {
-                removeParachuteCap(drogueCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap);
-                hasJettisonedDrogueCap = true;
-            }
-
-            updatePartDragCube(a, b, progress);
-
-            bool canDeploy = !triggered && (isDrogueReady() || isMainReady());
-            bool canCut = isDrogueChuteDeployed() || isMainChuteDeployed();
-            updateGuiState(canDeploy, canCut);
-        }
-
-        private void updateDeployAnimation(ParachuteModelData[] modules, ChuteState state, float progress)
-        {
-            updateDeployAnimation(modules, state, progress, wobbleMultiplier, lerpDegreePerSecond);
-        }
-
-        private void updateDeployAnimation(ParachuteModelData[] modules, ChuteState state, float progress, float randomization, float lerpDps)
-        {
-            foreach (ParachuteModelData data in modules) { data.updateDeployAnimation(state, progress, randomization, lerpDps); }
-        }
-
-        private void updateParachuteTargets(Vector3 wind)
-        {
-            Vector3 windLocal = part.transform.InverseTransformDirection(wind);
-            Vector3 scale = new Vector3(1, 1, 1);
-            if (windLocal.y <= 0) { scale.x = -scale.x; }
-            rotatorTransform.rotation = Quaternion.LookRotation(wind, part.transform.forward);
-            rotatorTransform.localScale = scale;
-        }
-
-        private void updateGuiState(bool deploy, bool cut)
-        {
-            Events["deployChuteEvent"].guiActive = deploy;
-            Events["cutChuteEvent"].guiActive = cut;
-            Fields["dragChuteStatus"].guiActive = hasDrogueChute;
-            if (mainChuteState != ChuteState.RETRACTED)
-            {
-                BaseField f = Fields["mainSafetyAlt"];
-                f.guiActive = f.guiActiveEditor = false;
-            }
-            if (!hasDrogueChute || drogueChuteState != ChuteState.RETRACTED)
-            {
-                BaseField f = Fields["drogueSafetyAlt"];
-                f.guiActive = f.guiActiveEditor = false;
+                SSTUUtils.enableRenderRecursive(module.baseModel.transform, main);
             }
         }
 
         private bool isMainChuteDeployed()
         {
-            return mainChuteState != ChuteState.CUT && mainChuteState != ChuteState.RETRACTED;
+            return chuteState == ChuteState.MAIN_DEPLOYING_FULL || chuteState == ChuteState.MAIN_DEPLOYING_SEMI || chuteState == ChuteState.MAIN_FULL_DEPLOYED || chuteState == ChuteState.MAIN_SEMI_DEPLOYED;
         }
 
         private bool isDrogueChuteDeployed()
         {
-            return drogueChuteState != ChuteState.CUT && drogueChuteState != ChuteState.RETRACTED;
+            return chuteState == ChuteState.DROGUE_DEPLOYING_FULL || chuteState == ChuteState.DROGUE_DEPLOYING_SEMI || chuteState == ChuteState.DROGUE_FULL_DEPLOYED || chuteState == ChuteState.DROGUE_SEMI_DEPLOYED;
+        }
+
+        private bool isDrogueCut()
+        {
+            return hasDrogueChute && (chuteState == ChuteState.MAIN_DEPLOYING_FULL || chuteState == ChuteState.MAIN_DEPLOYING_SEMI || chuteState == ChuteState.MAIN_FULL_DEPLOYED || chuteState == ChuteState.MAIN_SEMI_DEPLOYED || chuteState == ChuteState.CUT);
         }
 
         private bool isDrogueReady()
         {
-            return hasDrogueChute && drogueChuteState == ChuteState.RETRACTED;
+            return hasDrogueChute && chuteState == ChuteState.RETRACTED;
         }
 
         private bool isMainReady()
         {
-            return mainChuteState==ChuteState.RETRACTED && ((hasDrogueChute && drogueChuteState==ChuteState.CUT) || (!hasDrogueChute));
+            return !hasDrogueChute && chuteState == ChuteState.RETRACTED;
         }
 
         private bool canDrogueDeploy()
@@ -968,6 +891,50 @@ namespace SSTUTools
         private bool canMainDeploy()
         {
             return atmoDensity >= mainMinAtm*0.75f;
+        }
+
+        private bool shouldAutoCutMain()
+        {
+            return dynamicPressure > mainMaxQ || externalTemp > mainMaxTemp;
+        }
+
+        private bool shouldAutoCutDrogue()
+        {
+            return dynamicPressure > drogueMaxQ || externalTemp > drogueMaxTemp;
+        }
+
+        private bool shouldAutoCutAtmoOrSpeed()
+        {
+            return atmoDensity <= 0 || vessel.LandedOrSplashed && squareVelocity < autoCutSpeed * autoCutSpeed;
+        }
+
+        private bool shouldDeployDrogue()
+        {
+            if (!hasDrogueChute) { return false; }
+            if (shouldAutoCutDrogue()) { return false; }
+            return shouldDeploySeaLevelAlt(drogueSafetyAlt);
+        }
+
+        private bool shouldDeployMains()
+        {
+            if (shouldAutoCutMain()) { return false;}
+            if (shouldDeploySeaLevelAlt(mainSafetyAlt)) { return true; }
+            return shouldDeployRadarAlt(mainSafetyAlt);
+        }
+
+        private bool shouldDeploy(float height, bool ray)
+        {
+            return ray ? shouldDeployRadarAlt(height) : shouldDeploySeaLevelAlt(height);
+        }
+
+        private bool shouldDeployRadarAlt(float height)
+        {
+            return Physics.Raycast(part.transform.position, -FlightGlobals.getUpAxis(part.transform.position), height, TERRAIN_MASK);
+        }
+
+        private bool shouldDeploySeaLevelAlt(float height)
+        {
+            return height >= FlightGlobals.getAltitudeAtPos(part.transform.position);
         }
 
         #endregion        
@@ -996,12 +963,31 @@ namespace SSTUTools
         public Vector3 fullDeployedScale = new Vector3(0.2f, 1, 0.2f);
 
         private Transform partTransform;
+        private Transform modelsTransform;
         private GameObject retractedTarget;
         private GameObject semiDeployedTarget;
         private GameObject fullDeployedTarget;
         private Quaternion prevWind;
+        private int index;
+        private bool main;
 
-        public ParachuteModelData(ConfigNode node, Vector3 retracted, Vector3 semi, Vector3 full)
+        /*
+
+        * Part
+            * 'model'
+                * 'SSTUMPBaseTransform'
+                    * 'SSTUMPTargetRotator'
+                        * 'Par-main-1-retracted'
+                        * 'Par-main-1-semi'
+                        * 'Par-main-1-full'
+                        * 'Par-drogue-1-targets'
+                    * 'Par-main-1-pivot'
+                        * <modelName>
+                    * 'Par-drogue-1-pivot'
+                        * <modelName>
+        */
+
+        public ParachuteModelData(ConfigNode node, Vector3 retracted, Vector3 semi, Vector3 full, int index, bool main)
         {
             name = node.GetStringValue("name");
             definition = SSTUParachuteDefinitions.getDefinition(name);
@@ -1015,29 +1001,43 @@ namespace SSTUTools
             retractedScale = retracted;
             semiDeployedScale = semi;
             fullDeployedScale = full;
+            this.index = index;
+            this.main = main;
         }
 
-        public void setupModel(Part part, Transform parent, Transform targetRotator)
+        public void setupModel(Part part, Transform baseTransform, Transform targetRotator)
         {
             this.partTransform = part.transform;
-            
-            retractedTarget = new GameObject("ParachuteRetractedTarget");
+
+            String suffix = (main ? "-main-" : "-drogue-") + index;
+                                   
+            retractedTarget = targetRotator.FindOrCreate("ParachuteRetractedTarget"+suffix).gameObject;
             retractedTarget.transform.NestToParent(targetRotator);
             retractedTarget.transform.localPosition = new Vector3(-retractedUpVector.x, -retractedUpVector.z, retractedUpVector.y);
             
-            semiDeployedTarget = new GameObject("ParachuteSemiDeployTarget");
+            semiDeployedTarget = targetRotator.FindOrCreate("ParachuteSemiDeployTarget" + suffix).gameObject;
             semiDeployedTarget.transform.NestToParent(targetRotator);
             semiDeployedTarget.transform.localPosition = new Vector3(-semiDeployedUpVector.x, -semiDeployedUpVector.z, semiDeployedUpVector.y);
             
-            fullDeployedTarget = new GameObject("ParachuteFullDeployTarget");
+            fullDeployedTarget = targetRotator.FindOrCreate("ParachuteFullDeployTarget" + suffix).gameObject;
             fullDeployedTarget.transform.NestToParent(targetRotator);
-            fullDeployedTarget.transform.localPosition = new Vector3(-fullDeployedUpVector.x, -fullDeployedUpVector.z, fullDeployedUpVector.y);
+            fullDeployedTarget.transform.localPosition = new Vector3(-fullDeployedUpVector.x, -fullDeployedUpVector.z, fullDeployedUpVector.y); 
             
-            parachutePivot = new GameObject("ParachuteSpacingPivot");
-            parachutePivot.transform.NestToParent(parent);
+            parachutePivot = baseTransform.FindOrCreate("ParachuteSpacingPivot" + suffix).gameObject;
+            parachutePivot.transform.NestToParent(baseTransform);
             parachutePivot.transform.localPosition = new Vector3(localPosition.x, localPosition.y, -localPosition.z);//TODO -- why does this need to be inverted?
-                        
-            baseModel = SSTUUtils.cloneModel(modelName);
+
+            Transform modelTransform = parachutePivot.transform.FindRecursive(modelName);
+            if (modelTransform == null)
+            {
+                baseModel = SSTUUtils.cloneModel(modelName);
+                MonoBehaviour.print("cloning new parachute model...");
+            }
+            else
+            {
+                baseModel = modelTransform.gameObject;
+                MonoBehaviour.print("re-using existing model...");
+            }         
             baseModel.transform.NestToParent(parachutePivot.transform);
             if (!String.IsNullOrEmpty(texture))
             {
@@ -1056,61 +1056,39 @@ namespace SSTUTools
             parachutePivot.transform.rotation = Quaternion.LookRotation(lookDir, part.transform.forward);
             prevWind = parachutePivot.transform.rotation;
             baseModel.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.left);
-            
-            if (debug)
-            {
-                GameObject debug1 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL"); 
-                debug1.transform.NestToParent(parachutePivot.transform);
-                GameObject debug2 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug2.transform.NestToParent(parachutePivot.transform);
-                debug2.transform.localPosition = new Vector3(0, 0, 2);
-
-                GameObject debug3 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug3.transform.NestToParent(baseModel.transform);
-                GameObject debug4 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug4.transform.NestToParent(baseModel.transform);
-                debug4.transform.localPosition = new Vector3(0, 0, 2);
-
-                GameObject debug5 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug5.transform.NestToParent(retractedTarget.transform);
-                GameObject debug6 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug6.transform.NestToParent(semiDeployedTarget.transform);
-                GameObject debug7 = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                debug7.transform.NestToParent(fullDeployedTarget.transform);
-            }
         }
         
-        public void updateDeployAnimation(ChuteState state, float progress, float randomization, float lerpDPS)
+        public void updateDeployAnimation(ChuteAnimationState state, float progress, float randomization, float lerpDPS)
         {
             Vector3 targetA = Vector3.zero, targetB = Vector3.zero, scaleA = Vector3.one, scaleB = Vector3.one;
             switch (state)
             {
-                case ChuteState.CUT:                    
-                case ChuteState.RETRACTED:
+                case ChuteAnimationState.CUT:                    
+                case ChuteAnimationState.RETRACTED:
                     targetA = retractedTarget.transform.position;
                     targetB = retractedTarget.transform.position;
                     scaleA = retractedScale;
                     scaleB = retractedScale;
                     break;
-                case ChuteState.DEPLOYING_SEMI:
+                case ChuteAnimationState.DEPLOYING_SEMI:
                     targetA = retractedTarget.transform.position;
                     targetB = semiDeployedTarget.transform.position;
                     scaleA = retractedScale;
                     scaleB = semiDeployedScale;
                     break;
-                case ChuteState.SEMI_DEPLOYED:
+                case ChuteAnimationState.SEMI_DEPLOYED:
                     targetA = semiDeployedTarget.transform.position;
                     targetB = semiDeployedTarget.transform.position;
                     scaleA = semiDeployedScale;
                     scaleB = semiDeployedScale;
                     break;
-                case ChuteState.DEPLOYING_FULL:
+                case ChuteAnimationState.DEPLOYING_FULL:
                     targetA = semiDeployedTarget.transform.position;
                     targetB = fullDeployedTarget.transform.position;
                     scaleA = semiDeployedScale;
                     scaleB = fullDeployedScale;
                     break;
-                case ChuteState.FULL_DEPLOYED:
+                case ChuteAnimationState.FULL_DEPLOYED:
                     targetA = fullDeployedTarget.transform.position;
                     targetB = fullDeployedTarget.transform.position;
                     scaleA = fullDeployedScale;
@@ -1134,12 +1112,28 @@ namespace SSTUTools
                 parachutePivot.transform.rotation = Quaternion.RotateTowards(prevWind, parachutePivot.transform.rotation, lerpDPS * TimeWarp.fixedDeltaTime);
             }
             baseModel.transform.localScale = Vector3.Lerp(scaleA, scaleB, progress);
+            MonoBehaviour.print("set parachute scale to: " + baseModel.transform.localScale);
             prevWind = parachutePivot.transform.rotation;
         }
 
     }
     
     public enum ChuteState
+    {
+        RETRACTED,
+        ARMED,
+        DROGUE_DEPLOYING_SEMI,
+        DROGUE_SEMI_DEPLOYED,
+        DROGUE_DEPLOYING_FULL,
+        DROGUE_FULL_DEPLOYED,
+        MAIN_DEPLOYING_SEMI,
+        MAIN_SEMI_DEPLOYED,
+        MAIN_DEPLOYING_FULL,
+        MAIN_FULL_DEPLOYED,
+        CUT
+    }
+
+    public enum ChuteAnimationState
     {
         RETRACTED,
         DEPLOYING_SEMI,

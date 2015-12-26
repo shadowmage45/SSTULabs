@@ -285,6 +285,38 @@ namespace SSTUTools
             }
         }
 
+        public static void recursePrintMaterialData(Transform tr)
+        {
+            if (tr.renderer != null)
+            {
+                Material m = tr.renderer.material;
+                Texture t = m.mainTexture;
+                Shader s = m.shader;
+                MonoBehaviour.print("mat: " + m + " : tex: " + t + " : shad: " + s);
+            }
+
+            foreach (Transform child in tr)
+            {
+                recursePrintMaterialData(child);
+            }
+        }
+
+        public static void setAeroMaterial(Transform tr)
+        {
+            Shader s = Shader.Find("Aerodynamics/DragRender");
+            recurseSetAeroMaterial(tr, s);
+        }
+
+        private static void recurseSetAeroMaterial(Transform tr, Shader s)
+        {
+            if (tr.renderer != null && tr.renderer.material != null)
+            {
+                tr.renderer.material = new Material(s);
+            }
+            foreach (Transform child in tr) { recurseSetAeroMaterial(child, s); }
+
+        }
+
         public static void recursePrintChildTransforms(Transform tr, String prefix)
         {
             MonoBehaviour.print("Transform found: " + prefix + tr.name);

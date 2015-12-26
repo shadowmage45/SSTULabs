@@ -1,0 +1,34 @@
+@PART[SSTU_ShipCore_ENG-F1]:FOR[SSTU_ENGINES]:NEEDS[RealPlume]:BEFORE[SSTU_ENGINES]:BEFORE[RealPlume]
+{
+    PLUME
+    {
+        name = Kerolox-Lower
+        transformName = F1-ThrustTransform
+        localRotation = 0,0,0
+        localPosition = 0,0,2.5
+        fixedScale = 1.4
+        energy = 1
+        speed = 1
+    }
+	@MODULE[ModuleEngines*]
+	{
+        %powerEffectName = Kerolox-Lower
+	}
+}
+@PART[SSTU_ShipCore_ENG-F1B]:FOR[SSTU]:NEEDS[RealPlume]:BEFORE[RealPlume]:BEFORE[SSTU]
+{
+    PLUME
+    {
+        name = Kerolox-Lower
+        transformName = F1B-ThrustTransform
+        localRotation = 0,0,0
+        localPosition = 0,0,2.3
+        fixedScale = 1.3
+        energy = 1
+        speed = 1
+    }
+	@MODULE[ModuleEngines*]
+	{
+        %powerEffectName = Kerolox-Lower
+	}
+}

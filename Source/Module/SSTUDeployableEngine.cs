@@ -1,153 +1,157 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace SSTUTools
 {
-    
-    public class SSTUDeployableEngine : ModuleEnginesFX
+    public class SSTUDeployableEngine : PartModule
     {
 
         [KSPField]
         public int animationID = -1;
 
-        private SSTUAnimateControlled animationControl;
+        [KSPField]
+        public int engineModuleIndex = 0;
 
-        [KSPAction("Toggle Engine Deployment")]
-        public void toggleDeployment(KSPActionParam param)
+        private SSTUAnimateControlled animationControl;
+        private ModuleEnginesFX engineModule;
+        
+        [KSPAction("Activate Engine")]
+        public void deployEngineAction(KSPActionParam param)
         {
-            if (animationControl != null)
-            {
-                AnimState state = animationControl.getAnimationState();
-                if (state == AnimState.PLAYING_BACKWARD || state == AnimState.STOPPED_START)//either playing retract anim, or already retracted; deploy it
-                {
-                    deployEngineEvent();
-                }
-                else//else it was deployed/deploying; retract it
-                {
-                    retractEngineEvent();
-                }
-            }
+            deployEngineEvent();
         }
 
-        [KSPEvent(name = "deployEngineEvent", guiName = "Deploy Engine", guiActive = true, guiActiveEditor = true)]
+        [KSPAction("Shutdown Engine")]
+        public void retractEngineAction(KSPActionParam param)
+        {
+            retractEngineEvent();
+        }
+
+        [KSPEvent(name = "deployEngineEvent", guiName = "Activate Engine", guiActive = true, guiActiveEditor = false)]
         public void deployEngineEvent()
         {
-            setAnimationState(AnimState.PLAYING_FORWARD);
+            AnimState state = animationControl.getAnimationState();
+            if (state != AnimState.STOPPED_END)
+            {
+                setAnimationState(AnimState.PLAYING_FORWARD);
+            }
+            else
+            {
+                engineModule.Activate();
+            }
+            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }
 
-        [KSPEvent(name = "retractEngineEvent", guiName = "Retract Engine", guiActive = true, guiActiveEditor = true)]
+        [KSPEvent(name = "retractEngineEvent", guiName = "Shutdown Engine", guiActive = true, guiActiveEditor = false)]
         public void retractEngineEvent()
         {
-            Shutdown();
-            setAnimationState(AnimState.PLAYING_BACKWARD);
+
+            AnimState state = animationControl.getAnimationState();
+            if (state != AnimState.STOPPED_START)
+            {
+                setAnimationState(AnimState.PLAYING_BACKWARD);
+                engineModule.Shutdown();
+            }
+            else
+            {
+                engineModule.Shutdown();
+            }
+            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }
-        
-        public override void OnStart(PartModule.StartState state)
+
+        public void Start()
         {
             animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
-            base.OnStart(state);
-            setupGuiFields(animationControl == null ? AnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
+            engineModule = (ModuleEnginesFX)part.Modules[engineModuleIndex];//unsafe, but intend it to crash if setup improperly
+            setupEngineModuleGui();
+            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
+        }
+
+        public void onAnimationStatusChanged(AnimState state)
+        {
+            if (state == AnimState.STOPPED_END && HighLogic.LoadedSceneIsFlight)
+            {
+                engineModule.Activate();
+            }
         }
 
         //check for control enabled and deployment status (if animated)
         public override void OnActive()
         {
-            if (animationControl == null || animationControl.getAnimationState() == AnimState.STOPPED_END)
+            print("sstudeployable engine OnActive...");
+            if (animationControl.getAnimationState() == AnimState.STOPPED_END)
             {
-                base.OnActive();
+                engineModule.Activate();
             }
             else
             {
                 setAnimationState(AnimState.PLAYING_FORWARD);
+                if (engineModule.EngineIgnited)
+                {
+                    engineModule.Shutdown();
+                }
             }
-        }
-        
-        new public void FixedUpdate()
-        {
-            base.FixedUpdate();
-            setupGuiFields(animationControl == null ? AnimState.STOPPED_END : animationControl.getAnimationState(), EngineIgnited);
+            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }
 
+        private void setAnimationState(AnimState state)
+        {
+            AnimState currentState = animationControl.getAnimationState();
+            //exceptions below fix issues of OnActive being called by moduleEngine during startup
+            if (currentState == AnimState.STOPPED_END && state == AnimState.PLAYING_FORWARD) { return; }//don't allow deploying from deployed
+            else if (currentState == AnimState.STOPPED_START && state == AnimState.PLAYING_BACKWARD) { return; }//don't allow retracting from retracted
+            animationControl.setToState(state);
+        }
+
+        private void setupEngineModuleGui()
+        {
+            engineModule.Events["Activate"].active = false;
+            engineModule.Events["Shutdown"].active = false;
+            engineModule.Events["Activate"].guiActive = false;
+            engineModule.Events["Shutdown"].guiActive = false;
+            engineModule.Actions["ActivateAction"].active = false;
+            engineModule.Actions["ShutdownAction"].active = false;
+            engineModule.Actions["OnAction"].active = false;
+        }
+        
         //TODO - stuff for non-restartable and non-stoppable engines
         private void setupGuiFields(AnimState state, bool engineActive)
         {
-            bool hasAnim = animationControl != null;
             bool isEditor = HighLogic.LoadedSceneIsEditor;
             switch (state)
             {
-
                 case AnimState.PLAYING_BACKWARD://retracting
                     {
-                        Events["Activate"].active = false;
-                        Events["Shutdown"].active = false;
-                        Actions["ActivateAction"].active = isEditor;
-                        Actions["ShutdownAction"].active = isEditor;
-                        Actions["OnAction"].active = isEditor;
-                        Events["deployEngineEvent"].active = hasAnim;
+                        Events["deployEngineEvent"].active = true;
                         Events["retractEngineEvent"].active = false;
                         break;
                     }
 
                 case AnimState.PLAYING_FORWARD://deploying
                     {
-                        Events["Activate"].active = false;
-                        Events["Shutdown"].active = false;
-                        Actions["ActivateAction"].active = isEditor;
-                        Actions["ShutdownAction"].active = isEditor;
-                        Actions["OnAction"].active = isEditor;
                         Events["deployEngineEvent"].active = false;
-                        Events["retractEngineEvent"].active = hasAnim;
+                        Events["retractEngineEvent"].active = true;
                         break;
                     }
 
                 case AnimState.STOPPED_END://deployed or no anim
                     {
-                        Events["Activate"].active = !engineActive;
-                        Events["Shutdown"].active = engineActive;
-                        Actions["ActivateAction"].active = true;
-                        Actions["ShutdownAction"].active = true;
-                        Actions["OnAction"].active = true;
                         Events["deployEngineEvent"].active = false;
-                        Events["retractEngineEvent"].active = hasAnim;
+                        Events["retractEngineEvent"].active = true;
                         break;
                     }
 
                 case AnimState.STOPPED_START://retracted
                     {
-                        Events["Activate"].active = false;
-                        Events["Shutdown"].active = false;
-                        Actions["ActivateAction"].active = isEditor;
-                        Actions["ShutdownAction"].active = isEditor;
-                        Actions["OnAction"].active = isEditor;
-                        Events["deployEngineEvent"].active = hasAnim;
+                        Events["deployEngineEvent"].active = true;
                         Events["retractEngineEvent"].active = false;
                         break;
                     }
 
             }
         }
-        
-        public void onAnimationStatusChanged(AnimState state)
-        {
-            if (state == AnimState.STOPPED_END)
-            {
-                if (HighLogic.LoadedSceneIsFlight)
-                {
-                    base.Activate();
-                }
-            }
-        }
-        
-        private void setAnimationState(AnimState state)
-        {
-            if (animationControl != null)
-            {
-                AnimState currentState = animationControl.getAnimationState();
-                //exceptions below fix issues of OnActive being called by moduleEngine during startup
-                if (currentState == AnimState.STOPPED_END && state == AnimState.PLAYING_FORWARD) { return; }//don't allow deploying from deployed
-                else if (currentState == AnimState.STOPPED_START && state == AnimState.PLAYING_BACKWARD) { return; }//don't allow retracting from retracted
-                animationControl.setToState(state);
-            }
-        }
+
     }
 }
-

@@ -186,7 +186,9 @@ namespace SSTUTools
         public static Transform FindOrCreate(this Transform transform, String name)
         {
             Transform newTr = transform.FindRecursive(name);
-            if(newTr!= null) { return newTr; }
+            if (newTr != null) { MonoBehaviour.print("found existing go for: " + name); return newTr; }
+            MonoBehaviour.print("cloning new game object for: " + name);
+            SSTUUtils.recursePrintComponents(transform.gameObject, "");
             GameObject newGO = new GameObject(name);
             newGO.SetActive(true);
             newGO.name = newGO.transform.name = name;
