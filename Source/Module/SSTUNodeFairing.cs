@@ -48,6 +48,9 @@ namespace SSTUTools
         public bool snapToSecondNode = false;
 
         [KSPField]
+        public bool updateDragCubes = true;
+
+        [KSPField]
         public bool canDisableInEditor = true;
 
         /// <summary>
@@ -884,6 +887,7 @@ namespace SSTUTools
         //TODO need to finish drag cube update code for NodeFairing
         private void updateDragCube()
         {
+            if (!updateDragCubes) { return; }
             if (!part.DragCubes.Procedural)
             {
                 if (part.DragCubes.Cubes.Count > 1)

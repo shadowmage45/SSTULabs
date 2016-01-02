@@ -1,0 +1,229 @@
+SSTU_FUELTYPE
+{
+	name = Hydrolox
+	tankageVolumeLoss = 0.15
+	tankageMassFactor = 0.15
+	costPerDryTon = 500
+	RESOURCE
+	{
+		resource = LqdHydrogen
+		ratio = 10
+	}
+	RESOURCE
+	{
+		resource = Oxidizer
+		ratio = 1
+	}
+}
+SSTU_RESOURCEVOLUME
+{
+	name = LqdHydrogen
+	volume = 1
+}
+
+@PART[SSTU_ShipCore_MFT-A]:FOR[SSTU]
+{
+	@MODULE[SSTUModularFuelTank]
+	{		
+		FUELTYPE
+		{
+			name = Hydrolox
+		}
+	}
+}
+
+
+@PART[SSTU_ShipCore_ENG-RS-25]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-J-2]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-RL10A-3]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-RL10A-4]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-RL10B-2]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+}
+@PART[SSTU-SC-B-ICPS]:FOR[SSTU]:BEFORE[RealPlume]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+	!RESOURCE,*{}
+	RESOURCE
+	{
+		name = LqdHdyrogen
+		amount = 20960
+		maxAmount = 20960
+	}
+	RESOURCE
+	{
+		name = Oxidizer
+		amount = 2096
+		maxAmount = 2096
+	}
+}
+@PART[SSTU-SC-B-HUS]:FOR[SSTU]:BEFORE[RealPlume]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 454
+			key = 1 359
+		}
+	}
+	!RESOURCE,*{}
+	RESOURCE
+	{
+		name = LqdHdyrogen
+		amount = 57800
+		maxAmount = 57800
+	}
+	RESOURCE
+	{
+		name = Oxidizer
+		amount = 5780
+		maxAmount = 5780
+	}
+}
