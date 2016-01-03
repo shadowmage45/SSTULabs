@@ -31,6 +31,26 @@ SSTU_RESOURCEVOLUME
 		}
 	}
 }
+@PART[SSTU_ShipCore_MUS-ST]:FOR[SSTU]
+{
+	@MODULE[SSTUCustomUpperStage]
+	{		
+		FUELTYPE
+		{
+			name = Hydrolox
+		}
+	}
+}
+@PART[SSTU_ShipCore_MUS-CB]:FOR[SSTU]
+{
+	@MODULE[SSTUCustomUpperStage]
+	{		
+		FUELTYPE
+		{
+			name = Hydrolox
+		}
+	}
+}
 
 
 @PART[SSTU_ShipCore_ENG-RS-25]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
@@ -52,8 +72,8 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 452
+			key = 1 365
 		}
 	}
 }
@@ -76,8 +96,8 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 421
+			key = 1 200
 		}
 	}
 }
@@ -100,8 +120,8 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 450
+			key = 1 255
 		}
 	}
 }
@@ -124,8 +144,8 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 457
+			key = 1 255
 		}
 	}
 }
@@ -148,12 +168,12 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 465
+			key = 1 255
 		}
 	}
 }
-@PART[SSTU-SC-B-ICPS]:FOR[SSTU]:BEFORE[RealPlume]
+@PART[SSTU-SC-B-ICPS]:FOR[SSTU]
 {
 	@MODULE[ModuleEngines*]
 	{		
@@ -172,14 +192,14 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 465
+			key = 1 255
 		}
 	}
 	!RESOURCE,*{}
 	RESOURCE
 	{
-		name = LqdHdyrogen
+		name = LqdHydrogen
 		amount = 20960
 		maxAmount = 20960
 	}
@@ -190,7 +210,7 @@ SSTU_RESOURCEVOLUME
 		maxAmount = 2096
 	}
 }
-@PART[SSTU-SC-B-HUS]:FOR[SSTU]:BEFORE[RealPlume]
+@PART[SSTU-SC-B-HUS]:FOR[SSTU]
 {
 	@MODULE[ModuleEngines*]
 	{		
@@ -209,14 +229,14 @@ SSTU_RESOURCEVOLUME
 		!atmosphereCurve,*{}
 		atmosphereCurve
 		{
-			key = 0 454
-			key = 1 359
+			key = 0 465
+			key = 1 255
 		}
 	}
 	!RESOURCE,*{}
 	RESOURCE
 	{
-		name = LqdHdyrogen
+		name = LqdHydrogen
 		amount = 57800
 		maxAmount = 57800
 	}
