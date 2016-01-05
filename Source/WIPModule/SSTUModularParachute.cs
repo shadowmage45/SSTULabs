@@ -265,6 +265,10 @@ namespace SSTUTools
                 BaseField f = Fields["drogueSafetyAlt"];
                 f.guiActive = f.guiActiveEditor = false;
             }
+            if (String.IsNullOrEmpty(part.buoyancyUseCubeNamed))
+            {
+                part.buoyancyUseCubeNamed = retractedDragCubeName;
+            }
         }
 
         public override void OnActive()
@@ -392,7 +396,7 @@ namespace SSTUTools
         /// <param name="name"></param>
         public void AssumeDragCubePosition(string name)
         {
-            forceReloadConfig();
+            forceReloadConfig();//forces loadConfig(ConfigNode) to be called again, really the only hacky use for that method, need to find a proper setup for it
             if (!initialized) { initializeModels(); initialized = true; print("initialized from drag cube render");}
             updateParachuteTargets(part.transform.up);
             switch (name)
@@ -667,6 +671,7 @@ namespace SSTUTools
         
         private void setChuteState(ChuteState newState)
         {
+            print("setting to chute state: " + newState);
             chuteState = newState;
             this.chutePersistence = chuteState.ToString();
             
@@ -819,14 +824,24 @@ namespace SSTUTools
         /// Updates internal cached vars for external physical state -- velocity, dynamic pressure, etc.
         /// </summary>
         private void updateParachuteStats()
-        {
-            //print("kb: " + Krakensbane.GetFrameVelocity());
-            //print("pt: " + part.rigidbody);
-            //print("vs: " + vessel);
+        {            
             atmoDensity = part.atmDensity;
             squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rigidbody.velocity.sqrMagnitude;
             externalTemp = vessel.externalTemperature;
             dynamicPressure = atmoDensity * squareVelocity * 0.5d;
+            //print("dens: " + atmoDensity);
+            //print("sqvel: " + squareVelocity);
+            //print("extemp:" + externalTemp);
+            //print("dynpres:" + dynamicPressure);
+            //print("part.. bucn" + part.buoyancyUseCubeNamed);
+            //print("part.. cob" + part.CenterOfBuoyancy);
+            //print("part.. bus" + part.buoyancyUseSine);
+            //print("part.. cod" + part.CenterOfDisplacement);
+            //print("land: " + vessel.LandedOrSplashed);
+            //print("alt: " + vessel.altitude);
+            //print("alt2: " + vessel.terrainAltitude);
+            //print("alt3: " + vessel.heightFromSurface);
+            //print("alt4: " + vessel.heightFromTerrain);
         }
 
         private void removeParachuteCap(String name, bool jettison)
@@ -963,30 +978,13 @@ namespace SSTUTools
         public Vector3 fullDeployedScale = new Vector3(0.2f, 1, 0.2f);
 
         private Transform partTransform;
-        private Transform modelsTransform;
         private GameObject retractedTarget;
         private GameObject semiDeployedTarget;
         private GameObject fullDeployedTarget;
         private Quaternion prevWind;
         private int index;
         private bool main;
-
-        /*
-
-        * Part
-            * 'model'
-                * 'SSTUMPBaseTransform'
-                    * 'SSTUMPTargetRotator'
-                        * 'Par-main-1-retracted'
-                        * 'Par-main-1-semi'
-                        * 'Par-main-1-full'
-                        * 'Par-drogue-1-targets'
-                    * 'Par-main-1-pivot'
-                        * <modelName>
-                    * 'Par-drogue-1-pivot'
-                        * <modelName>
-        */
-
+        
         public ParachuteModelData(ConfigNode node, Vector3 retracted, Vector3 semi, Vector3 full, int index, bool main)
         {
             name = node.GetStringValue("name");
@@ -1111,8 +1109,7 @@ namespace SSTUTools
             {
                 parachutePivot.transform.rotation = Quaternion.RotateTowards(prevWind, parachutePivot.transform.rotation, lerpDPS * TimeWarp.fixedDeltaTime);
             }
-            baseModel.transform.localScale = Vector3.Lerp(scaleA, scaleB, progress);
-            MonoBehaviour.print("set parachute scale to: " + baseModel.transform.localScale);
+            baseModel.transform.localScale = Vector3.Lerp(scaleA, scaleB, progress);            
             prevWind = parachutePivot.transform.rotation;
         }
 

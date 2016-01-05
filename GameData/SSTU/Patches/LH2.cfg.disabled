@@ -31,6 +31,16 @@ SSTU_RESOURCEVOLUME
 		}
 	}
 }
+@PART[SSTU_ShipCore_MFT-B]:FOR[SSTU]
+{
+	@MODULE[SSTUModularFuelTank]
+	{		
+		FUELTYPE
+		{
+			name = Hydrolox
+		}
+	}
+}
 @PART[SSTU_ShipCore_MUS-ST]:FOR[SSTU]
 {
 	@MODULE[SSTUCustomUpperStage]

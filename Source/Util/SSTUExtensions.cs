@@ -153,6 +153,30 @@ namespace SSTUTools
 
         #region Transform extensionMethods
 
+        public static Transform[] FindModels(this Transform transform, String modelName)
+        {
+            Transform[] trs = transform.FindChildren(modelName);
+            Transform[] trs2 = transform.FindChildren(modelName + "(Clone)");
+            Transform[] trs3 = new Transform[trs.Length + trs2.Length];
+            int index = 0;
+            for (int i = 0; i < trs.Length; i++, index++)
+            {
+                trs3[index] = trs[i];
+            }
+            for (int i = 0; i < trs2.Length; i++, index++)
+            {
+                trs3[index] = trs2[i];
+            }
+            return trs3;
+        }
+
+        public static Transform FindModel(this Transform transform, String modelName)
+        {
+            Transform tr = transform.FindRecursive(modelName);
+            if (tr != null) { return tr; }
+            return transform.FindRecursive(modelName + "(Clone)");
+        }
+
         public static Transform[] FindChildren(this Transform transform, String name)
         {
             List<Transform> trs = new List<Transform>();
@@ -186,9 +210,13 @@ namespace SSTUTools
         public static Transform FindOrCreate(this Transform transform, String name)
         {
             Transform newTr = transform.FindRecursive(name);
-            if (newTr != null) { MonoBehaviour.print("found existing go for: " + name); return newTr; }
-            MonoBehaviour.print("cloning new game object for: " + name);
-            SSTUUtils.recursePrintComponents(transform.gameObject, "");
+            if (newTr != null)
+            {
+                //MonoBehaviour.print("found existing go for: " + name);
+                return newTr;
+            }
+            //MonoBehaviour.print("cloning new game object for: " + name);
+            //SSTUUtils.recursePrintComponents(transform.gameObject, "");
             GameObject newGO = new GameObject(name);
             newGO.SetActive(true);
             newGO.name = newGO.transform.name = name;
