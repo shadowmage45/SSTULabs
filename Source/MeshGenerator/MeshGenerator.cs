@@ -64,7 +64,6 @@ namespace SSTUTools
             norms.Add(vert.normal);
             uvs.Add(vert.uv);
             vertices.Add(vert);
-
             return vert;
         }
 
@@ -350,46 +349,46 @@ namespace SSTUTools
 
     }
 
-    public class Vertex
-    {
-        public Vector3 vertex;
-        public Vector3 normal;
-        public Vector2 uv;
-        public int index;
-    }
+    //public class Vertex
+    //{
+    //    public Vector3 vertex;
+    //    public Vector3 normal;
+    //    public Vector2 uv;
+    //    public int index;
+    //}
 
-    public class UVArea
-    {
-        public float u1;
-        public float u2;
-        public float v1;
-        public float v2;
+    //public class UVArea
+    //{
+    //    public float u1;
+    //    public float u2;
+    //    public float v1;
+    //    public float v2;
 
-        public UVArea(UVArea input)
-        {
-            this.u1 = input.u1;
-            this.u2 = input.u2;
-            this.v1 = input.v1;
-            this.v2 = input.v2;
-        }
+    //    public UVArea(UVArea input)
+    //    {
+    //        this.u1 = input.u1;
+    //        this.u2 = input.u2;
+    //        this.v1 = input.v1;
+    //        this.v2 = input.v2;
+    //    }
 
-        public UVArea(float u1, float v1, float u2, float v2)
-        {
-            this.u1 = u1;
-            this.v1 = v1;
-            this.u2 = u2;
-            this.v2 = v2;
-        }
+    //    public UVArea(float u1, float v1, float u2, float v2)
+    //    {
+    //        this.u1 = u1;
+    //        this.v1 = v1;
+    //        this.u2 = u2;
+    //        this.v2 = v2;
+    //    }
 
-        public UVArea(int x1, int y1, int x2, int y2, int textureSize)
-        {
-            float areaPerPx = 1.0f / (float)textureSize;
-            u1 = (float)x1 * areaPerPx;
-            u2 = (float)x2 * areaPerPx;
-            v1 = (float)(textureSize - 1 - (y2 - 1)) * areaPerPx;
-            v2 = (float)(textureSize - 1 - y1) * areaPerPx;
-        }
-    }
+    //    public UVArea(int x1, int y1, int x2, int y2, int textureSize)
+    //    {
+    //        float areaPerPx = 1.0f / (float)textureSize;
+    //        u1 = (float)x1 * areaPerPx;
+    //        u2 = (float)x2 * areaPerPx;
+    //        v1 = (float)(textureSize - 1 - (y2 - 1)) * areaPerPx;
+    //        v2 = (float)(textureSize - 1 - y1) * areaPerPx;
+    //    }
+    //}
 
 }
 
