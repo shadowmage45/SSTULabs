@@ -125,7 +125,11 @@ namespace SSTUTools
 
         private void enableTexture(Transform tr)
         {
-            if (tr.renderer == null) { MonoBehaviour.print("ERROR: transform does not contain a renderer for mesh name: " + tr.name); return; }
+            if (tr.renderer == null)
+            {
+                //MonoBehaviour.print("ERROR: transform does not contain a renderer for mesh name: " + tr.name);
+                return;
+            }
             Renderer r = tr.renderer;
             //TODO check / update the shader for the material
             Material m = r.material;

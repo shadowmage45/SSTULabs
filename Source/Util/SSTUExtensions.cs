@@ -215,7 +215,7 @@ namespace SSTUTools
                 //MonoBehaviour.print("found existing go for: " + name);
                 return newTr;
             }
-            //MonoBehaviour.print("cloning new game object for: " + name);
+            //MonoBehaviour.print("creating new game object for: " + name);
             //SSTUUtils.recursePrintComponents(transform.gameObject, "");
             GameObject newGO = new GameObject(name);
             newGO.SetActive(true);

@@ -7,12 +7,10 @@ namespace SSTUTools
 {
     public class SSTUUtils
     {
-        //TODO figure out how to re-init the highlighter...
         public static void updatePartHighlighting(Part part)
         {
-            //if (part.highlighter == null || !(HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)) { return; }
+            //if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//no need for highlighting in prefab construction...
             //part.highlighter.ReinitMaterials();
-            //part.highlighter.Highlight();
         }
 
         public static GameObject createJettisonedObject(GameObject toJettison, Vector3 velocity, Vector3 force, float mass)
@@ -707,11 +705,16 @@ namespace SSTUTools
 
         public static void updateRealFuelsPartVolume(Part part, float cubicMeters)
         {
+
             Type moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
             if (moduleFuelTank == null)
             {
-                MonoBehaviour.print("Fuel tank is set to use RF, but RF not installed!!");
-                return;
+                moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,modularFuelTanks");
+                if (moduleFuelTank == null)
+                {
+                    MonoBehaviour.print("Fuel tank is set to use RF, but neither RF nor MFT are installed!!");
+                    return;
+                }        
             }
             PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
             if (pm == null)

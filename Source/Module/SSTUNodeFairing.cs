@@ -12,10 +12,7 @@ namespace SSTUTools
         #region REGION - Standard KSP Config Fields
         
         [KSPField]
-        public String diffuseTextureName = "UNKNOWN";
-
-        [KSPField]
-        public String normalTextureName = "UNKNOWN";        
+        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";      
                 
         /// <summary>
         /// CSV List of transforms to remove from the model, to be used to override stock engine fairing configuration
@@ -105,7 +102,7 @@ namespace SSTUTools
         /// Minimum top radius
         /// </summary>
         [KSPField]
-        public float minTopRadius = 0.625f;
+        public float minTopRadius = 0.3125f;
 
         /// <summary>
         /// Maximum bottom radius (by whole increment; adjust slider will allow this + one radius increment)
@@ -117,7 +114,7 @@ namespace SSTUTools
         /// Minimum bottom radius
         /// </summary>
         [KSPField]
-        public float minBottomRadius = 0.625f;
+        public float minBottomRadius = 0.3125f;
 
         #endregion
 
@@ -330,11 +327,6 @@ namespace SSTUTools
             {
                 configNodeData = node.ToString();
             }
-            //load the material...uhh...for use in prefab?? no clue why it is loaded here...probably some reason
-            if (fairingMaterial == null)
-            {
-                loadMaterial();
-            }
         }
 
         public override void OnSave(ConfigNode node)
@@ -365,11 +357,7 @@ namespace SSTUTools
                 removeTransforms();
             }
 
-            //load fairing material
-            if (fairingMaterial == null)
-            {
-                loadMaterial();
-            }
+            loadMaterial();
 
             //load FairingData instances from config values (persistent data nodes also merged in)
             loadFairingData(SSTUNodeUtils.parseConfigNode(configNodeData));
@@ -636,10 +624,16 @@ namespace SSTUTools
         {
             ConfigNode[] fairingNodes = node.GetNodes("FAIRING");
             fairingParts = new SSTUNodeFairingData[fairingNodes.Length];
+            Transform modelBase = part.transform.FindRecursive("model");
+            Transform parent;
+            SSTUNodeFairing[] cs = part.GetComponents<SSTUNodeFairing>();
+            int l = Array.IndexOf(cs, this);
+            int moduleIndex = l;// part.Modules.IndexOf(this);
             for (int i = 0; i < fairingNodes.Length; i++)
             {
+                parent = modelBase.FindOrCreate(fairingName + "-" + moduleIndex + "-"+i);
                 fairingParts[i] = new SSTUNodeFairingData();
-                fairingParts[i].load(fairingNodes[i]);
+                fairingParts[i].load(fairingNodes[i], parent.gameObject);
                 if (fairingParts[i].canAdjustTop)
                 {
                     canAdjustTopRadius = true;
@@ -667,7 +661,7 @@ namespace SSTUTools
                 Material.Destroy(fairingMaterial);
                 fairingMaterial = null;
             }
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName);
+            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
         } 
         
         //removes any existing render transforms, for removal/overwriting of stock fairing module
@@ -784,7 +778,7 @@ namespace SSTUTools
         {
             foreach (SSTUNodeFairingData data in fairingParts)
             {
-                data.theFairing.root.transform.parent = newParent.transform;
+                data.fairingBase.reparentFairing(newParent.transform, false);
             }
         }
         
@@ -868,7 +862,7 @@ namespace SSTUTools
             foreach (FairingData fd in fairingParts)
             {
                 fd.numOfSections = (int)Math.Round(numOfSections);
-                fd.createFairing(part, fairingMaterial);
+                fd.createFairing(fairingMaterial);
             }
             updateDragCube();
             needsShieldUpdate = true;

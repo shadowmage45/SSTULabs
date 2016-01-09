@@ -5,7 +5,8 @@ namespace SSTUTools
     public class FairingData
     {
         //gameObject storage class
-        public FairingBase theFairing;
+        //public FairingBase theFairing;
+        public FairingContainer fairingBase;
         public String fairingName = "Fairing";
         public Vector3 rotationOffset = Vector3.zero;//default rotation offset is zero; must specify if custom rotation offset is to be used, not normally needed
         public float topY = 1;
@@ -22,11 +23,15 @@ namespace SSTUTools
         public bool removeMass = true; //if true, fairing mass is removed from parent part when jettisoned (and on part reload)
         public float fairingJettisonMass = 0.1f;//mass of the fairing to be jettisoned; combined with jettisonForce this determines how energetically they are jettisoned
         public float jettisonForce = 10;//force in N to apply to jettisonDirection to each of the jettisoned panel sections
-        public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is negative Y (downwards)
+        public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is positive Z (outward)
 
         //to be called on initial prefab part load; populate the instance with the default values from the input node
-        public virtual void load(ConfigNode node)
+        public virtual void load(ConfigNode node, GameObject root)
         {
+            fairingBase = new FairingContainer(root, cylinderSides, numOfSections, wallThickness);
+            fairingBase.outsideUV = new UVArea(0.00390625f, 0.00390625f, 0.49609375f, 0.99609375f);
+            fairingBase.insideUV = new UVArea(0.50390625f, 0.00390625f, 0.99609375f, 0.99609375f);
+            fairingBase.edgesUV = new UVArea(0.00390625f, 0.00390625f, 0.49609375f, 0.99609375f);
             rotationOffset = node.GetVector3("rotationOffset", Vector3.zero);
             topY = node.GetFloatValue("topY", topY);
             bottomY = node.GetFloatValue("bottomY", bottomY);
@@ -46,55 +51,43 @@ namespace SSTUTools
             fairingName = node.GetStringValue("name", fairingName);
         }
 
-        public void createFairing(Part part, Material material)
+        public void createFairing(Material material)
         {
-            float height = topY - bottomY;
-            CylinderMeshGenerator fg = new CylinderMeshGenerator(-height * 0.5f, capSize, height, maxPanelHeight, bottomRadius, topRadius, wallThickness, numOfSections, cylinderSides);
-            FairingBase fb = fg.buildFairing();
-            fb.root.transform.NestToParent(part.transform);
-            fb.root.transform.position = part.transform.position;
-            fb.root.transform.localPosition = new Vector3(0, topY - height * 0.5f, 0);
-            fb.root.transform.rotation = part.transform.rotation;
-            //fb.root.transform.Rotate (rotationOffset);//TODO check that rotation offset function works with fairings
-            fb.setMaterial(material);
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                fb.setPanelOpacity(0.25f);
-            }
-            theFairing = fb;
+            fairingBase.clearProfile();
+            fairingBase.setNumberOfPanels(numOfSections, false);
+            fairingBase.addRing(bottomY, bottomRadius);
+            fairingBase.addRing(topY, topRadius);
+            fairingBase.generateFairing();
+            fairingBase.setMaterial(material);
+            fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
         }
 
         public void destroyFairing()
         {
-            if (theFairing != null)
+            if (fairingBase != null)
             {
-                GameObject.Destroy(theFairing.root);
-                theFairing = null;
+                fairingBase.destroyCurrentModels();
             }
         }
 
-        public void recreateFairing(Part part, Material material)
+        public void recreateFairing(Material material)
         {
             destroyFairing();
-            createFairing(part, material);
+            createFairing(material);
         }
 
         public void jettisonPanels(Part part)
         {
-            if (theFairing != null)
+            fairingBase.jettisonPanels(part, jettisonForce, jettisonDirection, fairingJettisonMass / (float)numOfSections);
+        }
+
+        public void enableRenders(bool val)
+        {
+            fairingBase.enableRender(val);
+            if (val && HighLogic.LoadedSceneIsEditor)
             {
-                theFairing.jettisonPanels(part, jettisonForce, jettisonDirection, fairingJettisonMass / (float)numOfSections);
+                fairingBase.setOpacity(0.25f);
             }
-        }
-
-        public void enableRenders(bool enable)
-        {
-            SSTUUtils.enableRenderRecursive(theFairing.root.transform, enable);
-        }
-
-        public void enablePanelColliders(bool enable, bool convex)
-        {
-            theFairing.enablePanelColliders(enable, convex);
         }
     }
 }

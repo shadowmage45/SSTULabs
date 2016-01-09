@@ -820,6 +820,8 @@ namespace SSTUTools
 
             currentMountModule.updateModel();
             rcsModule.updateModel();
+
+            SSTUUtils.updatePartHighlighting(part);
         }
 
         /// <summary>

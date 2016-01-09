@@ -22,10 +22,10 @@ namespace SSTUTools
         public float diameterIncrement = 0.625f;
         
         [KSPField]
-        public float topNodePosition = 1.09067f;
+        public float topNodePosition = 1f;
 
         [KSPField]
-        public float bottomNodePosition = -0.125f;
+        public float bottomNodePosition = -0.25f;
 
         /// <summary>
         /// Default diameter of the model

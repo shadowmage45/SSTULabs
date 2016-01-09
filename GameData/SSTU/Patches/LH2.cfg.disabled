@@ -15,6 +15,18 @@ SSTU_FUELTYPE
 		ratio = 1
 	}
 }
+SSTU_FUELTYPE
+{
+	name = LiquidHydrogen
+	tankageVolumeLoss = 0.15
+	tankageMassFactor = 0.15
+	costPerDryTon = 500
+	RESOURCE
+	{
+		resource = LqdHydrogen
+		ratio = 1
+	}
+}
 SSTU_RESOURCEVOLUME
 {
 	name = LqdHydrogen
@@ -29,6 +41,10 @@ SSTU_RESOURCEVOLUME
 		{
 			name = Hydrolox
 		}
+		FUELTYPE
+		{
+			name = LiquidHydrogen
+		}
 	}
 }
 @PART[SSTU_ShipCore_MFT-B]:FOR[SSTU]
@@ -38,6 +54,10 @@ SSTU_RESOURCEVOLUME
 		FUELTYPE
 		{
 			name = Hydrolox
+		}
+		FUELTYPE
+		{
+			name = LiquidHydrogen
 		}
 	}
 }
@@ -49,6 +69,10 @@ SSTU_RESOURCEVOLUME
 		{
 			name = Hydrolox
 		}
+		FUELTYPE
+		{
+			name = LiquidHydrogen
+		}
 	}
 }
 @PART[SSTU_ShipCore_MUS-CB]:FOR[SSTU]
@@ -59,10 +83,38 @@ SSTU_RESOURCEVOLUME
 		{
 			name = Hydrolox
 		}
+		FUELTYPE
+		{
+			name = LiquidHydrogen
+		}
 	}
 }
 
 
+@PART[SSTU_ShipCore_ENG-RS-68]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 10
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 410
+			key = 1 365
+		}
+	}
+}
 @PART[SSTU_ShipCore_ENG-RS-25]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
 {
 	@MODULE[ModuleEngines*]
@@ -255,5 +307,54 @@ SSTU_RESOURCEVOLUME
 		name = Oxidizer
 		amount = 5780
 		maxAmount = 5780
+	}
+}
+
+@PART[SSTU_ShipCore_ENG-F-1]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 310
+			key = 1 265
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-F-1B]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 325
+			key = 1 265
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-AJ10-137]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 319
+			key = 1 260
+		}
+	}
+}
+@PART[SSTU_ShipCore_ENG-AJ10-190]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 330
+			key = 1 260
+		}
 	}
 }

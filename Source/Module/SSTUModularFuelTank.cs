@@ -8,7 +8,10 @@ namespace SSTUTools
     public class SSTUModularFuelTank : PartModule, IPartCostModifier, IPartMassModifier
     {
 
-        #region Config Fields   
+        #region Config Fields
+        [KSPField]
+        public String rootTransformName = "SSTUModularFuelTankRoot";
+
         [KSPField]
         public String defaultTankType = String.Empty;
 
@@ -480,10 +483,11 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
-            Transform modelBase = part.transform.FindRecursive("model");
+            Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
             currentMainTankModule.setupModel(part, modelBase);            
             currentNoseModule.setupModel(part, modelBase);            
             currentMountModule.setupModel(part, modelBase);
+            SSTUUtils.updatePartHighlighting(part);
         }
         
         /// <summary>
@@ -510,6 +514,7 @@ namespace SSTUTools
             currentMainTankModule.updateModel();
             currentNoseModule.updateModel();
             currentMountModule.updateModel();
+            SSTUUtils.updatePartHighlighting(part);
         }
 
         private void updateTankStats()
@@ -531,7 +536,7 @@ namespace SSTUTools
 
         private void removeExistingModels()
         {
-            Transform tr = part.transform.FindRecursive("model");
+            Transform tr = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
             SSTUUtils.destroyChildren(tr);
         }
 
@@ -611,7 +616,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setNoseModuleFromEditor(newModule, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    CustomFuelTankMount mt = Array.Find(mft.noseModules, t => t.name == newModule.name);
+                    mft.setNoseModuleFromEditor(mt, false);
                 }
             }
         }
@@ -629,7 +636,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setMainTankModuleFromEditor(newModule, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    SingleModelData mt = Array.Find(mft.mainTankModules, t => t.name == newModule.name);
+                    mft.setMainTankModuleFromEditor(mt, false);
                 }
             }
         }
@@ -647,7 +656,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setMountModuleFromEditor(newModule, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    CustomFuelTankMount mt = Array.Find(mft.mountModules, t => t.name == newModule.name);
+                    mft.setMountModuleFromEditor(mt, false);
                 }
             }
         }
@@ -685,6 +696,7 @@ namespace SSTUTools
             updateAttachNodes(userInput);
             updateDragCube();
             updateFairing();
+            SSTUUtils.updatePartHighlighting(part);
         }
 
         private void setNoseTextureFromEditor(TextureSet set, bool updateSymmetry)
@@ -696,7 +708,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setNoseTextureFromEditor(set, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    TextureSet st = Array.Find(mft.textureSets, t => t.setName == set.setName);
+                    mft.setNoseTextureFromEditor(st, false);
                 }
             }
         }
@@ -710,7 +724,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setTankTextureFromEditor(set, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    TextureSet st = Array.Find(mft.textureSets, t => t.setName == set.setName);
+                    mft.setTankTextureFromEditor(st, false);
                 }
             }
         }
@@ -724,7 +740,9 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUModularFuelTank>().setMountTextureFromEditor(set, false);
+                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
+                    TextureSet st = Array.Find(mft.textureSets, t => t.setName == set.setName);
+                    mft.setMountTextureFromEditor(st, false);
                 }
             }
         }

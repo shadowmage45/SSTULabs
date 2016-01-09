@@ -37,13 +37,7 @@ namespace SSTUTools
 
         [KSPField(guiActiveEditor = true, guiName = "Thick Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
         public float thicknessExtra;
-
-        [KSPField]
-        public float capHeight = 0f;
-
-        [KSPField]
-        public float maxPanelHeight = 1f;
-
+        
         [KSPField]
         public int cylinderSides = 24;
 
@@ -78,7 +72,7 @@ namespace SSTUTools
         public float massPerCubicMeter = 0.4f;
 
         [KSPField]
-        public float costPerCubicMeter = 50000f;
+        public float costPerCubicMeter = 5000f;
 
         [KSPField]
         public float forcePerKg = 0.8f;
@@ -97,6 +91,15 @@ namespace SSTUTools
         private float lastRadiusExtra;
         private float lastHeightExtra;
         private float lastThicknessExtra;
+
+        private UVArea outsideUV = new UVArea(2, 2, 2+252, 2+60, 256);
+        private UVArea insideUV = new UVArea(2, 66, 2+252, 66+60, 256);
+        
+        private UVArea topUV = new UVArea(0, 0.5f, 0.5f, 1f);
+        private UVArea bottomUV = new UVArea(0.5f, 0.5f, 1f, 1f);
+
+        [Persistent]
+        public String configNodeData; 
 
         #endregion
 
@@ -159,8 +162,13 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (node.HasNode("UVMAP"))
+            {
+                configNodeData = node.ToString();
+            }
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
+                loadConfigData();
                 restoreEditorFields();
                 prepModel();
             }
@@ -177,6 +185,7 @@ namespace SSTUTools
         public override void OnStart(PartModule.StartState state)
         {
             base.OnStart(state);
+            loadConfigData();
             restoreEditorFields();
             prepModel();
             updateGuiState();
@@ -186,6 +195,20 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+        }
+
+        private void loadConfigData()
+        {
+            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode insideUVNode = node.GetNode("UVMAP", "name", "inside");
+            ConfigNode outsideUVNode = node.GetNode("UVMAP", "name", "outside");
+            ConfigNode topNode = node.GetNode("UVMAP", "name", "top");
+            ConfigNode bottomNode = node.GetNode("UVMAP", "name", "bottom");
+            insideUV = new UVArea(insideUVNode);
+            outsideUV = new UVArea(outsideUVNode);
+            topUV = new UVArea(topNode);
+            bottomUV = new UVArea(bottomNode);
+            MonoBehaviour.print("found nodes for UVS:\n " + insideUVNode + "\n" + outsideUVNode + "\n" + topNode + "\n" + bottomNode);
         }
 
         public void OnDestroy()
@@ -259,6 +282,10 @@ namespace SSTUTools
             Transform tr = part.transform.FindRecursive("model");
             SSTUUtils.destroyChildren(tr);//remove the original empty proxy model, and any models that may have been attached during prefab init
             model = new ProceduralCylinderModel();
+            model.outsideUV = outsideUV;
+            model.insideUV = insideUV;
+            model.topUV = topUV;
+            model.bottomUV = bottomUV;
             updateModelParameters();
             setModelParameters();
             model.setMaterial(SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName));
@@ -294,7 +321,7 @@ namespace SSTUTools
 
         private void setModelParameters()
         {
-            model.setModelParameters(radius, height, thickness, capHeight, maxPanelHeight, cylinderSides);
+            model.setModelParameters(radius, height, thickness, cylinderSides);
         }
 
         public void updateGuiState()
