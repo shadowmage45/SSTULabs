@@ -140,7 +140,7 @@ namespace SSTUTools
         private FuelTypeData[] fuelTypes;
         private FuelTypeData currentFuelTypeData;
 
-        private TechLimitDiameterHeight[] techLimits;
+        private TechLimitHeightDiameter[] techLimits;
 
         private TextureSet[] textureSets;
 
@@ -422,6 +422,13 @@ namespace SSTUTools
             currentNoseModule = Array.Find(noseModules, m => m.name == currentNoseType);
             currentMountModule = Array.Find(mountModules, m => m.name == currentMountType);
             currentFuelTypeData = Array.Find(fuelTypes, m => m.name == currentFuelType);
+            if (currentFuelTypeData == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate fuel type for: " + currentFuelType + ". reverting to default fuel type of: " + defaultFuelType);
+                currentFuelType = defaultFuelType;
+                currentFuelTypeData = Array.Find(fuelTypes, m => m.name == currentFuelType);
+                initializedResources = false;
+            }
         }
         
         /// <summary>
@@ -464,8 +471,8 @@ namespace SSTUTools
             for (int i = 0; i < len; i++) { fuelTypes[i] = new FuelTypeData(fuelNodes[i]); }
 
             len = limitNodes.Length;
-            techLimits = new TechLimitDiameterHeight[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+            techLimits = new TechLimitHeightDiameter[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }
 
             len = textureNodes.Length;
             textureSets = new TextureSet[len];
@@ -821,7 +828,7 @@ namespace SSTUTools
             if (HighLogic.CurrentGame.Mode != Game.Modes.CAREER && HighLogic.CurrentGame.Mode != Game.Modes.SCIENCE_SANDBOX) { return; }
             techLimitMaxDiameter = 0;
             techLimitMaxHeight = 0;
-            foreach (TechLimitDiameterHeight limit in techLimits)
+            foreach (TechLimitHeightDiameter limit in techLimits)
             {
                 if (limit.isUnlocked())
                 {

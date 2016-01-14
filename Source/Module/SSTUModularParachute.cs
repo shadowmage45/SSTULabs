@@ -161,7 +161,11 @@ namespace SSTUTools
 
         [KSPField]
         public float drogueFullDeploySpeed = 2f;
-        
+
+        [KSPField]
+        public float defaultBodyLiftMultiplier = 1f;
+
+
         /// <summary>
         /// Used to track the ChuteState variable for the main chutes; restored during OnLoad
         /// </summary>
@@ -369,19 +373,20 @@ namespace SSTUTools
                     part.DragCubes.SetCubeWeight(cubeToNameMap[c], 0);
                 }
             }
-            bool occlusionModifier = false;
+            bool chuteCutOrRetracted = false;
             if (a == b)// a and b are the same, all others deactivated already, so just set a to full
             {
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1.0f);
-                if (a == ChuteDragCube.RETRACTED) { occlusionModifier = true; }
+                if (a == ChuteDragCube.RETRACTED) { chuteCutOrRetracted = true; }
             }
             else//lerp between A and B by _progress_
             {
-                occlusionModifier = false;
+                chuteCutOrRetracted = false;
                 part.DragCubes.SetCubeWeight(cubeToNameMap[a], 1f - progress);
                 part.DragCubes.SetCubeWeight(cubeToNameMap[b], progress);
             }
-            part.DragCubes.SetOcclusionMultiplier(occlusionModifier ? 1 : 0);
+            part.DragCubes.SetOcclusionMultiplier(chuteCutOrRetracted ? 1.0f : 0f);
+            part.bodyLiftMultiplier = chuteCutOrRetracted ? defaultBodyLiftMultiplier : 0f;
         }
 
         public string[] GetDragCubeNames()
@@ -397,7 +402,11 @@ namespace SSTUTools
         public void AssumeDragCubePosition(string name)
         {
             forceReloadConfig();//forces loadConfig(ConfigNode) to be called again, really the only hacky use for that method, need to find a proper setup for it
-            if (!initialized) { initializeModels(); initialized = true; print("initialized from drag cube render");}
+            if (!initialized)
+            {
+                initializeModels();
+                initialized = true;
+            }
             updateParachuteTargets(part.transform.up);
             switch (name)
             {
@@ -437,7 +446,7 @@ namespace SSTUTools
                         break;
                     }
             }
-            print("render bounds: "+SSTUUtils.getRendererBoundsRecursive(part.gameObject));
+            //print("render bounds: "+SSTUUtils.getRendererBoundsRecursive(part.gameObject));
         }
 
         /// <summary>

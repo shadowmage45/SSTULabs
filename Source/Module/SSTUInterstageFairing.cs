@@ -74,25 +74,25 @@ namespace SSTUTools
         public float animationSpeed = 5f;
 
         [KSPField]
-        float costPerBaseVolume = 1500f;
+        public float costPerBaseVolume = 1500f;
 
         [KSPField]
-        float costPerPanelArea = 50f;
+        public float costPerPanelArea = 50f;
 
         [KSPField]
-        float massPerBaseCubicMeter = 0.5f;
+        public float massPerBaseCubicMeter = 0.5f;
 
         [KSPField]
-        float massPerPanelArea = 0.025f;
+        public float massPerPanelArea = 0.025f;
 
         [KSPField]
-        float topRadiusIncrement = 0.625f;
+        public float topRadiusIncrement = 0.625f;
 
         [KSPField]
-        float bottomRadiusIncrement = 0.625f;
+        public float bottomRadiusIncrement = 0.625f;
 
         [KSPField]
-        float heightIncrement = 1;
+        public float heightIncrement = 1;
 
         //radius of the part, used to calculate mesh
         [KSPField(isPersistant = true)]
@@ -181,7 +181,7 @@ namespace SSTUTools
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
         private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
-        private TechLimitDiameterHeight[] techLimits;
+        private TechLimitHeightDiameter[] techLimits;
 
         //lerp between the two cubes depending upon deployed state
         //re-render the cubes on fairing rebuild
@@ -280,8 +280,8 @@ namespace SSTUTools
 
         public override void OnStart(PartModule.StartState state)
         {
-            base.OnStart(state);  
-                                  
+            base.OnStart(state);
+            
             initialize();
 
             //register for game events, used to notify when to update shielded parts
@@ -629,14 +629,7 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
-            int len = limitNodes.Length;
-            techLimits = new TechLimitDiameterHeight[len];
-            for (int i = 0; i < len; i++)
-            {
-                techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]);
-            }
-
+            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             loadMaterial();
             updateTechLimits();
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
@@ -769,20 +762,8 @@ namespace SSTUTools
         /// </summary>        
         private void updateTechLimits()
         {
-            techLimitMaxDiameter = float.PositiveInfinity;
-            techLimitMaxHeight = float.PositiveInfinity;
-            if (!SSTUUtils.isResearchGame()) { return; }
-            if (HighLogic.CurrentGame == null) { return; }
-            techLimitMaxDiameter = 0;
-            techLimitMaxHeight = 0;
-            foreach (TechLimitDiameterHeight limit in techLimits)
-            {
-                if (limit.isUnlocked())
-                {
-                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
-                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
-                }
-            }
+            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
+
             if (topRadius * 2 > techLimitMaxDiameter)
             {
                 topRadius = techLimitMaxDiameter * 0.5f;
@@ -790,6 +771,10 @@ namespace SSTUTools
             if (bottomRadius * 2 > techLimitMaxDiameter)
             {
                 bottomRadius = techLimitMaxDiameter * 0.5f;
+            }
+            if (currentHeight > techLimitMaxHeight)
+            {
+                currentHeight = techLimitMaxHeight;
             }
         }
 

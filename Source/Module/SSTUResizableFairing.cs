@@ -53,7 +53,14 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true, guiName ="Fairing Diameter")]
         public float currentDiameter = 1.25f;
-                
+
+        [Persistent]
+        public String configNodeData = String.Empty;
+
+        private TechLimitHeightDiameter[] techLimits;
+        private float techLimitMaxHeight;
+        private float techLimitMaxDiameter;
+
         private ModuleProceduralFairing mpf = null;
         
         [KSPEvent(guiName ="Prev Fairing Diameter", guiActiveEditor =true)]
@@ -73,6 +80,9 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            updateTechLimits();
             updateModelScale();
             updateNodePositions(false);            
         }
@@ -80,6 +90,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (node.HasNode("TECHLIMIT")) { configNodeData = node.ToString(); }
             updateModelScale();//for prefab part...
         }
 
@@ -89,10 +100,21 @@ namespace SSTUTools
             updateModelScale();//make sure to updat the mpf after it is linked
         }
 
+        private void updateTechLimits()
+        {
+            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
+
+            if (currentDiameter > techLimitMaxDiameter)
+            {
+                currentDiameter = techLimitMaxDiameter;
+            }
+        }
+
         public void onUserSizeChange()
         {
-            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }
             if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }
+            if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
+            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }
             updateModelScale();
             mpf.DeleteFairing();
             updateNodePositions(true);

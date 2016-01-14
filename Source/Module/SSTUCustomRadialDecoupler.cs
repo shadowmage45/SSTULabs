@@ -63,7 +63,7 @@ namespace SSTUTools.Module
         [Persistent]
         public String configNodeData = String.Empty;
 
-        private TechLimitDiameterHeight[] techLimits;
+        private TechLimitHeightDiameter[] techLimits;
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
         private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
@@ -98,8 +98,8 @@ namespace SSTUTools.Module
             ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
             int len = limitNodes.Length;
-            techLimits = new TechLimitDiameterHeight[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+            techLimits = new TechLimitHeightDiameter[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }
 
             updateTechLimits();
             if (radius * 2 > techLimitMaxDiameter) { radius = techLimitMaxDiameter * 0.5f; }
@@ -254,7 +254,7 @@ namespace SSTUTools.Module
             if (HighLogic.CurrentGame == null) { return; }
             techLimitMaxDiameter = 0;
             techLimitMaxHeight = 0;
-            foreach (TechLimitDiameterHeight limit in techLimits)
+            foreach (TechLimitHeightDiameter limit in techLimits)
             {
                 if (limit.isUnlocked())
                 {

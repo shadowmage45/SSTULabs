@@ -50,7 +50,7 @@ namespace SSTUTools
             }
         }
         
-        public void generateFairing()
+        public virtual void generateFairing()
         {
             ArcMeshGenerator gen = new ArcMeshGenerator(Vector3.zero, faces, panels, startAngle, endAngle, thickness);
             gen.outsideUV = outsideUV;

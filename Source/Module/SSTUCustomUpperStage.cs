@@ -262,7 +262,7 @@ namespace SSTUTools
         private FuelTypeData currentFuelTypeData;
         private FuelTypeData reserveFuelTypeData;
 
-        private TechLimitDiameterHeight[] techLimits;
+        private TechLimitHeightDiameter[] techLimits;
 
         private bool initialized = false;
         private bool initialFairingUpdate = false;
@@ -542,6 +542,13 @@ namespace SSTUTools
 
             fuelTypes = FuelTypeData.parseFuelTypeData(node.GetNodes("FUELTYPE"));
             currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
+            if (currentFuelTypeData == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate fuel type for: " + currentFuelType + ". reverting to default fuel type of: " + defaultFuelType);
+                currentFuelType = defaultFuelType;
+                currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
+                initializedResources = false;
+            }
             reserveFuelTypeData = FuelTypes.INSTANCE.getFuelTypeData(reserveFuelType);
 
             //mandatory nodes, -all- tank types must have these
@@ -586,8 +593,8 @@ namespace SSTUTools
             }
 
             len = limitNodes.Length;
-            techLimits = new TechLimitDiameterHeight[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameterHeight(limitNodes[i]); }
+            techLimits = new TechLimitHeightDiameter[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }
 
             print("loaded config data, split tank: " + splitTank);
         }
@@ -1098,7 +1105,7 @@ namespace SSTUTools
             if (HighLogic.CurrentGame == null) { return; }
             techLimitMaxDiameter = 0;
             techLimitMaxHeight = 0;
-            foreach (TechLimitDiameterHeight limit in techLimits)
+            foreach (TechLimitHeightDiameter limit in techLimits)
             {
                 if (limit.isUnlocked())
                 {

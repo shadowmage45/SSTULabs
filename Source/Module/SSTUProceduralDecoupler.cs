@@ -92,6 +92,10 @@ namespace SSTUTools
         private float lastHeightExtra;
         private float lastThicknessExtra;
 
+        private TechLimitHeightDiameter[] techLimits;
+        private float techLimitMaxHeight;
+        private float techLimitMaxDiameter;
+
         private UVArea outsideUV = new UVArea(2, 2, 2+252, 2+60, 256);
         private UVArea insideUV = new UVArea(2, 66, 2+252, 66+60, 256);
         
@@ -108,51 +112,99 @@ namespace SSTUTools
         [KSPEvent(guiName = "Radius +", guiActiveEditor = true)]
         public void increaseRadius()
         {
-            editorRadius += radiusAdjust;
-            if (editorRadius > maxRadius) { editorRadius = maxRadius; }
-            recreateModel();
+            setRadiusFromEditor(radius + radiusAdjust, true);
         }
 
         [KSPEvent(guiName = "Radius -", guiActiveEditor = true)]
         public void decreaseRadius()
         {
-            editorRadius -= radiusAdjust;
-            if (editorRadius < minRadius) { editorRadius = minRadius; }
-            recreateModel();
+            setRadiusFromEditor( radius - radiusAdjust, true);
         }
 
         [KSPEvent(guiName = "Height +", guiActiveEditor = true)]
         public void increaseHeight()
         {
-            editorHeight += heightAdjust;
-            if (editorHeight > maxHeight) { editorHeight = maxHeight; }
-            recreateModel();
-            updateAttachNodePositions(true);
+            setHeightFromEditor(height + heightAdjust, true);
         }
 
         [KSPEvent(guiName = "Height -", guiActiveEditor = true)]
         public void decreaseHeight()
         {
-            editorHeight -= heightAdjust;
-            if (editorHeight < minHeight) { editorHeight = minHeight; }
-            recreateModel();
-            updateAttachNodePositions(true);
+            setHeightFromEditor(height - heightAdjust, true);
         }
 
         [KSPEvent(guiName = "Thickness +", guiActiveEditor = true)]
         public void increaseThickness()
         {
-            editorThickness += thicknessAdjust;
-            if (editorThickness > maxThickness) { editorThickness = maxThickness; }
-            recreateModel();
+            setThicknessFromEditor(thickness + thicknessAdjust, true);
         }
 
         [KSPEvent(guiName = "Thickness -", guiActiveEditor = true)]
         public void decreaseThickness()
         {
-            editorThickness -= thicknessAdjust;
-            if (editorThickness < minThickness) { editorThickness = minThickness; }
+            setThicknessFromEditor(thickness - thicknessAdjust, true);
+        }
+
+        private void setRadiusFromEditor(float newRadius, bool updateSymmetry)
+        {
+            if (newRadius > maxRadius) { newRadius = maxRadius; }
+            if (newRadius > techLimitMaxDiameter * 0.5f) { newRadius = techLimitMaxDiameter * 0.5f; }
+            if (newRadius < minRadius) { newRadius = minRadius; }
+            radius = newRadius;
+            updateEditorFields();
             recreateModel();
+            updateAttachNodePositions(true);
+            if (updateSymmetry)
+            {
+                SSTUProceduralDecoupler dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUProceduralDecoupler>();
+                    dc.setRadiusFromEditor(newRadius, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
+
+        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > maxHeight) { newHeight = maxHeight; }
+            if (newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
+            if (newHeight < minHeight) { newHeight = minHeight; }
+            height = newHeight;
+            updateEditorFields();
+            recreateModel();
+            updateAttachNodePositions(true);
+            if (updateSymmetry)
+            {
+                SSTUProceduralDecoupler dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUProceduralDecoupler>();
+                    dc.setHeightFromEditor(newHeight, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
+
+        private void setThicknessFromEditor(float newThickness, bool updateSymmetry)
+        {
+            if (newThickness > maxThickness) { newThickness = maxThickness; }
+            if (newThickness > radius) { newThickness = radius; }
+            if (newThickness < minThickness) { newThickness = minThickness; }
+            thickness = newThickness;
+            updateEditorFields();
+            recreateModel();
+            if (updateSymmetry)
+            {
+                SSTUProceduralDecoupler dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUProceduralDecoupler>();
+                    dc.setThicknessFromEditor(newThickness, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
         }
 
         #endregion
@@ -169,7 +221,7 @@ namespace SSTUTools
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
                 loadConfigData();
-                restoreEditorFields();
+                updateEditorFields();
                 prepModel();
             }
         }
@@ -186,7 +238,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             loadConfigData();
-            restoreEditorFields();
+            updateEditorFields();
             prepModel();
             updateGuiState();
             Fields["ejectionForce"].guiName = "Ejection Force";
@@ -208,7 +260,8 @@ namespace SSTUTools
             outsideUV = new UVArea(outsideUVNode);
             topUV = new UVArea(topNode);
             bottomUV = new UVArea(bottomNode);
-            MonoBehaviour.print("found nodes for UVS:\n " + insideUVNode + "\n" + outsideUVNode + "\n" + topNode + "\n" + bottomNode);
+            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            updateTechLimits();            
         }
 
         public void OnDestroy()
@@ -221,17 +274,17 @@ namespace SSTUTools
 
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            if (lastRadiusExtra != radiusExtra || lastHeightExtra != heightExtra || lastThicknessExtra != thicknessExtra)
+            if (lastRadiusExtra != radiusExtra)
             {
-                lastRadiusExtra = radiusExtra;
-                lastHeightExtra = heightExtra;
-                lastThicknessExtra = thicknessExtra;
-                recreateModel();
-                updatePhysicalAttributes();
-                updateAttachNodePositions(true);
-                updateDragCube();
-                updateDecouplerForce();
-                updateGuiState();
+                setRadiusFromEditor(editorRadius + radiusExtra * radiusAdjust, true);
+            }
+            if (lastHeightExtra != heightExtra)
+            {
+                setHeightFromEditor(editorHeight + heightExtra * heightAdjust, true);
+            }
+            if (lastThicknessExtra != thicknessExtra)
+            {
+                setThicknessFromEditor(editorThickness + thicknessExtra * thicknessAdjust, true);
             }
         }
 
@@ -249,7 +302,7 @@ namespace SSTUTools
 
         #region model updating/generation/regeneration
 
-        public void restoreEditorFields()
+        public void updateEditorFields()
         {
             float div = radius / radiusAdjust;
             float whole = (int)div;
@@ -384,6 +437,20 @@ namespace SSTUTools
         private void updateDecouplerForce()
         {
             ejectionForce = forcePerKg * (modifiedMass * 1000f);
+        }
+        
+        private void updateTechLimits()
+        {
+            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
+
+            if (radius*2 > techLimitMaxDiameter)
+            {
+                radius = techLimitMaxDiameter * 0.5f;
+            }
+            if (height > techLimitMaxHeight)
+            {
+                height = techLimitMaxHeight;
+            }
         }
 
         #endregion
