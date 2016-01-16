@@ -199,7 +199,6 @@ namespace SSTUTools
         private float getProcessTime()
         {
             double currentTime = Planetarium.GetUniversalTime();
-            print("ct: " + currentTime + " lt: " + lastUpdateTime);
             if (lastUpdateTime == 0)//initialize time
             {
                 lastUpdateTime = currentTime;

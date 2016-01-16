@@ -103,6 +103,12 @@ namespace SSTUTools
         [KSPField(guiName = "Engine Spacing Adjust", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = 0.25f, maxValue = 2, stepIncrement = 0.05f)]
         public float editorEngineSpacingAdjust = 1f;
 
+        /// <summary>
+        /// Determines the y-position of the engine model (and node position/fairing position).  Can be used to offset an engine inside of its included mount.
+        /// </summary>
+        [KSPField(guiName = "Engine Height Adjust", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = -2.0f, maxValue = 2f, stepIncrement = 0.10f)]
+        public float editorEngineHeightAdjust = 0f;
+
         #endregion
 
         #region persistent field values, should not be edited in config
@@ -148,6 +154,7 @@ namespace SSTUTools
         private float editorMountSize = 0;
         private float prevMountSizeAdjust = 0;
         private float prevEngineSpacingAdjust = 0;
+        private float prevEngineHeightAdjust = 0;
         
         //all public fields get serialized from the prefab...hopefully
         public List<GameObject> models = new List<GameObject>();//actual engine models; kept so they can be repositioned //made public in hopes that unity will clone the fields, and that models need not be recreated after prefab is instantiated
@@ -321,6 +328,21 @@ namespace SSTUTools
                     updateEngineSpacingFromEditor();
                 }
                 updated = true;
+            }
+            if (prevEngineHeightAdjust != editorEngineHeightAdjust)
+            {
+                prevEngineHeightAdjust = editorEngineHeightAdjust;
+                updateMountPositions(true);
+                updated = true;
+
+                SSTUEngineCluster module;
+                int moduleIndex = part.Modules.IndexOf(this);
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    module = (SSTUEngineCluster)p.Modules[moduleIndex];
+                    module.prevEngineHeightAdjust = module.editorEngineHeightAdjust = editorEngineHeightAdjust;
+                    updateMountPositions(true);
+                }
             }
             if (!updated)
             {
@@ -671,8 +693,8 @@ namespace SSTUTools
             //set up fairing/engine/node positions
             float mountScaledHeight = currentMountOption.mountDefinition.height * currentMountScale;
             fairingTopY = partTopY + (currentMountOption.mountDefinition.fairingTopOffset * currentMountScale);
-            engineY = partTopY + (engineYOffset * engineScale) - mountScaledHeight;
-            fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight;
+            engineY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + editorEngineHeightAdjust;
+            fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + editorEngineHeightAdjust;
 
             //set up engine positions based on current/default/mount layout and if this is running during init or not
             updateEngineModelPositions(currentEngineLayout);
