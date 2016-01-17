@@ -493,7 +493,7 @@ namespace SSTUTools
                     {
                         chuteStatusText = "Armed-";
                         if (noAtmo) { chuteStatusText += "No Atmo"; }
-                        else { chuteStatusText += "Unsfe"; }
+                        else { chuteStatusText += "Unsafe"; }
                     }                    
                     break;
                     

@@ -13,6 +13,24 @@ namespace SSTUTools.Module
         public float defaultModelScale = 5f;
 
         [KSPField]
+        public float resourceVolume = 0.25f;
+
+        [KSPField]
+        public float engineMass = 0.15f;
+
+        [KSPField]
+        public float engineThrust = 300f;
+
+        [KSPField]
+        public bool scaleThrust = true;
+
+        [KSPField]
+        public float thrustScalePower = 2f;
+
+        [KSPField]
+        public bool useRF = false;
+
+        [KSPField]
         public String baseTransformName = "InterstageDecouplerRoot";
 
         [KSPField]
@@ -55,9 +73,6 @@ namespace SSTUTools.Module
         public float maxDiameter = 20f;
 
         [KSPField]
-        public float minHeight = 1f;
-
-        [KSPField]
         public float maxHeight = 10f;
 
         [KSPField]
@@ -68,6 +83,9 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float taperHeightIncrement = 1.0f;
+
+        [KSPField]
+        public float autoDecoupleDelay = 4f;
 
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
@@ -81,6 +99,9 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true)]
         public float currentTaperHeight = 0.0f;
 
+        [KSPField(isPersistant = true)]
+        public bool initializedResources = false;
+
         [KSPField(guiActiveEditor = true, guiActive =true, guiName = "Top Diameter")]
         public float guiTopDiameter;
 
@@ -89,6 +110,9 @@ namespace SSTUTools.Module
 
         [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Taper Height")]
         public float guiTaperHeight;
+
+        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Total Thrust")]
+        public float guiEngineThrust;
 
         [KSPField(guiActiveEditor = true, guiName = "Top Diam. Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorTopDiameterAdjust;
@@ -105,6 +129,14 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true)]
         public bool invertEngines = false;
 
+        [KSPField(isPersistant = true, guiName = "Auto Decouple", guiActive =true, guiActiveEditor =true)]
+        public bool autoDecouple = false;
+
+        [Persistent]
+        public String configNodeData = String.Empty;
+
+        private float remainingDelay;
+
         private float editorTopDiameter;
         private float editorBottomDiameter;
         private float editorTaperHeight;
@@ -114,9 +146,6 @@ namespace SSTUTools.Module
         private float prevTopDiameterAdjust;
         private float prevBottomDiameterAdjust;
         private float prevTaperHeightAdjust;
-                
-        [Persistent]
-        public String configNodeData = String.Empty;
 
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
@@ -125,11 +154,16 @@ namespace SSTUTools.Module
         private UVArea insideUV;
         private UVArea edgesUV;
 
+        private FuelTypeData fuelType;
+
         private TechLimitHeightDiameter[] techLimits;
         private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
 
         private bool initialized = false;
+
+        private ModuleEngines engineModule;
+        private ModuleDecouple decoupler;
 
         [KSPEvent(guiName = "Top Diameter -", guiActiveEditor = true)]
         public void prevTopDiameterEvent()
@@ -185,6 +219,16 @@ namespace SSTUTools.Module
             invertEnginesFromEditor(true);
         }
 
+        [KSPEvent(guiName = "Toggle Auto Decouple", guiActiveEditor = true)]
+        public void toggleAutoDecoupleEvent()
+        {
+            autoDecouple = !autoDecouple;
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                p.GetComponent<SSTUInterstageDecoupler>().autoDecouple = this.autoDecouple;
+            }
+        }
+
         private void setTaperHeightFromEditor(float newHeight, bool updateSymmetry)
         {
             if (newHeight > currentHeight) { newHeight = currentHeight; }
@@ -197,6 +241,7 @@ namespace SSTUTools.Module
             buildFairing();
             updateGuiFields();
             updateNodePositions(true);
+            updatePartMass();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -215,12 +260,12 @@ namespace SSTUTools.Module
             if (newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             float minTaperHeight = engineHeight * getEngineScale();
             if (newHeight < minTaperHeight) { newHeight = minTaperHeight; }
-            if (newHeight < minHeight) { newHeight = minHeight; }
             currentHeight = newHeight;
             updateEditorFields();
             buildFairing();
             updateGuiFields();
             updateNodePositions(true);
+            updatePartMass();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -243,6 +288,7 @@ namespace SSTUTools.Module
             buildFairing();
             updateGuiFields();
             updateNodePositions(true);
+            updatePartMass();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -261,10 +307,17 @@ namespace SSTUTools.Module
             if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             currentBottomDiameter = newDiameter;
+            float minHeight = getEngineScale() * engineHeight;
+            if (currentHeight < minHeight) { currentHeight = minHeight; }
+            if (currentTaperHeight < minHeight){currentTaperHeight = minHeight;}
+
             updateEditorFields();
             buildFairing();
             updateGuiFields();
             updateNodePositions(true);
+            updateResources();
+            updatePartMass();
+            updateEngineThrust();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -280,7 +333,7 @@ namespace SSTUTools.Module
         private void invertEnginesFromEditor(bool updateSymmetry)
         {
             invertEngines = !invertEngines;
-            repositionEngines();
+            updateEnginePositionAndScale();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -288,7 +341,7 @@ namespace SSTUTools.Module
                 {
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.invertEngines = invertEngines;
-                    idc.repositionEngines();
+                    idc.updateEnginePositionAndScale();
                 }
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
@@ -308,6 +361,41 @@ namespace SSTUTools.Module
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            }
+        }
+
+        public void Start()
+        {
+            engineModule = part.GetComponent<ModuleEngines>();
+            ModuleDecouple[] decouplers = part.GetComponents<ModuleDecouple>();
+            foreach (ModuleDecouple dc in decouplers)
+            {
+                if (dc != this) { decoupler = dc; break; }
+            }
+        }
+
+        public void FixedUpdate()
+        {
+            if (remainingDelay > 0)
+            {
+                remainingDelay -= TimeWarp.fixedDeltaTime;
+                if (remainingDelay <= 0)
+                {
+                    if (!isDecoupled) { Decouple(); }
+                    if (!decoupler.isDecoupled) { decoupler.Decouple(); }
+                }
+            }
+            else if (autoDecouple && engineModule.flameout)
+            {
+                if (autoDecoupleDelay > 0)
+                {
+                    remainingDelay = autoDecoupleDelay;
+                }
+                else
+                {
+                    if (!isDecoupled) { Decouple(); }
+                    if (!decoupler.isDecoupled) { decoupler.Decouple(); }
+                }
             }
         }
         
@@ -350,6 +438,8 @@ namespace SSTUTools.Module
             insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
             edgesUV = new UVArea(node.GetNode("UVMAP", "name", "edges"));
             updateTechLimits();
+            
+            fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
             Transform modelBase = part.transform.FindRecursive("model");
 
@@ -362,6 +452,14 @@ namespace SSTUTools.Module
             buildFairing();
             updateNodePositions(false);
             updateEditorFields();
+
+            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
+            {
+                initializedResources = true;
+                updateResources();
+            }
+            updatePartMass();
+            updateEngineThrust();
             updateGuiFields();
         }
 
@@ -437,7 +535,7 @@ namespace SSTUTools.Module
             fairingBase.setMaterial(fairingMaterial);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
 
-            repositionEngines();
+            updateEnginePositionAndScale();
         }
 
         private void updateTechLimits()
@@ -458,13 +556,51 @@ namespace SSTUTools.Module
             }
         }
 
-        private void repositionEngines()
+        private void updateEnginePositionAndScale()
         {
             float newScale = getEngineScale();
             float yPos = -(currentHeight * 0.5f) + (newScale * engineVerticalOffset);
             foreach(InterstageDecouplerEngine engine in engineModels)
             {
                 engine.reposition(newScale, currentBottomDiameter * 0.5f, yPos, invertEngines);
+            }
+        }
+
+        private void updateResources()
+        {
+            float volume = resourceVolume * getEngineScale() * numberOfEngines;
+            if (useRF)
+            {
+                SSTUUtils.updateRealFuelsPartVolume(part, volume);
+            }
+            else
+            {
+                print("setting solid fuel quantity based on resource volume: " + volume);
+                SSTUResourceList resources = fuelType.getResourceList(volume);
+                resources.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+            }
+        }
+
+        private void updatePartMass()
+        {
+            //TODO
+        }
+
+        private void updateEngineThrust()
+        {
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine != null)
+            {
+                float scale = getEngineScale();
+                float thrustScalar = Mathf.Pow(scale, thrustScalePower);
+                float thrustPerEngine = engineThrust * thrustScalar;
+                engine.maxThrust = thrustPerEngine * numberOfEngines;
+                guiEngineThrust = engine.maxThrust;
+            }
+            else
+            {
+                print("Cannot update engine thrust -- no engine module found!");
+                guiEngineThrust = 0;
             }
         }
 
@@ -476,7 +612,6 @@ namespace SSTUTools.Module
 
         private float getEngineScale()
         {
-            //if (true) { return 1f; }
             return currentBottomDiameter / defaultModelScale;
         }
 
@@ -538,7 +673,6 @@ namespace SSTUTools.Module
                 //throw new NotImplementedException();
             }
         }
-
 
     }
 }
