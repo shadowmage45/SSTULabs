@@ -12,7 +12,7 @@ namespace SSTUTools
         #region REGION - Standard KSP Config Fields
         
         [KSPField]
-        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";      
+        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";
                 
         /// <summary>
         /// CSV List of transforms to remove from the model, to be used to override stock engine fairing configuration
@@ -143,11 +143,14 @@ namespace SSTUTools
         /// </summary>
         [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
         public float bottomRadiusExtra;
-        
+
+        [KSPField(isPersistant = true)]
+        public String currentTextureSet = String.Empty;
+
         #endregion
 
         #region REGION - Persistent config fields
-                                
+
         /// <summary>
         /// Has the fairing been jettisoned?  If true, no further interaction is possible.  Only set to true by in-flight jettison actions
         /// </summary>
@@ -226,6 +229,8 @@ namespace SSTUTools
         
         //material used for procedural fairing, created from the texture references above
         private Material fairingMaterial;
+
+        private TextureSet[] textureSets;
 
         //list of shielded parts
         private List<Part> shieldedParts = new List<Part>();
@@ -313,9 +318,22 @@ namespace SSTUTools
                 needsRebuilt = true;
             }
         }
-        
+
+        //TODO symmetry updates
+        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
+        public void nextTextureEvent()
+        {
+            if (textureSets != null && textureSets.Length > 0)
+            {
+                TextureSet s = SSTUUtils.findNext(textureSets, m => m.setName == currentTextureSet, false);
+                currentTextureSet = s.setName;
+                MonoBehaviour.print("set texture set name to: " + currentTextureSet);
+                updateTextureSet();
+            }
+        }
+
         #endregion
-        
+
         #region REGION - ksp overrides
 
         //on load, not called properly on 'revertToVAB'
@@ -357,10 +375,11 @@ namespace SSTUTools
                 removeTransforms();
             }
 
-            loadMaterial();
 
             //load FairingData instances from config values (persistent data nodes also merged in)
             loadFairingData(SSTUNodeUtils.parseConfigNode(configNodeData));
+
+            loadMaterial();
 
             //restore the editor field values from the loaded fairing (radius adjust stuff)
             if (HighLogic.LoadedSceneIsEditor)
@@ -377,7 +396,28 @@ namespace SSTUTools
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));            
+            GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
+
+            if (textureSets != null)
+            {
+                print("checking texture sets length...");
+                if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
+                {
+                    print("disabling next texture button due to no more textures");
+                    Events["nextTextureEvent"].active = false;
+                }
+                if (textureSets.Length > 0 && String.IsNullOrEmpty(currentTextureSet))
+                {
+                    print("setting current texture set to first available");
+                    TextureSet s = textureSets[0];
+                    print("loading from texture set: " + s);
+                    currentTextureSet = textureSets[0].setName;
+                }
+            }
+            else
+            {
+                print("textures were null!");
+            }
         }
         
         public void OnDestroy()
@@ -624,6 +664,7 @@ namespace SSTUTools
         {
             ConfigNode[] fairingNodes = node.GetNodes("FAIRING");
             fairingParts = new SSTUNodeFairingData[fairingNodes.Length];
+
             Transform modelBase = part.transform.FindRecursive("model");
             Transform parent;
             SSTUNodeFairing[] cs = part.GetComponents<SSTUNodeFairing>();
@@ -652,6 +693,8 @@ namespace SSTUTools
                     fairingParts[i].loadPersistence(datas[i]);
                 }
             }
+            
+            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
         }
 
         private void loadMaterial()
@@ -660,6 +703,19 @@ namespace SSTUTools
             {
                 Material.Destroy(fairingMaterial);
                 fairingMaterial = null;
+            }
+
+            if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
+            {
+                TextureSet t = Array.Find(textureSets, m => m.setName == currentTextureSet);
+                if (t != null)
+                {
+                    TextureData d = t.textureDatas[0];
+                    if (d != null)
+                    {
+                        diffuseTextureName = d.diffuseTextureName;
+                    }
+                }
             }
             fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
         } 
@@ -899,6 +955,31 @@ namespace SSTUTools
                     part.DragCubes.ResetCubeWeights();
                     part.DragCubes.Cubes.Add(c2);
                     part.DragCubes.SetCubeWeight(name, 1.0f);//set the cube to full weight...
+                }
+            }
+        }
+
+        private void updateTextureSet()
+        {
+            if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
+            {
+                TextureSet t = Array.Find(textureSets, m => m.setName == currentTextureSet);
+                if (t != null)
+                {
+                    MonoBehaviour.print("updating texture set for: " + t.setName);
+                    TextureData d = t.textureDatas[0];
+                    if (d != null)
+                    {
+                        fairingMaterial.mainTexture = SSTUUtils.findTexture(d.diffuseTextureName, false);
+                        foreach (SSTUNodeFairingData f in fairingParts)
+                        {
+                            f.setMaterial(fairingMaterial);
+                        }
+                    }
+                    else
+                    {
+                        MonoBehaviour.print("ERROR: Could not locate texture data for set name: " + t.setName);
+                    }
                 }
             }
         }

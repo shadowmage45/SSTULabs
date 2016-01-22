@@ -25,10 +25,37 @@ namespace SSTUTools.Module
         [KSPField(guiActiveEditor = true, guiName = "Radius Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorRadiusExtra;
 
+        [KSPField(guiName ="Raw Thrust", guiActive =true, guiActiveEditor =true)]
+        public float guiEngineThrust = 0f;
+
+        /// <summary>
+        /// If true, resource updates will be sent to the RealFuels/ModularFuelTanks ModuleFuelTanks module, if present (if not present, it will not update anything).
+        /// </summary>
+        [KSPField]
+        public bool useRF = false;
+
         //this is used to determine actual resultant scale from input for radius
         //should match the model default scale geometry being used...
         [KSPField]
         public float modelRadius = 1.25f;
+
+        /// <summary>
+        /// The volume of resources that the part contains at its default model scale (e.g. modelRadius listed above)
+        /// </summary>
+        [KSPField]
+        public float resourceVolume = 0.125f;
+
+        /// <summary>
+        /// The thrust of the engine module at default model scale
+        /// </summary>
+        [KSPField]
+        public float engineThrust = 600f;
+
+        /// <summary>
+        /// Should thrust scale on square, cube, or some other power?  Default is cubic to match the fuel quantity
+        /// </summary>
+        [KSPField]
+        public float thrustScalePower = 2;
 
         [KSPField]
         public float minHeight = 0.5f;
@@ -42,13 +69,6 @@ namespace SSTUTools.Module
         [KSPField]
         public float maxRadius = 12.5f;
 
-        public float editorHeight;
-
-        public float editorRadius;
-
-        public float lastHeightExtra;
-
-        public float lastRadiusExtra;
 
         [KSPField]
         public String topMountName = "SC-RBDC-MountUpper";
@@ -56,15 +76,24 @@ namespace SSTUTools.Module
         [KSPField]
         public String bottomMountName = "SC-RBDC-MountLower";
 
-        private Transform topMountTransform;
-
-        private Transform bottomMountTransform;
+        [KSPField(isPersistant = true)]
+        public bool initializedResources = false;
 
         [Persistent]
         public String configNodeData = String.Empty;
 
-        private TechLimitHeightDiameter[] techLimits;
+        private float editorHeight;
+        private float editorRadius;
+        private float lastHeightExtra;
+        private float lastRadiusExtra;
+
+        private Transform topMountTransform;
+        private Transform bottomMountTransform;
+        
+        private FuelTypeData fuelType;
+
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
+        private TechLimitHeightDiameter[] techLimits;
         private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
 
@@ -104,11 +133,21 @@ namespace SSTUTools.Module
             updateTechLimits();
             if (radius * 2 > techLimitMaxDiameter) { radius = techLimitMaxDiameter * 0.5f; }
             if (height > techLimitMaxHeight) { height = techLimitMaxHeight; }
+            
+            fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             locateTransforms();
             updateModelPositions();
             updateModelScales();
+
+            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
+            {
+                initializedResources = true;
+                updatePartResources();
+            }
+            updateEngineThrust();
+
             restoreEditorFields();
         }
 
@@ -121,9 +160,14 @@ namespace SSTUTools.Module
             }
         }
 
+        public void Start()
+        {
+            updateEngineThrust();
+        }
+
         public override string GetInfo()
         {
-            return "This part has configurable diameter, height, and ejection force.  Includes separation motors for the attached payload.";
+            return "This part has configurable diameter, height, and ejection force.  Includes separation motors for the attached payload.  Motor thrust and resource volume scale with part size.";
         }
 
         public void OnDestroy()
@@ -233,6 +277,8 @@ namespace SSTUTools.Module
             if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
             radius = newRadius;
             restoreEditorFields();
+            updatePartResources();
+            updateEngineThrust();
             updateModule();
             if (updateSymmetry)
             {
@@ -241,6 +287,46 @@ namespace SSTUTools.Module
                     p.GetComponent<SSTUCustomRadialDecoupler>().setRadiusFromEditor(newRadius, false);
                 }
             }
+        }
+
+        private void updateEngineThrust()
+        {
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine != null)
+            {
+                float currentScale = getCurrentModelScale();
+                float thrustScalar = Mathf.Pow(currentScale, thrustScalePower);
+                engine.maxThrust = engineThrust * thrustScalar;
+                guiEngineThrust = engine.maxThrust;
+                ConfigNode updateNode = new ConfigNode("MODULE");
+                updateNode.AddValue("maxThrust", engine.maxThrust);
+                engine.Load(updateNode);
+            }
+            else
+            {
+                print("Cannot update engine thrust -- no engine module found!");
+                guiEngineThrust = 0;
+            }
+        }
+
+        private void updatePartResources()
+        {
+            float resourceScalar = Mathf.Pow(getCurrentModelScale(), thrustScalePower);
+            float currentVolume = resourceVolume * resourceScalar;
+            if (useRF)
+            {
+                SSTUUtils.updateRealFuelsPartVolume(part, currentVolume);
+            }
+            else
+            {
+                SSTUResourceList res = fuelType.getResourceList(currentVolume);
+                res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+            }
+        }
+
+        private float getCurrentModelScale()
+        {
+            return radius / modelRadius;
         }
 
         /// <summary>

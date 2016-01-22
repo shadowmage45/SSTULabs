@@ -308,8 +308,6 @@ namespace SSTUTools
             MeshBuilder builder = new MeshBuilder();
             List<Vertex> verts1 = new List<Vertex>();
             List<Vertex> verts2 = new List<Vertex>();
-            Vector3 outerBottomStart;
-
 
             throw new NotImplementedException();
             builder.generateQuads(verts1, verts2, false);

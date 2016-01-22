@@ -7,7 +7,7 @@ SSTU_FUELTYPE
 	RESOURCE
 	{
 		resource = LqdHydrogen
-		ratio = 10
+		ratio = 15
 	}
 	RESOURCE
 	{
@@ -99,7 +99,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -123,7 +123,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -147,7 +147,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -171,7 +171,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -195,7 +195,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -219,7 +219,7 @@ SSTU_RESOURCEVOLUME
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -237,13 +237,14 @@ SSTU_RESOURCEVOLUME
 }
 @PART[SSTU-SC-B-ICPS]:FOR[SSTU]
 {
+	@mass = 1.8464
 	@MODULE[ModuleEngines*]
 	{		
 		!PROPELLANT,*{}
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -262,25 +263,26 @@ SSTU_RESOURCEVOLUME
 	RESOURCE
 	{
 		name = LqdHydrogen
-		amount = 20960
-		maxAmount = 20960
+		amount = 23580
+		maxAmount = 23580
 	}
 	RESOURCE
 	{
 		name = Oxidizer
-		amount = 2096
-		maxAmount = 2096
+		amount = 1572
+		maxAmount = 1572
 	}
 }
 @PART[SSTU-SC-B-HUS]:FOR[SSTU]
 {
+	@mass = 5.7119
 	@MODULE[ModuleEngines*]
 	{		
 		!PROPELLANT,*{}
 		PROPELLANT
 		{
 			name = LqdHydrogen
-			ratio = 10
+			ratio = 15
 			DrawGauge = True
 		}
 		PROPELLANT
@@ -299,14 +301,14 @@ SSTU_RESOURCEVOLUME
 	RESOURCE
 	{
 		name = LqdHydrogen
-		amount = 57800
-		maxAmount = 57800
+		amount = 65025
+		maxAmount = 65025
 	}
 	RESOURCE
 	{
 		name = Oxidizer
-		amount = 5780
-		maxAmount = 5780
+		amount = 4335
+		maxAmount = 4335
 	}
 }
 

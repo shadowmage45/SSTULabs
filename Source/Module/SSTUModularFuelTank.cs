@@ -279,6 +279,7 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onUnpackEvent));
         }
 
         public void Start()
@@ -331,6 +332,12 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onUnpackEvent));
+        }
+
+        public void onUnpackEvent(Vessel v)
+        {
+            updateDragCube();
         }
 
         /// <summary>

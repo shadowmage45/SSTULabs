@@ -39,6 +39,7 @@ namespace SSTUTools
         [KSPField]
         public float fairingDiameter = 5f;
 
+
         [KSPField]
         public float defaultMaxDiameter = 5f;
 
@@ -54,6 +55,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName ="Fairing Diameter")]
         public float currentDiameter = 1.25f;
 
+        [KSPField(isPersistant = true, guiName = "Texture Set")]
+        public String currentTextureSet = "Fairings-SLS";
+
         [Persistent]
         public String configNodeData = String.Empty;
 
@@ -62,6 +66,8 @@ namespace SSTUTools
         private float techLimitMaxDiameter;
 
         private ModuleProceduralFairing mpf = null;
+
+        private TextureSet[] textureSets;
         
         [KSPEvent(guiName ="Prev Fairing Diameter", guiActiveEditor =true)]
         public void prevDiameter()
@@ -77,27 +83,41 @@ namespace SSTUTools
             onUserSizeChange();
         }
 
+        [KSPEvent(guiName = "Next Texture Set", guiActiveEditor = true)]
+        public void nextTextureSet()
+        {
+            TextureSet s = SSTUUtils.findNext(textureSets, m=>m.setName==currentTextureSet, false);
+            currentTextureSet = s.setName;
+            updateTexture();
+        }
+
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+            mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
             techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
             updateTechLimits();
             updateModelScale();
-            updateNodePositions(false);            
+            updateTexture();
+            updateNodePositions(false);
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("TECHLIMIT")) { configNodeData = node.ToString(); }
+            if (node.HasNode("TECHLIMIT") || node.HasNode("TEXTURESET")) { configNodeData = node.ToString(); }
+            mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//for prefab part...
+            updateTexture();
         }
 
         public void Start()
         {
             mpf = part.GetComponent<ModuleProceduralFairing>();
-            updateModelScale();//make sure to updat the mpf after it is linked
+            updateModelScale();//make sure to update the mpf after it is initialized
+            updateTexture();
         }
 
         private void updateTechLimits()
@@ -110,6 +130,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO update symmetry counterparts
         public void onUserSizeChange()
         {
             if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }
@@ -118,6 +139,7 @@ namespace SSTUTools
             updateModelScale();
             mpf.DeleteFairing();
             updateNodePositions(true);
+            //TODO update symmetry counterparts
         }
 
         private void updateModelScale()
@@ -151,11 +173,37 @@ namespace SSTUTools
             float topY = topNodePosition * scale;
             float bottomY = bottomNodePosition * scale;
             Vector3 pos = new Vector3(0, topY, 0);
-            print("set topnode pos to: " + topY);
-            print("set bottomnode pos to: " + bottomY);
             SSTUUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
             pos = new Vector3(0, bottomY, 0);
             SSTUUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+        }
+
+        private void updateTexture()
+        {
+            if (mpf != null)
+            {
+                //print("Updating mpf: " + mpf);
+                TextureSet set = getCurrentTextureSet();
+                if (set != null)
+                {
+                    //print("updating texture set: " + set.setName);
+                    TextureData data = set.textureDatas[0];//TODO cleanup this hack
+                    mpf.TextureURL = data.diffuseTextureName;
+                    //print("set mpf texture to: " + mpf.TextureURL);
+                    Texture t = SSTUUtils.findTexture(data.diffuseTextureName, false);
+                    mpf.FairingMaterial.mainTexture = t;
+                    foreach (var f in mpf.Panels)
+                    {
+                        f.go.renderer.material.mainTexture = t;
+                    }
+                }
+            }
+        }
+
+        private TextureSet getCurrentTextureSet()
+        {
+            if (textureSets == null) { return null; }
+            return Array.Find(textureSets, m => m.setName == currentTextureSet);
         }
     }
 }

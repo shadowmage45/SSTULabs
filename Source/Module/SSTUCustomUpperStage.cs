@@ -391,6 +391,7 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onUnpackEvent));
         }
 
         public override string GetInfo()
@@ -417,8 +418,14 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onUnpackEvent));
         }
-        
+
+        public void onUnpackEvent(Vessel v)
+        {
+            updateDragCube();
+        }
+
         /// <summary>
         /// Event callback for when vessel is modified in the editor.  Used to know when the gui-fields for this module have been updated.
         /// </summary>
@@ -1023,7 +1030,20 @@ namespace SSTUTools
                 tankCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost();
             }
         }
-                
+        
+        /// <summary>
+        /// Re-renders the parts drag cube for the current model setup
+        /// </summary>
+        private void updateDragCube()
+        {
+            DragCube newCube = DragCubeSystem.Instance.RenderProceduralDragCube(part);
+            newCube.Name = "Default";
+            part.DragCubes.ClearCubes();
+            part.DragCubes.Cubes.Add(newCube);
+            part.DragCubes.ResetCubeWeights();
+            part.DragCubes.SetCubeWeight("Default", 1f);
+        }
+
         /// <summary>
         /// update external RCS-module with thrust value;
         /// TODO - may need to cache the 'needs update' flag, and run on first OnUpdate/etc, as otherwise the RCS module will likely not exist yet

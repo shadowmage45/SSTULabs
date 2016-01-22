@@ -89,6 +89,11 @@ namespace SSTUTools
                 fairingBase.setOpacity(0.25f);
             }
         }
+
+        public void setMaterial(Material mat)
+        {
+            fairingBase.setMaterial(mat);
+        }
     }
 }
 

@@ -80,7 +80,6 @@ namespace SSTUTools
         //check for control enabled and deployment status (if animated)
         public override void OnActive()
         {
-            print("sstudeployable engine OnActive...");
             if (animationControl.getAnimationState() == AnimState.STOPPED_END)
             {
                 engineModule.Activate();

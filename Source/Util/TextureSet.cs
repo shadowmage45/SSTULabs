@@ -24,6 +24,7 @@ namespace SSTUTools
             {
                 textureSet = new TextureSet(node);
                 textureSets.Add(textureSet.setName, textureSet);
+                MonoBehaviour.print("Loaded texture set definition for: " + textureSet.setName);
             }
         }
 
@@ -39,7 +40,8 @@ namespace SSTUTools
     public class TextureSet
     {
         public readonly String setName;
-        private TextureData[] textureDatas;
+        public TextureData[] textureDatas;
+
         public TextureSet(ConfigNode node)
         {
             setName = node.GetStringValue("name");
@@ -70,6 +72,24 @@ namespace SSTUTools
             {
                 data.enable(tr);
             }
+        }
+
+        public void enable(Transform tr, int dataIndex, bool recurse)
+        {
+
+        }
+
+        public static TextureSet[] loadTextureSets(ConfigNode[] textureSetNodes)
+        {
+            int len = textureSetNodes.Length;
+            TextureSet[] sets = new TextureSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                String name = textureSetNodes[i].GetStringValue("name");
+                sets[i] = TextureSets.INSTANCE.getTextureSet(textureSetNodes[i].GetStringValue("name"));
+                if (sets[i] == null) { MonoBehaviour.print("ERROR: Could not locate texture set for name: " + name); }
+            }
+            return sets;
         }
     }
 

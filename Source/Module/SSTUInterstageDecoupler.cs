@@ -568,7 +568,10 @@ namespace SSTUTools.Module
 
         private void updateResources()
         {
-            float volume = resourceVolume * getEngineScale() * numberOfEngines;
+            float scale = getEngineScale();
+            scale *= scale;
+            scale *= scale;
+            float volume = resourceVolume * scale * numberOfEngines;
             if (useRF)
             {
                 SSTUUtils.updateRealFuelsPartVolume(part, volume);
@@ -596,6 +599,9 @@ namespace SSTUTools.Module
                 float thrustPerEngine = engineThrust * thrustScalar;
                 engine.maxThrust = thrustPerEngine * numberOfEngines;
                 guiEngineThrust = engine.maxThrust;
+                ConfigNode updateNode = new ConfigNode("MODULE");
+                updateNode.AddValue("maxThrust", engine.maxThrust);
+                engine.Load(updateNode);
             }
             else
             {
