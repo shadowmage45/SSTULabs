@@ -41,6 +41,98 @@ namespace SSTUTools
             return mesh;
         }
 
+        /// <summary>
+        /// Creates an axis-aligned cube mesh at the given center point, with the given size dimensions, from the input UV coordinates.
+        /// </summary>
+        /// <param name="size"></param>
+        /// <param name="center"></param>
+        /// <param name="uvStart"></param>
+        /// <param name="uvEnd"></param>
+        public void generateCuboid(Vector3 size, Vector3 center, Vector2 uvStart, Vector2 uvEnd)
+        {
+            Vector3 halfSize = size * 0.5f;
+
+            Vector3 frontBottomLeft = new Vector3(-halfSize.x + center.x, -halfSize.y + center.y, -halfSize.z + center.z);
+            Vector3 frontBottomRight = new Vector3(halfSize.x + center.x, -halfSize.y + center.y, -halfSize.z + center.z);
+            Vector3 frontTopLeft = new Vector3(-halfSize.x + center.x, halfSize.y + center.y, -halfSize.z + center.z);
+            Vector3 frontTopRight = new Vector3(halfSize.x + center.x, halfSize.y + center.y, -halfSize.z + center.z);
+
+            Vector3 rearBottomLeft = new Vector3(-halfSize.x + center.x, -halfSize.y + center.y, halfSize.z + center.z);
+            Vector3 rearBottomRight = new Vector3(halfSize.x + center.x, -halfSize.y + center.y, halfSize.z + center.z);
+            Vector3 rearTopLeft = new Vector3(-halfSize.x + center.x, halfSize.y + center.y, halfSize.z + center.z);
+            Vector3 rearTopRight = new Vector3(halfSize.x + center.x, halfSize.y + center.y, halfSize.z + center.z);
+
+            Vector3 normFront = Vector3.forward;
+            Vector3 normRear = Vector3.back;
+            Vector3 normLeft = Vector3.left;
+            Vector3 normRight = Vector3.right;
+            Vector3 normUp = Vector3.up;
+            Vector3 normDown = Vector3.down;
+
+            Vector2 uv1 = new Vector2(uvStart.x, uvStart.y);
+            Vector2 uv2 = new Vector2(uvEnd.x, uvStart.y);
+            Vector2 uv3 = new Vector2(uvStart.x, uvEnd.y);
+            Vector2 uv4 = new Vector2(uvEnd.x, uvEnd.y);
+
+
+            List<Vertex> v1 = new List<Vertex>();
+            List<Vertex> v2 = new List<Vertex>();
+
+            //generate front face
+            v1.Add(addVertex(frontBottomLeft, normFront, uv1));
+            v1.Add(addVertex(frontBottomRight, normFront, uv2));
+            v2.Add(addVertex(frontTopLeft, normFront, uv3));
+            v2.Add(addVertex(frontTopRight, normFront, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();
+
+            //generate rear face
+            v1.Add(addVertex(rearBottomLeft, normRear, uv2));
+            v1.Add(addVertex(rearBottomRight, normRear, uv1));
+            v2.Add(addVertex(rearTopLeft, normRear, uv4));
+            v2.Add(addVertex(rearTopRight, normRear, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate left face
+            v1.Add(addVertex(frontBottomLeft, normLeft, uv2));
+            v1.Add(addVertex(rearBottomLeft, normLeft, uv1));
+            v2.Add(addVertex(frontTopLeft, normLeft, uv4));
+            v2.Add(addVertex(rearTopLeft, normLeft, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate right face
+            v1.Add(addVertex(frontBottomRight, normRight, uv1));
+            v1.Add(addVertex(rearBottomRight, normRight, uv2));
+            v2.Add(addVertex(frontTopRight, normRight, uv3));
+            v2.Add(addVertex(rearTopRight, normRight, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();
+
+            //generate top face
+            v1.Add(addVertex(frontTopRight, normUp, uv2));
+            v1.Add(addVertex(frontTopLeft, normUp, uv1));
+            v2.Add(addVertex(rearTopRight, normUp, uv4));
+            v2.Add(addVertex(rearTopLeft, normUp, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate bottom face
+            v1.Add(addVertex(frontBottomRight, normUp, uv1));
+            v1.Add(addVertex(frontBottomLeft, normUp, uv2));
+            v2.Add(addVertex(rearBottomRight, normUp, uv3));
+            v2.Add(addVertex(rearBottomLeft, normUp, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();
+        }
+
         public void generateQuads(List<Vertex> verts1, List<Vertex> verts2, bool invertFaces)
         {
             int sides = verts1.Count - 1;

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 
 namespace SSTUTools
@@ -391,7 +391,7 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
-            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onUnpackEvent));
+            StartCoroutine(delayedDragUpdate());
         }
 
         public override string GetInfo()
@@ -418,12 +418,12 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
-            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onUnpackEvent));
         }
 
-        public void onUnpackEvent(Vessel v)
+        private IEnumerator delayedDragUpdate()
         {
-            updateDragCube();
+            yield return new WaitForFixedUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>
@@ -577,7 +577,7 @@ namespace SSTUTools
             mountModules = new MountModelData[len];
             for (int i = 0; i < len; i++)
             {
-                mountModules[i] = new MountModelData(mountNodes[i], false);
+                mountModules[i] = new MountModelData(mountNodes[i]);
             }
             currentMountModule = Array.Find(mountModules, l => l.name == currentMount);
 
@@ -835,6 +835,7 @@ namespace SSTUTools
             currentMountModule.updateModel();
             rcsModule.updateModel();
 
+            SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUUtils.updatePartHighlighting(part);
         }
 
@@ -990,7 +991,7 @@ namespace SSTUTools
             totalTankVolume += currentMountModule.getModuleVolume();
             if (useRF)
             {
-                SSTUUtils.updateRealFuelsPartVolume(part, totalTankVolume);
+                SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume);
             }
             //update usable fuel volume, tankage mass, dry mass, etc
             totalFuelVolume = currentFuelTypeData.getUsableVolume(totalTankVolume);
@@ -1029,19 +1030,6 @@ namespace SSTUTools
             {
                 tankCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost();
             }
-        }
-        
-        /// <summary>
-        /// Re-renders the parts drag cube for the current model setup
-        /// </summary>
-        private void updateDragCube()
-        {
-            DragCube newCube = DragCubeSystem.Instance.RenderProceduralDragCube(part);
-            newCube.Name = "Default";
-            part.DragCubes.ClearCubes();
-            part.DragCubes.Cubes.Add(newCube);
-            part.DragCubes.ResetCubeWeights();
-            part.DragCubes.SetCubeWeight("Default", 1f);
         }
 
         /// <summary>

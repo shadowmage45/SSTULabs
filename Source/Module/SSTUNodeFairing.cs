@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using System.Text;
 namespace SSTUTools
@@ -418,6 +419,7 @@ namespace SSTUTools
             {
                 print("textures were null!");
             }
+            StartCoroutine(delayedDragUpdate());
         }
         
         public void OnDestroy()
@@ -460,6 +462,12 @@ namespace SSTUTools
             {
                 needsShieldUpdate = true;
             }
+        }
+        
+        private IEnumerator delayedDragUpdate()
+        {
+            yield return new WaitForFixedUpdate();
+            updateDragCube();
         }
 
         public void LateUpdate()
@@ -938,25 +946,7 @@ namespace SSTUTools
         private void updateDragCube()
         {
             if (!updateDragCubes) { return; }
-            if (!part.DragCubes.Procedural)
-            {
-                if (part.DragCubes.Cubes.Count > 1)
-                {
-                    //has multiple cubes; no clue...
-                    //ask modules to re-render their cubes?
-                }
-                else if (part.DragCubes.Cubes.Count == 1)//has only one cube, update it!
-                {
-                    DragCube c = part.DragCubes.Cubes[0];
-                    String name = c.Name;
-                    DragCube c2 = DragCubeSystem.Instance.RenderProceduralDragCube(part);
-                    c2.Name = name;
-                    part.DragCubes.ClearCubes();
-                    part.DragCubes.ResetCubeWeights();
-                    part.DragCubes.Cubes.Add(c2);
-                    part.DragCubes.SetCubeWeight(name, 1.0f);//set the cube to full weight...
-                }
-            }
+            SSTUModInterop.onPartGeometryUpdate(part, updateDragCubes);
         }
 
         private void updateTextureSet()

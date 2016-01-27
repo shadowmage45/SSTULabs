@@ -315,7 +315,7 @@ namespace SSTUTools.Module
             float currentVolume = resourceVolume * resourceScalar;
             if (useRF)
             {
-                SSTUUtils.updateRealFuelsPartVolume(part, currentVolume);
+                SSTUModInterop.onPartFuelVolumeUpdate(part, currentVolume);
             }
             else
             {

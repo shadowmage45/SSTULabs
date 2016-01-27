@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Reflection;
 
 namespace SSTUTools
 {
@@ -701,33 +700,6 @@ namespace SSTUTools
                 MonoBehaviour.print("Could not clone model by name: " + modelURL);
             }
             return clonedModel;
-        }
-
-        public static void updateRealFuelsPartVolume(Part part, float cubicMeters)
-        {
-
-            Type moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
-            if (moduleFuelTank == null)
-            {
-                moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,modularFuelTanks");
-                if (moduleFuelTank == null)
-                {
-                    MonoBehaviour.print("Fuel tank is set to use RF, but neither RF nor MFT are installed!!");
-                    return;
-                }        
-            }
-            PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
-            if (pm == null)
-            {
-                MonoBehaviour.print("ERROR! could not find fuel tank module in part for RealFuels");
-                return;
-            }
-            MethodInfo mi = moduleFuelTank.GetMethod("ChangeTotalVolume");
-            double val = cubicMeters * 1000f;
-            mi.Invoke(pm, new System.Object[] { val, false });
-            MonoBehaviour.print("set RF total tank volume to: " + val);
-            MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
-            mi2.Invoke(pm, new System.Object[] { });
         }
         
         public static double toRadians(double val)

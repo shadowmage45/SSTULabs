@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 
 namespace SSTUTools
@@ -279,7 +280,13 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
-            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onUnpackEvent));
+            StartCoroutine(delayedDragUpdate());
+        }
+
+        private IEnumerator delayedDragUpdate()
+        {
+            yield return new WaitForFixedUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void Start()
@@ -332,12 +339,6 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
-            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onUnpackEvent));
-        }
-
-        public void onUnpackEvent(Vessel v)
-        {
-            updateDragCube();
         }
 
         /// <summary>
@@ -463,11 +464,13 @@ namespace SSTUTools
                 mountNode = mountNodes[i];
                 if (mountNode.GetBoolValue("useForNose", true))
                 {
-                    noses.Add(new CustomFuelTankMount(mountNode, true));
+                    mountNode.SetValue("nose", "true", true);//add the nose variable to the mount config nodes, set to true, as these are the nose nodes
+                    noses.Add(new CustomFuelTankMount(mountNode));
                 }
                 if (mountNode.GetBoolValue("useForMount", true))
                 {
-                    mounts.Add(new CustomFuelTankMount(mountNode, false));
+                    mountNode.SetValue("nose", "false", true);//add the nose variable to the mount config nodes, set to true, as these are the mount nodes
+                    mounts.Add(new CustomFuelTankMount(mountNode));
                 }
             }
             mountModules = mounts.ToArray();
@@ -529,6 +532,7 @@ namespace SSTUTools
             currentNoseModule.updateModel();
             currentMountModule.updateModel();
             SSTUUtils.updatePartHighlighting(part);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateTankStats()
@@ -536,7 +540,7 @@ namespace SSTUTools
             currentTankVolume = currentMainTankModule.getModuleVolume() + currentNoseModule.getModuleVolume() + currentMountModule.getModuleVolume();
             if (useRF)
             {
-                SSTUUtils.updateRealFuelsPartVolume(part, currentTankVolume);
+                SSTUModInterop.onPartFuelVolumeUpdate(part, currentTankVolume);
             }
             else
             {
@@ -586,16 +590,6 @@ namespace SSTUTools
             }
             SSTUResourceList resourceList = currentFuelTypeData.getResourceList(guiTankVolume);
             resourceList.setResourcesToPart(part, !HighLogic.LoadedSceneIsFlight);            
-        }
-
-        private void updateDragCube()
-        {
-            DragCube newCube = DragCubeSystem.Instance.RenderProceduralDragCube(part);
-            newCube.Name = "Default";
-            part.DragCubes.ClearCubes();
-            part.DragCubes.Cubes.Add(newCube);
-            part.DragCubes.ResetCubeWeights();
-            part.DragCubes.SetCubeWeight("Default", 1f);
         }
 
         private void setFuelTypeFromEditor(FuelTypeData newFuelType, bool updateSymmetry)
@@ -708,7 +702,6 @@ namespace SSTUTools
             updatePartResources();
             updateTextureSet(false);
             updateAttachNodes(userInput);
-            updateDragCube();
             updateFairing();
             SSTUUtils.updatePartHighlighting(part);
         }
@@ -863,10 +856,7 @@ namespace SSTUTools
 
     public class CustomFuelTankMount : MountModelData
     {
-        public bool useForNose = true;
-        public bool useForMount = true;
-
-        public CustomFuelTankMount(ConfigNode node, bool isNose) : base(node, isNose)
+        public CustomFuelTankMount(ConfigNode node) : base(node)
         {
 
         }

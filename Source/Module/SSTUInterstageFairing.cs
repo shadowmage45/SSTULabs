@@ -516,10 +516,11 @@ namespace SSTUTools
             setPanelRotations(currentRotation);//set animation status to whatever is current            
             updateFairingMassAndCost();
             updateNodePositions(userInput);
-            recreateDragCubes();
             updateShieldStatus();
             enableEditorColliders(HighLogic.LoadedSceneIsEditor);
             SSTUUtils.updatePartHighlighting(part);
+            SSTUModInterop.onPartGeometryUpdate(part, false);
+            recreateDragCubes();
         }
 
         //create procedural panel sections for the current part configuration (radialSection count), with orientation set from base panel orientation

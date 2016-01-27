@@ -250,8 +250,8 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setTaperHeightFromEditor(newHeight, false);
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         private void setHeightFromEditor(float newHeight, bool updateSymmetry)
@@ -274,8 +274,8 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setHeightFromEditor(newHeight, false);
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
@@ -297,8 +297,8 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setTopDiameterFromEditor(newDiameter, false);
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
@@ -326,8 +326,8 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setBottomDiameterFromEditor(newDiameter, false);
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         private void invertEnginesFromEditor(bool updateSymmetry)
@@ -343,8 +343,8 @@ namespace SSTUTools.Module
                     idc.invertEngines = invertEngines;
                     idc.updateEnginePositionAndScale();
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         public override void OnLoad(ConfigNode node)
@@ -372,6 +372,7 @@ namespace SSTUTools.Module
             {
                 if (dc != this) { decoupler = dc; break; }
             }
+            updateEngineThrust();
         }
 
         public void FixedUpdate()
@@ -529,13 +530,17 @@ namespace SSTUTools.Module
             {
                 fairingBase.addRing(-halfHeight + currentTaperHeight, currentBottomDiameter * 0.5f);
             }
-            fairingBase.addRing(halfHeight, currentTopDiameter * 0.5f);
+            if (currentTaperHeight < currentHeight)
+            {
+                fairingBase.addRing(halfHeight, currentTopDiameter * 0.5f);
+            }
 
             fairingBase.generateFairing();
             fairingBase.setMaterial(fairingMaterial);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
 
             updateEnginePositionAndScale();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateTechLimits()
@@ -568,13 +573,11 @@ namespace SSTUTools.Module
 
         private void updateResources()
         {
-            float scale = getEngineScale();
-            scale *= scale;
-            scale *= scale;
+            float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
             float volume = resourceVolume * scale * numberOfEngines;
             if (useRF)
             {
-                SSTUUtils.updateRealFuelsPartVolume(part, volume);
+                SSTUModInterop.onPartFuelVolumeUpdate(part, volume);
             }
             else
             {

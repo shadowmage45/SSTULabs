@@ -17,6 +17,12 @@ namespace SSTUTools
         public String modelName = String.Empty;
 
         /// <summary>
+        /// Mounts will be parented to this transform; makes it easier to tell what models to delete, and which to keep.  This transform should only be generated the first time the part is initialized (prefab OnLoad).
+        /// </summary>
+        [KSPField]
+        public String mountTransformName = "SSTEngineClusterMounts";
+
+        /// <summary>
         /// The default engine layout to use if none is specified in the mount option(s)
         /// </summary>
         [KSPField]
@@ -155,10 +161,9 @@ namespace SSTUTools
         private float prevMountSizeAdjust = 0;
         private float prevEngineSpacingAdjust = 0;
         private float prevEngineHeightAdjust = 0;
-        
+
+        [Persistent]
         //all public fields get serialized from the prefab...hopefully
-        public List<GameObject> models = new List<GameObject>();//actual engine models; kept so they can be repositioned //made public in hopes that unity will clone the fields, and that models need not be recreated after prefab is instantiated
-        public List<GameObject> mountModels = new List<GameObject>();//mount models, kept so they can be easily deleted //public for unity serialization between prefab...
         public bool engineModelsSetup = false;//don't recreate engine models if they were already setup, it causes problems with other modules (all of them...)
         public float engineY = 0;
         public float fairingTopY = 0;
@@ -433,19 +438,7 @@ namespace SSTUTools
         /// </summary>
         private void clearExistingModels()
         {
-            foreach (GameObject go in models)
-            {
-                GameObject.Destroy(go);
-            }
-            models.Clear();
             clearMountModels();
-            //catch any existing/leftover engine models cloned from the prefab
-            //this -should- allow for re-use of existing engine part.cfg files for patches without needing to change their model node/definition            
-            Transform[] trs = part.FindModelTransforms(modelName);
-            foreach (Transform tr in trs)
-            {
-                GameObject.Destroy(tr.gameObject);
-            }
         }
 
         /// <summary>
@@ -453,11 +446,7 @@ namespace SSTUTools
         /// </summary>
         private void clearMountModels()
         {
-            foreach (GameObject go in mountModels)
-            {
-                GameObject.Destroy(go);
-            }
-            mountModels.Clear();
+            SSTUUtils.destroyChildren(part.transform.FindRecursive(mountTransformName));
         }
 
         /// <summary>
@@ -484,7 +473,11 @@ namespace SSTUTools
                     engineMounts.Add(new EngineMount(mn));
                 }
             }
+            Transform tr = part.transform.FindRecursive("model").FindOrCreate(mountTransformName);
+            tr.NestToParent(part.transform.FindRecursive("model"));
+            tr.localScale = Vector3.one;
             setupEngineModels();
+
             removeTransforms();
         }
 
@@ -518,7 +511,9 @@ namespace SSTUTools
             }
 
             engineModelsSetup = true;
+
             clearExistingModels();
+
             SSTUEngineLayout layout = getEngineLayout(defaultLayoutName);
             currentEngineLayout = defaultLayoutName;
             currentEngineSpacing = defaultEngineSpacing;
@@ -535,7 +530,6 @@ namespace SSTUTools
                 engineClone.transform.NestToParent(modelBase);
                 engineClone.transform.localScale = new Vector3(engineScale, engineScale, engineScale);
                 engineClone.SetActive(true);
-                models.Add(engineClone);
             }
 
             //add the smoke transform point, parented to the model base transform ('model')
@@ -555,9 +549,6 @@ namespace SSTUTools
         /// <param name="index"></param>
         private void enableMount(int index, bool userInput)
         {
-            //remove existing mount models
-            clearMountModels();
-
             //basic vars setup for enabling the mount
             currentMountOption = engineMounts[index];
             //determine if this mount is already enabled (e.g. being called during OnStart); if already enabled, use the current layout spacing and mount scale values rather than defaults
@@ -565,39 +556,50 @@ namespace SSTUTools
             currentMountName = currentMountOption.name;
             currentMountSize = init? currentMountOption.defaultDiameter : currentMountSize;
             currentEngineSpacing = init? (currentMountOption.engineSpacing > 0 ? currentMountOption.engineSpacing : defaultEngineSpacing) : currentEngineSpacing;
+
             restoreEditorFields();//this updates the editor adjust values for the new-updated mount size
+
             bool hasLayout = currentMountOption.layoutNames != null && currentMountOption.layoutNames.Length > 0;
             String localLayoutName = init ? (hasLayout ? currentMountOption.layoutNames[0] : defaultLayoutName) : (currentEngineLayout);
             SSTUEngineLayout layout = getEngineLayout(localLayoutName);
             currentEngineLayout = localLayoutName;
 
-            if (!String.IsNullOrEmpty(currentMountOption.mountDefinition.modelName))//has mount model
+            String modelName = currentMountOption.mountDefinition.modelName;
+            int numOfModels = currentMountOption.mountDefinition.singleModel ? 1 : layout.positions.Count;
+            if (!String.IsNullOrEmpty(modelName))//has mount model
             {
-                GameObject mountModel = GameDatabase.Instance.GetModelPrefab(currentMountOption.mountDefinition.modelName);
-                Transform modelBase = part.FindModelTransform("model");
-                if (mountModel == null || modelBase == null) { return; }
-                if (currentMountOption.mountDefinition.singleModel)
+                Transform[] potentialMountModels = part.transform.FindChildren(modelName);
+                if (potentialMountModels.Length != numOfModels)
                 {
-                    GameObject mountClone = (GameObject)GameObject.Instantiate(mountModel);
-                    mountClone.name = mountModel.name;
-                    mountClone.transform.name = mountModel.transform.name;
-                    mountClone.transform.NestToParent(modelBase);
-                    mountClone.SetActive(true);
-                    mountModels.Add(mountClone);
-                }
-                else
-                {
-                    GameObject mountClone;
-                    foreach (SSTUEnginePosition position in layout.positions)
+                    clearMountModels();
+                    GameObject mountModel = GameDatabase.Instance.GetModelPrefab(modelName);
+                    Transform modelBase = part.transform.FindRecursive(mountTransformName);
+                    if (mountModel == null || modelBase == null) { return; }
+                    if (currentMountOption.mountDefinition.singleModel)
                     {
-                        mountClone = (GameObject)GameObject.Instantiate(mountModel);
+                        GameObject mountClone = (GameObject)GameObject.Instantiate(mountModel);
                         mountClone.name = mountModel.name;
                         mountClone.transform.name = mountModel.transform.name;
                         mountClone.transform.NestToParent(modelBase);
                         mountClone.SetActive(true);
-                        mountModels.Add(mountClone);
+                    }
+                    else
+                    {
+                        GameObject mountClone;
+                        foreach (SSTUEnginePosition position in layout.positions)
+                        {
+                            mountClone = (GameObject)GameObject.Instantiate(mountModel);
+                            mountClone.name = mountModel.name;
+                            mountClone.transform.name = mountModel.transform.name;
+                            mountClone.transform.NestToParent(modelBase);
+                            mountClone.SetActive(true);
+                        }
                     }
                 }
+            }
+            else
+            {
+                clearMountModels();
             }
 
             //update the current mount positions and cached vars for stuff like fairing and engine position
@@ -641,11 +643,13 @@ namespace SSTUTools
             {
                 rotateEngines = currentMountOption.rotateEngineModels[0];
             }
+
+            Transform[] models = part.transform.FindRecursive("model").FindChildren(modelName);
             
             for (int i = 0; i < length; i++)
             {
                 position = layout.positions[i];
-                model = models[i];
+                model = models[i].gameObject;
                 posX = position.scaledX(currentEngineSpacing);
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
@@ -675,13 +679,14 @@ namespace SSTUTools
             float mountY = partTopY + (currentMountScale * currentMountOption.mountDefinition.verticalOffset);
             int len = layout.positions.Count;
             if (currentMountOption.mountDefinition.singleModel) { len = 1; }
-            if (len > mountModels.Count) { len = mountModels.Count; }
+            Transform[] mountModels = part.transform.FindChildren(currentMountOption.mountDefinition.modelName);
+            if (len > mountModels.Length) { len = mountModels.Length; }
             GameObject mountModel = null;
             SSTUEnginePosition position;
             for (int i = 0; i < len; i++)
             {
                 position = layout.positions[i];
-                mountModel = mountModels[i];
+                mountModel = mountModels[i].gameObject;
                 posX = currentMountOption.mountDefinition.singleModel ? 0 : position.scaledX(currentEngineSpacing);
                 posZ = currentMountOption.mountDefinition.singleModel ? 0 : position.scaledZ(currentEngineSpacing);
                 rot = currentMountOption.mountDefinition.singleModel ? 0 : position.rotation;
@@ -701,6 +706,8 @@ namespace SSTUTools
             
             //udpate attach node positions based on values calced in updateMountPositions()
             updateNodePositions(userInput);
+
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>

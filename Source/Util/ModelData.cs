@@ -151,6 +151,17 @@ namespace SSTUTools
             GameObject.Destroy(model);
             model = null;
         }
+
+        public static SingleModelData[] parseModels(ConfigNode[] modelNodes)
+        {
+            int len = modelNodes.Length;
+            SingleModelData[] datas = new SingleModelData[len];
+            for (int i = 0; i < len; i++)
+            {
+                datas[i] = new SingleModelData(modelNodes[i]);
+            }
+            return datas;
+        }
     }
 
     public class MountModelData : SingleModelData
@@ -158,7 +169,7 @@ namespace SSTUTools
         public SSTUEngineMountDefinition mountDefinition;
         public List<AttachNodeData> nodePositions = new List<AttachNodeData>();
         public bool nose = false;        
-        public MountModelData(ConfigNode node, bool isNose) : base(node)
+        public MountModelData(ConfigNode node) : base(node)
         {
             mountDefinition = SSTUEngineMountDefinition.getMountDefinition(name);
             modelName = mountDefinition.modelName;
@@ -168,7 +179,7 @@ namespace SSTUTools
             verticalOffset = mountDefinition.verticalOffset;
             invertModel = mountDefinition.invertModel;
             mass = mountDefinition.mountMass;
-            nose = isNose;
+            nose = node.GetBoolValue("nose", false);
             if (nose) { invertModel = !invertModel; }
             foreach (AttachNodeData data in mountDefinition.nodePositions)
             {
@@ -176,6 +187,17 @@ namespace SSTUTools
                 if (nose) { newData.invert(); }
                 nodePositions.Add(newData);
             }
+        }
+
+        public static MountModelData[] parseModels(ConfigNode[] modelNodes)
+        {
+            int len = modelNodes.Length;
+            MountModelData[] datas = new MountModelData[len];
+            for (int i = 0; i < len; i++)
+            {
+                datas[i] = new MountModelData(modelNodes[i]);
+            }
+            return datas;
         }
     }
 }

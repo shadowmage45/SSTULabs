@@ -163,6 +163,30 @@ SSTU_RESOURCEVOLUME
 		}
 	}
 }
+@PART[SSTU_ShipCore_ENG-J-2X]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
+{
+	@MODULE[ModuleEngines*]
+	{		
+		!PROPELLANT,*{}
+		PROPELLANT
+		{
+			name = LqdHydrogen
+			ratio = 15
+			DrawGauge = True
+		}
+		PROPELLANT
+		{
+			name = Oxidizer
+			ratio = 1
+		}
+		!atmosphereCurve,*{}
+		atmosphereCurve
+		{
+			key = 0 448
+			key = 1 342
+		}
+	}
+}
 @PART[SSTU_ShipCore_ENG-RL10A-3]:FOR[SSTU]:BEFORE[SSTU_ENGINES]
 {
 	@MODULE[ModuleEngines*]
@@ -237,9 +261,10 @@ SSTU_RESOURCEVOLUME
 }
 @PART[SSTU-SC-B-ICPS]:FOR[SSTU]
 {
-	@mass = 1.8464
+	@mass = 2.95
 	@MODULE[ModuleEngines*]
 	{		
+		@heatProduction = 35
 		!PROPELLANT,*{}
 		PROPELLANT
 		{
@@ -275,9 +300,11 @@ SSTU_RESOURCEVOLUME
 }
 @PART[SSTU-SC-B-HUS]:FOR[SSTU]
 {
-	@mass = 5.7119
+	@mass = 10.1
+	
 	@MODULE[ModuleEngines*]
 	{		
+		@heatProduction = 60
 		!PROPELLANT,*{}
 		PROPELLANT
 		{

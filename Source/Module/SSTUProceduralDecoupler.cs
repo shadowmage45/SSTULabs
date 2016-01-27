@@ -276,14 +276,17 @@ namespace SSTUTools
         {
             if (lastRadiusExtra != radiusExtra)
             {
+                lastRadiusExtra = radiusExtra;
                 setRadiusFromEditor(editorRadius + radiusExtra * radiusAdjust, true);
             }
             if (lastHeightExtra != heightExtra)
             {
+                lastHeightExtra = heightExtra;
                 setHeightFromEditor(editorHeight + heightExtra * heightAdjust, true);
             }
             if (lastThicknessExtra != thicknessExtra)
             {
+                lastThicknessExtra = thicknessExtra;
                 setThicknessFromEditor(editorThickness + thicknessExtra * thicknessAdjust, true);
             }
         }
@@ -349,6 +352,7 @@ namespace SSTUTools
             updateDecouplerForce();
             updateDragCube();
             SSTUUtils.updatePartHighlighting(part);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void recreateModel()
@@ -360,6 +364,7 @@ namespace SSTUTools
             updateDecouplerForce();
             updateDragCube();
             SSTUUtils.updatePartHighlighting(part);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateModelParameters()

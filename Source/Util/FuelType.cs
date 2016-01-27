@@ -102,7 +102,18 @@ namespace SSTUTools
         {            
             return usableVolume * fuelType.tonsPerCubicMeter * tankageMassFraction;
         }
-        
+
+        public SSTUResourceList addResources(float volume, SSTUResourceList list)
+        {
+            fuelType.addResources(volume, list);
+            return list;
+        }
+
+        public SSTUResourceList getResourceList(float volume)
+        {
+            return fuelType.getResourceList(volume);
+        }
+
         public static FuelTypeData[] parseFuelTypeData(ConfigNode[] nodes)
         {
             int len = nodes.Length;
@@ -114,15 +125,9 @@ namespace SSTUTools
             return array;
         }
 
-        public SSTUResourceList addResources(float volume, SSTUResourceList list)
+        public static FuelTypeData createFuelTypeData(String typeName)
         {
-            fuelType.addResources(volume, list);
-            return list;
-        }
-
-        public SSTUResourceList getResourceList(float volume)
-        {
-            return fuelType.getResourceList(volume);
+            return new FuelTypeData(FuelTypes.INSTANCE.getFuelType(typeName));
         }
     }
 
