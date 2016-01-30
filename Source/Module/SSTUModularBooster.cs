@@ -12,7 +12,8 @@ namespace SSTUTools
         With integrated
           * fuel capacity (single fuel type)
           * jettison motors (switches from vertical to radial depending upon setup)
-          * booster motors for SRBs
+          * main motor for SRB
+          * mount for LRB
 
         Adjustable parameters:
           * Diameter
@@ -31,20 +32,27 @@ namespace SSTUTools
         */
 
         #region REGION - KSP Config Variables
+       
+        /// <summary>
+        /// Models will be added to this transform
+        /// </summary>
+        [KSPField]
+        public string baseTransformName = "SSTU-MRB-BaseTransform";
 
         /// <summary>
-        /// transforms will be added to the base part model hierarchy based on numberOfEngines.<para></para>
+        /// If not empty, a transform by this name will be added to the base part model.<para></para>
         /// These will only be added during the initial part prefab setup.
         /// </summary>
         [KSPField]
-        public String thrustTransformName = String.Empty;
+        public String thrustTransformName = "SSTU-MRB-ThrustTransform";
+
 
         /// <summary>
         /// Transforms of this name will be added to the model hierarchy for use as jettison motors.  <para></para>
         /// The location and orientation of these transforms will vary depending upon if the part is setup for radial or stack attachment.
         /// </summary>
         [KSPField]
-        public String jettisonTransformName = String.Empty;
+        public String jettisonTransformName = "SSTU-MRB-JettisonTransform";
 
         /// <summary>
         /// If true, the engine thrust will be scaled with model changes by the parameters below
@@ -107,7 +115,18 @@ namespace SSTUTools
 
         #endregion ENDREGION - Persistent variables
 
+        #region REGION - GUI Variables
+        [KSPField(guiName = "Diameter Adjust", guiActiveEditor = true, guiActive =false)]
+        public float editorDiameterAdjust = 0f;
+        #endregion
+
         #region REGION - Private working variables
+
+        private float editorDiameterWhole;
+        private float prevEditorDiameterAdjust;
+
+        private Transform thrustTransform;
+        private Transform[] jettisonTransforms;
 
         private FuelTypeData[] fuelTypes;
         private FuelTypeData fuelTypeData;
@@ -126,29 +145,33 @@ namespace SSTUTools
         #endregion ENDREGION - Private working variables
 
         #region REGION - KSP GUI Interaction Methods
-
-        /// <summary>
-        /// Called when user presses the increase diameter button in editor
-        /// </summary>
-        public void nextDiameterEvent()
-        {
-
-        }
-
+        
         /// <summary>
         /// Called when user presses the decrease diameter button in editor
         /// </summary>
+        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true, guiActive = false)]
         public void prevDiameterEvent()
         {
 
         }
 
-        public void nextMainModelEvent()
+        /// <summary>
+        /// Called when user presses the increase diameter button in editor
+        /// </summary>
+        [KSPEvent(guiName ="Diameter ++", guiActiveEditor =true, guiActive =false)]
+        public void nextDiameterEvent()
         {
 
         }
 
+        [KSPEvent(guiName = "Length --", guiActiveEditor = true, guiActive = false)]
         public void previousMainModelEvent()
+        {
+
+        }
+
+        [KSPEvent(guiName = "Next Length ++", guiActiveEditor = true, guiActive = false)]
+        public void nextMainModelEvent()
         {
 
         }
@@ -156,6 +179,7 @@ namespace SSTUTools
         /// <summary>
         /// Called when user changes between radial and stack attachment setups.  Should initialize repositioning of the jettison transforms according to model setup.
         /// </summary>
+        [KSPEvent(guiName = "Radial/Stack", guiActive =false, guiActiveEditor = true)]
         public void radialStackChangeEvent()
         {
 
@@ -193,7 +217,15 @@ namespace SSTUTools
         private void initialize()
         {
             loadConfigNodeData();
-            
+            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models
+        }
+
+        /// <summary>
+        /// Initializes thrust transforms for the part; should only be called during prefab init.  Transforms will then be cloned into live model as-is.
+        /// </summary>
+        private void initiaizePrefab()
+        {
+
         }
 
         private void loadConfigNodeData()

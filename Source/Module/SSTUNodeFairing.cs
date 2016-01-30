@@ -1001,6 +1001,8 @@ namespace SSTUTools
             Fields["bottomRadiusExtra"].guiActiveEditor = bottomAdjustEnabled;
 
             Fields["numOfSections"].guiActiveEditor = currentlyEnabled;
+            Events["nextTextureEvent"].active = currentlyEnabled && textureSets!=null && textureSets.Length>1;
+            Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
 
             String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable" ) : actionName;
             Events["jettisonEvent"].guiName = Actions["jettisonAction"].guiName = guiActionName + " " + fairingName;

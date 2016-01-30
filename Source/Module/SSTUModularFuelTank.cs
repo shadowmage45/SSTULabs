@@ -519,11 +519,11 @@ namespace SSTUTools
             float totalHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
             float startY = totalHeight * 0.5f;
             startY -= currentNoseModule.currentHeight;
-            currentNoseModule.currentVerticalPosition = startY;
+            currentNoseModule.currentVerticalPosition = startY + currentNoseModule.currentHeightScale*currentNoseModule.verticalOffset;
             startY -= currentMainTankModule.currentHeight * 0.5f;
             currentMainTankModule.currentVerticalPosition = startY;
             startY -= currentMainTankModule.currentHeight * 0.5f;
-            currentMountModule.currentVerticalPosition = startY;
+            currentMountModule.currentVerticalPosition = startY + currentMountModule.currentHeightScale * currentMountModule.verticalOffset;
         }
 
         private void updateModels()

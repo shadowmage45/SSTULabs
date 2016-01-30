@@ -18,6 +18,9 @@ namespace SSTUTools
         public float defaultModelDiameter = 5f;
 
         [KSPField]
+        public float defaultBaseVolume = 1f;
+
+        [KSPField]
         public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";
         
         [KSPField]
@@ -556,8 +559,7 @@ namespace SSTUTools
         private void updateFairingMassAndCost()
         {
             float baseScale = (bottomRadius*2) / defaultModelDiameter;
-            float baseDefaultVolume = bottomRadius * bottomRadius * 1f * Mathf.PI;
-            float baseVolume = baseScale * baseScale * baseScale * baseDefaultVolume;
+            float baseVolume = baseScale * baseScale * baseScale * defaultBaseVolume;
             float avgRadius = bottomRadius + (topRadius - bottomRadius) * 0.5f;
             float panelArea = avgRadius * 2f * Mathf.PI * currentHeight;
 

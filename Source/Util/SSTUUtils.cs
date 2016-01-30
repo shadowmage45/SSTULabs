@@ -604,17 +604,23 @@ namespace SSTUTools
             node.orientation = node.originalOrientation = orientation;
             if (updatePartPosition && node.attachedPart != null)
             {
-                diff = part.transform.TransformPoint(diff);
-                diff -= part.transform.position;
+                Vector3 globalDiff = part.transform.TransformPoint(diff);
+                globalDiff -= part.transform.position;
                 if (node.attachedPart.parent == part)//is a child of this part, move it the entire offset distance
                 {
                     node.attachedPart.attPos0 += diff;
-                    node.attachedPart.transform.position += diff;
+                    node.attachedPart.transform.position += globalDiff;
                 }
                 else//is a parent of this part, do not move it, instead move this part the full amount
                 {
                     part.attPos0 -= diff;
-                    part.transform.position -= diff;
+                    part.transform.position -= globalDiff;
+                    //and then, if this is not the root part, offset the root part in the negative of the difference to maintain relative part position
+                    Part p = part.localRoot;
+                    if (p != null && p != part)
+                    {
+                        p.transform.position += globalDiff;
+                    }
                 }
             }
         }
@@ -700,6 +706,21 @@ namespace SSTUTools
                 MonoBehaviour.print("Could not clone model by name: " + modelURL);
             }
             return clonedModel;
+        }
+
+        public static float calcTerminalVelocity(float kilograms, float rho, float cD, float area)
+        {
+           return Mathf.Sqrt((2f * kilograms * 9.81f) / (rho * area * cD));
+        }
+
+        public static float calcDragKN(float rho, float cD, float velocity, float area)
+        {
+            return calcDynamicPressure(rho, velocity) * area * cD * 0.001f;
+        }
+
+        public static float calcDynamicPressure(float rho, float velocity)
+        {
+            return 0.5f * rho * velocity * velocity;
         }
         
         public static double toRadians(double val)
