@@ -33,31 +33,46 @@ namespace SSTUTools
 
         public static void onPartFuelVolumeUpdate(Part part, float cubicMeters)
         {
-            if (!isRFInstalled() && !isMFTInstalled())
+            bool mfTank = false;
+            Type moduleFuelTank = null;
+            if (isRFInstalled())
             {
-                MonoBehaviour.print("Neither RF nor MFT is installed, cannot update part volumes through them.");
-                return;
+                moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
+                if (moduleFuelTank == null)
+                {
+                    MonoBehaviour.print("ERROR: Set to use RealFuels, and RealFuels is installed, but no RealFuels-ModuleFuelTank PartModule found.");
+                    return;
+                }
             }
-            Type moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
-            if (moduleFuelTank == null)
+            else if (isMFTInstalled())
             {
                 moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,modularFuelTanks");
                 if (moduleFuelTank == null)
                 {
-                    MonoBehaviour.print("Fuel tank is set to use RF, but neither RF nor MFT are installed!!");
+                    MonoBehaviour.print("ERROR: Set to use ModularFuelTanks, and ModularFuelTanks is installed, but no ModularFuelTanks-ModuleFuelTank PartModule found.");
                     return;
                 }
+                mfTank = true;
+            }
+            else
+            {
+                MonoBehaviour.print("Config is for part: "+part+" is set to use RF/MFT, but neither RF nor MFT is installed, cannot update part volumes through them.  Please check your configs and/or patches for errors.");
+                return;
             }
             PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
             if (pm == null)
             {
-                MonoBehaviour.print("ERROR! could not find fuel tank module in part for RealFuels");
+                MonoBehaviour.print("ERROR! Could not find ModuleFuelTank in part for RealFuels/MFT for type: "+moduleFuelTank);
                 return;
             }
             MethodInfo mi = moduleFuelTank.GetMethod("ChangeTotalVolume");
-            double val = cubicMeters * 1000f;
-            mi.Invoke(pm, new System.Object[] { val, false });
-            MonoBehaviour.print("set RF total tank volume to: " + val);
+            double volumeLiters = cubicMeters * 1000f;
+            if (mfTank)
+            {
+                volumeLiters *= 0.2f;//convert liters into stock units....
+            }
+            mi.Invoke(pm, new System.Object[] { volumeLiters, false });
+            String message = "SSTU - Set RF/MFT total tank volume to: " + volumeLiters + (mfTank? " Units": " Liters for part: "+part.name);
             MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
             mi2.Invoke(pm, new System.Object[] { });
         }

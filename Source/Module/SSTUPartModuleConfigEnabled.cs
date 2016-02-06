@@ -23,7 +23,7 @@ namespace SSTUTools
             if (!loadedConfig)
             {
                 loadedConfig = true;
-                loadConfigData(SSTUNodeUtils.parseConfigNode(configNodeData));
+                loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             }
         }
 
@@ -33,7 +33,7 @@ namespace SSTUTools
             if (!loadedConfig)
             {
                 loadedConfig = true;
-                loadConfigData(SSTUNodeUtils.parseConfigNode(configNodeData));
+                loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             }
         }
 
@@ -44,7 +44,7 @@ namespace SSTUTools
 
         protected void forceReloadConfig()
         {
-            loadConfigData(SSTUNodeUtils.parseConfigNode(configNodeData));
+            loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
         }
     }
 }

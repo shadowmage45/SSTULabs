@@ -124,7 +124,7 @@ namespace SSTUTools.Module
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
             int len = limitNodes.Length;
             techLimits = new TechLimitHeightDiameter[len];

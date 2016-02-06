@@ -166,7 +166,7 @@ namespace SSTUTools
 
         private void loadTankConfigsFromPrefab()
         {
-            loadConfigFromNode(SSTUNodeUtils.parseConfigNode(configNodeString));
+            loadConfigFromNode(SSTUConfigNodeUtils.parseConfigNode(configNodeString));
         }
 
         //OVERRIDE from IPartCostModifier

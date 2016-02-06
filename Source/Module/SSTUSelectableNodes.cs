@@ -45,11 +45,11 @@ namespace SSTUTools
                     AttachNode node = part.findAttachNode(nodeName);
                     if (currentlyEnabled && node == null)
                     {
-                        SSTUUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
+                        SSTUAttachNodeUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
                     }
                     else if (!currentlyEnabled && node != null && node.attachedPart == null)
                     {
-                        SSTUUtils.destroyAttachNode(part, node);
+                        SSTUAttachNodeUtils.destroyAttachNode(part, node);
                     }
                     else if (!currentlyEnabled && node != null && node.attachedPart != null)//error, should never occur if things were handled properly
                     {
@@ -62,12 +62,12 @@ namespace SSTUTools
                     if (currentlyEnabled && node == null)
                     {
                         currentlyEnabled = true;
-                        SSTUUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
+                        SSTUAttachNodeUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
                     }
                     else if (!currentlyEnabled && node != null && node.attachedPart == null)
                     {
                         currentlyEnabled = false;
-                        SSTUUtils.destroyAttachNode(part, node);
+                        SSTUAttachNodeUtils.destroyAttachNode(part, node);
                     }
                 }
             }
@@ -83,12 +83,12 @@ namespace SSTUTools
             if (node == null)
             {
                 currentlyEnabled = true;
-                SSTUUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
+                SSTUAttachNodeUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
             }
             else if (node.attachedPart == null)
             {
                 currentlyEnabled = false;
-                SSTUUtils.destroyAttachNode(part, node);
+                SSTUAttachNodeUtils.destroyAttachNode(part, node);
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }

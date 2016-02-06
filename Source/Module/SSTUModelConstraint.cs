@@ -49,7 +49,7 @@ namespace SSTUTools
 
         private void initialize()
         {
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] lookConstraintNodes = node.GetNodes("LOOK_CONST");
             foreach (ConfigNode lcn in lookConstraintNodes)

@@ -95,7 +95,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
             updateTechLimits();
@@ -173,9 +173,9 @@ namespace SSTUTools
             float topY = topNodePosition * scale;
             float bottomY = bottomNodePosition * scale;
             Vector3 pos = new Vector3(0, topY, 0);
-            SSTUUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
             pos = new Vector3(0, bottomY, 0);
-            SSTUUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
         }
 
         private void updateTexture()

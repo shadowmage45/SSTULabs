@@ -158,7 +158,7 @@ namespace SSTUTools
 
         private void loadConfigFromPrefab()
         {
-            loadConfigFromNode(SSTUNodeUtils.parseConfigNode(configNodeString));
+            loadConfigFromNode(SSTUConfigNodeUtils.parseConfigNode(configNodeString));
         }
 
         private void loadConfigFromNode(ConfigNode node)

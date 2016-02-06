@@ -155,8 +155,8 @@ namespace SSTUTools
         public String configNodeData = String.Empty;
 
         //below here are private-local tracking fields for various data
-        private List<EngineMount> engineMounts = new List<EngineMount>();//mount-link-definitions
-        private EngineMount currentMountOption = null;
+        private List<MountModelData> engineMounts = new List<MountModelData>();//mount-link-definitions
+        private MountModelData currentMountOption = null;
         private float editorMountSize = 0;
         private float prevMountSizeAdjust = 0;
         private float prevEngineSpacingAdjust = 0;
@@ -173,7 +173,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            int index = SSTUUtils.findIndex(engineMounts, m=>m.name=="None");
+            int index = SSTUUtils.findIndex(engineMounts, m=>m.name=="Mount-None");
             if (index >= 0)
             {
                 enableMount(index, true);
@@ -465,12 +465,12 @@ namespace SSTUTools
             }
             if (!String.IsNullOrEmpty(configNodeData))
             {
-                ConfigNode mountData = SSTUNodeUtils.parseConfigNode(configNodeData);
+                ConfigNode mountData = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
                 ConfigNode[] mountNodes = mountData.GetNodes("MOUNT");
                 engineMounts.Clear();
                 foreach (ConfigNode mn in mountNodes)
                 {
-                    engineMounts.Add(new EngineMount(mn));
+                    engineMounts.Add(new MountModelData(mn));
                 }
             }
             Transform tr = part.transform.FindRecursive("model").FindOrCreate(mountTransformName);
@@ -564,8 +564,8 @@ namespace SSTUTools
             SSTUEngineLayout layout = getEngineLayout(localLayoutName);
             currentEngineLayout = localLayoutName;
 
-            String modelName = currentMountOption.mountDefinition.modelName;
-            int numOfModels = currentMountOption.mountDefinition.singleModel ? 1 : layout.positions.Count;
+            String modelName = currentMountOption.modelDefinition.modelName;
+            int numOfModels = currentMountOption.singleModel ? 1 : layout.positions.Count;
             if (!String.IsNullOrEmpty(modelName))//has mount model
             {
                 Transform[] potentialMountModels = part.transform.FindChildren(modelName);
@@ -575,7 +575,7 @@ namespace SSTUTools
                     GameObject mountModel = GameDatabase.Instance.GetModelPrefab(modelName);
                     Transform modelBase = part.transform.FindRecursive(mountTransformName);
                     if (mountModel == null || modelBase == null) { return; }
-                    if (currentMountOption.mountDefinition.singleModel)
+                    if (currentMountOption.singleModel)
                     {
                         GameObject mountClone = (GameObject)GameObject.Instantiate(mountModel);
                         mountClone.name = mountModel.name;
@@ -605,13 +605,13 @@ namespace SSTUTools
             //update the current mount positions and cached vars for stuff like fairing and engine position
             updateMountPositions(userInput);
             
-            if (currentMountOption.mountDefinition.singleModel)
+            if (currentMountOption.singleModel)
             {
-                part.mass = partDefaultMass + currentMountOption.mountDefinition.mountMass;
+                part.mass = partDefaultMass + currentMountOption.modelDefinition.mass;
             }
             else
             {
-                part.mass = partDefaultMass + (currentMountOption.mountDefinition.mountMass * layout.positions.Count);
+                part.mass = partDefaultMass + (currentMountOption.modelDefinition.mass * layout.positions.Count);
             }
         }
  
@@ -676,10 +676,10 @@ namespace SSTUTools
             layoutMap.TryGetValue(currentEngineLayout, out layout);
             float posX, posZ, rot;
             float currentMountScale = getCurrentMountScale();
-            float mountY = partTopY + (currentMountScale * currentMountOption.mountDefinition.verticalOffset);
+            float mountY = partTopY + (currentMountScale * currentMountOption.modelDefinition.verticalOffset);
             int len = layout.positions.Count;
-            if (currentMountOption.mountDefinition.singleModel) { len = 1; }
-            Transform[] mountModels = part.transform.FindChildren(currentMountOption.mountDefinition.modelName);
+            if (currentMountOption.singleModel) { len = 1; }
+            Transform[] mountModels = part.transform.FindChildren(currentMountOption.modelDefinition.modelName);
             if (len > mountModels.Length) { len = mountModels.Length; }
             GameObject mountModel = null;
             SSTUEnginePosition position;
@@ -687,17 +687,17 @@ namespace SSTUTools
             {
                 position = layout.positions[i];
                 mountModel = mountModels[i].gameObject;
-                posX = currentMountOption.mountDefinition.singleModel ? 0 : position.scaledX(currentEngineSpacing);
-                posZ = currentMountOption.mountDefinition.singleModel ? 0 : position.scaledZ(currentEngineSpacing);
-                rot = currentMountOption.mountDefinition.singleModel ? 0 : position.rotation;
+                posX = currentMountOption.singleModel ? 0 : position.scaledX(currentEngineSpacing);
+                posZ = currentMountOption.singleModel ? 0 : position.scaledZ(currentEngineSpacing);
+                rot = currentMountOption.singleModel ? 0 : position.rotation;
                 mountModel.transform.localPosition = new Vector3(posX, mountY, posZ);
-                mountModel.transform.localRotation = currentMountOption.mountDefinition.invertModel ? Quaternion.AngleAxis(180, Vector3.forward) : Quaternion.AngleAxis(0, Vector3.up);
+                mountModel.transform.localRotation = currentMountOption.modelDefinition.invertForBottom ? Quaternion.AngleAxis(180, Vector3.forward) : Quaternion.AngleAxis(0, Vector3.up);
                 mountModel.transform.localScale = new Vector3(currentMountScale, currentMountScale, currentMountScale);
             }
 
             //set up fairing/engine/node positions
-            float mountScaledHeight = currentMountOption.mountDefinition.height * currentMountScale;
-            fairingTopY = partTopY + (currentMountOption.mountDefinition.fairingTopOffset * currentMountScale);
+            float mountScaledHeight = currentMountOption.modelDefinition.height * currentMountScale;
+            fairingTopY = partTopY + (currentMountOption.modelDefinition.fairingTopOffset * currentMountScale);
             engineY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + editorEngineHeightAdjust;
             fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + editorEngineHeightAdjust;
 
@@ -758,15 +758,15 @@ namespace SSTUTools
             if (bottomNode == null) { print("ERROR, could not locate bottom node"); return; }
             Vector3 pos = bottomNode.position;
             pos.y = fairingBottomY;
-            SSTUUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
 
             AttachNode interstage = part.findAttachNode(interstageNodeName);
             if (interstage != null)
             {
-                float y = partTopY + (currentMountOption.mountDefinition.fairingTopOffset * getCurrentMountScale());
+                float y = partTopY + (currentMountOption.modelDefinition.fairingTopOffset * getCurrentMountScale());
                 pos = new Vector3(0, y, 0);
                 Vector3 orientation = new Vector3(0, -1, 0);
-                SSTUUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
             }
         }
 
@@ -778,7 +778,7 @@ namespace SSTUTools
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }
             else if (!fairing.initialized()) { return; }
-            bool enable = !currentMountOption.mountDefinition.fairingDisabled;
+            bool enable = !currentMountOption.modelDefinition.fairingDisabled;
             fairing.canDisableInEditor = enable;
             if (enable)
             {
@@ -854,12 +854,10 @@ namespace SSTUTools
         /// <returns></returns>
         private float getCurrentMountScale()
         {
-            return currentMountSize / currentMountOption.mountDefinition.defaultDiameter;
+            return currentMountSize / currentMountOption.modelDefinition.diameter;
         }
     }
-
-   
-
+    
     /// <summary>
     /// Live config data class for engine layout.
     /// Positions in the layout should be defined in a 1m scale

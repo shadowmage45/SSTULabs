@@ -378,7 +378,7 @@ namespace SSTUTools
 
 
             //load FairingData instances from config values (persistent data nodes also merged in)
-            loadFairingData(SSTUNodeUtils.parseConfigNode(configNodeData));
+            loadFairingData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
 
             loadMaterial();
 

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
 
 namespace SSTUTools
 {
@@ -25,7 +23,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] renameEntryNodes = node.GetNodes("RENAME");
             ConfigNode[] disableEntryNodes = node.GetNodes("DISABLE");
 

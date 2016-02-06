@@ -145,7 +145,7 @@ namespace SSTUTools
 
         private void loadRecipeFromSavedConfigString()
         {
-            ConfigNode moduleNode = SSTUNodeUtils.parseConfigNode(configNodeString);
+            ConfigNode moduleNode = SSTUConfigNodeUtils.parseConfigNode(configNodeString);
             loadRecipeFromNode(moduleNode);
         }
 

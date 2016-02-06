@@ -251,7 +251,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode insideUVNode = node.GetNode("UVMAP", "name", "inside");
             ConfigNode outsideUVNode = node.GetNode("UVMAP", "name", "outside");
             ConfigNode topNode = node.GetNode("UVMAP", "name", "top");
@@ -398,12 +398,12 @@ namespace SSTUTools
             AttachNode topNode = part.findAttachNode("top");
             if (topNode != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, topNode, new Vector3(topNode.position.x, h, topNode.position.z), topNode.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(topNode.position.x, h, topNode.position.z), topNode.orientation, userInput);
             }
             AttachNode bottomNode = part.findAttachNode("bottom");
             if (bottomNode != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation, userInput);
             }
         }
 

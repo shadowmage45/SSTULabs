@@ -18,6 +18,85 @@ SSTU_ENGINEMOUNT
 }
 SSTU_ENGINEMOUNT
 {
+	name = Flat
+	//this is the flat-cap for SRB's, though could be re-used for others
+	height = 0
+	invertModel = false
+	singleModel = true
+	height = 0
+	verticalOffset = 0
+	fairingDisabled = true
+	fairingTopOffset = 0
+	defaultDiameter = 5
+	mass = 0
+	volume = 0
+	rcsVerticalPosition = 0
+	rcsHorizontalPosition = 2.5
+	rcsRotation = 0
+	node = 0, -0, 0, 0, -1, 0, 2
+}
+SSTU_ENGINEMOUNT
+{
+	name = SRB-A
+	modelName = SSTU/Assets/SC-ENG-MOUNT-SRB-A
+	singleModel = true
+	height = 3.034
+	fairingDisabled = false
+	defaultDiameter = 2.5
+	mass = 0
+	volume = 14.25
+	rcsVerticalPosition = -0.1
+	rcsHorizontalPosition = 1.25
+	rcsRotation = 0
+	node = 0, -3.034, 0, 0, -1, 0, 2
+}
+SSTU_ENGINEMOUNT
+{
+	name = SRB-B
+	modelName = SSTU/Assets/SC-ENG-MOUNT-SRB-A
+	singleModel = true
+	height = 3.034
+	fairingDisabled = false
+	defaultDiameter = 2.5
+	mass = 0
+	volume = 14.25
+	rcsVerticalPosition = -0.1
+	rcsHorizontalPosition = 1.25
+	rcsRotation = 0
+	node = 0, -3.034, 0, 0, -1, 0, 2
+}
+SSTU_ENGINEMOUNT
+{
+	name = SRB-C
+	modelName = SSTU/Assets/SC-ENG-MOUNT-SRB-A
+	singleModel = true
+	height = 3.034
+	fairingDisabled = false
+	defaultDiameter = 2.5
+	mass = 0
+	volume = 14.25
+	rcsVerticalPosition = -0.1
+	rcsHorizontalPosition = 1.25
+	rcsRotation = 0
+	node = 0, -3.034, 0, 0, -1, 0, 2
+}
+SSTU_ENGINEMOUNT
+{
+	name = SRB-D
+	modelName = SSTU/Assets/SC-ENG-MOUNT-SRB-A
+	singleModel = true
+	height = 3.034
+	fairingDisabled = false
+	defaultDiameter = 2.5
+	mass = 0
+	volume = 14.25
+	rcsVerticalPosition = -0.1
+	rcsHorizontalPosition = 1.25
+	rcsRotation = 0
+	node = 0, -3.034, 0, 0, -1, 0, 2
+}
+SSTU_ENGINEMOUNT
+{
 	name = SLS
 	modelName = SSTU/Assets/SC-ENG-MOUNT-SLS
 	singleModel = true

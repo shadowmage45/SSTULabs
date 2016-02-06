@@ -87,7 +87,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureSets = node.GetNodes("TEXTURESET");
             textureSetNames = new String[textureSets.Length];
             for (int i = 0; i < textureSets.Length; i++)

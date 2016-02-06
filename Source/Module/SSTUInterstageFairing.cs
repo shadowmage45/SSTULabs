@@ -631,7 +631,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             loadMaterial();
             updateTechLimits();
@@ -794,17 +794,17 @@ namespace SSTUTools
             AttachNode node = part.findAttachNode(bottomNodeName);
             if (node != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, node, bottomNodePOs, node.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, node, bottomNodePOs, node.orientation, userInput);
             }
             node = part.findAttachNode(internalNodeName);
             if (node != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, node, innerNodePos, node.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, node, innerNodePos, node.orientation, userInput);
             }
             node = part.findAttachNode(topNodeName);
             if (node != null)
             {
-                SSTUUtils.updateAttachNodePosition(part, node, topNodePos, node.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, node, topNodePos, node.orientation, userInput);
             }
         }
 

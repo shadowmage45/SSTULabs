@@ -246,17 +246,17 @@ namespace SSTUTools
 
         //Private-instance-local fields for tracking the current/loaded config; basically parsed from configNodeData when config is loaded
         //upper, rcs, and mount must be present for every part
-        private SSTUCustomUpperStagePart upperModule;
-        private SSTUCustomUpperStageTopCap upperTopCapModule;
-        private SSTUCustomUpperStagePart upperBottomCapModule;
+        private SingleModelData upperModule;
+        private SingleModelData upperTopCapModule;
+        private SingleModelData upperBottomCapModule;
         private SSTUCustomUpperStageRCS rcsModule;
         private MountModelData[] mountModules;
         private MountModelData currentMountModule;
         //lower and intertank need only be present for split-tank type parts
-        private SSTUCustomUpperStagePart lowerModule;
-        private SSTUCustomUpperStagePart lowerBottomCapModule;
-        private SSTUCustomUpperStageIntertank[] intertankModules;
-        private SSTUCustomUpperStageIntertank currentIntertankModule;
+        private SingleModelData lowerModule;
+        private SingleModelData lowerBottomCapModule;
+        private SingleModelData[] intertankModules;
+        private SingleModelData currentIntertankModule;
         
         private FuelTypeData[] fuelTypes;
         private FuelTypeData currentFuelTypeData;
@@ -331,7 +331,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Next Intertank", guiActive = false, guiActiveEditor = true, active = true)]
         public void nextIntertankEvent()
         {
-            SSTUCustomUpperStageIntertank nextDef = SSTUUtils.findNext(intertankModules, l => l == currentIntertankModule, false);
+            SingleModelData nextDef = SSTUUtils.findNext(intertankModules, l => l == currentIntertankModule, false);
             updateIntertankModelFromEditor(nextDef);
 
             int moduleIndex = part.Modules.IndexOf(this);
@@ -545,7 +545,7 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigData()
         {
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             fuelTypes = FuelTypeData.parseFuelTypeData(node.GetNodes("FUELTYPE"));
             currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
@@ -567,9 +567,9 @@ namespace SSTUTools
             ConfigNode rcsNode = node.GetNode("RCS");
             ConfigNode[] mountNodes = node.GetNodes("MOUNT");
             
-            upperModule = new SSTUCustomUpperStagePart(tankUpperNode);
-            upperTopCapModule = new SSTUCustomUpperStageTopCap(upperTopCapNode);
-            upperBottomCapModule = new SSTUCustomUpperStagePart(upperBottomCapNode);
+            upperModule = new SingleModelData(tankUpperNode);
+            upperTopCapModule = new SingleModelData(upperTopCapNode);
+            upperBottomCapModule = new SingleModelData(upperBottomCapNode);
             rcsModule = new SSTUCustomUpperStageRCS(rcsNode);
 
             //load mount configs
@@ -587,23 +587,21 @@ namespace SSTUTools
                 ConfigNode tankLowerNode = node.GetNode("TANKLOWER");
                 ConfigNode lowerBottomCapNode = node.GetNode("TANKLOWERBOTTOMCAP");
                 ConfigNode[] intertankNodes = node.GetNodes("INTERTANK");
-                lowerModule = new SSTUCustomUpperStagePart(tankLowerNode);
-                lowerBottomCapModule = new SSTUCustomUpperStagePart(lowerBottomCapNode);
+                lowerModule = new SingleModelData(tankLowerNode);
+                lowerBottomCapModule = new SingleModelData(lowerBottomCapNode);
                 //load intertank configs
                 len = intertankNodes.Length;
-                intertankModules = new SSTUCustomUpperStageIntertank[len];
+                intertankModules = new SingleModelData[len];
                 for (int i = 0; i < len; i++)
                 {
-                    intertankModules[i] = new SSTUCustomUpperStageIntertank(intertankNodes[i]);
+                    intertankModules[i] = new SingleModelData(intertankNodes[i]);
                 }
                 currentIntertankModule = Array.Find(intertankModules, l => l.name == currentIntertank);
             }
 
             len = limitNodes.Length;
             techLimits = new TechLimitHeightDiameter[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }
-
-            print("loaded config data, split tank: " + splitTank);
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }            
         }
 
         #endregion
@@ -654,7 +652,7 @@ namespace SSTUTools
             float startY = totalHeight * 0.5f;
             partTopY = startY;
                         
-            topFairingBottomY = partTopY - upperTopCapModule.currentHeight + (upperTopCapModule.fairingOffset * upperTopCapModule.currentHeightScale);
+            topFairingBottomY = partTopY - upperTopCapModule.currentHeight + (upperTopCapModule.modelDefinition.fairingTopOffset * upperTopCapModule.currentHeightScale);
             partBottomY = -startY;           
 
             startY -= upperTopCapModule.currentHeight;
@@ -678,20 +676,20 @@ namespace SSTUTools
             }
 
             currentMountModule.currentVerticalPosition = startY;
-            rcsModule.currentVerticalPosition = currentMountModule.currentVerticalPosition + (currentMountModule.mountDefinition.rcsVerticalPosition * currentMountModule.currentHeightScale);
-            rcsModule.currentHorizontalPosition = currentMountModule.mountDefinition.rcsHorizontalPosition * currentMountModule.currentDiameterScale;
-            rcsModule.mountVerticalRotation = currentMountModule.mountDefinition.rcsVerticalRotation;
-            rcsModule.mountHorizontalRotation = currentMountModule.mountDefinition.rcsHorizontalRotation;
+            rcsModule.currentVerticalPosition = currentMountModule.currentVerticalPosition + (currentMountModule.modelDefinition.rcsVerticalPosition * currentMountModule.currentHeightScale);
+            rcsModule.currentHorizontalPosition = currentMountModule.modelDefinition.rcsHorizontalPosition * currentMountModule.currentDiameterScale;
+            rcsModule.mountVerticalRotation = currentMountModule.modelDefinition.rcsVerticalRotation;
+            rcsModule.mountHorizontalRotation = currentMountModule.modelDefinition.rcsHorizontalRotation;
 
             if (splitTank)
             {
                 bottomFairingTopY = currentIntertankModule.currentVerticalPosition;
-                bottomFairingTopY -= currentIntertankModule.fairingOffset * currentMountModule.currentHeightScale;
+                bottomFairingTopY -= currentIntertankModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale;
             }
             else
             {
                 bottomFairingTopY = currentMountModule.currentVerticalPosition;
-                bottomFairingTopY += currentMountModule.mountDefinition.fairingTopOffset * currentMountModule.currentHeightScale;
+                bottomFairingTopY += currentMountModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale;
             }
         }
 
@@ -742,20 +740,20 @@ namespace SSTUTools
         private void updateNodePositions(bool userInput)
         {
             AttachNode topNode = part.findAttachNode("top");
-            SSTUUtils.updateAttachNodePosition(part, topNode, new Vector3(0, partTopY, 0), topNode.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(0, partTopY, 0), topNode.orientation, userInput);
 
             AttachNode topNode2 = part.findAttachNode("top2");
-            SSTUUtils.updateAttachNodePosition(part, topNode2, new Vector3(0, topFairingBottomY, 0), topNode2.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode2, new Vector3(0, topFairingBottomY, 0), topNode2.orientation, userInput);
 
             AttachNode bottomNode = part.findAttachNode("bottom");
-            SSTUUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
 
             AttachNode interstage = part.findAttachNode(interstageNodeName);
             if (interstage != null)
             {                
                 Vector3 pos = new Vector3(0, bottomFairingTopY, 0);
                 Vector3 orientation = new Vector3(0, -1, 0);
-                SSTUUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
             }
         }
 
@@ -770,31 +768,31 @@ namespace SSTUTools
         {
             Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
 
-            setupModel(upperTopCapModule, modelBase);
-            setupModel(upperModule, modelBase);
-            setupModel(upperBottomCapModule, modelBase);
+            setupModel(upperTopCapModule, modelBase, ModelOrientation.CENTRAL);
+            setupModel(upperModule, modelBase, ModelOrientation.CENTRAL);
+            setupModel(upperBottomCapModule, modelBase, ModelOrientation.CENTRAL);
             
             if (splitTank)
             {
                 if (currentIntertankModule.name != defaultIntertank)
                 {
-                    SSTUCustomUpperStageIntertank dim = Array.Find<SSTUCustomUpperStageIntertank>(intertankModules, l => l.name == defaultIntertank);
-                    dim.setupModel(part, modelBase);
+                    SingleModelData dim = Array.Find<SingleModelData>(intertankModules, l => l.name == defaultIntertank);
+                    dim.setupModel(part, modelBase, ModelOrientation.CENTRAL);
                     removeCurrentModel(dim);
                 }
-                setupModel(currentIntertankModule, modelBase);
-                setupModel(lowerModule, modelBase);
-                setupModel(lowerBottomCapModule, modelBase);
+                setupModel(currentIntertankModule, modelBase, ModelOrientation.CENTRAL);
+                setupModel(lowerModule, modelBase, ModelOrientation.CENTRAL);
+                setupModel(lowerBottomCapModule, modelBase, ModelOrientation.CENTRAL);
             }
             if (currentMountModule.name != defaultMount)
             {
                 MountModelData dmm = Array.Find<MountModelData>(mountModules, l => l.name == defaultMount);
-                dmm.setupModel(part, modelBase);
+                dmm.setupModel(part, modelBase, ModelOrientation.BOTTOM);
                 removeCurrentModel(dmm);
             }
 
-            setupModel(currentMountModule, modelBase);
-            setupModel(rcsModule, part.transform.FindRecursive("model").FindOrCreate(rcsTransformName));
+            setupModel(currentMountModule, modelBase, ModelOrientation.BOTTOM);
+            setupModel(rcsModule, part.transform.FindRecursive("model").FindOrCreate(rcsTransformName), ModelOrientation.CENTRAL);
         }
 
         /// <summary>
@@ -802,9 +800,9 @@ namespace SSTUTools
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
-        private void setupModel(ModelData model, Transform parent)
+        private void setupModel(ModelData model, Transform parent, ModelOrientation orientation)
         {
-            model.setupModel(part, parent);
+            model.setupModel(part, parent, orientation);
         }
 
         /// <summary>
@@ -917,7 +915,7 @@ namespace SSTUTools
             removeCurrentModel(currentMountModule);
             currentMountModule = nextDef;
             currentMount = nextDef.name;
-            setupModel(currentMountModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName));
+            setupModel(currentMountModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.BOTTOM);
             updateModules(true);
             updateModels();
             updateFuelVolume();
@@ -929,12 +927,12 @@ namespace SSTUTools
         /// Updates the current intertank mesh/model from user input
         /// </summary>
         /// <param name="newDef"></param>
-        private void updateIntertankModelFromEditor(SSTUCustomUpperStageIntertank newDef)
+        private void updateIntertankModelFromEditor(SingleModelData newDef)
         {
             removeCurrentModel(currentIntertankModule);
             currentIntertankModule = newDef;
             currentIntertank = newDef.name;
-            setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName));
+            setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.CENTRAL);
             updateModules(true);
             updateModels();
             updateTankStats();
@@ -1138,26 +1136,6 @@ namespace SSTUTools
 
     }
 
-    public class SSTUCustomUpperStageIntertank : SSTUCustomUpperStagePart
-    {
-        public float ratio = 0.75f;
-        public float fairingOffset = 0.4f;
-        public SSTUCustomUpperStageIntertank(ConfigNode node) : base(node)
-        {
-            ratio = node.GetFloatValue("ratio", ratio);
-            fairingOffset = node.GetFloatValue("fairingOffset", fairingOffset);
-        }
-    }
-
-    public class SSTUCustomUpperStageTopCap : SSTUCustomUpperStagePart
-    {
-        public float fairingOffset = 0.0f;        
-        public SSTUCustomUpperStageTopCap(ConfigNode node) : base(node)
-        {
-            fairingOffset = node.GetFloatValue("fairingOffset", fairingOffset);
-        }
-    }
-
     public class SSTUCustomUpperStageRCS : ModelData
     {
         public GameObject[] models;
@@ -1178,10 +1156,10 @@ namespace SSTUTools
             modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
         }
         
-        public override void setupModel(Part part, Transform parent)
+        public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
         {
             models = new GameObject[4];
-            Transform[] trs = part.transform.FindChildren(modelName);
+            Transform[] trs = part.transform.FindChildren(modelDefinition.modelName);
             if (trs != null && trs.Length>0)
             {
                 for (int i = 0; i < 4; i++)
@@ -1193,7 +1171,7 @@ namespace SSTUTools
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    models[i] = SSTUUtils.cloneModel(modelName);
+                    models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
                 }
             }
             foreach (GameObject go in models)
@@ -1225,14 +1203,5 @@ namespace SSTUTools
                 }
             }
         }
-    }
-
-    //TODO -- fix this to use singlemodeldata directly...
-    public class SSTUCustomUpperStagePart : SingleModelData
-    {
-        public SSTUCustomUpperStagePart(ConfigNode node) : base(node)
-        {
-
-        }        
     }
 }

@@ -433,7 +433,7 @@ namespace SSTUTools.Module
             if (initialized) { return; }
             initialized = true;
             fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
-            ConfigNode node = SSTUNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
             insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
@@ -600,11 +600,9 @@ namespace SSTUTools.Module
                 float scale = getEngineScale();
                 float thrustScalar = Mathf.Pow(scale, thrustScalePower);
                 float thrustPerEngine = engineThrust * thrustScalar;
-                engine.maxThrust = thrustPerEngine * numberOfEngines;
-                guiEngineThrust = engine.maxThrust;
-                ConfigNode updateNode = new ConfigNode("MODULE");
-                updateNode.AddValue("maxThrust", engine.maxThrust);
-                engine.Load(updateNode);
+                float totalThrust = thrustPerEngine * numberOfEngines;
+                guiEngineThrust = totalThrust;
+                SSTUUtils.updateEngineThrust(engine, engine.minThrust, totalThrust);
             }
             else
             {
@@ -615,8 +613,8 @@ namespace SSTUTools.Module
 
         private void updateNodePositions(bool userInput)
         {
-            SSTUUtils.updateAttachNodePosition(part, part.findAttachNode("top"), new Vector3(0, currentHeight * 0.5f, 0), Vector3.up, userInput);            
-            SSTUUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -currentHeight * 0.5f, 0), Vector3.down, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("top"), new Vector3(0, currentHeight * 0.5f, 0), Vector3.up, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -currentHeight * 0.5f, 0), Vector3.down, userInput);
         }
 
         private float getEngineScale()

@@ -98,6 +98,11 @@ namespace SSTUTools
 
         public float getUsableVolume(float rawVolume) { return rawVolume * (1.0f - tankageVolumeLoss); }
 
+        public float getResourceMass(float usableVolume)
+        {
+            return fuelType.tonsPerCubicMeter * usableVolume;
+        }
+
         public float getTankageMass(float usableVolume)
         {            
             return usableVolume * fuelType.tonsPerCubicMeter * tankageMassFraction;
