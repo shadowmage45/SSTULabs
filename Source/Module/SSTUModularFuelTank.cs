@@ -760,9 +760,9 @@ namespace SSTUTools
             AttachNode surface = part.srfAttachNode;
             if (surface != null)
             {
-                Vector3 pos = new Vector3(currentTankDiameter * 0.5f, 0, 0);
-                Vector3 orientation = new Vector3(1, 0, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, orientation, userInput);
+                Vector3 pos = currentMainTankModule.modelDefinition.surfaceNode.position * currentMainTankModule.currentDiameterScale;
+                Vector3 rot = currentMainTankModule.modelDefinition.surfaceNode.orientation;
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);                
             }
             AttachNode interstage = part.findAttachNode(interstageNodeName);
             if (interstage != null)

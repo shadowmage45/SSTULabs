@@ -61,6 +61,7 @@ namespace SSTUTools
         public readonly float rcsVerticalRotation = 0;
         public readonly float rcsHorizontalRotation = 0;
         public readonly AttachNodeBaseData[] attachNodeData;
+        public readonly AttachNodeBaseData surfaceNode;
         public readonly String defaultTextureSet;
         public readonly ModelTextureSet[] textureSets;
         
@@ -101,6 +102,15 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 textureSets[i] = new ModelTextureSet(textureSetNodes[i]);
+            }
+            if (node.HasValue("surface"))
+            {
+                surfaceNode = new AttachNodeBaseData(node.GetStringValue("surface"));
+            }
+            else
+            {
+                String val = (diameter*0.5f) + ",0,0,1,0,0,2";
+                surfaceNode = new AttachNodeBaseData(val);
             }
         }
 

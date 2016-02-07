@@ -273,13 +273,28 @@ namespace SSTUTools
         {
             if (tr == null || tr.childCount<=0) { return; }
 
-            int len = tr.childCount;
-            for (int i = 0; i < len; i++)
+            // for some reason doing destroy immediate causes problems
+            //foreach (Transform child in tr)
+            //{
+            //    if (child == null) { continue; }
+            //    MonoBehaviour.print("Destroying game object: " + child);
+            //    GameObject.DestroyImmediate(child.gameObject);
+            //}
+
+            foreach (Transform child in tr)
             {
-                GameObject go = tr.GetChild(i).gameObject;
-                GameObject.Destroy(go);
-                MonoBehaviour.print("Destroying game object: " + go);
+                if (child == null) { continue; }
+                MonoBehaviour.print("Destroying game object: " + child);
+                GameObject.Destroy(child.gameObject);
             }
+
+            //int len = tr.childCount;
+            //for (int i = 0; i < len; i++)
+            //{
+            //    GameObject go = tr.GetChild(i).gameObject;
+            //    GameObject.Destroy(go);
+            //    MonoBehaviour.print("Destroying game object: " + go);
+            //}
         }
 
         public static void recursePrintMaterialData(Transform tr)
@@ -296,22 +311,6 @@ namespace SSTUTools
             {
                 recursePrintMaterialData(child);
             }
-        }
-
-        public static void setAeroMaterial(Transform tr)
-        {
-            Shader s = Shader.Find("Aerodynamics/DragRender");
-            recurseSetAeroMaterial(tr, s);
-        }
-
-        private static void recurseSetAeroMaterial(Transform tr, Shader s)
-        {
-            if (tr.renderer != null && tr.renderer.material != null)
-            {
-                tr.renderer.material = new Material(s);
-            }
-            foreach (Transform child in tr) { recurseSetAeroMaterial(child, s); }
-
         }
 
         public static void recursePrintChildTransforms(Transform tr, String prefix)

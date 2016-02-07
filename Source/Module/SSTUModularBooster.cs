@@ -22,6 +22,9 @@ namespace SSTUTools
         [KSPField]
         public String thrustTransformName = "SSTU-MRB-ThrustTransform";
 
+        [KSPField]
+        public String gimbalTransformName = "SSTU-MRB-GimbalTransform";
+
         /// <summary>
         /// If true, the engine thrust will be scaled with model changes by the parameters below
         /// </summary>
@@ -306,7 +309,7 @@ namespace SSTUTools
             if (mod != null && mod != currentNozzleModule)
             {
                 //finally, clear any existing models from prefab, and initialize the currently configured models
-                resetThrustTransformParent();
+                resetTransformParents();
 
                 currentNozzleModule.destroyCurrentModel();
                 currentNozzleModule = mod;
@@ -320,7 +323,7 @@ namespace SSTUTools
             updatePartMass();
             updateAttachnodes(true);
             updateThrustOutput();
-            currentNozzleModule.setupThrustTransformDefault(part.transform.FindRecursive(thrustTransformName));
+            currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
             updateGimbalOffset();
             updateEngineISP();
             updateEditorValues();
@@ -347,7 +350,7 @@ namespace SSTUTools
                 newOffset = currentNozzleModule.gimbalAdjustmentRange;
             }
             currentGimbalOffset = newOffset;
-            currentNozzleModule.updateGimbalRotation(part.transform.TransformDirection(part.transform.forward), currentGimbalOffset);
+            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
 
             if (updateSymmetry)
             {
@@ -473,7 +476,7 @@ namespace SSTUTools
             float div = currentDiameter / diameterIncrement;
             float whole = (int)div;
             float extra = div - whole;
-            editorDiameterWhole = whole * diameterIncrement;
+            editorDiameterWhole = whole;
             editorDiameterAdjust = prevEditorDiameterAdjust = extra;
 
             float max = currentNozzleModule.gimbalAdjustmentRange;
@@ -493,6 +496,11 @@ namespace SSTUTools
             thrustTransformGO.transform.NestToParent(modelBase.transform);
             thrustTransformGO.SetActive(true);
             MonoBehaviour.print("SSTUModularBooster - Created reference thrust transform during prefab construction: " + thrustTransformGO);
+
+            GameObject gimbalTransformGO = new GameObject(gimbalTransformName);
+            gimbalTransformGO.transform.NestToParent(modelBase.transform);
+            gimbalTransformGO.SetActive(true);
+            MonoBehaviour.print("SSTUModularBooster - Created reference gimbal transform during prefab construction: " + gimbalTransformGO);
         }
 
         /// <summary>
@@ -541,8 +549,6 @@ namespace SSTUTools
             for (int i = 0; i < length; i++)
             {
                 nozzleNode = nozzleNodes[i];
-                MonoBehaviour.print("loading nozzle module from config node: " + nozzleNode);
-                nozzleNode.SetValue("nose", "false", true);//add the nose variable to the mount config nodes, set to false, as these are the mount nodes
                 nozzleModulesTemp.Add(new SRBNozzleData(nozzleNode));
             }
             this.nozzleModules = nozzleModulesTemp.ToArray();
@@ -553,19 +559,17 @@ namespace SSTUTools
                 currentNozzleName = currentNozzleModule.name;
             }
 
-            //finally, clear any existing models from prefab, and initialize the currently configured models
-            resetThrustTransformParent();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
+            
+            //reset existing gimbal/thrust transforms, remove them from the model hierarchy
+            resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
             Transform parentTransform = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
+            //finally, clear any existing models from prefab, and initialize the currently configured models
             SSTUUtils.destroyChildren(parentTransform);
-            MonoBehaviour.print("setting up current nose module, name: " + currentNoseModule.name + " model: " + currentNoseModule.modelDefinition.modelName);
             currentNoseModule.setupModel(part, parentTransform, ModelOrientation.TOP);
-            MonoBehaviour.print("setting up current nozzle module, name: " + currentNozzleModule.name + " model: " + currentNozzleModule.modelDefinition.modelName);
             currentNozzleModule.setupModel(part, parentTransform, ModelOrientation.BOTTOM);
-            MonoBehaviour.print("setting up current main module, name: " + currentMainModule.name + " model: " + currentMainModule.modelDefinition.modelName);
             currentMainModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
-
-            //tell the current nozzle module to position the gimbal and thrust transforms appropriately
-            currentNozzleModule.setupThrustTransformDefault(part.transform.FindRecursive(thrustTransformName));
+            //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
+            currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
         }
 
         /// <summary>
@@ -594,7 +598,7 @@ namespace SSTUTools
             {
                 float minThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.minThrust;
                 float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                SSTUUtils.updateEngineThrust(engine, 0, maxThrust);
+                SSTUUtils.updateEngineThrust(engine, minThrust, maxThrust);
             }
         }
 
@@ -603,26 +607,25 @@ namespace SSTUTools
         /// </summary>
         private void updateGimbalOffset()
         {
-            //update the transform orientation for the gimbal
-            Transform activeGimbal = currentNozzleModule.getGimbalTransform();
-            currentNozzleModule.updateGimbalRotation(part.transform.TransformDirection(part.transform.forward), currentGimbalOffset);
+            //update the transform orientation for the gimbal so that the moduleGimbal gets the correct 'defaultOrientation'
+            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);            
 
             //update the ModuleGimbals transform and orientation data
             ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
             if (gimbal != null)
             {
-                if (gimbal.initRots == null)//gimbal is uninitialized; merely update its transform-name reference and let it update itself during init
+                if (gimbal.initRots == null)//gimbal is uninitialized; do nothing...
                 {
-                    MonoBehaviour.print("Gimbal module rotations are null; setting gimbal transform name only.");
-                    gimbal.gimbalTransformName = currentNozzleModule.gimbalTransformName;
+                    //MonoBehaviour.print("Gimbal module rotations are null; gimbal uninitialized.");
+                    gimbal.gimbalTransformName = gimbalTransformName;
                 }
                 else
                 {
-                    MonoBehaviour.print("Updating gimbal module data...");
-                    gimbal.gimbalTransformName = currentNozzleModule.gimbalTransformName;
+                    //MonoBehaviour.print("Updating gimbal module data...");
                     //set gimbal actuation range
+                    gimbal.gimbalTransformName = gimbalTransformName;
                     gimbal.gimbalRange = currentNozzleModule.gimbalFlightRange;
-                    gimbal.OnStart(StartState.Flying);
+                    gimbal.OnStart(StartState.Flying);//forces gimbal to re-init its transform and default orientation data
                 }
             }
             else
@@ -748,11 +751,17 @@ namespace SSTUTools
         /// and the transforms should subsequently be re-parented to thier proper hierarchy after the new/updated model/module is initialized.
         /// </summary>
         /// <param name="modelBase"></param>
-        private void resetThrustTransformParent()
+        private void resetTransformParents()
         {
             Transform modelBase = part.transform.FindRecursive("model");
-            //re-parent the thrust transform so they do not get deleted when clearing the existing models 
-            modelBase.FindRecursive(thrustTransformName).NestToParent(modelBase);
+            //re-parent the thrust transform so they do not get deleted when clearing the existing models
+            Transform gimbal = modelBase.FindRecursive(gimbalTransformName);
+            foreach (Transform tr in gimbal) { tr.parent = gimbal.parent; }
+            gimbal.parent = modelBase;
+
+            Transform thrust = modelBase.FindRecursive(thrustTransformName);
+            foreach (Transform tr in thrust) { tr.parent = thrust.parent; }
+            thrust.parent = modelBase;
         }
 
         #endregion ENDREGION - Initialization Methods
@@ -788,10 +797,10 @@ namespace SSTUTools
     /// </summary>
     public class SRBNozzleData : MountModelData
     {        
-        public String thrustTransformName;
-        public String gimbalTransformName;
-        public float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
-        public float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
+        public readonly String thrustTransformName;
+        public readonly String gimbalTransformName;
+        public readonly float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
+        public readonly float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
         public Quaternion gimbalDefaultOrientation;
 
         public SRBNozzleData(ConfigNode node) : base(node)
@@ -800,12 +809,6 @@ namespace SSTUTools
             gimbalTransformName = node.GetStringValue("gimbalTransformName");
             gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
             gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
-        }
-
-        public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
-        {
-            base.setupModel(part, parent, orientation);
-            gimbalDefaultOrientation = getGimbalTransform().localRotation;
         }
 
         public Transform getGimbalTransform()
@@ -833,15 +836,21 @@ namespace SSTUTools
         /// in the same orientation as the models existing thrust transform.
         /// </summary>
         /// <param name="partThrustTransform"></param>
-        public void setupThrustTransformDefault(Transform partThrustTransform)
-        {            
+        public void setupTransformDefaults(Transform partThrustTransform, Transform partGimbalTransform)
+        {
             Transform modelGimbalTransform = getGimbalTransform();
             Transform modelThrustTransform = getThrustTransform();
-            //set actual thrust transform parent to the models' gimbal; will re-use the models gimbal by inserting that data into ModuleGimbal
-            partThrustTransform.parent = modelGimbalTransform;
-            //set actual thrust transform to the position and rotation of the models' thrust transform; as it is parented to the models gimbal, it should have precisely the same orientation as the models' thrust transform
+
+            partGimbalTransform.position = modelGimbalTransform.position;
+            partGimbalTransform.rotation = modelGimbalTransform.rotation;
+            partGimbalTransform.parent = modelGimbalTransform.parent;
+            modelGimbalTransform.parent = partGimbalTransform;
+            gimbalDefaultOrientation = modelGimbalTransform.localRotation;
+
             partThrustTransform.position = modelThrustTransform.position;
             partThrustTransform.rotation = modelThrustTransform.rotation;
+            partThrustTransform.parent = modelGimbalTransform;
+            //MonoBehaviour.print("set up transform default parenting and orientations; default orientation: "+gimbalDefaultOrientation);
         }
 
         /// <summary>
@@ -850,14 +859,12 @@ namespace SSTUTools
         /// <param name="partGimbalTransform"></param>
         /// <param name="newRotation"></param>
         public void updateGimbalRotation(Vector3 worldAxis, float newRotation)
-        {            
+        {
+            //MonoBehaviour.print("updating rotation for angle: " + newRotation);
             Transform modelGimbalTransform = getGimbalTransform();
             modelGimbalTransform.localRotation = gimbalDefaultOrientation;
-            // transform this from a global/world axis to a local axis
-            // this should de-couple the need to have the gimbal in the model oriented in any specific orientation
-            // (stock does not mandate gimbal orientations, they can be rotated arbitrarily in the model)
-            Vector3 localAxis = modelGimbalTransform.InverseTransformDirection(worldAxis);
-            modelGimbalTransform.Rotate(localAxis, -newRotation, Space.Self);
+            modelGimbalTransform.Rotate(worldAxis, -newRotation, Space.World);
         }
+
     }
 }
