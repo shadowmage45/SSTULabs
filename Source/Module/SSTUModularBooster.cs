@@ -86,6 +86,15 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float currentGimbalOffset;
 
+        [KSPField(isPersistant = true)]
+        public String currentMainTexture;
+
+        [KSPField(isPersistant = true)]
+        public String currentNoseTexture;
+
+        [KSPField(isPersistant = true)]
+        public String currentNozzleTexture;
+
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
@@ -192,18 +201,39 @@ namespace SSTUTools
             updateNoseFromEditor(d.name, true);
         }
 
-        [KSPEvent(guiName = "Prev Mount", guiActiveEditor = true, guiActive = false)]
+        [KSPEvent(guiName = "Prev Nozzle", guiActiveEditor = true, guiActive = false)]
         public void prevMountModelEvent()
         {
             SingleModelData d = SSTUUtils.findNext(nozzleModules, m => m.name == currentNozzleName, true);
             updateMountFromEditor(d.name, true);
         }
 
-        [KSPEvent(guiName = "Next Mount", guiActiveEditor = true, guiActive = false)]
+        [KSPEvent(guiName = "Next Nozzle", guiActiveEditor = true, guiActive = false)]
         public void nextMountModelEvent()
         {
             SingleModelData d = SSTUUtils.findNext(nozzleModules, m => m.name == currentNozzleName, false);
             updateMountFromEditor(d.name, true);
+        }
+
+        [KSPEvent(guiName = "Next Nose Texture", guiActiveEditor = true, guiActive = false)]
+        public void nextNoseTextureEvent()
+        {
+            String nextTex = currentNoseModule.getNextTextureSetName(currentNoseTexture, false);
+            updateNoseTextureFromEditor(nextTex, true);
+        }
+
+        [KSPEvent(guiName = "Next Main Texture", guiActiveEditor = true, guiActive = false)]
+        public void nextMainTextureEvent()
+        {
+            String nextTex = currentMainModule.getNextTextureSetName(currentMainTexture, false);
+            updateMainTextureFromEditor(nextTex, true);
+        }
+
+        [KSPEvent(guiName = "Next Nozzle Texture", guiActiveEditor = true, guiActive = false)]
+        public void nextNozzleTextureEvent()
+        {
+            String nextTex = currentNozzleModule.getNextTextureSetName(currentNozzleTexture, false);
+            updateNozzleTextureFromEditor(nextTex, true);
         }
 
         /// <summary>
@@ -250,6 +280,11 @@ namespace SSTUTools
                 currentMainModule.setupModel(part, part.transform.FindRecursive(baseTransformName), ModelOrientation.CENTRAL);
                 currentMainName = currentMainModule.name;
             }
+            if (!currentMainModule.isValidTextureSet(currentMainTexture))
+            {
+                currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet;            
+            }
+            currentMainModule.enableTextureSet(currentMainTexture);
             updateModelScaleAndPosition();
             updatePartResources();
             updatePartMass();
@@ -282,6 +317,11 @@ namespace SSTUTools
                 currentNoseModule = mod;
                 currentNoseName = currentNoseModule.name;
             }
+            if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
+            {
+                currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet;
+            }
+            currentNoseModule.enableTextureSet(currentNoseTexture);
             updateModelScaleAndPosition();
             updatePartResources();
             updatePartMass();
@@ -315,9 +355,13 @@ namespace SSTUTools
                 currentNozzleModule = mod;
                 currentNozzleModule.setupModel(part, part.transform.FindRecursive(baseTransformName), ModelOrientation.BOTTOM);
                 currentNozzleName = currentNozzleModule.name;
-                currentGimbalOffset = 0;
+                currentGimbalOffset = 0;                
             }
-
+            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
+            {
+                currentNozzleTexture = currentNozzleModule.modelDefinition.defaultTextureSet;
+            }
+            currentNozzleModule.enableTextureSet(currentNozzleTexture);
             updateModelScaleAndPosition();
             updatePartResources();
             updatePartMass();
@@ -359,6 +403,45 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateGimbalOffsetFromEditor(newOffset, false);
                 }
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
+
+        private void updateMainTextureFromEditor(String newTex, bool updateSymmetry)
+        {
+            currentMainTexture = newTex;
+            currentMainModule.enableTextureSet(newTex);
+            if (updateSymmetry)
+            {
+                foreach(Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularBooster>().updateMainTextureFromEditor(newTex, false);
+                }
+            }
+        }
+
+        private void updateNoseTextureFromEditor(String newTex, bool updateSymmetry)
+        {
+            currentNoseTexture = newTex;
+            currentNoseModule.enableTextureSet(newTex);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularBooster>().updateNoseTextureFromEditor(newTex, false);
+                }
+            }
+        }
+
+        private void updateNozzleTextureFromEditor(String newTex, bool updateSymmetry)
+        {
+            currentNozzleTexture = newTex;
+            currentNozzleModule.enableTextureSet(newTex);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularBooster>().updateNozzleTextureFromEditor(newTex, false);
+                }
             }
         }
 
@@ -464,6 +547,7 @@ namespace SSTUTools
                 updatePartResources();
             }
             updateGui();
+            updateTextureSets();
         }
 
         /// <summary>
@@ -522,6 +606,7 @@ namespace SSTUTools
                 currentMainModule = mainModules[0];
                 currentMainName = currentMainModule.name;
             }
+            if (!currentMainModule.isValidTextureSet(currentMainTexture)) { currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet; }
 
             //load nose modules from NOSE nodes
             ConfigNode[] noseNodes = node.GetNodes("NOSE");
@@ -540,6 +625,7 @@ namespace SSTUTools
                 currentNoseModule = this.noseModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNoseName = currentNoseModule.name;
             }
+            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet; }
 
             //load nose modules from NOZZLE nodes
             ConfigNode[] nozzleNodes = node.GetNodes("NOZZLE");
@@ -558,7 +644,7 @@ namespace SSTUTools
                 currentNozzleModule = this.nozzleModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNozzleName = currentNozzleModule.name;
             }
-
+            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture)) { currentNozzleTexture = currentNozzleModule.modelDefinition.defaultTextureSet; }
             
             //reset existing gimbal/thrust transforms, remove them from the model hierarchy
             resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
@@ -743,6 +829,13 @@ namespace SSTUTools
                 Events["prevMainModelEvent"].active = false;
                 Events["nextMainModelEvent"].active = false;
             }
+        }
+
+        private void updateTextureSets()
+        {
+            currentNoseModule.enableTextureSet(currentNoseTexture);
+            currentMainModule.enableTextureSet(currentMainTexture);
+            currentNozzleModule.enableTextureSet(currentNozzleTexture);
         }
 
         /// <summary>
