@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools.Module
 {
-    class SSTUCustomRadialDecoupler : ModuleAnchoredDecoupler
+    class SSTUCustomRadialDecoupler : PartModule
     {
 
         [KSPField(isPersistant = true)]
