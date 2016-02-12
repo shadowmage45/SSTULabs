@@ -1005,7 +1005,8 @@ namespace SSTUTools
             Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
 
             String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable" ) : actionName;
-            Events["jettisonEvent"].guiName = Actions["jettisonAction"].guiName = guiActionName + " " + fairingName;
+            Events["jettisonEvent"].guiName = guiActionName + " " + fairingName;
+            Actions["jettisonAction"].guiName = actionName + " " + fairingName;
             Events["jettisonEvent"].active = Actions["jettisonAction"].active = (HighLogic.LoadedSceneIsEditor && canDisableInEditor) || (currentlyEnabled && canManuallyJettison);
 
             Fields["shieldedPartCount"].guiActive = Fields["shieldedPartCount"].guiActiveEditor = currentlyEnabled && shieldParts;

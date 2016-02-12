@@ -41,6 +41,9 @@ namespace SSTUTools
         [KSPField(guiName = "Tank Diameter +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = 0f, maxValue = 0.95f, stepIncrement = 0.05f)]
         public float editorTankDiameterAdjust;
 
+        [KSPField(guiName = "Tank Height +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = -1f, maxValue = 1f, stepIncrement = 0.05f)]
+        public float editorTankHeightAdjust;
+
         [KSPField(guiActiveEditor = true, guiName = "Tank Diameter (m)")]
         public float guiTankDiameter = 0;
 
@@ -71,7 +74,10 @@ namespace SSTUTools
         public String currentMountType = String.Empty;
 
         [KSPField(isPersistant = true)]
-        public float currentTankDiameter = 0;
+        public float currentTankDiameter = 2.5f;
+
+        [KSPField(isPersistant = true)]
+        public float currentTankVerticalScale = 1f;
 
         [KSPField(isPersistant = true)]
         public String currentTankTexture = String.Empty;
@@ -104,6 +110,8 @@ namespace SSTUTools
 
         private float editorTankWholeDiameter;
         private float editorPrevTankDiameterAdjust;
+
+        private float editorPrevTankHeightAdjust;
 
         private float currentTankVolume;
         private float currentTankMass;
@@ -329,6 +337,32 @@ namespace SSTUTools
                 }
             }
         }
+
+        private void setTankScaleFromEditor(float editorScaleValue, bool updateSymmetry)
+        {
+            float newScale = 1;
+            float maxDelta = 0f;
+            if (editorScaleValue < 0)
+            {
+                maxDelta = 1.0f - currentMainTankModule.minVerticalScale;
+            }
+            else
+            {
+                maxDelta = currentMainTankModule.maxVerticalScale - 1.0f;
+            }            
+            newScale = 1.0f + (maxDelta * editorScaleValue);
+            currentTankVerticalScale = newScale;
+
+            restoreEditorFields();
+            updateEditorStats(true);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularFuelTank>().setTankScaleFromEditor(editorScaleValue, false);
+                }
+            }
+        }
         
         private void setNoseTextureFromEditor(String newSet, bool updateSymmetry)
         {
@@ -475,6 +509,11 @@ namespace SSTUTools
                 float newDiameter = editorTankWholeDiameter + (editorTankDiameterAdjust * tankDiameterIncrement);
                 setTankDiameterFromEditor(newDiameter, true);
             }
+            else if (editorPrevTankHeightAdjust != editorTankHeightAdjust)
+            {
+                editorPrevTankHeightAdjust = editorTankHeightAdjust;                
+                setTankScaleFromEditor(editorTankHeightAdjust, true);
+            }
             else
             {
                 updateAttachNodes(true);
@@ -607,6 +646,8 @@ namespace SSTUTools
             float extra = div - whole;
             editorTankWholeDiameter = whole * tankDiameterIncrement;
             editorPrevTankDiameterAdjust = editorTankDiameterAdjust = extra;
+
+            editorPrevTankHeightAdjust = editorTankHeightAdjust;
         }
 
         /// <summary>
@@ -631,7 +672,13 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleStats()
         {
-            currentMainTankModule.updateScaleForDiameter(currentTankDiameter);
+            float diameterScale = currentTankDiameter / currentMainTankModule.modelDefinition.diameter;
+            currentMainTankModule.updateScale(diameterScale, currentTankVerticalScale*diameterScale);
+            //float tankHeight = currentMainTankModule.modelDefinition.height * currentTankVerticalScale * diameterScale;
+            //MonoBehaviour.print("new tank height: " + tankHeight);
+            //currentMainTankModule.updateScaleForHeightAndDiameter(tankHeight, currentTankDiameter);
+
+            //currentMainTankModule.updateScaleForDiameter(currentTankDiameter);
             currentNoseModule.updateScaleForDiameter(currentTankDiameter);
             currentMountModule.updateScaleForDiameter(currentTankDiameter);
             float totalHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
@@ -751,6 +798,7 @@ namespace SSTUTools
             guiTankVolume = currentTankVolume;
             guiTankDiameter = currentTankDiameter;
             guiTankHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
+            Fields["editorTankHeightAdjust"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
         }
 
         private void updateAttachNodes(bool userInput)
@@ -777,7 +825,7 @@ namespace SSTUTools
         private void updateFairing()
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
-            if (!fairing.initialized()) { return; }
+            if (fairing==null || !fairing.initialized()) { return; }
             float pos = currentMountModule.currentVerticalPosition + (currentMountModule.currentHeightScale * currentMountModule.modelDefinition.fairingTopOffset);
             fairing.setFairingTopY(pos);
             fairing.setFairingTopRadius(currentTankDiameter * 0.5f);
@@ -822,8 +870,7 @@ namespace SSTUTools
         private MountModelData getNextCap(MountModelData[] mounts, MountModelData currentMount, String[] nodeNames, bool iterateBackwards)
         {
             return SSTUUtils.findNextEligible<MountModelData>(mounts, m => m == currentMount, l => l.canSwitchTo(part, nodeNames), iterateBackwards);            
-        }        
-    }
-    
+        }      
+    }    
 }
 

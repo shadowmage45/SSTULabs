@@ -215,7 +215,9 @@ namespace SSTUTools
     {
         public ModelDefinition modelDefinition;
         public readonly String name;
-        
+
+        public float minVerticalScale;
+        public float maxVerticalScale;
         public float currentDiameterScale;
         public float currentHeightScale;
         public float currentDiameter;
@@ -230,6 +232,8 @@ namespace SSTUTools
             {
                 MonoBehaviour.print("ERROR: Could not locate model data for name: " + name);
             }
+            minVerticalScale = node.GetFloatValue("minVerticalScale", 1f);
+            maxVerticalScale = node.GetFloatValue("maxVerticalScale", 1f);
         }
 
         public String getNextTextureSetName(String currentSetName, bool iterateBackwards)

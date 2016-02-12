@@ -144,6 +144,9 @@ namespace SSTUTools
         public String currentEngineLayout = String.Empty;
 
         [KSPField(isPersistant = true)]
+        public float currentEngineVerticalOffset = 0f;
+
+        [KSPField(isPersistant = true)]
         public bool fairingInitialized = false;
 
         #endregion
@@ -337,6 +340,7 @@ namespace SSTUTools
             if (prevEngineHeightAdjust != editorEngineHeightAdjust)
             {
                 prevEngineHeightAdjust = editorEngineHeightAdjust;
+                currentEngineVerticalOffset = editorEngineHeightAdjust;
                 updateMountPositions(true);
                 updated = true;
 
@@ -392,6 +396,8 @@ namespace SSTUTools
             float scale = currentEngineSpacing / defSpacing;
             editorEngineSpacingAdjust = scale;
             prevEngineSpacingAdjust = editorEngineSpacingAdjust;
+
+            editorEngineHeightAdjust = currentEngineVerticalOffset;
         }
 
         /// <summary>
