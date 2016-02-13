@@ -60,19 +60,10 @@ namespace SSTUTools
             fairingBase.generateFairing();
             fairingBase.setMaterial(material);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
-        }
-
-        public void destroyFairing()
-        {
-            if (fairingBase != null)
-            {
-                fairingBase.destroyCurrentModels();
-            }
-        }
+        } 
 
         public void recreateFairing(Material material)
         {
-            destroyFairing();
             createFairing(material);
         }
 

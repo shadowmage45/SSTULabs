@@ -514,7 +514,6 @@ namespace SSTUTools
             {
                 SSTUUtils.recursePrintComponents(part.gameObject, "");
             }
-            fairingBase.destroyCurrentModels();
             createPanels();
             setPanelRotations(currentRotation);//set animation status to whatever is current            
             updateFairingMassAndCost();

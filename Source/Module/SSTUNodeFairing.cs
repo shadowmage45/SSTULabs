@@ -85,13 +85,13 @@ namespace SSTUTools
         /// Increment to be used when adjusting top radius
         /// </summary>
         [KSPField]
-        public float topRadiusAdjustSize = 0.625f;
+        public float topRadiusAdjustSize = 0.3125f;
 
         /// <summary>
         /// Increment to be used when adjusting bottom radius
         /// </summary>
         [KSPField]
-        public float bottomRadiusAdjustSize = 0.625f;
+        public float bottomRadiusAdjustSize = 0.3125f;
 
         /// <summary>
         /// Maximum top radius (by whole increment; adjust slider will allow this + one radius increment)
@@ -136,13 +136,13 @@ namespace SSTUTools
         /// <summary>
         /// UI and functional fields to allow for fine-grained adjustment of fairing radius
         /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float topRadiusExtra;
 
         /// <summary>
         /// UI and functional fields to allow for fine-grained adjustment of fairing radius
         /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float bottomRadiusExtra;
 
         [KSPField(isPersistant = true)]
@@ -934,10 +934,6 @@ namespace SSTUTools
 
         private void rebuildFairing()
         {
-            foreach (FairingData fd in fairingParts)
-            {
-                fd.destroyFairing();
-            }
             buildFairing();
             enableFairingRender(currentRenderEnabled);
         }

@@ -683,8 +683,10 @@ namespace SSTUTools
 
             if (splitTank)
             {
+                
                 bottomFairingTopY = currentIntertankModule.currentVerticalPosition;
-                bottomFairingTopY -= currentIntertankModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale;
+                float offset = currentIntertankModule.modelDefinition.fairingTopOffset * currentIntertankModule.currentHeightScale;                
+                bottomFairingTopY -= offset;
             }
             else
             {

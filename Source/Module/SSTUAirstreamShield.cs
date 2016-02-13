@@ -38,7 +38,7 @@ namespace SSTUTools
         public int partsShielded = 0;
 
         [KSPField(isPersistant = true)]
-        public bool enabled = true;
+        public bool shieldEnabled = true;
         
         private List<Part> shieldedParts = new List<Part>();
 
@@ -77,7 +77,7 @@ namespace SSTUTools
 
         public bool ClosedAndLocked()
         {
-            return enabled;
+            return shieldEnabled;
         }
 
         public Part GetPart()
@@ -93,7 +93,7 @@ namespace SSTUTools
         private void updateShieldStatus()
         {
             clearShieldedParts();
-            if (enabled)
+            if (shieldEnabled)
             {
                 if (useAttachNodeTop)
                 {
@@ -146,7 +146,7 @@ namespace SSTUTools
         {
             float height = topY - bottomY;
             findShieldedPartsCylinder(part, shieldedParts, topY, bottomY, topRadius, bottomRadius);
-            if (enabled && shieldSelf)
+            if (shieldEnabled && shieldSelf)
             {
                 shieldedParts.Add(part);
             }

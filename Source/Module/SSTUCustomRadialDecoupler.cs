@@ -17,7 +17,7 @@ namespace SSTUTools.Module
         public float heightIncrement = 1f;
 
         [KSPField]
-        public float radiusIncrement = 0.625f;
+        public float radiusIncrement = 0.3125f;
 
         [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorHeightExtra;
@@ -68,7 +68,6 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float maxRadius = 12.5f;
-
 
         [KSPField]
         public String topMountName = "SC-RBDC-MountUpper";
@@ -291,21 +290,17 @@ namespace SSTUTools.Module
 
         private void updateEngineThrust()
         {
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine != null)
+            float currentScale = getCurrentModelScale();
+            float thrustScalar = Mathf.Pow(currentScale, thrustScalePower);
+            float maxThrust = engineThrust * thrustScalar;
+            guiEngineThrust = maxThrust;
+            ConfigNode updateNode = new ConfigNode("MODULE");
+            updateNode.AddValue("maxThrust", maxThrust);
+            ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
+            foreach (ModuleEngines engine in engines)
             {
-                float currentScale = getCurrentModelScale();
-                float thrustScalar = Mathf.Pow(currentScale, thrustScalePower);
-                engine.maxThrust = engineThrust * thrustScalar;
-                guiEngineThrust = engine.maxThrust;
-                ConfigNode updateNode = new ConfigNode("MODULE");
-                updateNode.AddValue("maxThrust", engine.maxThrust);
+                engine.maxThrust = maxThrust;
                 engine.Load(updateNode);
-            }
-            else
-            {
-                print("Cannot update engine thrust -- no engine module found!");
-                guiEngineThrust = 0;
             }
         }
 

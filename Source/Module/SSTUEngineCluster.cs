@@ -93,7 +93,7 @@ namespace SSTUTools
         /// How much to increment the diameter with every step of the main diameter slider
         /// </summary>
         [KSPField]
-        public float diameterMainIncrement = 1.25f;
+        public float diameterMainIncrement = 0.625f;
 
         #region editor adjustment fields
 
@@ -242,12 +242,13 @@ namespace SSTUTools
 
         }
 
-        [KSPEvent(guiName = "Prev Mount Size", guiActive = false, guiActiveEditor = true, active = true)]
+        [KSPEvent(guiName = "Mount Size --", guiActive = false, guiActiveEditor = true, active = true)]
         public void prevSizeEvent()
         {
             editorMountSize -= diameterMainIncrement;
             if (editorMountSize < currentMountOption.minDiameter) { editorMountSize = currentMountOption.minDiameter; }
             updateMountSizeFromEditor();
+            updateFairing();
             foreach (Part p in part.symmetryCounterparts)
             {
                 ((SSTUEngineCluster)p.Modules[part.Modules.IndexOf(this)]).editorMountSize = editorMountSize;
@@ -255,12 +256,13 @@ namespace SSTUTools
             }
         }
 
-        [KSPEvent(guiName = "Next Mount Size", guiActive = false, guiActiveEditor = true, active = true)]
+        [KSPEvent(guiName = "Mount Size ++", guiActive = false, guiActiveEditor = true, active = true)]
         public void nextSizeEvent()
         {            
             editorMountSize += diameterMainIncrement;
             if (editorMountSize > currentMountOption.maxDiameter) { editorMountSize = currentMountOption.maxDiameter; }
             updateMountSizeFromEditor();
+            updateFairing();
             foreach (Part p in part.symmetryCounterparts)
             {
                 ((SSTUEngineCluster)p.Modules[part.Modules.IndexOf(this)]).editorMountSize = editorMountSize;

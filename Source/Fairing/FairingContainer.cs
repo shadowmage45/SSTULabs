@@ -81,14 +81,8 @@ namespace SSTUTools
             }
         }
 
-        public void destroyCurrentModels()
-        {
-            SSTUUtils.destroyChildren(rootObject.transform);
-        }
-
         public void recreateModels()
         {
-            destroyCurrentModels();
             generateFairing();
             setMaterial(material);
             setOpacity(opacity);

@@ -447,7 +447,6 @@ namespace SSTUTools.Module
             setupEngineModels(modelBase);
 
             Transform root = modelBase.FindOrCreate(baseTransformName);
-            SSTUUtils.destroyChildren(root);
             Transform collider = modelBase.FindOrCreate("InterstageFairingBaseCollider");
             fairingBase = new InterstageDecouplerModel(root.gameObject, collider.gameObject, 0.25f, cylinderSides, numberOfPanels, wallThickness);
             buildFairing();
@@ -517,7 +516,6 @@ namespace SSTUTools.Module
 
         private void buildFairing()
         {
-            fairingBase.destroyCurrentModels();
             fairingBase.clearProfile();
 
             fairingBase.outsideUV = outsideUV;

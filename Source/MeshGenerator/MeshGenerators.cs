@@ -126,10 +126,13 @@ namespace SSTUTools
             GameObject[] gos = new GameObject[panels];
             for (int i = 0; i < len; i++)
             {
-                gos[i] = new GameObject("FairingPanel");
-                MeshFilter mf = gos[i].AddComponent<MeshFilter>();
+                gos[i] = parent.FindOrCreate("FairingPanel-"+i).gameObject;
+                MeshFilter mf = gos[i].GetComponent<MeshFilter>();
+                if (mf == null) { mf = gos[i].AddComponent<MeshFilter>(); }
                 mf.mesh = panelGroups[i].generatePanels(offset, outsideUV, insideUV, edgesUV);
-                MeshRenderer mr = gos[i].AddComponent<MeshRenderer>();
+
+                MeshRenderer mr = gos[i].GetComponent<MeshRenderer>();
+                if (mr == null) { mr = gos[i].AddComponent<MeshRenderer>(); }
                 gos[i].transform.parent = parent;
                 gos[i].transform.localPosition = Vector3.zero;
                 gos[i].transform.rotation = parent.rotation;
@@ -153,7 +156,7 @@ namespace SSTUTools
                 newZ = Mathf.Sin(yRot * Mathf.Deg2Rad)*dist;                
                 Vector3 newPivot = new Vector3(newX, pivot.y, newZ);
                                                 
-                GameObject pivotObject = new GameObject("FairingPanelPivot");
+                GameObject pivotObject = parent.FindOrCreate("FairingPanelPivot-"+i).gameObject;
                 pivotObject.transform.parent = parent;
                 pivotObject.transform.rotation = parent.transform.rotation;
                 pivotObject.transform.localPosition = newPivot + offset;
