@@ -116,8 +116,7 @@ namespace SSTUTools
         private float currentTankVolume;
         private float currentTankMass;
         private float currentTankCost;
-
-        private float techLimitMaxHeight;
+        
         private float techLimitMaxDiameter;
         
         private SingleModelData[] mainTankModules;
@@ -132,7 +131,7 @@ namespace SSTUTools
         private FuelTypeData[] fuelTypes;
         private FuelTypeData currentFuelTypeData;
 
-        private TechLimitHeightDiameter[] techLimits;
+        private TechLimitDiameter[] techLimits;
         
         private String[] topNodeNames;
         private String[] bottomNodeNames;
@@ -452,7 +451,6 @@ namespace SSTUTools
 
         public void Start()
         {
-            updateTechLimits();
             if (!initializedModule && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 initializedModule = true;
@@ -531,7 +529,11 @@ namespace SSTUTools
 
             removeExistingModels();
             loadConfigData();
-            updateTechLimits();
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (currentTankDiameter > techLimitMaxDiameter)
+            {
+                currentTankDiameter = techLimitMaxDiameter;
+            }
             updateModuleStats();
             restoreModels();
             updateModels();
@@ -584,7 +586,7 @@ namespace SSTUTools
             fuelTypes = FuelTypeData.parseFuelTypeData(fuelNodes);
 
             len = limitNodes.Length;
-            techLimits = TechLimitHeightDiameter.loadTechLimits(limitNodes);
+            techLimits = TechLimitDiameter.loadTechLimits(limitNodes);
             
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
@@ -832,39 +834,11 @@ namespace SSTUTools
             if (currentMountModule.modelDefinition.fairingDisabled) { fairing.enableFairingFromEditor(false); }
         }
 
-        private void updateTechLimits()
-        {
-            techLimitMaxDiameter = float.PositiveInfinity;
-            techLimitMaxHeight = float.PositiveInfinity;
-            if (!SSTUUtils.isResearchGame()) { return; }
-            if (HighLogic.CurrentGame == null) { return; }
-            if (HighLogic.CurrentGame.Mode != Game.Modes.CAREER && HighLogic.CurrentGame.Mode != Game.Modes.SCIENCE_SANDBOX) { return; }
-            techLimitMaxDiameter = 0;
-            techLimitMaxHeight = 0;
-            foreach (TechLimitHeightDiameter limit in techLimits)
-            {
-                if (limit.isUnlocked())
-                {
-                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
-                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
-                }
-            }
-
-            if (currentTankDiameter > techLimitMaxDiameter)
-            {
-                currentTankDiameter = techLimitMaxDiameter;
-            }
-        }
-
         #endregion ENDREGION - Updating methods
         
         private SingleModelData getNextTankLength(SingleModelData currentModule, bool iterateBackwards)
         {
-            if (!SSTUUtils.isResearchGame())
-            {
-                return SSTUUtils.findNext(mainTankModules, m => m == currentModule, iterateBackwards);
-            }
-            return SSTUUtils.findNextEligible<SingleModelData>(mainTankModules, m => m == currentMainTankModule, l => l.modelDefinition.height <= techLimitMaxHeight, iterateBackwards);            
+            return SSTUUtils.findNext(mainTankModules, m => m == currentModule, iterateBackwards);
         }
 
         private MountModelData getNextCap(MountModelData[] mounts, MountModelData currentMount, String[] nodeNames, bool iterateBackwards)

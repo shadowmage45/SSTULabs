@@ -61,8 +61,7 @@ namespace SSTUTools
         [Persistent]
         public String configNodeData = String.Empty;
 
-        private TechLimitHeightDiameter[] techLimits;
-        private float techLimitMaxHeight;
+        private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
 
         private ModuleProceduralFairing mpf = null;
@@ -96,9 +95,13 @@ namespace SSTUTools
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
-            updateTechLimits();
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (currentDiameter > techLimitMaxDiameter)
+            {
+                currentDiameter = techLimitMaxDiameter;
+            }
             updateModelScale();
             updateTexture();
             updateNodePositions(false);
@@ -118,16 +121,6 @@ namespace SSTUTools
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//make sure to update the mpf after it is initialized
             updateTexture();
-        }
-
-        private void updateTechLimits()
-        {
-            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
-
-            if (currentDiameter > techLimitMaxDiameter)
-            {
-                currentDiameter = techLimitMaxDiameter;
-            }
         }
 
         //TODO update symmetry counterparts

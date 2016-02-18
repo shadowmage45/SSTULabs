@@ -92,8 +92,7 @@ namespace SSTUTools.Module
         private FuelTypeData fuelType;
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private TechLimitHeightDiameter[] techLimits;
-        private float techLimitMaxHeight;
+        private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
 
         [KSPEvent(guiName = "Height-", guiActiveEditor = true)]
@@ -124,14 +123,9 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
-            int len = limitNodes.Length;
-            techLimits = new TechLimitHeightDiameter[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }
-
-            updateTechLimits();
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
             if (radius * 2 > techLimitMaxDiameter) { radius = techLimitMaxDiameter * 0.5f; }
-            if (height > techLimitMaxHeight) { height = techLimitMaxHeight; }
             
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
@@ -256,7 +250,6 @@ namespace SSTUTools.Module
         {
             if (newHeight > maxHeight) { newHeight = maxHeight; }
             if (newHeight < minHeight) { newHeight = minHeight; }
-            if (SSTUUtils.isResearchGame() && newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             height = newHeight;
             restoreEditorFields();
             updateModule();
@@ -329,20 +322,6 @@ namespace SSTUTools.Module
         /// </summary>
         private void updateTechLimits()
         {
-            techLimitMaxDiameter = float.PositiveInfinity;
-            techLimitMaxHeight = float.PositiveInfinity;
-            if (!SSTUUtils.isResearchGame()) { return; }
-            if (HighLogic.CurrentGame == null) { return; }
-            techLimitMaxDiameter = 0;
-            techLimitMaxHeight = 0;
-            foreach (TechLimitHeightDiameter limit in techLimits)
-            {
-                if (limit.isUnlocked())
-                {
-                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
-                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
-                }
-            }
         }
     }
 

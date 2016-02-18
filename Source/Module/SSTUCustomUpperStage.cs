@@ -241,7 +241,6 @@ namespace SSTUTools
         private float rcsThrust = 0;
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
 
         //Private-instance-local fields for tracking the current/loaded config; basically parsed from configNodeData when config is loaded
@@ -262,7 +261,7 @@ namespace SSTUTools
         private FuelTypeData currentFuelTypeData;
         private FuelTypeData reserveFuelTypeData;
 
-        private TechLimitHeightDiameter[] techLimits;
+        private TechLimitDiameter[] techLimits;
 
         private bool initialized = false;
         private bool initialFairingUpdate = false;
@@ -493,16 +492,11 @@ namespace SSTUTools
                 currentFuelType = defaultFuelType;
             }
             loadConfigData();
-            updateTechLimits();
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
 
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
-            }
-            float scalar = currentTankDiameter / defaultTankDiameter;
-            if (currentTankHeight > techLimitMaxHeight * scalar)
-            {
-                currentTankHeight = techLimitMaxHeight * scalar;
             }
 
             updateModules(false);
@@ -600,8 +594,8 @@ namespace SSTUTools
             }
 
             len = limitNodes.Length;
-            techLimits = new TechLimitHeightDiameter[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitHeightDiameter(limitNodes[i]); }            
+            techLimits = new TechLimitDiameter[len];
+            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameter(limitNodes[i]); }            
         }
 
         #endregion
@@ -847,7 +841,6 @@ namespace SSTUTools
             float scalar = currentTankDiameter / defaultTankDiameter;
             if (newHeight > scalar * maxTankHeight) { newHeight = scalar * maxTankHeight; }
             if (newHeight < scalar * minTankHeight) { newHeight = scalar * minTankHeight; }
-            if (SSTUUtils.isResearchGame() && newHeight > techLimitMaxHeight * scalar) { newHeight = techLimitMaxHeight*scalar; }
             currentTankHeight = newHeight;
             restoreEditorFields();
             updateModules(true);
@@ -1100,27 +1093,6 @@ namespace SSTUTools
             reserveFuelTypeData.addResources(reserveFuelVolume, resourceList);
             resourceList.addResource("ElectricCharge", energyReserve);
             resourceList.setResourcesToPart(part, true);
-        }
-
-        /// <summary>
-        /// Update the tech limitations for this part
-        /// </summary>
-        private void updateTechLimits()
-        {
-            techLimitMaxDiameter = float.PositiveInfinity;
-            techLimitMaxHeight = float.PositiveInfinity;
-            if (!SSTUUtils.isResearchGame()) { return; }
-            if (HighLogic.CurrentGame == null) { return; }
-            techLimitMaxDiameter = 0;
-            techLimitMaxHeight = 0;
-            foreach (TechLimitHeightDiameter limit in techLimits)
-            {
-                if (limit.isUnlocked())
-                {
-                    if (limit.maxDiameter > techLimitMaxDiameter) { techLimitMaxDiameter = limit.maxDiameter; }
-                    if (limit.maxHeight > techLimitMaxHeight) { techLimitMaxHeight = limit.maxHeight; }
-                }
-            }
         }
 
         /// <summary>

@@ -156,8 +156,7 @@ namespace SSTUTools.Module
 
         private FuelTypeData fuelType;
 
-        private TechLimitHeightDiameter[] techLimits;
-        private float techLimitMaxHeight;
+        private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
 
         private bool initialized = false;
@@ -233,7 +232,6 @@ namespace SSTUTools.Module
         {
             if (newHeight > currentHeight) { newHeight = currentHeight; }
             if (newHeight > maxHeight) { newHeight = maxHeight; }
-            if (newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             float minTaperHeight = engineHeight * getEngineScale();
             if (newHeight < minTaperHeight) { newHeight = minTaperHeight; }
             currentTaperHeight = newHeight;
@@ -257,7 +255,6 @@ namespace SSTUTools.Module
         private void setHeightFromEditor(float newHeight, bool updateSymmetry)
         {
             if (newHeight > maxHeight) { newHeight = maxHeight; }
-            if (newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             float minTaperHeight = engineHeight * getEngineScale();
             if (newHeight < minTaperHeight) { newHeight = minTaperHeight; }
             currentHeight = newHeight;
@@ -434,12 +431,21 @@ namespace SSTUTools.Module
             initialized = true;
             fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
             insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
             edgesUV = new UVArea(node.GetNode("UVMAP", "name", "edges"));
-            updateTechLimits();
-            
+
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (currentTopDiameter > techLimitMaxDiameter)
+            {
+                currentTopDiameter = techLimitMaxDiameter;
+            }
+            if (currentBottomDiameter > techLimitMaxDiameter)
+            {
+                currentBottomDiameter = techLimitMaxDiameter;
+            }
+
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
             Transform modelBase = part.transform.FindRecursive("model");
@@ -539,24 +545,6 @@ namespace SSTUTools.Module
 
             updateEnginePositionAndScale();
             SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        private void updateTechLimits()
-        {
-            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
-
-            if (currentTopDiameter > techLimitMaxDiameter)
-            {
-                currentTopDiameter = techLimitMaxDiameter;
-            }
-            if (currentBottomDiameter > techLimitMaxDiameter)
-            {
-                currentBottomDiameter = techLimitMaxDiameter;
-            }
-            if (currentHeight > techLimitMaxHeight)
-            {
-                currentHeight = techLimitMaxHeight;
-            }
         }
 
         private void updateEnginePositionAndScale()

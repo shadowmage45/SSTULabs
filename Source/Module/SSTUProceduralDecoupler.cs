@@ -42,7 +42,7 @@ namespace SSTUTools
         public int cylinderSides = 24;
 
         [KSPField]
-        public float radiusAdjust = 0.625f;
+        public float radiusAdjust = 0.3125f;
 
         [KSPField]
         public float heightAdjust = 0.1f;
@@ -92,8 +92,7 @@ namespace SSTUTools
         private float lastHeightExtra;
         private float lastThicknessExtra;
 
-        private TechLimitHeightDiameter[] techLimits;
-        private float techLimitMaxHeight;
+        private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
 
         private UVArea outsideUV = new UVArea(2, 2, 2+252, 2+60, 256);
@@ -169,7 +168,6 @@ namespace SSTUTools
         private void setHeightFromEditor(float newHeight, bool updateSymmetry)
         {
             if (newHeight > maxHeight) { newHeight = maxHeight; }
-            if (newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             if (newHeight < minHeight) { newHeight = minHeight; }
             height = newHeight;
             updateEditorFields();
@@ -260,8 +258,13 @@ namespace SSTUTools
             outsideUV = new UVArea(outsideUVNode);
             topUV = new UVArea(topNode);
             bottomUV = new UVArea(bottomNode);
-            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            updateTechLimits();            
+
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (radius * 2 > techLimitMaxDiameter)
+            {
+                radius = techLimitMaxDiameter * 0.5f;
+            }
         }
 
         public void OnDestroy()
@@ -442,20 +445,6 @@ namespace SSTUTools
         private void updateDecouplerForce()
         {
             ejectionForce = forcePerKg * (modifiedMass * 1000f);
-        }
-        
-        private void updateTechLimits()
-        {
-            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
-
-            if (radius*2 > techLimitMaxDiameter)
-            {
-                radius = techLimitMaxDiameter * 0.5f;
-            }
-            if (height > techLimitMaxHeight)
-            {
-                height = techLimitMaxHeight;
-            }
         }
 
         #endregion

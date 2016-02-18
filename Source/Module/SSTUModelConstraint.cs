@@ -23,7 +23,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("LOOK_CONST") || node.HasNode("POS_CONST"))
+            if (node.HasNode("LOOK_CONST") || node.HasNode("POS_CONST") || node.HasNode("LOCKED_CONST"))
             {
                 configNodeData = node.ToString();
             }
@@ -35,6 +35,11 @@ namespace SSTUTools
             {
                 initializePrefab();
             }
+        }
+
+        public void reInitialize()
+        {
+            initialize();
         }
 
         public void Update()
@@ -49,6 +54,7 @@ namespace SSTUTools
 
         private void initialize()
         {
+            constraints.Clear();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] lookConstraintNodes = node.GetNodes("LOOK_CONST");

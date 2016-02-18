@@ -89,6 +89,18 @@ namespace SSTUTools
             restorePreviousAnimationState(currentAnimState);
         }
 
+        public void reInitialize()
+        {
+            if (anims != null)
+            {
+                anims = null;
+                locateAnimation();
+                restorePreviousAnimationState(currentAnimState);
+            }
+        }
+
+        public bool initialized() { return anims != null; }
+
         public void addCallback(Action<AnimState> cb)
         {
             onAnimStateChangeCallbacks.Add(cb);

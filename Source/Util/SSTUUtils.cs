@@ -273,28 +273,27 @@ namespace SSTUTools
         {
             if (tr == null || tr.childCount<=0) { return; }
 
-            // for some reason doing destroy immediate causes problems
-            //foreach (Transform child in tr)
-            //{
-            //    if (child == null) { continue; }
-            //    MonoBehaviour.print("Destroying game object: " + child);
-            //    GameObject.DestroyImmediate(child.gameObject);
-            //}
-
             foreach (Transform child in tr)
             {
                 if (child == null) { continue; }
                 MonoBehaviour.print("Destroying game object: " + child);
                 GameObject.Destroy(child.gameObject);
             }
+        }
 
-            //int len = tr.childCount;
-            //for (int i = 0; i < len; i++)
-            //{
-            //    GameObject go = tr.GetChild(i).gameObject;
-            //    GameObject.Destroy(go);
-            //    MonoBehaviour.print("Destroying game object: " + go);
-            //}
+        public static void destroyChildrenImmediate(Transform tr)
+        {
+            if (tr == null || tr.childCount <= 0) { return; }
+            
+            foreach (Transform child in tr)
+            {
+                if (child == null)
+                {
+                    continue;
+                }
+                MonoBehaviour.print("Destroying game object (IMMEDIATE): " + child);
+                GameObject.DestroyImmediate(child.gameObject);
+            }
         }
 
         public static void recursePrintMaterialData(Transform tr)

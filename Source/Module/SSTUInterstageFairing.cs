@@ -182,9 +182,8 @@ namespace SSTUTools
         private List<Part> shieldedParts = new List<Part>();
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private float techLimitMaxHeight;
         private float techLimitMaxDiameter;
-        private TechLimitHeightDiameter[] techLimits;
+        private TechLimitDiameter[] techLimits;
 
         //lerp between the two cubes depending upon deployed state
         //re-render the cubes on fairing rebuild
@@ -630,10 +629,19 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            techLimits = TechLimitHeightDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             loadMaterial();
-            updateTechLimits();
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (topRadius * 2 > techLimitMaxDiameter)
+            {
+                topRadius = techLimitMaxDiameter * 0.5f;
+            }
+            if (bottomRadius * 2 > techLimitMaxDiameter)
+            {
+                bottomRadius = techLimitMaxDiameter * 0.5f;
+            }
+
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
             fairingBase = new InterstageFairingContainer(tr.gameObject, cylinderSides, numberOfPanels, wallThickness);
             fairingBase.outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
@@ -725,7 +733,6 @@ namespace SSTUTools
         {
             if (newHeight > maxHeight) { newHeight = maxHeight; }
             if (newHeight < minHeight) { newHeight = minHeight; }
-            if (SSTUUtils.isResearchGame() && newHeight > techLimitMaxHeight) { newHeight = techLimitMaxHeight; }
             if (currentStraightHeight > newHeight) { currentStraightHeight = newHeight; }
             currentHeight = newHeight;
             rebuildFairing(true);
@@ -757,27 +764,6 @@ namespace SSTUTools
                 }
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        /// <summary>
-        /// Update the tech limitations for this part
-        /// </summary>        
-        private void updateTechLimits()
-        {
-            TechLimitHeightDiameter.updateTechLimits(techLimits, out techLimitMaxHeight, out techLimitMaxDiameter);
-
-            if (topRadius * 2 > techLimitMaxDiameter)
-            {
-                topRadius = techLimitMaxDiameter * 0.5f;
-            }
-            if (bottomRadius * 2 > techLimitMaxDiameter)
-            {
-                bottomRadius = techLimitMaxDiameter * 0.5f;
-            }
-            if (currentHeight > techLimitMaxHeight)
-            {
-                currentHeight = techLimitMaxHeight;
-            }
         }
 
         private void updateNodePositions(bool userInput)

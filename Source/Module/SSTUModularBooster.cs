@@ -147,6 +147,9 @@ namespace SSTUTools
         private MountModelData currentNoseModule;
         private SRBNozzleData currentNozzleModule;
         private SRBModelData currentMainModule;
+
+        private TechLimitDiameter[] techLimits;
+        private float techLimitMaxDiameter;
         
         [Persistent]
         public String configNodeData;
@@ -245,6 +248,7 @@ namespace SSTUTools
         {
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             float oldDiameter = currentDiameter;
             currentDiameter = newDiameter;
             updateModelScaleAndPosition();
@@ -593,6 +597,11 @@ namespace SSTUTools
         private void loadConfigNodeData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+
+            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
+
 
             //load singular fuel type data from config node;
             //using a node so that it may have the custom fields defined for mass fraction/etc on a per-part basis

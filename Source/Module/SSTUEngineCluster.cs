@@ -800,7 +800,7 @@ namespace SSTUTools
         /// <summary>
         /// Loads the engine layout definitions from config file in GameData/SSTU/Data/Engines/engineLayouts.cfg.  Rather, it will load any config node with a name of "SSTU_ENGINELAYOUT".
         /// </summary>
-		private void loadMap()
+		public static void loadMap()
         {
             if (mapLoaded) { return; }
             layoutMap.Clear();
