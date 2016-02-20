@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    class SSTUModularBooster : PartModule
+    class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier
     {
         #region REGION - KSP Config Variables
 
@@ -150,6 +150,10 @@ namespace SSTUTools
 
         private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
+
+        private float modifiedCost;
+        private float modifiedMass;
+        public float prefabPartMass;
         
         [Persistent]
         public String configNodeData;
@@ -252,8 +256,10 @@ namespace SSTUTools
             float oldDiameter = currentDiameter;
             currentDiameter = newDiameter;
             updateModelScaleAndPosition();
+            updateEffectsScale();
             updatePartResources();
             updatePartMass();
+            updatePartCost();
             updateAttachnodes(true);
             SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, oldDiameter, currentDiameter);
             updateThrustOutput();
@@ -290,8 +296,10 @@ namespace SSTUTools
             }
             currentMainModule.enableTextureSet(currentMainTexture);
             updateModelScaleAndPosition();
+            updateEffectsScale();
             updatePartResources();
             updatePartMass();
+            updatePartCost();
             updateAttachnodes(true);
             updateThrustOutput();
             updateEditorValues();
@@ -327,8 +335,10 @@ namespace SSTUTools
             }
             currentNoseModule.enableTextureSet(currentNoseTexture);
             updateModelScaleAndPosition();
+            updateEffectsScale();
             updatePartResources();
             updatePartMass();
+            updatePartCost();
             updateAttachnodes(true);
             updateEditorValues();
             updateGui();
@@ -367,8 +377,10 @@ namespace SSTUTools
             }
             currentNozzleModule.enableTextureSet(currentNozzleTexture);
             updateModelScaleAndPosition();
+            updateEffectsScale();
             updatePartResources();
             updatePartMass();
+            updatePartCost();
             updateAttachnodes(true);
             updateThrustOutput();
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
@@ -526,6 +538,20 @@ namespace SSTUTools
             }
         }
 
+        //IModuleCostModifier Override
+        public float GetModuleCost(float defaultCost)
+        {
+            MonoBehaviour.print("default cost: " + defaultCost + " modified cost: " + modifiedCost);
+            return -defaultCost + modifiedCost;
+        }
+
+        //IModuleMassModifier Override
+        public float GetModuleMass(float defaultMass)
+        {
+            MonoBehaviour.print("defaultmass: " + defaultMass + " prefab mass: " + prefabPartMass + " modified mass: " + modifiedMass);
+            return -prefabPartMass + modifiedMass;
+        }
+
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Initialization Methods
@@ -540,10 +566,13 @@ namespace SSTUTools
             if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models
             loadConfigNodeData();            
             updateModelScaleAndPosition();
+            updateEffectsScale();
             updateAttachnodes(false);
             updateThrustOutput();
             updateEngineISP();
             updateGimbalOffset();
+            updatePartCost();
+            updatePartMass();
             updateEditorValues();
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
@@ -583,12 +612,14 @@ namespace SSTUTools
             GameObject thrustTransformGO = new GameObject(thrustTransformName);
             thrustTransformGO.transform.NestToParent(modelBase.transform);
             thrustTransformGO.SetActive(true);
-            MonoBehaviour.print("SSTUModularBooster - Created reference thrust transform during prefab construction: " + thrustTransformGO);
+            //MonoBehaviour.print("SSTUModularBooster - Created reference thrust transform during prefab construction: " + thrustTransformGO);
 
             GameObject gimbalTransformGO = new GameObject(gimbalTransformName);
             gimbalTransformGO.transform.NestToParent(modelBase.transform);
             gimbalTransformGO.SetActive(true);
-            MonoBehaviour.print("SSTUModularBooster - Created reference gimbal transform during prefab construction: " + gimbalTransformGO);
+            //MonoBehaviour.print("SSTUModularBooster - Created reference gimbal transform during prefab construction: " + gimbalTransformGO);
+
+            prefabPartMass = part.mass;
         }
 
         /// <summary>
@@ -667,6 +698,31 @@ namespace SSTUTools
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
         }
 
+        
+
+        /// <summary>
+        /// Utility method to -temporarily- reset the parent of the thrust transform to the parts base model transform.<para></para>
+        /// This should be used before deleting a nozzle/mount model to keep the same thrust transform object in use, 
+        /// and the transforms should subsequently be re-parented to thier proper hierarchy after the new/updated model/module is initialized.
+        /// </summary>
+        /// <param name="modelBase"></param>
+        private void resetTransformParents()
+        {
+            Transform modelBase = part.transform.FindRecursive("model");
+            //re-parent the thrust transform so they do not get deleted when clearing the existing models
+            Transform gimbal = modelBase.FindRecursive(gimbalTransformName);
+            foreach (Transform tr in gimbal) { tr.parent = gimbal.parent; }
+            gimbal.parent = modelBase;
+
+            Transform thrust = modelBase.FindRecursive(thrustTransformName);
+            foreach (Transform tr in thrust) { tr.parent = thrust.parent; }
+            thrust.parent = modelBase;
+        }
+
+        #endregion ENDREGION - Initialization Methods
+
+        #region REGION - Update Methods
+
         /// <summary>
         /// Updates the rendering scale and position for the currently enabled modules
         /// </summary>
@@ -682,7 +738,7 @@ namespace SSTUTools
             currentMainModule.updateModel();
             currentNozzleModule.updateModel();
         }
-               
+
         /// <summary>
         /// Update the engines min and max thrust values based on the currently selected main tank segment
         /// </summary>
@@ -703,7 +759,7 @@ namespace SSTUTools
         private void updateGimbalOffset()
         {
             //update the transform orientation for the gimbal so that the moduleGimbal gets the correct 'defaultOrientation'
-            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);            
+            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
 
             //update the ModuleGimbals transform and orientation data
             ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
@@ -742,6 +798,122 @@ namespace SSTUTools
             // in theory it -should- accept just chaning of the curve, as I believe the curve is queried directly for the resultant ISP output.
         }
 
+        private void updateEffectsScale()
+        {
+            MonoBehaviour.print("Updating effects scales!!");
+            if (part.fxGroups == null)
+            {
+                MonoBehaviour.print("Cannot alter FXGroups as they are null!");
+                return;
+            }
+            if (part.fxGroups.Count == 0)
+            {
+                MonoBehaviour.print("Cannot alter FXGroups as they are empty!");
+            }
+            float diameterScale = currentMainModule.currentDiameterScale;
+            foreach (FXGroup group in part.fxGroups)
+            {
+                if (group.fxEmitters == null)
+                {
+                    MonoBehaviour.print("Cannot update FXGroup emitters, as they are null!");
+                    return;
+                }
+                if (group.fxEmitters.Count == 0)
+                {
+                    MonoBehaviour.print("Cannot update FXGroup emitters, as they are empty!");
+                }
+                foreach (ParticleEmitter fx in group.fxEmitters)
+                {
+                    MonoBehaviour.print("Setting fx: " + fx + " transform localScale to: " + diameterScale+" current scale: "+fx.transform.localScale);
+                    fx.transform.localScale = new Vector3(diameterScale, diameterScale, diameterScale);
+                }
+            }
+            if (part.partInfo != null && part.partInfo.partConfig != null)
+            {
+                ConfigNode effectsNode = part.partInfo.partConfig.GetNode("EFFECTS");
+                MonoBehaviour.print("Effects node: " + effectsNode);
+                ConfigNode copiedEffectsNode = new ConfigNode("EFFECTS");
+                effectsNode.CopyTo(copiedEffectsNode);
+                foreach (ConfigNode innerNode1 in copiedEffectsNode.nodes)
+                {
+                    foreach (ConfigNode innerNode2 in innerNode1.nodes)
+                    {
+                        if (innerNode2.HasValue("localPosition"))//common for both stock effects and real-plume effects
+                        {
+                            Vector3 pos = innerNode2.GetVector3("localPosition");
+                            pos *= diameterScale;
+                            innerNode2.SetValue("localPosition", (pos.x+", "+pos.y+", "+pos.z), false);
+                            MonoBehaviour.print("updated local position for scale!");
+                        }
+                        if (innerNode2.HasValue("fixedScale"))//real-plumes scaling
+                        {
+                            MonoBehaviour.print("Updating fixedScale value for RealPlume effects!");
+                            float fixedScaleVal = innerNode2.GetFloatValue("fixedScale");
+                            fixedScaleVal *= diameterScale;
+                            innerNode2.SetValue("fixedScale", fixedScaleVal.ToString(), false);
+                        }
+                        else if (innerNode2.HasValue("emission"))//stock effects scaling
+                        {
+                            MonoBehaviour.print("Updating emission and scale values for stock effects!");
+                            String[] emissionVals = innerNode2.GetValues("emission");
+                            for (int i = 0; i < emissionVals.Length; i++)
+                            {
+                                String val = emissionVals[i];
+                                String[] splitVals = val.Split(new char[] { ' ' });
+                                String replacement = "";
+                                int len = splitVals.Length;
+                                for (int k = 0; k < len; k++)
+                                {                                    
+                                    if (k == 1)//the 'value' portion 
+                                    {
+                                        float emissionValue = SSTUUtils.safeParseFloat(splitVals[k]) * diameterScale;
+                                        splitVals[k] = emissionValue.ToString();
+                                    }
+                                    replacement = replacement + splitVals[k];
+                                    if (k < len - 1) { replacement = replacement + " "; }
+                                }
+                                emissionVals[i] = replacement;
+                            }
+                            innerNode2.RemoveValues("emission");
+                            foreach (String replacementVal in emissionVals)
+                            {
+                                innerNode2.AddValue("emission", replacementVal);
+                            }
+
+                            if (innerNode2.HasValue("speed"))//scale speed along with emission
+                            {
+                                String[] speedBaseVals = innerNode2.GetValues("speed");
+                                int len = speedBaseVals.Length;
+                                for (int i = 0; i < len; i++)
+                                {
+                                    String replacement = "";
+                                    String[] speedSplitVals = speedBaseVals[i].Split(new char[] { ' ' });
+                                    for (int k = 0; k < speedSplitVals.Length; k++)
+                                    {
+                                        if (k == 1)
+                                        {
+                                            float speedVal = SSTUUtils.safeParseFloat(speedSplitVals[k]) * diameterScale;
+                                            speedSplitVals[k] = speedVal.ToString();
+                                        }
+                                        replacement = replacement + speedSplitVals[k];
+                                        if (k < len - 1) { replacement = replacement + " "; }
+                                    }
+                                    speedBaseVals[i] = replacement;
+                                }
+                                innerNode2.RemoveValues("speed");
+                                foreach (String replacementVal in speedBaseVals)
+                                {
+                                    innerNode2.AddValue("speed", replacementVal);
+                                }
+                            }
+                        }
+                    }
+                }
+                MonoBehaviour.print("passing modified effects node to effects list for reload:\n" + copiedEffectsNode);
+                part.Effects.OnLoad(copiedEffectsNode);
+            }            
+        }
+
         /// <summary>
         /// Update attach node positions and optionally update the parts attached to those nodes if userInput==true
         /// </summary>
@@ -767,7 +939,7 @@ namespace SSTUTools
                 pos = new Vector3(currentDiameter * 0.5f, 0, 0);
                 Vector3 orientation = new Vector3(1, 0, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, orientation, userInput);
-            }            
+            }
         }
 
         /// <summary>
@@ -781,7 +953,7 @@ namespace SSTUTools
             SSTUResourceList res = fuelTypeData.getResourceList(currentVolume);
             res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
         }
-        
+
         /// <summary>
         /// Update the mass of the part (and real-fuels/MFT volume) based on the currently selected models and scales
         /// </summary>
@@ -795,7 +967,17 @@ namespace SSTUTools
             }
             float usableVolume = fuelTypeData.getUsableVolume(volume);
             float dryMass = fuelTypeData.getTankageMass(usableVolume);
-            part.mass = dryMass + currentNozzleModule.getModuleMass();            
+            part.mass = dryMass + currentNozzleModule.getModuleMass();
+            modifiedMass = part.mass;
+        }
+
+        private void updatePartCost()
+        {
+            float volume = currentMainModule.getModuleVolume();
+            float usableVolume = fuelTypeData.getUsableVolume(volume);
+            float dryMassCost = fuelTypeData.getDryCost(usableVolume);
+            float resourceCost = fuelTypeData.getResourceCost(usableVolume);
+            modifiedCost = dryMassCost + resourceCost + currentMainModule.getModuleCost() + currentNoseModule.getModuleCost() + currentNozzleModule.getModuleCost();
         }
 
         /// <summary>
@@ -812,7 +994,7 @@ namespace SSTUTools
             if (engine != null)
             {
                 float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                guiThrust = maxThrust * engine.thrustPercentage*0.01f;
+                guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
             }
             else
             {
@@ -822,7 +1004,7 @@ namespace SSTUTools
             float g = 9.81f;
             float flowRate = guiThrust / (g * isp);
             guiBurnTime = (guiPropellantMass / flowRate);
-            
+
             if (noseModules.Length <= 1)
             {
                 Events["prevNoseModelEvent"].active = false;
@@ -847,26 +1029,7 @@ namespace SSTUTools
             currentNozzleModule.enableTextureSet(currentNozzleTexture);
         }
 
-        /// <summary>
-        /// Utility method to -temporarily- reset the parent of the thrust transform to the parts base model transform.<para></para>
-        /// This should be used before deleting a nozzle/mount model to keep the same thrust transform object in use, 
-        /// and the transforms should subsequently be re-parented to thier proper hierarchy after the new/updated model/module is initialized.
-        /// </summary>
-        /// <param name="modelBase"></param>
-        private void resetTransformParents()
-        {
-            Transform modelBase = part.transform.FindRecursive("model");
-            //re-parent the thrust transform so they do not get deleted when clearing the existing models
-            Transform gimbal = modelBase.FindRecursive(gimbalTransformName);
-            foreach (Transform tr in gimbal) { tr.parent = gimbal.parent; }
-            gimbal.parent = modelBase;
-
-            Transform thrust = modelBase.FindRecursive(thrustTransformName);
-            foreach (Transform tr in thrust) { tr.parent = thrust.parent; }
-            thrust.parent = modelBase;
-        }
-
-        #endregion ENDREGION - Initialization Methods
+        #endregion ENDREGION - Update Methods
     }
 
     /// <summary>

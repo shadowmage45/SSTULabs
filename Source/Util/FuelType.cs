@@ -32,7 +32,10 @@ namespace SSTUTools
             foreach (ConfigNode node in configs)
             {
                 fuelType = new FuelType(node);
-                fuelTypes.Add(fuelType.name, fuelType);
+                if (fuelType.isValid)//kind of hacky, but workable method to determine if the fuel type was missing any resources
+                {
+                    fuelTypes.Add(fuelType.name, fuelType);
+                }
             }
 
             loadedDefs = true;
@@ -94,7 +97,7 @@ namespace SSTUTools
 
         public float getDryCost(float usableVolume) { return getTankageMass(usableVolume) * costPerDryTon; }
 
-        public float getResourceCost(float cubicMeters) { return fuelType.getResourceCost(cubicMeters); }
+        public float getResourceCost(float usableVolume) { return fuelType.getResourceCost(usableVolume); }
 
         public float getUsableVolume(float rawVolume) { return rawVolume * (1.0f - tankageVolumeLoss); }
 
@@ -144,6 +147,7 @@ namespace SSTUTools
         public readonly float tankageMassFactor;
         public readonly float costPerDryTon;
         public readonly float tonsPerCubicMeter;
+        public bool isValid = true;
 
         private float litersPerUnit;
         private float costPerUnit;
@@ -165,6 +169,12 @@ namespace SSTUTools
                 fuelEntries.Add(e);
                 litersPerUnit += FuelTypes.INSTANCE.getResourceVolume(e.resourceName) * e.ratio;
                 def = PartResourceLibrary.Instance.GetDefinition(e.resourceName);
+                if (def == null)
+                {
+                    MonoBehaviour.print("Could not locate resource definition for: " + e.resourceName+" :: Fuel type: "+name+" will be unavailable.");
+                    isValid = false;
+                    return;
+                }
                 costPerUnit += def.unitCost * e.ratio;
                 massPerUnit += def.density * e.ratio;
             }
