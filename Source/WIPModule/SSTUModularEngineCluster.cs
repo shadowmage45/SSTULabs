@@ -629,7 +629,7 @@ namespace SSTUTools
             SSTUEnginePosition position;
             int length = layout.positions.Count;
 
-            bool rotateEngines = currentMountData.rotateEngineModels;
+            float rotateEngines = currentMountData.rotateEngines;
 
             Transform[] models = part.transform.FindRecursive(engineTransformName).FindChildren(engineModelName);
             for (int i = 0; i < length; i++)
@@ -639,7 +639,7 @@ namespace SSTUTools
                 posX = position.scaledX(currentEngineSpacing);
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
-                if (rotateEngines) { rot += 180; }
+                rot += rotateEngines;
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
             }
@@ -891,7 +891,7 @@ namespace SSTUTools
         public readonly float initialDiameter = 1.25f;
         public readonly float minDiameter;
         public readonly float maxDiameter;
-        public readonly bool rotateEngineModels = false;
+        public readonly float rotateEngines = 0;
         public readonly bool singleModel = true;
 
         public EngineClusterLayoutMountData(ConfigNode node) : base(node)
@@ -900,7 +900,7 @@ namespace SSTUTools
             initialDiameter = node.GetFloatValue("size", initialDiameter);
             minDiameter = node.GetFloatValue("minSize", initialDiameter);
             maxDiameter = node.GetFloatValue("maxSize", initialDiameter);
-            rotateEngineModels = node.GetBoolValue("rotateEngineModels", rotateEngineModels);
+            rotateEngines = node.GetFloatValue("rotateEngines");
             singleModel = node.GetBoolValue("singleModel", singleModel);
         }
     }

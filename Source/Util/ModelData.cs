@@ -441,7 +441,7 @@ namespace SSTUTools
         /// <summary>
         /// If the engines should be rotated for
         /// </summary>
-        public bool[] rotateEngineModels;
+        public float[] rotateEngineModels;
 
         public readonly bool singleModel = true;
         
@@ -453,7 +453,7 @@ namespace SSTUTools
             maxDiameter = node.GetFloatValue("maxSize", maxDiameter);
             engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
             canAdjustSize = node.GetBoolValue("canAdjustSize", canAdjustSize);
-            rotateEngineModels = node.GetBoolValues("rotateEngines");
+            rotateEngineModels = node.GetFloatValues("rotateEngines");
             singleModel = node.GetBoolValue("singleModel", singleModel);            
         }
         

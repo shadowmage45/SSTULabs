@@ -56,6 +56,19 @@ namespace SSTUTools
             return GetBoolValue(node, name, false);
         }
 
+        public static float[] GetFloatValues(this ConfigNode node, String name)
+        {
+            String baseVal = node.GetStringValue(name);
+            if (!String.IsNullOrEmpty(baseVal))
+            {                
+                String[] split = baseVal.Split(new char[] { ',' });
+                float[] vals = new float[split.Length];
+                for (int i = 0; i < split.Length; i++) { vals[i] = SSTUUtils.safeParseFloat(split[i]); }
+                return vals;
+            }
+            return new float[0];
+        }
+
         public static float GetFloatValue(this ConfigNode node, String name, float defaultValue)
         {
             String value = node.GetValue(name);

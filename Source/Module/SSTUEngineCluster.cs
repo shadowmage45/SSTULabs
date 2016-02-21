@@ -641,7 +641,7 @@ namespace SSTUTools
             SSTUEnginePosition position;
             int length = layout.positions.Count;
 
-            bool rotateEngines = false;
+            float rotateEngines = 0;
             int layoutIndex = currentMountOption.getLayoutIndex(layoutName);
             if (layoutIndex >= 0 && layoutIndex < currentMountOption.rotateEngineModels.Length)
             {
@@ -661,7 +661,7 @@ namespace SSTUTools
                 posX = position.scaledX(currentEngineSpacing);
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
-                if (rotateEngines) { rot += 180; }
+                rot += rotateEngines;
                 model.transform.localPosition = new Vector3(posX, engineY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
             }
