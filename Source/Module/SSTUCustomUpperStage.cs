@@ -461,7 +461,7 @@ namespace SSTUTools
         /// <returns></returns>
         public float GetModuleCost(float defaultCost)
         {
-            return tankCost;
+            return -defaultCost + tankCost;
         }
 
         public float GetModuleMass(float defaultMass)

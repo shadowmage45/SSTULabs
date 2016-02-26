@@ -176,16 +176,32 @@ namespace SSTUTools
             float zRot = Mathf.Atan2(localTargetPos.y, localTargetPos.x) * Mathf.Rad2Deg;
             //MonoBehaviour.print("xr: " + xRot + " : yr: " + yRot + " : zr: " + zRot);
 
-            if (lookAxis.z != 0)
+            if (lookAxis.z == -1)
             {
                 if (lockedAxis.x != 0)
                 {
                     //locked on x, rotate around Y
-                    mover.Rotate(lockedAxis, yRot * -lookAxis.z);
+                    mover.Rotate(lockedAxis, yRot);
                 }
                 else if (lockedAxis.y != 0)
                 {
-                    mover.Rotate(lockedAxis, xRot * lookAxis.z);
+                    mover.Rotate(lockedAxis, -xRot);
+                }
+            }
+            else if (lookAxis.z == 1)
+            {
+                xRot -= 180;
+                yRot -= 180;
+                if (lockedAxis.x != 0)
+                {
+                    //MonoBehaviour.print("rotating for z==1, x!=0 : "+xRot+" : "+yRot);
+                    //locked on x, rotate around Y
+                    mover.Rotate(lockedAxis, yRot);
+                }
+                else if (lockedAxis.y != 0)
+                {
+                    //MonoBehaviour.print("rotating for z==1, y!=0 : " + xRot + " : " + yRot);
+                    mover.Rotate(lockedAxis, -xRot);
                 }
             }
             else if (lookAxis.y != 0)
