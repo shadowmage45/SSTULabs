@@ -150,6 +150,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float currentEngineVerticalOffset = 0f;
 
+        [KSPField(isPersistant = true)]
+        public bool initializedFairing = false;
+
         #endregion ENDREGION - persistent save-data values, should not be edited in config
 
         #region REGION - Private working variables
@@ -370,7 +373,11 @@ namespace SSTUTools
             if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
                 reInitEngineModule();
-                updateFairing(false);
+                if (!initializedFairing)
+                {
+                    initializedFairing = true;
+                    updateFairing(true);
+                }
             }
         }
 
@@ -429,7 +436,7 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
-            loadConfigNodeData(SSTUConfigNodeUtils.getConfigForPart(part).GetNode("MODULE", "name", GetType().Name));
+            loadConfigNodeData(SSTUStockInterop.getPartModuleConfig(part, part.Modules.IndexOf(this)));
             removeStockTransforms();
             initializeSmokeTransform();
             setupMountModels();
@@ -452,7 +459,7 @@ namespace SSTUTools
         private void initializePrefab(ConfigNode node)
         {
             prefabPartMass = part.mass;
-            loadConfigNodeData(node);            
+            loadConfigNodeData(node);      
             currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing) + editorEngineSpacingAdjust;
             removeStockTransforms();
             initializeSmokeTransform();
@@ -724,8 +731,7 @@ namespace SSTUTools
             Events["prevSizeEvent"].active = currentMountData.canAdjustSize;
             Events["nextSizeEvent"].active = currentMountData.canAdjustSize;
         }
-
-        //TODO -- clean up fairing interaction/setup/enabling/disabling
+        
         /// <summary>
         /// Updates the position and enable/disable status of the SSTUNodeFairing (if present). <para/>
         /// </summary>
@@ -733,16 +739,20 @@ namespace SSTUTools
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }
-            else if (!fairing.initialized()) { return; }
             bool enable = !currentMountData.modelDefinition.fairingDisabled;
             fairing.canDisableInEditor = enable;
+            FairingUpdateData data = new FairingUpdateData();
             if (enable)
             {
-                fairing.setFairingTopY(fairingTopY);
-                fairing.setFairingTopRadius(currentMountDiameter * 0.5f);
-                fairing.setFairingBottomRadius(currentMountDiameter * 0.5f);
+                data.setTopY(fairingTopY);
+                data.setTopRadius(currentMountDiameter * 0.5f);
+                if (userInput)
+                {
+                    data.setBottomRadius(currentMountDiameter * 0.5f);
+                }
             }
-            fairing.enableFairingFromEditor(enable);
+            data.setEnable(enable);
+            fairing.updateExternal(data);
         }
 
         /// <summary>
@@ -783,7 +793,7 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUModularEngineCluster -- updating external modules (gimbal, engines, constraints)");
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;
-            ConfigNode partConfig = SSTUConfigNodeUtils.getConfigForPart(part);
+            ConfigNode partConfig = SSTUStockInterop.getPartConfig(part);
 
             //update the gimbal modules, force them to reload transforms
             MonoBehaviour.print("Updating gimbal modules");

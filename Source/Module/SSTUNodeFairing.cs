@@ -225,6 +225,11 @@ namespace SSTUTools
         //the current fairing panels
         private SSTUNodeFairingData[] fairingParts;
 
+        /// <summary>
+        /// If not null, will be applied during initialization or late update tick
+        /// </summary>
+        private FairingUpdateData externalUpdateData = null;
+
         private bool canAdjustBottomRadius;
         private bool canAdjustTopRadius;
         
@@ -350,20 +355,8 @@ namespace SSTUTools
 
         public override void OnSave(ConfigNode node)
         {
-            base.OnSave(node);
-            if (fairingParts == null) { return; }
-
-            StringBuilder sb = new StringBuilder();
-            int len = fairingParts.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (i > 0)
-                {
-                    sb.Append(":");
-                }
-                sb.Append(fairingParts[i].getPersistence());
-            }
-            persistentDataString = sb.ToString();
+            base.OnSave(node);            
+            updatePersistentDataString();
         }
 
         public override void OnStart(StartState state)
@@ -376,17 +369,16 @@ namespace SSTUTools
                 removeTransforms();
             }
 
-
             //load FairingData instances from config values (persistent data nodes also merged in)
             loadFairingData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
-
+            if (externalUpdateData != null)
+            {
+                updateFromExternalData(externalUpdateData);
+                externalUpdateData = null;
+            }
             loadMaterial();
 
-            //restore the editor field values from the loaded fairing (radius adjust stuff)
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                restoreEditorFields();
-            }
+            restoreEditorFields();
 
             //construct fairing from loaded data
             buildFairing();
@@ -470,8 +462,30 @@ namespace SSTUTools
             updateDragCube();
         }
 
+        private void updatePersistentDataString()
+        {
+            if (fairingParts == null) { return; }
+            StringBuilder sb = new StringBuilder();
+            int len = fairingParts.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(":");
+                }
+                sb.Append(fairingParts[i].getPersistence());
+            }
+            persistentDataString = sb.ToString();
+        }
+
         public void LateUpdate()
         {
+            if (externalUpdateData != null)
+            {
+                updateFromExternalData(externalUpdateData);
+                externalUpdateData = null;
+                needsRebuilt = true;
+            }
             if (needsRebuilt)
             {
                 updateFairingStatus();
@@ -479,6 +493,7 @@ namespace SSTUTools
                 needsShieldUpdate = true;
                 needsGuiUpdate = true;
                 needsRebuilt = false;
+                updatePersistentDataString();
             }
             if (needsShieldUpdate)
             {
@@ -492,12 +507,7 @@ namespace SSTUTools
                 needsGuiUpdate = false;
             }
         }
-
-        public bool initialized()
-        {
-            return fairingParts != null;
-        }
-
+        
         #endregion
 
         #region REGION - KSP AirstreamShield update methods
@@ -548,76 +558,55 @@ namespace SSTUTools
         #endregion
         
         #region REGION - external interaction methods
-            
-        public void setFairingTopY(float newValue)
+         
+        public void updateExternal(FairingUpdateData data)
+        {
+            externalUpdateData = data;
+        }
+
+        private void updateFromExternalData(FairingUpdateData eData)
         {
             foreach (SSTUNodeFairingData data in fairingParts)
-            {
-                if (data.canAdjustTop)
+            {                
+                if (eData.hasTopY && data.canAdjustTop)
                 {
-                    if (newValue != data.topY)
+                    if (eData.topY != data.topY)
                     {
                         needsRebuilt = true;
                     }
-                    data.topY = newValue;
+                    data.topY = eData.topY;
+                }
+                if (eData.hasBottomY && data.canAdjustBottom)
+                {
+                    if (eData.bottomY != data.bottomY)
+                    {
+                        needsRebuilt = true;
+                    }
+                    data.bottomY = eData.bottomY;
+                }
+                if (eData.hasTopRad && data.canAdjustTop)
+                {
+                    if (eData.topRadius != data.topRadius)
+                    {
+                        needsRebuilt = true;
+                    }
+                    data.topRadius = eData.topRadius;
+                }
+                if (eData.hasBottomRad && data.canAdjustBottom)
+                {
+                    if (eData.bottomRadius != data.bottomRadius)
+                    {
+                        needsRebuilt = true;
+                    }
+                    data.bottomRadius = eData.bottomRadius;
                 }
             }
-        }
-        
-        public void setFairingBottomY(float newValue)
-        {
-            foreach (SSTUNodeFairingData data in fairingParts)
+            if (eData.hasEnable)
             {
-                if (data.canAdjustBottom)
-                {
-                    if (newValue != data.bottomY)
-                    {
-                        needsRebuilt = true;
-                    }
-                    data.bottomY = newValue;
-                }
-            }
-        }
-        
-        public void setFairingTopRadius(float topRadius)
-        {
-            foreach (SSTUNodeFairingData data in fairingParts)
-            {
-                if (data.canAdjustTop)
-                {
-                    if (topRadius != data.topRadius)
-                    {
-                        needsRebuilt = true;
-                    }
-                    data.topRadius = topRadius;
-                }
-            }
-            restoreEditorFields();
-        }
-        
-        public void setFairingBottomRadius(float bottomRadius)
-        {
-            foreach (SSTUNodeFairingData data in fairingParts)
-            {
-                if (data.canAdjustBottom)
-                {
-                    if (bottomRadius != data.bottomRadius)
-                    {
-                        needsRebuilt = true;
-                    }
-                    data.bottomRadius = bottomRadius;
-                }
+                enableFairing(eData.enable);
             }
             restoreEditorFields();
-        }
-        
-        /// <summary>
-        /// Only works in editor.  Intended to be used for other PartModules to interface with, so that they can dynamically adjust if the fairing is present or not.
-        /// </summary>
-        /// <param name="enable"></param>                      
-        public void enableFairingFromEditor(bool enable)
-        {
-            enableFairing(enable);
+            if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }//force saving of vessel..
         }
           
         #endregion
@@ -819,7 +808,14 @@ namespace SSTUTools
 
                         if (currentlyEnabled && snapToNode && node!=null)
                         {
-                            setFairingBottomY(fairingPos);
+                            foreach (SSTUNodeFairingData data in fairingParts)
+                            {
+                                if (data.canAdjustBottom && data.bottomY!=fairingPos)
+                                {
+                                    data.bottomY = fairingPos;
+                                    needsRebuilt = true;
+                                }
+                            }
                         }
                     }
                 }
@@ -1029,6 +1025,30 @@ namespace SSTUTools
             return topY + "," + bottomY + "," + topRadius + "," + bottomRadius;
         }
     }
+    
+    public class FairingUpdateData
+    {
+        public bool enable;
+        public float topY;
+        public float bottomY;
+        public float topRadius;
+        public float bottomRadius;
+        public bool hasEnable;
+        public bool hasTopY;
+        public bool hasBottomY;
+        public bool hasTopRad;
+        public bool hasBottomRad;
+        public FairingUpdateData() { }
+        public void setTopY(float val) { topY = val; hasTopY = true; }
+        public void setBottomY(float val) { bottomY = val; hasBottomY = true; }
+        public void setTopRadius(float val) { topRadius = val;  hasTopRad = true; }
+        public void setBottomRadius(float val) { bottomRadius = val;  hasBottomRad = true; }
+        public void setEnable(bool val) { enable = val; hasEnable = true; }
 
+        public override string ToString()
+        {
+            return enable + ", " + topY + ", " + bottomY + ", " + topRadius + ", " + bottomRadius;
+        }
+    }
 }
 

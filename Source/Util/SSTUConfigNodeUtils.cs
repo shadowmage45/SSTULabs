@@ -15,19 +15,6 @@ namespace SSTUTools
             else if (baseCfn.nodes.Count <= 0) { MonoBehaviour.print("Base config node has no nodes!!\n" + input); }
             return baseCfn.nodes[0];
         }
-
-        public static ConfigNode getConfigForPart(Part p)
-        {
-            if (p.partInfo == null)
-            {
-                MonoBehaviour.print("ERROR: Cannot retrieve config node for null part info!");
-            }
-            else
-            {
-                return p.partInfo.partConfig;
-            }
-            return null;
-        }
     }
 }
 

@@ -204,6 +204,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
+        [KSPField(isPersistant = true)]
+        public bool initializedFairing = false;
+
         #endregion
 
         #region ----------------- REGION - Public unity-serialization fields ----------------- 
@@ -264,7 +267,6 @@ namespace SSTUTools
         private TechLimitDiameter[] techLimits;
 
         private bool initialized = false;
-        private bool initialFairingUpdate = false;
         #endregion
 
         #region ----------------- REGION - GUI methods ----------------- 
@@ -404,7 +406,11 @@ namespace SSTUTools
         /// </summary>
         public void Start()
         {
-            updateFairing(initialFairingUpdate);
+            if (!initializedFairing && HighLogic.LoadedSceneIsEditor)
+            {
+                initializedFairing = true;
+                updateFairing(true);
+            }
             updateRCSThrust();
         }
         
@@ -507,7 +513,6 @@ namespace SSTUTools
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
                 updatePartResources();
-                initialFairingUpdate = true;
                 initializedResources = true;
             }
             restoreEditorFields();
@@ -699,7 +704,7 @@ namespace SSTUTools
             updateModuleScales();
             updateModulePositions();
             updateNodePositions(userInput);
-            updateFairing(userInput);
+            updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
         }
                 
         /// <summary>
@@ -708,25 +713,28 @@ namespace SSTUTools
         private void updateFairing(bool userInput)
         {
             SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
-            if (modules == null || modules.Length < 2) { return; }
-            SSTUNodeFairing topFairing = modules[topFairingIndex];
-            if (topFairing != null && topFairing.initialized())
+            if (modules == null || modules.Length < 2)
             {
-                topFairing.setFairingTopY(partTopY);
-                topFairing.setFairingBottomY(topFairingBottomY);
-                if (userInput)
-                {
-                    topFairing.setFairingTopRadius(currentTankDiameter * 0.5f);
-                }
-                topFairing.setFairingBottomRadius(currentTankDiameter * 0.5f);
-                
+                return;                
+            }
+            SSTUNodeFairing topFairing = modules[topFairingIndex];
+            if (topFairing != null)
+            {
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopY(partTopY);
+                data.setBottomY(topFairingBottomY);
+                data.setBottomRadius(currentTankDiameter * 0.5f);
+                if (userInput){data.setTopRadius(currentTankDiameter * 0.5f);}
+                topFairing.updateExternal(data);
             }            
             SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
-            if (bottomFairing != null && bottomFairing.initialized())
+            if (bottomFairing != null)
             {
-                bottomFairing.setFairingTopRadius(currentTankDiameter * 0.5f);
-                bottomFairing.setFairingTopY(bottomFairingTopY);
-                if (userInput) { bottomFairing.setFairingBottomRadius(currentTankDiameter * 0.5f); }
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopRadius(currentTankDiameter * 0.5f);
+                data.setTopY(bottomFairingTopY);
+                if (userInput) { data.setBottomRadius(currentTankDiameter * 0.5f); }
+                bottomFairing.updateExternal(data);
             }
         }
 

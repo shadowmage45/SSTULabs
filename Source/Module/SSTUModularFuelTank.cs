@@ -827,11 +827,13 @@ namespace SSTUTools
         private void updateFairing()
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
-            if (fairing==null || !fairing.initialized()) { return; }
+            if (fairing==null) { return; }
             float pos = currentMountModule.currentVerticalPosition + (currentMountModule.currentHeightScale * currentMountModule.modelDefinition.fairingTopOffset);
-            fairing.setFairingTopY(pos);
-            fairing.setFairingTopRadius(currentTankDiameter * 0.5f);
-            if (currentMountModule.modelDefinition.fairingDisabled) { fairing.enableFairingFromEditor(false); }
+            FairingUpdateData data = new FairingUpdateData();
+            data.setTopY(pos);
+            data.setTopRadius(currentTankDiameter * 0.5f);
+            if (currentMountModule.modelDefinition.fairingDisabled) { data.setEnable(false); }
+            fairing.updateExternal(data);
         }
 
         #endregion ENDREGION - Updating methods

@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 namespace SSTUTools
 {
+
     public class FairingData
     {
         //gameObject storage class

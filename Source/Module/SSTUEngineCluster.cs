@@ -784,17 +784,19 @@ namespace SSTUTools
         private void updateFairing()
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
-            if (fairing == null) { return; }
-            else if (!fairing.initialized()) { return; }
+            if (fairing == null) { return; }            
             bool enable = !currentMountOption.modelDefinition.fairingDisabled;
             fairing.canDisableInEditor = enable;
+            FairingUpdateData data = new FairingUpdateData();
             if (enable)
             {
-                fairing.setFairingTopY(fairingTopY);
-                fairing.setFairingTopRadius(currentMountSize * 0.5f);
-                fairing.setFairingBottomRadius(currentMountSize * 0.5f);
+                data.setTopY(fairingTopY);
+                float size = currentMountSize * 0.5f;
+                data.setTopRadius(size);
+                data.setBottomRadius(size);
             }
-            fairing.enableFairingFromEditor(enable);
+            data.setEnable(enable);
+            fairing.updateExternal(data);
         }
 
         /// <summary>
