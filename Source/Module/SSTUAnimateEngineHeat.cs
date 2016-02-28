@@ -85,15 +85,28 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            animatedTransforms = part.FindModelTransforms(meshName);
-            if (animatedTransforms == null || animatedTransforms.Length==0) { print("ERROR: Could not locate transform(s) for name: " + meshName); }
-            locateEngineModule();
+            initialize();
         }
 
         public void FixedUpdate()
         {
             if (!HighLogic.LoadedSceneIsFlight) { return; }
             updateHeat();
+        }
+
+        private void initialize()
+        {
+            animatedTransforms = part.FindModelTransforms(meshName);
+            if (animatedTransforms == null || animatedTransforms.Length == 0) { print("ERROR: Could not locate transform(s) for name: " + meshName); }
+            locateEngineModule();
+        }
+
+        public void reInitialize()
+        {
+            animatedTransforms = null;
+            engineModule = null;
+            initialize();
+            if (HighLogic.LoadedSceneIsFlight) { setEmissiveColors(); }
         }
 
         private void locateEngineModule()

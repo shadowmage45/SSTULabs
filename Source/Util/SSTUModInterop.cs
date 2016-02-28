@@ -6,13 +6,33 @@ namespace SSTUTools
 { 
     public static class SSTUModInterop
     {
-        //TODO move these to a map/set of maps
         private static bool checkedFar = false;
         private static bool checkedRF = false;
         private static bool checkedMFT = false;
         private static bool installedFAR = false;
         private static bool installedRF = false;
         private static bool installedMFT = false;
+
+        public static void onEngineConfigChange(Part part, float scale)
+        {
+            if (isRFInstalled())
+            {
+                Type type = Type.GetType("RealFuels.ModuleEngineConfigs,RealFuels");
+                if (type == null)
+                {
+                    MonoBehaviour.print("ERROR: Could not locate ModuleEngineConfigs by type!");
+                }
+                PartModule module = (PartModule)part.GetComponent(type);
+                if (module == null)
+                {
+                    MonoBehaviour.print("ERROR: Could not locate ModuleEngineConfigs for part: "+part.name+" while updating engine stats, this may be a configuration error.");
+                    return;
+                }
+                type.GetField("scale").SetValue(module, scale);
+                type.GetMethod("SetConfiguration").Invoke(module, new System.Object[] {null, true});
+                MonoBehaviour.print("Updated ModuleEngineConfigs configuration for part: " + part.name);
+            }
+        }
 
         public static void onPartGeometryUpdate(Part part, bool createDefaultCube)
         {
