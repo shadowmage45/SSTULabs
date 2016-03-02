@@ -136,6 +136,7 @@ namespace SSTUTools
                 {
                     AnimState newState = currentAnimState == AnimState.PLAYING_BACKWARD ? AnimState.STOPPED_START : AnimState.STOPPED_END;
                     setAnimState(newState, true);
+                    stopAnimation();
                 }
             }
         }

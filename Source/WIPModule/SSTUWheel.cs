@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
+using System.Text;
 
 namespace SSTUTools
 {
     public class SSTUWheel : PartModule
     {
+
         public static int wheelLayerMask = 622593;
+        public static int boundsLayer = 27; //wheelCollidersIgnore layer
+
         [KSPField]
         public bool lockSteering;
 
@@ -27,13 +32,19 @@ namespace SSTUTools
         [KSPAction("Deploy/Retract Wheel", actionGroup = KSPActionGroup.Gear, guiName = "Deploy/Retract Wheel")]
         public void toggleGearAction(KSPActionParam param)
         {
-            if (currentState == WheelState.RETRACTED)
+            if (param.type == KSPActionType.Activate)
             {
-                setWheelState(WheelState.DEPLOYING);
+                if (currentState == WheelState.RETRACTED || currentState==WheelState.RETRACTING || currentState==WheelState.DECOMPRESSING)
+                {
+                    setWheelState(WheelState.DEPLOYING);
+                }
             }
-            else if (currentState == WheelState.DEPLOYED)
+            else if (param.type == KSPActionType.Deactivate)
             {
-                setWheelState(WheelState.RETRACTING);
+                if (currentState == WheelState.DEPLOYED || currentState == WheelState.DEPLOYING)
+                {
+                    setWheelState(WheelState.RETRACTING);
+                }
             }
         }
 
@@ -61,6 +72,25 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
+            {
+                StartCoroutine(delayedBoundsCoroutine());
+            }
+        }
+
+        private IEnumerator delayedBoundsCoroutine()
+        {
+            yield return new WaitForFixedUpdate();
+            delayedBoundsRemoval();
+        }
+
+        private void delayedBoundsRemoval()
+        {
+            int len = wheelDatas.Count;
+            for (int i = 0; i < len; i++)
+            {
+                wheelDatas[i].disableBoundsCollider();
+            }
         }
 
         public void Update()
@@ -112,6 +142,14 @@ namespace SSTUTools
                 animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStateChanged);
             }
             setWheelState(currentState);
+            if (currentState == WheelState.RETRACTED || currentState == WheelState.RETRACTING)
+            {
+                int len = wheelDatas.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    wheelDatas[i].disableBoundsCollider();
+                }
+            }
         }
 
         private void setWheelState(WheelState state)
@@ -183,6 +221,7 @@ namespace SSTUTools
         public readonly String suspensionTransformName = "suspension";
         public readonly String suspensionNeutralTransformName = "neutral";
         public readonly String steeringTransformName = "steering";
+        public readonly String boundsColliderName = "bounds";
 
         public readonly float forwardExtremumSlip = -1;
         public readonly float forwardExtremumValue = -1;
@@ -217,7 +256,7 @@ namespace SSTUTools
             suspensionTransformName = node.GetStringValue("suspensionTransformName", suspensionTransformName);
             suspensionNeutralTransformName = node.GetStringValue("suspensionNeutralName", suspensionNeutralTransformName);
             steeringTransformName = node.GetStringValue("steeringTransformName", steeringTransformName);
-
+            boundsColliderName = node.GetStringValue("boundsColliderName", boundsColliderName);
 
             forwardExtremumSlip = node.GetFloatValue("forwardExtremumSlip", forwardExtremumSlip);
             forwardExtremumValue = node.GetFloatValue("forwardExtremumValue", forwardExtremumValue);
@@ -254,12 +293,14 @@ namespace SSTUTools
         public readonly Transform wheelMesh;
         public readonly Transform wheelDamagedMesh;
         public readonly Transform suspensionNeutral;
+        public readonly Transform boundsCollider;
 
         private Quaternion steeringDefaultOrientation;
         private float fullBrakeValue;
         private float fullMotorValue;
+        private float decompressTime = 0f;
 
-        public SSTUWheelData(SSTUWheelInfo info, WheelCollider collider, Transform suspension, Transform neutral, Transform steering, Transform wheelMesh, Transform wheelDamagedMesh)
+        public SSTUWheelData(SSTUWheelInfo info, WheelCollider collider, Transform suspension, Transform neutral, Transform steering, Transform wheelMesh, Transform wheelDamagedMesh, Transform boundsCollider)
         {
             this.wheelInfo = info;
             this.wheelCollider = collider;
@@ -268,6 +309,7 @@ namespace SSTUTools
             this.wheelMesh = wheelMesh;
             this.wheelDamagedMesh = wheelDamagedMesh;
             this.suspensionNeutral = neutral;
+            this.boundsCollider = boundsCollider;
 
             if (steering != null && info.steeringAngle > 0)
             {
@@ -326,6 +368,15 @@ namespace SSTUTools
             wheelCollider.enabled = true;
         }
 
+        public void disableBoundsCollider()
+        {
+            if (boundsCollider != null && boundsCollider.collider != null && boundsCollider.collider.enabled)
+            {
+                MonoBehaviour.print("disabling bounds collider: " + boundsCollider);
+                boundsCollider.collider.enabled = false;
+            }
+        }
+
         public void updateWheel(Part part)
         {
             updateSuspension();
@@ -365,6 +416,7 @@ namespace SSTUTools
         public void decompressInstant()
         {
             suspensionTransform.localPosition = suspensionNeutral.localPosition;
+            decompressTime = 0f;
         }
 
         private void updateWheelRotation()
@@ -417,6 +469,7 @@ namespace SSTUTools
             Transform[] steeringTransforms = part.transform.FindChildren(info.steeringTransformName);
             Transform[] wheelMeshes = part.transform.FindChildren(info.wheelMeshName);
             Transform[] wheelDamagedMeshes = part.transform.FindChildren(info.wheelMeshDamagedName);
+            Transform[] boundsColliders = part.transform.FindChildren(info.boundsColliderName);
 
             int len = wheelColliderTransforms.Length;
             int susLen = suspensionTransforms.Length;
@@ -424,6 +477,7 @@ namespace SSTUTools
             int steerLen = steeringTransforms.Length;
             int meshLen = wheelMeshes.Length;
             int meshDamLen = wheelDamagedMeshes.Length;
+            int boundsLen = boundsColliders.Length;
 
             SSTUWheelData wheelData;
             Transform suspensionTransform;
@@ -431,6 +485,7 @@ namespace SSTUTools
             Transform steeringTransform;
             Transform wheelMesh;
             Transform wheelDamagedMesh;
+            Transform boundsCollider;
             WheelCollider wheelCollider;
 
             SSTUWheelData[] wheelDatas = new SSTUWheelData[len];
@@ -444,8 +499,13 @@ namespace SSTUTools
                 suspensionNeutral = nutLen == len ? suspensionNeutralTransforms[i] : null;
                 wheelMesh = meshLen == len ? wheelMeshes[i] : null;
                 wheelDamagedMesh = meshDamLen == len ? wheelDamagedMeshes[i] : null;
+                boundsCollider = boundsLen == len ? boundsColliders[i] : null;
+                if (boundsCollider != null)
+                {
+                    boundsCollider.gameObject.layer = SSTUWheel.boundsLayer;
+                }
 
-                wheelData = new SSTUWheelData(info, wheelCollider, suspensionTransform, suspensionNeutral, steeringTransform, wheelMesh, wheelDamagedMesh);
+                wheelData = new SSTUWheelData(info, wheelCollider, suspensionTransform, suspensionNeutral, steeringTransform, wheelMesh, wheelDamagedMesh, boundsCollider);
                 wheelData.initializeWheel();
                 wheelDatas[i] = wheelData;
             }
