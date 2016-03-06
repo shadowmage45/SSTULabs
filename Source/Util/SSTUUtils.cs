@@ -587,16 +587,6 @@ namespace SSTUTools
                 shieldedParts.Add(pt);
             }
         }
-        
-        public static void updateEngineThrust(ModuleEngines engine, float minThrust, float maxThrust)
-        {
-            engine.minThrust = minThrust;
-            engine.maxThrust = maxThrust;            
-            ConfigNode updateNode = new ConfigNode("MODULE");
-            updateNode.AddValue("maxThrust", engine.maxThrust);
-            updateNode.AddValue("minThrust", engine.minThrust);
-            engine.Load(updateNode);
-        }
 
 
         public static void removeTransforms(Part part, String[] transformNames)
@@ -604,7 +594,7 @@ namespace SSTUTools
             Transform[] trs;
             foreach (String name in transformNames)
             {
-                trs = part.FindModelTransforms(name.Trim());
+                trs = part.transform.FindChildren(name.Trim());
                 foreach (Transform tr in trs)
                 {
                     GameObject.Destroy(tr.gameObject);

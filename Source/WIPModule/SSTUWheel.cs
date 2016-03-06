@@ -48,14 +48,14 @@ namespace SSTUTools
             }
         }
 
-        [KSPEvent(guiName = "Gear", guiActive =true, guiActiveEditor =true)]
+        [KSPEvent(guiName = "Toggle Landing Gear", guiActive =true, guiActiveEditor =true)]
         public void toggleGearEvent()
         {
-            if (currentState == WheelState.RETRACTED)
+            if (currentState == WheelState.RETRACTED || currentState == WheelState.RETRACTING || currentState == WheelState.DECOMPRESSING)
             {
                 setWheelState(WheelState.DEPLOYING);
             }
-            else if (currentState == WheelState.DEPLOYED)
+            else if (currentState == WheelState.DEPLOYED || currentState == WheelState.DEPLOYING)
             {
                 setWheelState(WheelState.RETRACTING);
             }
@@ -148,6 +148,14 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     wheelDatas[i].disableBoundsCollider();
+                }
+            }
+            else
+            {
+                int len = wheelDatas.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    wheelDatas[i].enableBoundsCollider();
                 }
             }
         }
@@ -372,8 +380,15 @@ namespace SSTUTools
         {
             if (boundsCollider != null && boundsCollider.collider != null && boundsCollider.collider.enabled)
             {
-                MonoBehaviour.print("disabling bounds collider: " + boundsCollider);
                 boundsCollider.collider.enabled = false;
+            }
+        }
+
+        public void enableBoundsCollider()
+        {
+            if (boundsCollider != null && boundsCollider.collider != null && !boundsCollider.collider.enabled)
+            {
+                boundsCollider.collider.enabled = true;
             }
         }
 

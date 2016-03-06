@@ -449,6 +449,7 @@ namespace SSTUTools
             updateEditorFields();
             updatePartMass();
             updatePartCost();
+            updateGuiState();
             //reInitEngineModule(); // not necessary as this module should be first in the list; and loads before any of the others have initialized... hopefully; except... might need to reload effects?
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -631,6 +632,7 @@ namespace SSTUTools
                 engineClone.transform.localScale = new Vector3(engineScale, engineScale, engineScale);
                 engineClone.SetActive(true);
             }
+            removeStockTransforms();
         }
 
         /// <summary>
@@ -845,7 +847,7 @@ namespace SSTUTools
                 heater.reInitialize();
             }
 
-            SSTUModInterop.onEngineConfigChange(part, positions);
+            SSTUModInterop.onEngineConfigChange(part, null, positions);
         }
 
         /// <summary>

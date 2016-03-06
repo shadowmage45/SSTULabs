@@ -136,7 +136,6 @@ namespace SSTUTools
                 {
                     AnimState newState = currentAnimState == AnimState.PLAYING_BACKWARD ? AnimState.STOPPED_START : AnimState.STOPPED_END;
                     setAnimState(newState, true);
-                    stopAnimation();
                 }
             }
         }
@@ -230,6 +229,7 @@ namespace SSTUTools
         {
             foreach (Animation a in anims)
             {
+                a[animationName].speed = 0f;
                 a.Stop(animationName);
             }
         }

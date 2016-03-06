@@ -588,7 +588,7 @@ namespace SSTUTools.Module
                 float thrustPerEngine = engineThrust * thrustScalar;
                 float totalThrust = thrustPerEngine * numberOfEngines;
                 guiEngineThrust = totalThrust;
-                SSTUUtils.updateEngineThrust(engine, engine.minThrust, totalThrust);
+                SSTUStockInterop.updateEngineThrust(engine, engine.minThrust, totalThrust);
             }
             else
             {

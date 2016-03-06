@@ -13,7 +13,7 @@ namespace SSTUTools
         private static bool installedRF = false;
         private static bool installedMFT = false;
 
-        public static void onEngineConfigChange(Part part, float scale)
+        public static void onEngineConfigChange(Part part, String config, float scale)
         {
             if (isRFInstalled())
             {
@@ -29,7 +29,7 @@ namespace SSTUTools
                     return;
                 }
                 type.GetField("scale").SetValue(module, scale);
-                type.GetMethod("SetConfiguration").Invoke(module, new System.Object[] {null, true});
+                type.GetMethod("SetConfiguration").Invoke(module, new System.Object[] { config, true});
                 MonoBehaviour.print("Updated ModuleEngineConfigs configuration for part: " + part.name);
             }
         }

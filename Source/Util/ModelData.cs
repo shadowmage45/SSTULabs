@@ -127,11 +127,6 @@ namespace SSTUTools
             return SSTUUtils.isTechUnlocked(techLimit);
         }
 
-        public float getScaledVolume(float vertScale, float horizScale)
-        {
-            return horizScale * horizScale * vertScale * volume;
-        }
-
         public float getScaledHeight(float vertScale)
         {
             return vertScale * height;
@@ -216,6 +211,7 @@ namespace SSTUTools
         public ModelDefinition modelDefinition;
         public readonly String name;
 
+        public float volume;
         public float minVerticalScale;
         public float maxVerticalScale;
         public float currentDiameterScale;
@@ -232,6 +228,7 @@ namespace SSTUTools
             {
                 MonoBehaviour.print("ERROR: Could not locate model data for name: " + name);
             }
+            volume = node.GetFloatValue("volume", modelDefinition.volume);
             minVerticalScale = node.GetFloatValue("minVerticalScale", 1f);
             maxVerticalScale = node.GetFloatValue("maxVerticalScale", 1f);
         }
@@ -305,8 +302,8 @@ namespace SSTUTools
         }
 
         public virtual float getModuleVolume()
-        {
-            return modelDefinition.getScaledVolume(currentHeightScale, currentDiameterScale);
+        {            
+            return currentDiameterScale * currentDiameterScale * currentHeightScale * volume;
         }
 
         public virtual float getModuleMass()

@@ -65,7 +65,13 @@ namespace SSTUTools
         public float diameterIncrement = 0.625f;
 
         [KSPField]
+        public float diameterForThrustScaling = -1;
+
+        [KSPField]
         public bool useRF = false;
+
+        [KSPField]
+        public float sliderMinMult = 0.05f;
 
         #endregion REGION - KSP Config Variables
 
@@ -262,8 +268,8 @@ namespace SSTUTools
             updatePartCost();
             updateAttachnodes(true);
             SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, oldDiameter, currentDiameter);
-            updateThrustOutput();
             updateEditorValues();
+            updateThrustOutput();
             updateGui();
             if (updateSymmetry)
             {
@@ -301,8 +307,8 @@ namespace SSTUTools
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
-            updateThrustOutput();
             updateEditorValues();
+            updateThrustOutput();
             updateGui();
             if (updateSymmetry)
             {
@@ -382,11 +388,11 @@ namespace SSTUTools
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
-            updateThrustOutput();
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
             updateGimbalOffset();
             updateEngineISP();
             updateEditorValues();
+            updateThrustOutput();
             updateGui();
 
             if (updateSymmetry)
@@ -471,7 +477,7 @@ namespace SSTUTools
             initialize();
             if (HighLogic.LoadedSceneIsEditor)
             {
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+                //GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
             StartCoroutine(delayedDragUpdate());
@@ -524,7 +530,7 @@ namespace SSTUTools
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
             if (prevEditorDiameterAdjust != editorDiameterAdjust)
-            {
+            {             
                 prevEditorDiameterAdjust = editorDiameterAdjust;
                 float newDiameter = editorDiameterWhole * diameterIncrement + diameterIncrement * editorDiameterAdjust;
                 updateDiameterFromEditor(newDiameter, true);
@@ -533,7 +539,6 @@ namespace SSTUTools
             {
                 prevEditorNozzleAdjust = editorNozzleAdjust;
                 float newOffset = editorNozzleAdjust * currentNozzleModule.gimbalAdjustmentRange;
-
                 updateGimbalOffsetFromEditor(newOffset, true);
             }
         }
@@ -541,14 +546,14 @@ namespace SSTUTools
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost)
         {
-            MonoBehaviour.print("default cost: " + defaultCost + " modified cost: " + modifiedCost);
+            //MonoBehaviour.print("default cost: " + defaultCost + " modified cost: " + modifiedCost);
             return -defaultCost + modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass)
         {
-            MonoBehaviour.print("defaultmass: " + defaultMass + " prefab mass: " + prefabPartMass + " modified mass: " + modifiedMass);
+            //MonoBehaviour.print("defaultmass: " + defaultMass + " prefab mass: " + prefabPartMass + " modified mass: " + modifiedMass);
             return -prefabPartMass + modifiedMass;
         }
 
@@ -563,12 +568,11 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models
+            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models            
             loadConfigNodeData();            
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateAttachnodes(false);
-            updateThrustOutput();
             updateEngineISP();
             updateGimbalOffset();
             updatePartCost();
@@ -591,8 +595,11 @@ namespace SSTUTools
         private void updateEditorValues()
         {
             float div = currentDiameter / diameterIncrement;
-            float whole = (int)div;
+            float whole = Mathf.RoundToInt(div);
             float extra = div - whole;
+            float extraBits = Mathf.RoundToInt(extra / sliderMinMult);
+            extra = sliderMinMult * extraBits;
+            
             editorDiameterWhole = whole;
             editorDiameterAdjust = prevEditorDiameterAdjust = extra;
 
@@ -696,9 +703,7 @@ namespace SSTUTools
             currentMainModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
             //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
-        }
-
-        
+        }        
 
         /// <summary>
         /// Utility method to -temporarily- reset the parent of the thrust transform to the parts base model transform.<para></para>
@@ -744,12 +749,21 @@ namespace SSTUTools
         /// </summary>
         private void updateThrustOutput()
         {
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine != null)
+            float scale = diameterForThrustScaling == -1 ? currentMainModule.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
+            scale = Mathf.Pow(scale, thrustScalePower);
+            if (useRF && !String.IsNullOrEmpty(currentMainModule.engineConfig))//use ModuleEngineConfigs
             {
-                float minThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.minThrust;
-                float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                SSTUUtils.updateEngineThrust(engine, minThrust, maxThrust);
+                SSTUModInterop.onEngineConfigChange(part, currentMainModule.engineConfig, scale);
+            }
+            else
+            {
+                ModuleEngines engine = part.GetComponent<ModuleEngines>();
+                if (engine != null)
+                {
+                    float minThrust = scale * currentMainModule.minThrust;
+                    float maxThrust = scale * currentMainModule.maxThrust;
+                    SSTUStockInterop.updateEngineThrust(engine, minThrust, maxThrust);
+                }
             }
         }
 
@@ -803,35 +817,23 @@ namespace SSTUTools
             MonoBehaviour.print("Updating effects scales!!");
             if (part.fxGroups == null)
             {
-                MonoBehaviour.print("Cannot alter FXGroups as they are null!");
                 return;
-            }
-            if (part.fxGroups.Count == 0)
-            {
-                MonoBehaviour.print("Cannot alter FXGroups as they are empty!");
             }
             float diameterScale = currentMainModule.currentDiameterScale;
             foreach (FXGroup group in part.fxGroups)
             {
                 if (group.fxEmitters == null)
                 {
-                    MonoBehaviour.print("Cannot update FXGroup emitters, as they are null!");
-                    return;
-                }
-                if (group.fxEmitters.Count == 0)
-                {
-                    MonoBehaviour.print("Cannot update FXGroup emitters, as they are empty!");
+                    continue;
                 }
                 foreach (ParticleEmitter fx in group.fxEmitters)
                 {
-                    MonoBehaviour.print("Setting fx: " + fx + " transform localScale to: " + diameterScale+" current scale: "+fx.transform.localScale);
                     fx.transform.localScale = new Vector3(diameterScale, diameterScale, diameterScale);
                 }
             }
             if (part.partInfo != null && part.partInfo.partConfig != null)
             {
                 ConfigNode effectsNode = part.partInfo.partConfig.GetNode("EFFECTS");
-                MonoBehaviour.print("Effects node: " + effectsNode);
                 ConfigNode copiedEffectsNode = new ConfigNode("EFFECTS");
                 effectsNode.CopyTo(copiedEffectsNode);
                 foreach (ConfigNode innerNode1 in copiedEffectsNode.nodes)
@@ -843,18 +845,15 @@ namespace SSTUTools
                             Vector3 pos = innerNode2.GetVector3("localPosition");
                             pos *= diameterScale;
                             innerNode2.SetValue("localPosition", (pos.x+", "+pos.y+", "+pos.z), false);
-                            MonoBehaviour.print("updated local position for scale!");
                         }
                         if (innerNode2.HasValue("fixedScale"))//real-plumes scaling
                         {
-                            MonoBehaviour.print("Updating fixedScale value for RealPlume effects!");
                             float fixedScaleVal = innerNode2.GetFloatValue("fixedScale");
                             fixedScaleVal *= diameterScale;
                             innerNode2.SetValue("fixedScale", fixedScaleVal.ToString(), false);
                         }
                         else if (innerNode2.HasValue("emission"))//stock effects scaling
                         {
-                            MonoBehaviour.print("Updating emission and scale values for stock effects!");
                             String[] emissionVals = innerNode2.GetValues("emission");
                             for (int i = 0; i < emissionVals.Length; i++)
                             {
@@ -909,7 +908,6 @@ namespace SSTUTools
                         }
                     }
                 }
-                MonoBehaviour.print("passing modified effects node to effects list for reload:\n" + copiedEffectsNode);
                 part.Effects.OnLoad(copiedEffectsNode);
             }            
         }
@@ -985,25 +983,36 @@ namespace SSTUTools
         /// </summary>
         private void updateGui()
         {
-            guiDryMass = part.mass;
-            guiPropellantMass = fuelTypeData.getResourceMass(fuelTypeData.getUsableVolume(currentMainModule.getModuleVolume()));
             guiHeight = currentMainModule.currentHeight;
             guiDiameter = currentDiameter;
-
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine != null)
+            if (useRF)
             {
-                float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
+                Fields["guiDryMass"].guiActiveEditor = false;
+                Fields["guiPropellantMass"].guiActiveEditor = false;
+                Fields["guiThrust"].guiActiveEditor = false;
+                Fields["guiBurnTime"].guiActiveEditor = false;
             }
             else
             {
-                guiThrust = 0;
+                guiDryMass = part.mass;
+                guiPropellantMass = fuelTypeData.getResourceMass(fuelTypeData.getUsableVolume(currentMainModule.getModuleVolume()));
+
+                ModuleEngines engine = part.GetComponent<ModuleEngines>();
+                if (engine != null)
+                {
+                    float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
+                    guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
+                    float isp = 220f;
+                    float g = 9.81f;
+                    float flowRate = guiThrust / (g * isp);
+                    guiBurnTime = (guiPropellantMass / flowRate);
+                }
+                else
+                {
+                    guiThrust = 0;
+                    guiBurnTime = 0;
+                }
             }
-            float isp = 220f;
-            float g = 9.81f;
-            float flowRate = guiThrust / (g * isp);
-            guiBurnTime = (guiPropellantMass / flowRate);
 
             if (noseModules.Length <= 1)
             {
@@ -1039,10 +1048,12 @@ namespace SSTUTools
     {
         public float minThrust;
         public float maxThrust;
+        public String engineConfig;
         public SRBModelData(ConfigNode node) : base(node)
         {
             minThrust = node.GetFloatValue("minThrust");
             maxThrust = node.GetFloatValue("maxThrust");
+            engineConfig = node.GetStringValue("engineConfig");            
         }
 
         public static SRBModelData[] parseSRBModels(ConfigNode[] modelNodes)
