@@ -23,6 +23,9 @@ namespace SSTUTools
 
         [KSPField]
         public float ablationEfficiency = 6000f;
+
+        [KSPField]
+        public bool heatSoak = false;
         
         [KSPField]
         public FloatCurve heatCurve;
@@ -79,8 +82,7 @@ namespace SSTUTools
             guiShieldEff = 0;
             part.skinInternalConductionMult = baseSkinIntMult;
             updateDebugGuiStatus();
-            if (!HighLogic.LoadedSceneIsFlight) { return; }
-            if (resource.amount <= 0) { return; }
+            if (!HighLogic.LoadedSceneIsFlight) { return; }            
             if (part.atmDensity <= 0) { return; }
 
             Vector3 localFlightDirection = -part.dragVectorDirLocal;
@@ -121,20 +123,33 @@ namespace SSTUTools
         private void applyAblation(double tempDelta, float effectiveness)
         {
             double perSecondUsage = heatCurve.Evaluate((float)tempDelta) * tempDelta * effectiveness;            
-            double perTickUsage = perSecondUsage * TimeWarp.fixedDeltaTime;//actual resource use depends on timewarp factor            
-            if (perTickUsage > resource.amount)
+            double perTickUsage = perSecondUsage * TimeWarp.fixedDeltaTime;//actual resource use depends on timewarp factor
+            if (heatSoak)
             {
-                perTickUsage = resource.amount;
-                perSecondUsage = perTickUsage / TimeWarp.fixedDeltaTime;//so if it changes, you need to use the inverse to correct it
+                guiShieldUse = perSecondUsage;
+                if (perTickUsage > 0)
+                {
+                    double flux = perSecondUsage * useToFluxMultiplier;
+                    part.AddExposedThermalFlux(-flux);
+                    guiShieldFlux = flux;
+                }
             }
-            guiShieldUse = perSecondUsage;
-            if (perTickUsage > 0)
+            else
             {
-                part.TransferResource(resource, -perTickUsage);
-                double flux = perSecondUsage * useToFluxMultiplier;
-                part.AddExposedThermalFlux(-flux);
-                guiShieldFlux = flux;
-            }
+                if (perTickUsage > resource.amount)
+                {
+                    perTickUsage = resource.amount;
+                    perSecondUsage = perTickUsage / TimeWarp.fixedDeltaTime;//so if it changes, you need to use the inverse to correct it
+                }
+                guiShieldUse = perSecondUsage;
+                if (perTickUsage > 0)
+                {
+                    part.TransferResource(resource, -perTickUsage);
+                    double flux = perSecondUsage * useToFluxMultiplier;
+                    part.AddExposedThermalFlux(-flux);
+                    guiShieldFlux = flux;
+                }
+            }   
         }
 
         //hack to fix 'glowing parts' when heatshield is really the only thing that should be glowing
@@ -152,9 +167,18 @@ namespace SSTUTools
         private void initialize()
         {
             mcu = new MaterialColorUpdater(part.transform.FindRecursive("model"), PhysicsGlobals.TemperaturePropertyID);
-            resource = part.Resources[resourceName];
-            float hsp = resource.info.specificHeatCapacity;
-            useToFluxMultiplier = hsp * ablationEfficiency * resource.info.density;
+            if (heatSoak)
+            {
+                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(resourceName);
+                float hsp = resource.specificHeatCapacity;
+                useToFluxMultiplier = hsp * ablationEfficiency * resource.density;
+            }
+            else
+            {
+                resource = part.Resources[resourceName];
+                float hsp = resource.info.specificHeatCapacity;
+                useToFluxMultiplier = hsp * ablationEfficiency * resource.info.density;
+            }
             baseSkinIntMult = part.skinInternalConductionMult;
             //PhysicsGlobals.ThermalDataDisplay = true;
         }

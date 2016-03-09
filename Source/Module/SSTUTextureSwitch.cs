@@ -109,7 +109,7 @@ namespace SSTUTools
             TextureSet ts = TextureSets.INSTANCE.getTextureSet(name);
             if (ts != null)
             {
-                ts.enable(part);
+                ts.enableFromMeshes(part);
             }
             currentTextureSet = name;           
         }

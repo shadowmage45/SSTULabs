@@ -6,7 +6,6 @@ namespace SSTUTools
 {
     public class SSTUInterstageFairing : PartModule, IMultipleDragCube, IAirstreamShield, IPartCostModifier, IPartMassModifier
     {
-
         #region KSP MODULE fields
         //config fields for various transform and node names
 
@@ -14,15 +13,21 @@ namespace SSTUTools
         [KSPField]
         public String modelName = "SSTU/Assets/SC-GEN-FR";
 
+        /// <summary>
+        /// The diameter of the mounting point of the model
+        /// </summary>
         [KSPField]
         public float defaultModelDiameter = 5f;
+        
+        /// <summary>
+        /// At the models default diameter, what is the diameter of the bottom of the fairing?
+        /// </summary>
+        [KSPField]
+        public float defaultFairingDiameter = 5f;
 
         [KSPField]
         public float defaultBaseVolume = 1f;
-
-        [KSPField]
-        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";
-        
+                
         [KSPField]
         public float internalNodePosition;
 
@@ -63,10 +68,10 @@ namespace SSTUTools
         public float minHeight = 1.0f;
 
         [KSPField]
-        public float minRadius = 0.3125f;
+        public float minDiameter = 0.625f;
 
         [KSPField]
-        public float maxRadius = 5f;
+        public float maxDiameter = 10f;
 
         //how far should the panels be rotated for the 'deployed' animation
         [KSPField]
@@ -89,25 +94,36 @@ namespace SSTUTools
         public float massPerPanelArea = 0.025f;
 
         [KSPField]
-        public float topRadiusIncrement = 0.625f;
+        public float topDiameterIncrement = 0.625f;
 
         [KSPField]
-        public float bottomRadiusIncrement = 0.625f;
+        public float bottomDiameterIncrement = 0.625f;
 
         [KSPField]
         public float heightIncrement = 1;
 
-        //radius of the part, used to calculate mesh
-        [KSPField(isPersistant = true)]
-        public float bottomRadius = 1.25f;
+        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        public String currentTextureSet = String.Empty;
 
-        //radius of the top of the part, used to calculate mesh
-        [KSPField(isPersistant = true)]
-        public float topRadius = 1.25f;
+        /// <summary>
+        /// Top diameter of the -fairing-
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Diameter")]
+        public float topDiameter = 2.5f;
+        
+        /// <summary>
+        /// Bottom diameter of the -model-; this is not necessarily the bottom diameter of the fairing
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Base Diameter")]
+        public float bottomDiameter = 2.5f;
 
         //stored current height of the panels, used to recreate mesh on part reload, may be set in config to set the default starting height
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
+
+        //if top radius !=bottom radius, this will create a 'split' panel at this position, for a straight-up-then-tapered/flared fairing
+        [KSPField(isPersistant = true)]
+        public float currentStraightHeight = 0f;
 
         //are planels deployed and upper node decoupled?
         //toggled to true as soon as deploy action is activated
@@ -126,11 +142,7 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool animating = false;
 
-        //if top radius !=bottom radius, this will create a 'split' panel at this position, for a straight-up-then-tapered/flared fairing
-        [KSPField(isPersistant = true)]
-        public float currentStraightHeight = 0f;
-
-        [KSPField(guiActive = true, guiName = "Parts Shielded", guiActiveEditor = true)]
+        [KSPField(guiName = "Parts Shielded", guiActiveEditor = true, guiActive = true)]
         public int partsShielded = 0;
 
         [KSPField(guiName = "Fairing Cost", guiActiveEditor = true)]
@@ -139,11 +151,11 @@ namespace SSTUTools
         [KSPField(guiName = "Fairing Mass", guiActiveEditor = true)]
         public float fairingMass;
 
-        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float topRadiusExtra;
+        [KSPField(guiActiveEditor = true, guiName = "Top Diam Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float topDiameterExtra;
 
-        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float bottomRadiusExtra;
+        [KSPField(guiActiveEditor = true, guiName = "Bot Diam Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float bottomDiameterExtra;
 
         [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float heightExtra;
@@ -165,8 +177,8 @@ namespace SSTUTools
         private float editorBottomRadius;
         private float editorHeight;
         private float editorStraightHeight;
-        private float lastTopRadiusExtra;
-        private float lastBottomRadiusExtra;
+        private float prevTopDiameterExtra;
+        private float prevBottomDiameterExtra;
         private float lastHeightExtra;
         private float lastStraightExtra;
 
@@ -185,6 +197,9 @@ namespace SSTUTools
         private float techLimitMaxDiameter;
         private TechLimitDiameter[] techLimits;
 
+        private TextureSet currentTextureSetData;
+        private TextureSet[] textureSetData;
+
         //lerp between the two cubes depending upon deployed state
         //re-render the cubes on fairing rebuild
         private DragCube closedCube;
@@ -194,13 +209,13 @@ namespace SSTUTools
 
         #region KSP GUI Actions
 
-        [KSPEvent(name = "increaseHeightEvent", guiName = "Increase Height", guiActiveEditor = true)]
+        [KSPEvent(guiName = "Increase Height", guiActiveEditor = true)]
         public void increaseHeightEvent()
         {
             setHeightFromEditor(currentHeight + heightIncrement, true);
         }
 
-        [KSPEvent(name = "decreaseHeightEvent", guiName = "Decrease Height", guiActiveEditor = true)]
+        [KSPEvent(guiName = "Decrease Height", guiActiveEditor = true)]
         public void decreaseHeightEvent()
         {
             setHeightFromEditor(currentHeight - heightIncrement, true);
@@ -218,28 +233,35 @@ namespace SSTUTools
             setStraightHeightFromEditor(currentStraightHeight - heightIncrement, true);
         }
 
-        [KSPEvent(name = "increaseTopRadiusEvent", guiName = "Top Radius +", guiActiveEditor = true)]
-        public void increaseTopRadiusEvent()
+        [KSPEvent(guiName = "Top Diameter ++", guiActiveEditor = true)]
+        public void increaseTopDiameterEvent()
         {
-            setTopRadiusFromEditor(topRadius + topRadiusIncrement, true);
+            setTopDiameterFromEditor(topDiameter + topDiameterIncrement, true);
         }
 
-        [KSPEvent(name = "decreaseTopRadiusEvent", guiName = "Top Radius -", guiActiveEditor = true)]
-        public void decreaseTopRadiusEvent()
+        [KSPEvent(guiName = "Top Diameter --", guiActiveEditor = true)]
+        public void decreaseTopDiameterEvent()
         {
-            setTopRadiusFromEditor(topRadius - topRadiusIncrement, true);
+            setTopDiameterFromEditor(topDiameter - topDiameterIncrement, true);
         }
 
-        [KSPEvent(name = "increaseBottomRadiusEvent", guiName = "Bottom Radius +", guiActiveEditor = true)]
-        public void increaseBottomRadiusEvent()
+        [KSPEvent(guiName = "Bottom Diameter ++", guiActiveEditor = true)]
+        public void increaseBottomDiameterEvent()
         {
-            setBottomRadiusFromEditor(bottomRadius + bottomRadiusIncrement, true);
+            setBottomDiameterFromEditor(bottomDiameter + bottomDiameterIncrement, true);
         }
 
-        [KSPEvent(name = "decreaseBottomRadiusEvent", guiName = "Bottom Radius -", guiActiveEditor = true)]
-        public void decreaseBottomRadiusEvent()
+        [KSPEvent(guiName = "Bottom Diameter --", guiActiveEditor = true)]
+        public void decreaseBottomDiameterEvent()
         {
-            setBottomRadiusFromEditor(bottomRadius - bottomRadiusIncrement, true);
+            setBottomDiameterFromEditor(bottomDiameter - bottomDiameterIncrement, true);
+        }
+
+        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
+        public void nextTextureEvent()
+        {
+            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
+            setTextureFromEditor(next == null ? null : next.setName, true);
         }
 
         [KSPEvent(name = "deployEvent", guiName = "Deploy Panels", guiActive = true)]
@@ -265,6 +287,106 @@ namespace SSTUTools
         {
             onDecoupleEvent();
         }
+        
+        private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
+            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+            topDiameter = newDiameter;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setTopDiameterFromEditor(newDiameter, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
+            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+            bottomDiameter = newDiameter;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setBottomDiameterFromEditor(newDiameter, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > maxHeight) { newHeight = maxHeight; }
+            if (newHeight < minHeight) { newHeight = minHeight; }
+            if (currentStraightHeight > newHeight) { currentStraightHeight = newHeight; }
+            currentHeight = newHeight;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setStraightHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > currentHeight) { newHeight = currentHeight; }
+            if (newHeight < 0) { newHeight = 0; }
+            currentStraightHeight = newHeight;
+            rebuildFairing(true);
+            updateShieldStatus();
+            restoreEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        private void setTextureFromEditor(String newTexture, bool updateSymmetry)
+        {
+            currentTextureSet = newTexture;
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+                newTexture = currentTextureSet;
+            }
+            TextureData data = currentTextureSetData.textureDatas[0];
+            data.enableForced(fairingBase.rootObject.transform, true);
+            if (updateSymmetry)
+            {
+                SSTUInterstageFairing dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUInterstageFairing>();
+                    dc.setTextureFromEditor(newTexture, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
 
         #endregion
 
@@ -273,6 +395,14 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (node.HasValue("topRadius"))
+            {
+                topDiameter = node.GetFloatValue("topRadius") * 2.0f;
+            }
+            if (node.HasValue("bottomRadius"))
+            {
+                bottomDiameter = node.GetFloatValue("bottomRadius") * 2.0f;
+            }
             if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
             {
                 configNodeData = node.ToString();
@@ -366,7 +496,7 @@ namespace SSTUTools
         public Part GetPart() { return part; }
 
         //IPartCostModifier override
-        public float GetModuleCost(float cost) { return fairingCost; }
+        public float GetModuleCost(float cost) { return -cost + fairingCost; }
 
         //IPartMassModifier override
         public float GetModuleMass(float mass) { return -mass + fairingMass; }
@@ -377,13 +507,13 @@ namespace SSTUTools
 
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            if (lastTopRadiusExtra != topRadiusExtra )
+            if (prevTopDiameterExtra != topDiameterExtra )
             {
-                setTopRadiusFromEditor(editorTopRadius + (topRadiusExtra * topRadiusIncrement), true);
+                setTopDiameterFromEditor(editorTopRadius + (topDiameterExtra * topDiameterIncrement), true);
             }
-            if (lastBottomRadiusExtra != bottomRadiusExtra )
+            if (prevBottomDiameterExtra != bottomDiameterExtra )
             {
-                setBottomRadiusFromEditor(editorBottomRadius + (bottomRadiusExtra * bottomRadiusIncrement), true);
+                setBottomDiameterFromEditor(editorBottomRadius + (bottomDiameterExtra * bottomDiameterIncrement), true);
             }
             if ( lastHeightExtra != heightExtra)
             {
@@ -527,10 +657,13 @@ namespace SSTUTools
         //create procedural panel sections for the current part configuration (radialSection count), with orientation set from base panel orientation
         private void createPanels()
         {
+            float modelFairingScale = defaultFairingDiameter / defaultModelDiameter;
+            float bottomRadius = bottomDiameter * modelFairingScale * 0.5f;
+
             fairingBase.clearProfile();
             fairingBase.addRing(0, bottomRadius);
             fairingBase.addRing(currentStraightHeight, bottomRadius);
-            fairingBase.addRing(currentHeight, topRadius);
+            fairingBase.addRing(currentHeight, topDiameter * 0.5f);
             fairingBase.generateFairing();
             fairingBase.setMaterial(fairingMaterial);
             if (HighLogic.LoadedSceneIsEditor) { setPanelOpacity(0.25f); }
@@ -556,9 +689,9 @@ namespace SSTUTools
 
         private void updateFairingMassAndCost()
         {
-            float baseScale = (bottomRadius*2) / defaultModelDiameter;
+            float baseScale = bottomDiameter / defaultModelDiameter;
             float baseVolume = baseScale * baseScale * baseScale * defaultBaseVolume;
-            float avgRadius = bottomRadius + (topRadius - bottomRadius) * 0.5f;
+            float avgRadius = bottomDiameter + (topDiameter - bottomDiameter) * 0.5f * 0.5f;
             float panelArea = avgRadius * 2f * Mathf.PI * currentHeight;
 
             float baseCost = costPerBaseVolume * baseVolume;
@@ -612,7 +745,7 @@ namespace SSTUTools
             }
             
             Bounds combinedBounds = SSTUUtils.getRendererBoundsRecursive(part.gameObject);
-            SSTUUtils.findShieldedPartsCylinder(part, combinedBounds, shieldedParts, currentHeight, 0, topRadius, bottomRadius);
+            SSTUUtils.findShieldedPartsCylinder(part, combinedBounds, shieldedParts, currentHeight, 0, topDiameter*0.5f, bottomDiameter*0.5f);
 
             for (int i = 0; i < shieldedParts.Count; i++)
             {
@@ -629,17 +762,33 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            loadMaterial();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            int len = textureNodes.Length;
+            textureSetData = new TextureSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureSetData[i] = new TextureSet(textureNodes[i]);
+            }
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+            }
+            
+            loadMaterial();
+
             techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
-            if (topRadius * 2 > techLimitMaxDiameter)
+            if (topDiameter > techLimitMaxDiameter)
             {
-                topRadius = techLimitMaxDiameter * 0.5f;
+                topDiameter = techLimitMaxDiameter;
             }
-            if (bottomRadius * 2 > techLimitMaxDiameter)
+            if (bottomDiameter > techLimitMaxDiameter)
             {
-                bottomRadius = techLimitMaxDiameter * 0.5f;
+                bottomDiameter = techLimitMaxDiameter;
             }
 
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
@@ -655,17 +804,17 @@ namespace SSTUTools
 
         private void restoreEditorFields()
         {
-            float div = topRadius / topRadiusIncrement;
+            float div = topDiameter / topDiameterIncrement;
             float whole = (int)div;
             float extra = div - whole;
-            editorTopRadius = whole * topRadiusIncrement;
-            topRadiusExtra = lastTopRadiusExtra = extra;
+            editorTopRadius = whole * topDiameterIncrement;
+            topDiameterExtra = prevTopDiameterExtra = extra;
 
-            div = bottomRadius / bottomRadiusIncrement;
+            div = bottomDiameter / bottomDiameterIncrement;
             whole = (int)div;
             extra = div - whole;
-            editorBottomRadius = whole * bottomRadiusIncrement;
-            bottomRadiusExtra = lastBottomRadiusExtra = extra;
+            editorBottomRadius = whole * bottomDiameterIncrement;
+            bottomDiameterExtra = prevBottomDiameterExtra = extra;
 
             div = currentHeight / heightIncrement;
             whole = (int)div;
@@ -687,83 +836,8 @@ namespace SSTUTools
                 Material.Destroy(fairingMaterial);
                 fairingMaterial = null;
             }
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, null, "KSP/Specular");
-        }
-
-        private void setTopRadiusFromEditor(float newRadius, bool updateSymmetry)
-        {
-            if (newRadius > maxRadius) { newRadius = maxRadius; }
-            if (newRadius < minRadius) { newRadius = minRadius; }
-            if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
-            topRadius = newRadius;
-            rebuildFairing(true);
-            updateShieldStatus();
-            restoreEditorFields();
-
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUInterstageFairing>().setTopRadiusFromEditor(newRadius, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        private void setBottomRadiusFromEditor(float newRadius, bool updateSymmetry)
-        {
-            if (newRadius > maxRadius) { newRadius = maxRadius; }
-            if (newRadius < minRadius) { newRadius = minRadius; }
-            if (SSTUUtils.isResearchGame() && newRadius*2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter*0.5f; }
-            bottomRadius = newRadius;
-            rebuildFairing(true);
-            updateShieldStatus();
-            restoreEditorFields();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUInterstageFairing>().setBottomRadiusFromEditor(newRadius, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
-        {
-            if (newHeight > maxHeight) { newHeight = maxHeight; }
-            if (newHeight < minHeight) { newHeight = minHeight; }
-            if (currentStraightHeight > newHeight) { currentStraightHeight = newHeight; }
-            currentHeight = newHeight;
-            rebuildFairing(true);
-            updateShieldStatus();
-            restoreEditorFields();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        private void setStraightHeightFromEditor(float newHeight, bool updateSymmetry)
-        {
-            if (newHeight > currentHeight) { newHeight = currentHeight; }
-            if (newHeight < 0) { newHeight = 0; }
-            currentStraightHeight = newHeight;
-            rebuildFairing(true);
-            updateShieldStatus();
-            restoreEditorFields();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUInterstageFairing>().setHeightFromEditor(newHeight, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            TextureData data = currentTextureSetData.textureDatas[0];
+            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
         }
 
         private void updateNodePositions(bool userInput)
@@ -795,7 +869,7 @@ namespace SSTUTools
 
         private float getCurrentScale()
         {
-            return (bottomRadius * 2) / defaultModelDiameter;
+            return bottomDiameter / defaultModelDiameter;
         }
 
         private void updateGuiState()

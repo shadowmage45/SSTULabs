@@ -58,25 +58,28 @@ namespace SSTUTools
             }
         }
 
-        public void enable(Part part)
+        public void enableFromMeshes(Part part)
         {
             foreach (TextureData data in textureDatas)
             {
-                data.enable(part);
+                data.enableFromMeshes(part);
             }
         }
 
-        public void enable(Transform tr)
+        public void enableFromMeshes(Transform tr)
         {
             foreach (TextureData data in textureDatas)
             {
-                data.enable(tr);
+                data.enableFromMeshes(tr);
             }
         }
 
-        public void enable(Transform tr, int dataIndex, bool recurse)
+        public void enableForced(Transform tr, bool recursive)
         {
-
+            foreach (TextureData data in textureDatas)
+            {
+                data.enableForced(tr, recursive);
+            }
         }
 
         public static TextureSet[] loadTextureSets(ConfigNode[] textureSetNodes)
@@ -110,7 +113,7 @@ namespace SSTUTools
             emissiveTextureName = node.GetStringValue("emissiveTexture");
         }
 
-        public void enable(Transform root)
+        public void enableFromMeshes(Transform root)
         {
             enableTexture(root);
             foreach (String meshName in meshNames)
@@ -127,7 +130,19 @@ namespace SSTUTools
             }
         }
 
-        public void enable(Part part)
+        public void enableForced(Transform root, bool recursive)
+        {
+            enableTexture(root);
+            if (recursive)
+            {
+                foreach (Transform child in root)
+                {
+                    enableForced(child, true);
+                }
+            }
+        }
+
+        public void enableFromMeshes(Part part)
         {
             foreach (String meshName in meshNames)
             {
@@ -145,7 +160,7 @@ namespace SSTUTools
 
         private void enableTexture(Transform tr)
         {
-            if (tr.renderer == null)
+            if (tr.renderer == null || tr.renderer.material == null)
             {
                 //MonoBehaviour.print("ERROR: transform does not contain a renderer for mesh name: " + tr.name);
                 return;

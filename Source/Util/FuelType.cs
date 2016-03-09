@@ -58,7 +58,10 @@ namespace SSTUTools
         public float getResourceVolume(String name)
         {
             float val = 0;
-            resourceVolumes.TryGetValue(name, out val);
+            if (!resourceVolumes.TryGetValue(name, out val))
+            {
+                return 5f;
+            }
             return val;
         }
     }
@@ -66,7 +69,7 @@ namespace SSTUTools
         
     public class FuelTypeData
     {
-        private FuelType fuelType;
+        public readonly FuelType fuelType;
         public readonly String name;
         private float tankageVolumeLoss;
         private float tankageMassFraction;
@@ -147,11 +150,10 @@ namespace SSTUTools
         public readonly float tankageMassFactor;
         public readonly float costPerDryTon;
         public readonly float tonsPerCubicMeter;
+        public readonly float litersPerUnit;
+        public readonly float costPerUnit;
+        public readonly float unitsPerCubicMeter;
         public bool isValid = true;
-
-        private float litersPerUnit;
-        private float costPerUnit;
-        private float unitsPerCubicMeter;
 
         public FuelType(ConfigNode node)
         {
@@ -250,7 +252,8 @@ namespace SSTUTools
     /// </summary>
     public class SSTUResourceList
     {
-        private Dictionary<String, float> resourceMap = new Dictionary<string, float>();
+        private Dictionary<String, float> resourceMax = new Dictionary<string, float>();
+        private Dictionary<String, float> resourceMin = new Dictionary<string, float>();
 
         public void addResourceByVolume(String name, float volume)
         {
@@ -260,38 +263,38 @@ namespace SSTUTools
         
         public void addResource(String name, float quantity)
         {
-            if (resourceMap.ContainsKey(name))
+            if (resourceMax.ContainsKey(name))
             {
-                float val = resourceMap[name];
+                float val = resourceMax[name];
                 val += quantity;
-                resourceMap[name] = val;
+                resourceMax[name] = val;
             }
             else
             {
-                resourceMap.Add(name, quantity);
+                resourceMax.Add(name, quantity);
             }
         }
 
         public void removeResource(String name, float quantity)
         {
-            if (resourceMap.ContainsKey(name))
+            if (resourceMax.ContainsKey(name))
             {
-                float val = resourceMap[name];
+                float val = resourceMax[name];
                 val -= quantity;
                 if (val <= 0)
                 {
-                    resourceMap.Remove(name);
+                    resourceMax.Remove(name);
                 }
                 else
                 {
-                    resourceMap[name] = val;
+                    resourceMax[name] = val;
                 }
             }
         }
 
         public void removeResource(String name)
         {
-            resourceMap.Remove(name);
+            resourceMax.Remove(name);
         }
 
         public void setResourcesToPart(Part part, bool fill)
@@ -305,9 +308,9 @@ namespace SSTUTools
             }            
             ConfigNode resourceNode;
             float amt = 0;
-            foreach (String name in resourceMap.Keys)
+            foreach (String name in resourceMax.Keys)
             {
-                amt = resourceMap[name];
+                amt = resourceMax[name];
                 resourceNode = new ConfigNode("RESOURCE");
                 resourceNode.AddValue("name", name);
                 resourceNode.AddValue("maxAmount", amt);

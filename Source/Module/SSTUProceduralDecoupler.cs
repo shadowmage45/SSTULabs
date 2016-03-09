@@ -5,14 +5,9 @@ namespace SSTUTools
     public class SSTUProceduralDecoupler : ModuleDecouple, IPartCostModifier, IPartMassModifier
     {
         #region fields
-        [KSPField]
-        public string diffuseTextureName = "UNKNOWN";
 
         [KSPField]
-        public string normalTextureName = "UNKNOWN";
-
-        [KSPField]
-        public bool canAdjustRadius = false;
+        public bool canAdjustDiameter = false;
 
         [KSPField]
         public bool canAdjustThickness = false;
@@ -20,17 +15,8 @@ namespace SSTUTools
         [KSPField]
         public bool canAdjustHeight = false;
 
-        [KSPField(isPersistant = true)]
-        public float radius = 0.625f;
-
-        [KSPField(isPersistant = true)]
-        public float height = 0.1f;
-
-        [KSPField(isPersistant = true)]
-        public float thickness = 0.1f;
-
-        [KSPField(guiActiveEditor = true, guiName = "Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float radiusExtra;
+        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
+        public float diameterExtra;
 
         [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
         public float heightExtra;
@@ -42,19 +28,19 @@ namespace SSTUTools
         public int cylinderSides = 24;
 
         [KSPField]
-        public float radiusAdjust = 0.3125f;
+        public float diameterIncrement = 0.625f;
 
         [KSPField]
-        public float heightAdjust = 0.1f;
+        public float heightIncrement = 0.1f;
 
         [KSPField]
-        public float thicknessAdjust = 0.1f;
+        public float thicknessIncrement = 0.1f;
 
         [KSPField]
-        public float minRadius = 0.3125f;
+        public float minDiameter = 0.3125f;
 
         [KSPField]
-        public float maxRadius = 5f;
+        public float maxDiameter = 5f;
 
         [KSPField]
         public float minThickness = 0.1f;
@@ -75,22 +61,35 @@ namespace SSTUTools
         public float costPerCubicMeter = 5000f;
 
         [KSPField]
-        public float forcePerKg = 0.8f;
+        public float forcePerKg = 0.75f;
 
-        public float modifiedMass = 0;
+        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
+        public float diameter = 1.25f;
 
-        public float modifiedCost = 0;
+        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
+        public float height = 0.1f;
 
-        public float volume = 0;
+        [KSPField(isPersistant = true)]
+        public float thickness = 0.1f;
+
+        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        public String currentTextureSet = String.Empty;
+
+        private float modifiedMass = 0;
+        private float modifiedCost = 0;
+        private float volume = 0;
 
         private ProceduralCylinderModel model;
 
-        private float editorRadius;
+        private float editorDiameter;
         private float editorHeight;
         private float editorThickness;
-        private float lastRadiusExtra;
-        private float lastHeightExtra;
-        private float lastThicknessExtra;
+        private float prevDiameterExtra;
+        private float prevHeightExtra;
+        private float prevThicknessExtra;
+
+        private TextureSet currentTextureSetData;
+        private TextureSet[] textureSetData;
 
         private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
@@ -108,48 +107,55 @@ namespace SSTUTools
 
         #region KSP GUI Actions/Events
 
-        [KSPEvent(guiName = "Radius +", guiActiveEditor = true)]
-        public void increaseRadius()
+        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
+        public void increaseDiameter()
         {
-            setRadiusFromEditor(radius + radiusAdjust, true);
+            setDiameterFromEditor(diameter + diameterIncrement, true);
         }
 
-        [KSPEvent(guiName = "Radius -", guiActiveEditor = true)]
-        public void decreaseRadius()
+        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true)]
+        public void decreaseDiameter()
         {
-            setRadiusFromEditor( radius - radiusAdjust, true);
+            setDiameterFromEditor( diameter - diameterIncrement, true);
         }
 
         [KSPEvent(guiName = "Height +", guiActiveEditor = true)]
         public void increaseHeight()
         {
-            setHeightFromEditor(height + heightAdjust, true);
+            setHeightFromEditor(height + heightIncrement, true);
         }
 
         [KSPEvent(guiName = "Height -", guiActiveEditor = true)]
         public void decreaseHeight()
         {
-            setHeightFromEditor(height - heightAdjust, true);
+            setHeightFromEditor(height - heightIncrement, true);
         }
 
         [KSPEvent(guiName = "Thickness +", guiActiveEditor = true)]
         public void increaseThickness()
         {
-            setThicknessFromEditor(thickness + thicknessAdjust, true);
+            setThicknessFromEditor(thickness + thicknessIncrement, true);
         }
 
         [KSPEvent(guiName = "Thickness -", guiActiveEditor = true)]
         public void decreaseThickness()
         {
-            setThicknessFromEditor(thickness - thicknessAdjust, true);
+            setThicknessFromEditor(thickness - thicknessIncrement, true);
         }
 
-        private void setRadiusFromEditor(float newRadius, bool updateSymmetry)
+        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
+        public void nextTextureEvent()
         {
-            if (newRadius > maxRadius) { newRadius = maxRadius; }
-            if (newRadius > techLimitMaxDiameter * 0.5f) { newRadius = techLimitMaxDiameter * 0.5f; }
-            if (newRadius < minRadius) { newRadius = minRadius; }
-            radius = newRadius;
+            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
+            setTextureFromEditor(next == null ? null : next.setName, true);
+        }
+
+        private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
+            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            diameter = newDiameter;
             updateEditorFields();
             recreateModel();
             updateAttachNodePositions(true);
@@ -159,7 +165,7 @@ namespace SSTUTools
                 foreach (Part p in part.symmetryCounterparts)
                 {
                     dc = p.GetComponent<SSTUProceduralDecoupler>();
-                    dc.setRadiusFromEditor(newRadius, false);
+                    dc.setDiameterFromEditor(newDiameter, false);
                 }
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
@@ -188,7 +194,7 @@ namespace SSTUTools
         private void setThicknessFromEditor(float newThickness, bool updateSymmetry)
         {
             if (newThickness > maxThickness) { newThickness = maxThickness; }
-            if (newThickness > radius) { newThickness = radius; }
+            if (newThickness > diameter) { newThickness = diameter; }
             if (newThickness < minThickness) { newThickness = minThickness; }
             thickness = newThickness;
             updateEditorFields();
@@ -205,6 +211,31 @@ namespace SSTUTools
             }
         }
 
+        private void setTextureFromEditor(String newTexture, bool updateSymmetry)
+        {
+            currentTextureSet = newTexture;
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+                newTexture = currentTextureSet;
+            }
+            TextureData data = currentTextureSetData.textureDatas[0];
+            model.setMainTexture(data.diffuseTextureName);
+            model.setNormalTexture(data.normalTextureName);
+            if (updateSymmetry)
+            {
+                SSTUProceduralDecoupler dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUProceduralDecoupler>();
+                    dc.setTextureFromEditor(newTexture, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
+
         #endregion
 
         #region KSP Lifecycle and KSP Overrides
@@ -212,6 +243,10 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (node.HasValue("radius"))
+            {
+                diameter = node.GetFloatValue("radius") * 2f;
+            }
             if (node.HasNode("UVMAP"))
             {
                 configNodeData = node.ToString();
@@ -259,11 +294,25 @@ namespace SSTUTools
             topUV = new UVArea(topNode);
             bottomUV = new UVArea(bottomNode);
 
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            int len = textureNodes.Length;
+            textureSetData = new TextureSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureSetData[i] = new TextureSet(textureNodes[i]);
+            }
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+            }
+
             techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
-            if (radius * 2 > techLimitMaxDiameter)
+            if (diameter * 2 > techLimitMaxDiameter)
             {
-                radius = techLimitMaxDiameter * 0.5f;
+                diameter = techLimitMaxDiameter * 0.5f;
             }
         }
 
@@ -277,20 +326,20 @@ namespace SSTUTools
 
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            if (lastRadiusExtra != radiusExtra)
+            if (prevDiameterExtra != diameterExtra)
             {
-                lastRadiusExtra = radiusExtra;
-                setRadiusFromEditor(editorRadius + radiusExtra * radiusAdjust, true);
+                prevDiameterExtra = diameterExtra;
+                setDiameterFromEditor(editorDiameter + diameterExtra * diameterIncrement, true);
             }
-            if (lastHeightExtra != heightExtra)
+            if (prevHeightExtra != heightExtra)
             {
-                lastHeightExtra = heightExtra;
-                setHeightFromEditor(editorHeight + heightExtra * heightAdjust, true);
+                prevHeightExtra = heightExtra;
+                setHeightFromEditor(editorHeight + heightExtra * heightIncrement, true);
             }
-            if (lastThicknessExtra != thicknessExtra)
+            if (prevThicknessExtra != thicknessExtra)
             {
-                lastThicknessExtra = thicknessExtra;
-                setThicknessFromEditor(editorThickness + thicknessExtra * thicknessAdjust, true);
+                prevThicknessExtra = thicknessExtra;
+                setThicknessFromEditor(editorThickness + thicknessExtra * thicknessIncrement, true);
             }
         }
 
@@ -310,26 +359,26 @@ namespace SSTUTools
 
         public void updateEditorFields()
         {
-            float div = radius / radiusAdjust;
+            float div = diameter / diameterIncrement;
             float whole = (int)div;
             float extra = div - whole;
-            editorRadius = whole * radiusAdjust;
-            radiusExtra = extra;
-            lastRadiusExtra = radiusExtra;
+            editorDiameter = whole * diameterIncrement;
+            diameterExtra = extra;
+            prevDiameterExtra = diameterExtra;
 
-            div = height / heightAdjust;
+            div = height / heightIncrement;
             whole = (int)div;
             extra = div - whole;
-            editorHeight = whole * heightAdjust;
+            editorHeight = whole * heightIncrement;
             heightExtra = extra;
-            lastHeightExtra = heightExtra;
+            prevHeightExtra = heightExtra;
 
-            div = thickness / thicknessAdjust;
+            div = thickness / thicknessIncrement;
             whole = (int)div;
             extra = div - whole;
-            editorThickness = whole * thicknessAdjust;
+            editorThickness = whole * thicknessIncrement;
             thicknessExtra = extra;
-            lastThicknessExtra = thicknessExtra;
+            prevThicknessExtra = thicknessExtra;
         }
 
         public void prepModel()
@@ -347,7 +396,8 @@ namespace SSTUTools
             model.bottomUV = bottomUV;
             updateModelParameters();
             setModelParameters();
-            model.setMaterial(SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName));
+            TextureData data = currentTextureSetData.textureDatas[0];
+            model.setMaterial(SSTUUtils.loadMaterial(data.diffuseTextureName, data.normalTextureName));
             model.setMeshColliderStatus(true, false);
             model.createModel();
             model.setParent(tr);
@@ -372,32 +422,33 @@ namespace SSTUTools
 
         private void updateModelParameters()
         {
-            lastRadiusExtra = radiusExtra;
-            lastHeightExtra = heightExtra;
-            lastThicknessExtra = thicknessExtra;
-            radius = editorRadius + (radiusExtra * radiusAdjust);
-            height = editorHeight + (heightExtra * heightAdjust);
-            thickness = editorThickness + (thicknessExtra * thicknessAdjust);
+            prevDiameterExtra = diameterExtra;
+            prevHeightExtra = heightExtra;
+            prevThicknessExtra = thicknessExtra;
+            diameter = editorDiameter + (diameterExtra * diameterIncrement);
+            height = editorHeight + (heightExtra * heightIncrement);
+            thickness = editorThickness + (thicknessExtra * thicknessIncrement);
         }
 
         private void setModelParameters()
         {
-            model.setModelParameters(radius, height, thickness, cylinderSides);
+            model.setModelParameters(diameter * 0.5f, height, thickness, cylinderSides);
         }
 
         public void updateGuiState()
         {
-            Events["increaseRadius"].guiActiveEditor = Events["decreaseRadius"].guiActiveEditor = canAdjustRadius;
+            Events["increaseDiameter"].guiActiveEditor = Events["increaseDiameter"].guiActiveEditor = canAdjustDiameter;
             Events["increaseHeight"].guiActiveEditor = Events["decreaseHeight"].guiActiveEditor = canAdjustHeight;
             Events["increaseThickness"].guiActiveEditor = Events["decreaseThickness"].guiActiveEditor = canAdjustThickness;
-            Fields["radiusExtra"].guiActiveEditor = canAdjustRadius;
+            Fields["diameterExtra"].guiActiveEditor = canAdjustDiameter;
             Fields["heightExtra"].guiActiveEditor = canAdjustHeight;
             Fields["thicknessExtra"].guiActiveEditor = canAdjustThickness;
         }
 
         public void updateAttachNodePositions(bool userInput)
         {
-            float h = (height + heightExtra * heightAdjust) * 0.5f;
+            float h = height * 0.5f;
+            MonoBehaviour.print("setting pdc for node height: " + h);
             AttachNode topNode = part.findAttachNode("top");
             if (topNode != null)
             {
@@ -412,7 +463,7 @@ namespace SSTUTools
 
         public void updatePhysicalAttributes()
         {
-            float r = radius;
+            float r = diameter * 0.5f;
             float h = height;
             float t = thickness;
             float innerCylVolume = 0;
@@ -430,16 +481,14 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
-
-        //TODO
+    
         public void updateDragCube()
         {
-            if (HighLogic.LoadedSceneIsEditor)
+            if (!HighLogic.LoadedSceneIsFlight)
             {
-                return;//NOOP in editor
+                return;//NOOP except in flight
             }
-            //TODO - do drag cubes even matter for non-physics enabled parts?
-            //TODO - basically just re-render the drag cube
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateDecouplerForce()

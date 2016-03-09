@@ -69,10 +69,7 @@ namespace SSTUTools
 
         [KSPField]
         public bool useRF = false;
-
-        [KSPField]
-        public float sliderMinMult = 0.05f;
-
+        
         #endregion REGION - KSP Config Variables
 
         #region REGION - Persistent Variables
@@ -569,7 +566,8 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models            
-            loadConfigNodeData();            
+            loadConfigNodeData();
+            updateEditorValues();
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateAttachnodes(false);
@@ -577,7 +575,6 @@ namespace SSTUTools
             updateGimbalOffset();
             updatePartCost();
             updatePartMass();
-            updateEditorValues();
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
                 initializedResources = true;
@@ -595,10 +592,10 @@ namespace SSTUTools
         private void updateEditorValues()
         {
             float div = currentDiameter / diameterIncrement;
-            float whole = Mathf.RoundToInt(div);
+            float whole = (int)div;
             float extra = div - whole;
-            float extraBits = Mathf.RoundToInt(extra / sliderMinMult);
-            extra = sliderMinMult * extraBits;
+            extra = SSTUUtils.roundTo(extra, 0.05f);
+            MonoBehaviour.print("extra: " + extra);
             
             editorDiameterWhole = whole;
             editorDiameterAdjust = prevEditorDiameterAdjust = extra;

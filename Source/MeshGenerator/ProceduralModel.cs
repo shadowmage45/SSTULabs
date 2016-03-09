@@ -55,6 +55,29 @@ namespace SSTUTools
         }
 
         //DONE
+        public void setMainTexture(String texName)
+        {
+            if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set diffuse texture: "+texName); }
+            currentMaterial.mainTexture = GameDatabase.Instance.GetTexture(texName, false);
+            updateModelMaterial();
+        }
+
+        //DONE
+        public void setNormalTexture(String texName)
+        {
+            if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set normal texture: " + texName); }
+            if (String.IsNullOrEmpty(texName))
+            {
+                currentMaterial.SetTexture("_BumpMap", null);
+            }
+            else
+            {
+                currentMaterial.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(texName, false));
+            }
+            updateModelMaterial();
+        }
+
+        //DONE
         public void setMeshColliderStatus(bool enable, bool convex)
         {
             meshColliderEnabled = enable;

@@ -94,6 +94,18 @@ namespace SSTUTools
         [KSPField]
         public String engineTransformName = "SSTEngineClusterEngines";
 
+        /// <summary>
+        /// If true, the engine cluster module will update the part mass based on the number of engines in the layout and the 'engineMass' specified in its config, otherwise it will leave it unaltered.
+        /// </summary>
+        [KSPField]
+        public bool modifyMass = true;
+
+        /// <summary>
+        /// If true, the engine cluster module will update the engines' min and max thrust as a multiple of that specified in the ModuleEngines* config, otherwise it will leave it unaltered
+        /// </summary>
+        [KSPField]
+        public bool modifyThrust = true;
+
         #endregion ENDREGION - Standard KSPField variables
 
         #region REGION - KSP Editor Adjust Fields (Float Sliders) and KSP GUI Fields (visible data)
@@ -420,12 +432,14 @@ namespace SSTUTools
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost)
         {
+            if (!modifyMass) { return defaultCost; }
             return -defaultCost + modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass)
         {
+            if (!modifyMass) { return defaultMass; }
             return -prefabPartMass + modifiedMass;
         }
 
@@ -677,6 +691,7 @@ namespace SSTUTools
         
         private void updatePartMass()
         {
+            if (!modifyMass) { modifiedMass = prefabPartMass; return; }
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             if (layout == null) { modifiedMass = 0f; return; }
             modifiedMass = engineMass * (float)layout.positions.Count;
@@ -798,33 +813,13 @@ namespace SSTUTools
             ConfigNode partConfig = SSTUStockInterop.getPartConfig(part);
 
             //update the gimbal modules, force them to reload transforms
-            MonoBehaviour.print("Updating gimbal modules");
+            //MonoBehaviour.print("Updating gimbal modules");
             ModuleGimbal[] gimbals = part.GetComponents<ModuleGimbal>();
             ConfigNode[] gimbalNodes = partConfig.GetNodes("MODULE", "name", "ModuleGimbal");
             for (int i = 0; i < gimbals.Length; i++)
             {
                 gimbals[i].Load(gimbalNodes[i]);
                 gimbals[i].OnStart(state);
-            }
-            
-            //update the engine module(s), forcing them to to reload their thrust, transforms, and effects.
-            ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
-            String engineModuleName = engines[0].GetType().Name;
-            MonoBehaviour.print("Updating engine module for type: " + engineModuleName);
-            ConfigNode[] engineNodes = partConfig.GetNodes("MODULE", "name", engineModuleName);
-            ConfigNode engineNode;
-            float maxThrust, minThrust;
-            float positions = layout.positions.Count;
-            for (int i = 0; i < engines.Length; i++)
-            {
-                engineNode = new ConfigNode("MODULE");
-                engineNodes[i].CopyTo(engineNode);
-                minThrust = engineNode.GetFloatValue("minThrust") * positions;
-                maxThrust = engineNode.GetFloatValue("maxThrust") * positions;
-                engineNode.SetValue("minThrust", minThrust.ToString(), true);
-                engineNode.SetValue("maxThrust", maxThrust.ToString(), true);
-                engines[i].Load(engineNode);
-                engines[i].OnStart(state);
             }
 
             //model constraints need to be updated whenever the number of models (or just the game-objects) are updated
@@ -847,7 +842,29 @@ namespace SSTUTools
                 heater.reInitialize();
             }
 
-            SSTUModInterop.onEngineConfigChange(part, null, positions);
+            if (modifyThrust)
+            {
+                //update the engine module(s), forcing them to to reload their thrust, transforms, and effects.
+                ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
+                String engineModuleName = engines[0].GetType().Name;
+                //MonoBehaviour.print("Updating engine module for type: " + engineModuleName);
+                ConfigNode[] engineNodes = partConfig.GetNodes("MODULE", "name", engineModuleName);
+                ConfigNode engineNode;
+                float maxThrust, minThrust;
+                float positions = layout.positions.Count;
+                for (int i = 0; i < engines.Length; i++)
+                {
+                    engineNode = new ConfigNode("MODULE");
+                    engineNodes[i].CopyTo(engineNode);
+                    minThrust = engineNode.GetFloatValue("minThrust") * positions;
+                    maxThrust = engineNode.GetFloatValue("maxThrust") * positions;
+                    engineNode.SetValue("minThrust", minThrust.ToString(), true);
+                    engineNode.SetValue("maxThrust", maxThrust.ToString(), true);
+                    engines[i].Load(engineNode);
+                    engines[i].OnStart(state);
+                }
+                SSTUModInterop.onEngineConfigChange(part, null, positions);
+            }
         }
 
         /// <summary>

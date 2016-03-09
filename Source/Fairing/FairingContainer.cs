@@ -21,7 +21,7 @@ namespace SSTUTools
         private float rotation;
 
         private List<ArcRing> profile = new List<ArcRing>();
-        private GameObject rootObject;
+        public readonly GameObject rootObject;
         private GameObject[] panelPivots;
         private Quaternion[] defaultPivotLocalRotations;
         public UVArea outsideUV;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace SSTUTools
@@ -8,8 +9,20 @@ namespace SSTUTools
     {
         public static void updatePartHighlighting(Part part)
         {
-            //if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//no need for highlighting in prefab construction...
-            //part.highlighter.ReinitMaterials();
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//no need for highlighting in prefab construction...
+            /*
+             * part.XXX (List<Renderer>) is private, which is where it caches the renderers for highlighting...
+             */
+
+            // MonoBehaviour.print("updating part highlighter for: " + part);
+            //FieldInfo[] fi = typeof(Part).GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+            //foreach (FieldInfo f in fi)
+            //{
+            //    if (f.FieldType == typeof(List<Renderer>))
+            //    {
+            //        f.SetValue(part, null);
+            //    }
+            //}
         }
 
         public static GameObject createJettisonedObject(GameObject toJettison, Vector3 velocity, Vector3 force, float mass)
@@ -588,7 +601,6 @@ namespace SSTUTools
             }
         }
 
-
         public static void removeTransforms(Part part, String[] transformNames)
         {
             Transform[] trs;
@@ -645,6 +657,11 @@ namespace SSTUTools
             return val * (180d / Math.PI);
         }
 
+        public static float roundTo(float value, float roundTo)
+        {
+            int wholeBits = (int)Math.Round((value / roundTo), 0);
+            return (float)wholeBits * roundTo;
+        }
     }
 }
 

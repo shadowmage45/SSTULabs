@@ -30,7 +30,7 @@ namespace SSTUTools
                 }
                 type.GetField("scale").SetValue(module, scale);
                 type.GetMethod("SetConfiguration").Invoke(module, new System.Object[] { config, true});
-                MonoBehaviour.print("Updated ModuleEngineConfigs configuration for part: " + part.name);
+                MonoBehaviour.print("Updated ModuleEngineConfigs configuration for part: " + part.name+ " for config name: "+config+" for scale: "+scale);
             }
         }
 
