@@ -11,6 +11,9 @@ namespace SSTUTools
         public String modelName = "Squad/Parts/Aero/HeatShield/HeatShield3";
 
         [KSPField]
+        public String resourceName = "Ablator";
+
+        [KSPField]
         public String transformsToRemove = String.Empty;
             
         [KSPField]
@@ -35,10 +38,12 @@ namespace SSTUTools
         public bool initializedResources = false;
 
         private SingleModelData mainModelData;
-        private ModuleAblator stockHeatshieldModule;//TODO
-        private SSTUHeatShield customHeatshieldModule;//TODO
         private float techLimitMaxDiameter;
-        private TechLimitDiameter[] techLimits;//TODO
+
+        private SSTUHeatShield customHeatshieldModule;//TODO
+        private ModuleAblator stockHeatshieldModule;//TODO
+
+        #region REGION - GUI Events / interaction
 
         [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
         public void nextDiameterEvent()
@@ -75,6 +80,10 @@ namespace SSTUTools
             //TODO symmetry updates
         }
 
+        #endregion ENDREGION - GUI Events / interaction
+
+        #region REGION - Standard KSP Overrides
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
@@ -93,12 +102,15 @@ namespace SSTUTools
             return base.GetInfo();
         }
 
+        #endregion ENDREGION - Standard KSP Overrides
+
+        #region REGION - Initialization
+
         private void initialize()
         {
             if (mainModelData != null) { return; }
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            TechLimitDiameter.updateTechLimits(TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT")), out techLimitMaxDiameter);
             ConfigNode modelNode = node.GetNode("MAINMODEL");
             mainModelData = new SingleModelData(modelNode);
             mainModelData.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
@@ -129,13 +141,16 @@ namespace SSTUTools
 
         }
 
+        #endregion ENDREGION - Initialization
+
+        #region REGION - Update Methods
+
         //TODO
         private void updateModuleStats()
         {
 
         }
         
-        //TODO
         private void updateAttachNodes(bool userInput)
         {
             float height = mainModelData.currentHeight;
@@ -167,5 +182,7 @@ namespace SSTUTools
                 SSTUModInterop.onPartGeometryUpdate(part, true);
             }
         }
+
+        #endregion ENDREGION - Update Methods
     }
 }

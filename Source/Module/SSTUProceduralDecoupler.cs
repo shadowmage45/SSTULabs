@@ -404,7 +404,6 @@ namespace SSTUTools
             updatePhysicalAttributes();
             updateDecouplerForce();
             updateDragCube();
-            SSTUUtils.updatePartHighlighting(part);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
@@ -416,7 +415,6 @@ namespace SSTUTools
             updatePhysicalAttributes();
             updateDecouplerForce();
             updateDragCube();
-            SSTUUtils.updatePartHighlighting(part);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 

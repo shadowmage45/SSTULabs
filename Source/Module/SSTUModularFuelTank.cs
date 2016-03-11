@@ -657,11 +657,11 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
-            Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
+            Transform modelBase = new GameObject(rootTransformName).transform;
+            modelBase.NestToParent(part.transform.FindRecursive("model"));
             currentMainTankModule.setupModel(part, modelBase, ModelOrientation.CENTRAL);
             currentNoseModule.setupModel(part, modelBase, ModelOrientation.TOP);
             currentMountModule.setupModel(part, modelBase, ModelOrientation.BOTTOM);
-            SSTUUtils.updatePartHighlighting(part);
         }
 
         #endregion ENDREGION - Initialization
@@ -720,8 +720,11 @@ namespace SSTUTools
 
         private void removeExistingModels()
         {
-            Transform tr = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            SSTUUtils.destroyChildren(tr);
+            Transform toDelete = part.transform.FindRecursive(rootTransformName);
+            if (toDelete != null)
+            {
+                GameObject.DestroyImmediate(toDelete.gameObject);
+            }
         }
 
         private bool canChangeFuelType()
@@ -767,7 +770,6 @@ namespace SSTUTools
             updateTextureSet(false);
             updateAttachNodes(userInput);
             updateFairing();
-            SSTUUtils.updatePartHighlighting(part);
         }
 
         private void updateTextureSet(bool updateSymmetry)

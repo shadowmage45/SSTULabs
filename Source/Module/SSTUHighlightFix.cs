@@ -54,7 +54,10 @@ namespace SSTUTools
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
-            updateRenderCache();
+            if (cachedRenderList == null)//uninitialized
+            {
+                updateRenderCache();
+            }
         }
 
         public void LateUpdate()

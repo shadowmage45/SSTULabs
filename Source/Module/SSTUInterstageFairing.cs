@@ -649,7 +649,6 @@ namespace SSTUTools
             updateNodePositions(userInput);
             updateShieldStatus();
             enableEditorColliders(HighLogic.LoadedSceneIsEditor);
-            SSTUUtils.updatePartHighlighting(part);
             SSTUModInterop.onPartGeometryUpdate(part, false);
             recreateDragCubes();
         }

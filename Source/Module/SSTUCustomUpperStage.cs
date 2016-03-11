@@ -838,7 +838,6 @@ namespace SSTUTools
             rcsModule.updateModel();
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
-            SSTUUtils.updatePartHighlighting(part);
         }
 
         /// <summary>
