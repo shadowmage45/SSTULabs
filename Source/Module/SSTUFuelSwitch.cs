@@ -62,13 +62,6 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            part.Resources.list.Clear();
-            PartResource[] resources = part.GetComponents<PartResource>();
-            int len = resources.Length;
-            for (int i = 0; i < len; i++)
-            {
-                GameObject.Destroy(resources[i]);
-            }
             return base.GetInfo();
         }
 
@@ -114,10 +107,6 @@ namespace SSTUTools
             if ((HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight) && !initializedResources)
             {
                 initializedResources = true;
-                updatePartResources();
-            }
-            else //prefab part, initialize anyway, but remove in getInfo
-            {
                 updatePartResources();
             }
         }

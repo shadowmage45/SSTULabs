@@ -29,7 +29,19 @@ namespace SSTUTools
         public float massScalePower = 3f;
 
         [KSPField]
-        public float ablatorScalePower = 3f;
+        public float resourceScalePower = 3f;
+
+        [KSPField]
+        public float fluxScalePower = 3f;
+
+        [KSPField]
+        public float ablationScalePower = 3f;
+
+        [KSPField]
+        public float resourceQuantity = 200f;
+
+        [KSPField(isPersistant = true, guiName ="Shield Type", guiActiveEditor = true, guiActive = true)]
+        public String currentShieldType;
 
         [KSPField(isPersistant =true, guiName ="Diameter", guiActiveEditor = true)]
         public float currentDiameter = 1.25f;
@@ -37,11 +49,24 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
+        public float prefabMass;
+
         private SingleModelData mainModelData;
         private float techLimitMaxDiameter;
+        private HeatShieldType currentShieldTypeData;
+        private HeatShieldType[] shieldTypeDatas;
+        private float modifiedCost;
+        private float modifiedMass;
 
         private SSTUHeatShield customHeatshieldModule;//TODO
         private ModuleAblator stockHeatshieldModule;//TODO
+
+        //TODO -- make these private after debug and testing
+        [KSPField(guiName = "Flux Mult", guiActiveEditor = true, guiActive = true)]
+        public float fluxMult;
+
+        [KSPField(guiName = "Abl Mult", guiActiveEditor = true, guiActive = true)]
+        public float ablatMult;
 
         #region REGION - GUI Events / interaction
 
@@ -57,27 +82,51 @@ namespace SSTUTools
             setDiameterFromEditor(currentDiameter - diameterIncrement, true);
         }
 
+        [KSPEvent(guiName = "Next Shield Type", guiActiveEditor = true)]
+        public void nextShieldTypeEvent()
+        {
+            HeatShieldType next = SSTUUtils.findNext(shieldTypeDatas, m => m.name == currentShieldType, false);
+            setShieldTypeFromEditor(next.name, true);
+        }
+
         private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            //TODO bounds and tech-limit checks
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             currentDiameter = newDiameter;
             setModelDiameter(currentDiameter);
             updateModuleStats();
+            updatePartResources();
             updateAttachNodes(true);
+            updateDragCube();
             if (updateSymmetry)
             {
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 SSTUModularHeatShield mhs;
                 foreach (Part p in part.symmetryCounterparts)
                 {
                     mhs = p.GetComponent<SSTUModularHeatShield>();
                     mhs.setDiameterFromEditor(newDiameter, false);
                 }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
-            //TODO symmetry updates
+        }
+
+        private void setShieldTypeFromEditor(String newType, bool updateSymmetry)
+        {
+            currentShieldType = newType;            
+            updateModuleStats();
+            updatePartResources();
+            if (updateSymmetry)
+            {
+                SSTUModularHeatShield mhs;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    mhs = p.GetComponent<SSTUModularHeatShield>();
+                    mhs.setShieldTypeFromEditor(newType, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
         }
 
         #endregion ENDREGION - GUI Events / interaction
@@ -98,8 +147,12 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            //TODO clear existing resources
             return base.GetInfo();
+        }
+
+        public void Start()
+        {
+            updateModuleStats();
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -111,34 +164,32 @@ namespace SSTUTools
             if (mainModelData != null) { return; }
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             TechLimitDiameter.updateTechLimits(TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT")), out techLimitMaxDiameter);
+
             ConfigNode modelNode = node.GetNode("MAINMODEL");
             mainModelData = new SingleModelData(modelNode);
             mainModelData.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
             setModelDiameter(currentDiameter);
+
+            ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
+            int len = typeNodes.Length;
+            shieldTypeDatas = new HeatShieldType[len];
+            for (int i = 0; i < len; i++)
+            {
+                shieldTypeDatas[i] = new HeatShieldType(typeNodes[i]);
+            }
+            currentShieldTypeData = Array.Find(shieldTypeDatas, m => m.name == currentShieldType);
+
             updateDragCube();
-            //TODO tech limit loading
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
-                initializeResources();
+                updatePartResources();
                 initializedResources = true;
             }
-            else if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
-            {
-                //TODO handle this, removal during getinfo call; so that the resources are present on the icon part for the setup of the icon part
-                //initializeResources();
-            }
             updateAttachNodes(false);
-            updateModuleStats();
             if (!String.IsNullOrEmpty(transformsToRemove))
             {
                 SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
             }
-        }
-
-        //TODO
-        private void initializeResources()
-        {
-
         }
 
         #endregion ENDREGION - Initialization
@@ -148,9 +199,30 @@ namespace SSTUTools
         //TODO
         private void updateModuleStats()
         {
+            fluxMult = Mathf.Pow(currentShieldTypeData.fluxMult, fluxScalePower);
+        }
+
+        private void updatePartMass()
+        {
 
         }
-        
+
+        private void updatePartCost()
+        {
+
+        }
+
+        private void updatePartResources()
+        {
+            float amount = resourceQuantity;
+            float scale = Mathf.Pow(mainModelData.currentDiameterScale, resourceScalePower);
+            amount = amount * scale * currentShieldTypeData.resourceMult;
+
+            SSTUResourceList list = new SSTUResourceList();
+            list.addResource(resourceName, amount);
+            list.setResourcesToPart(part, true);
+        }
+
         private void updateAttachNodes(bool userInput)
         {
             float height = mainModelData.currentHeight;
@@ -184,5 +256,23 @@ namespace SSTUTools
         }
 
         #endregion ENDREGION - Update Methods
+    }
+
+    public class HeatShieldType
+    {
+        public readonly String name;
+        public float resourceMult = 1f;
+        public float fluxMult = 1f;
+        public float ablationMult;
+        public float massMult = 1f;
+
+        public HeatShieldType(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            resourceMult = node.GetFloatValue("resourceMult", resourceMult);
+            fluxMult = node.GetFloatValue("fluxMult", fluxMult);
+            ablationMult = node.GetFloatValue("ablationMult", ablationMult);
+            massMult = node.GetFloatValue("massMult", massMult);
+        }
     }
 }
