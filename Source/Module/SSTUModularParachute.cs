@@ -369,7 +369,7 @@ namespace SSTUTools
                         if (deployTime <= 0)
                         {
                             deployTime = 0;
-                            setChuteState(ChuteState.DROGUE_FULL_DEPLOYED);
+                            setChuteState(ChuteState.DROGUE_SEMI_DEPLOYED);
                         }
                         else
                         {
@@ -390,6 +390,12 @@ namespace SSTUTools
                     {
                         applyDrag = true;
                         setChuteState(ChuteState.MAIN_DEPLOYING_SEMI);
+                    }
+                    else if (FlightGlobals.getAltitudeAtPos(part.transform.position) < drogueSafetyAlt * 0.75f)
+                    {
+                        //transition to drogue-full-deploying
+                        applyDrag = true;
+                        setChuteState(ChuteState.DROGUE_DEPLOYING_FULL);
                     }
                     else
                     {

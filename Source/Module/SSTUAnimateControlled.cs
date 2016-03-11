@@ -16,19 +16,13 @@ namespace SSTUTools
         public int animationID = 0;
 
         [KSPField]
-        public String animationName = String.Empty;
-
-        [KSPField]
-        public int animationLayer = 0;
-
-        /// <summary>
-        /// The animation speed MULTIPLIER.
-        /// Values higher than 1 increase default playback speed.
-        /// Values between 0 and 1 will decrease playback speed (0=paused).
-        /// Values below 0 have undefined results.
-        /// </summary>
-        [KSPField]
         public float animationSpeed = 1;
+
+        [KSPField]
+        public int animationLayer = 1;
+
+        [KSPField]
+        public String animationName;
 
         [KSPField(isPersistant = true)]
         public String persistentState = AnimState.STOPPED_START.ToString();
@@ -37,7 +31,7 @@ namespace SSTUTools
 
         private List<Action<AnimState>> onAnimStateChangeCallbacks = new List<Action<AnimState>>();
 
-        private Animation[] anims;
+        private SSTUAnimData[] animationData;
 
         //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
         public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<AnimState> callback)
@@ -65,11 +59,7 @@ namespace SSTUTools
             {
                 return;//should never happen, onStart not called for prefabs
             }
-            if (anims == null)//means OnLoad was not called for this instance;
-            {
-                locateAnimation();
-                restorePreviousAnimationState(currentAnimState);
-            }
+            if (animationData == null) { initialize(); }
         }
 
         public override void OnLoad(ConfigNode node)
@@ -85,21 +75,45 @@ namespace SSTUTools
                 persistentState = currentAnimState.ToString();
                 print(e.Message);
             }
-            locateAnimation();
+            initialize();
+        }
+
+        private void initialize()
+        {
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode[] animNodes = node.GetNodes("ANIMATION");
+            int len = animNodes.Length;
+            int ex = 0;
+            if (animationName != null)
+            {
+                ex = 1;
+            }
+            animationData = new SSTUAnimData[len+ex];
+            for (int i = 0; i < len; i++)
+            {
+                animationData[i] = new SSTUAnimData(animNodes[i], part);
+            }
+            if (ex > 0)
+            {
+                ConfigNode legacyNode = new ConfigNode("ANIMATION");
+                legacyNode.AddValue("name", animationName);
+                legacyNode.AddValue("speed", animationSpeed);
+                legacyNode.AddValue("layer", animationLayer);
+                animationData[len] = new SSTUAnimData(legacyNode, part);
+            }
             restorePreviousAnimationState(currentAnimState);
         }
 
         public void reInitialize()
         {
-            if (anims != null)
+            if (animationData != null)
             {
-                anims = null;
-                locateAnimation();
-                restorePreviousAnimationState(currentAnimState);
+                animationData = null;
+                initialize();
             }
         }
 
-        public bool initialized() { return anims != null; }
+        public bool initialized() { return animationData != null; }
 
         public void addCallback(Action<AnimState> cb)
         {
@@ -123,12 +137,16 @@ namespace SSTUTools
             if (currentAnimState == AnimState.PLAYING_BACKWARD || currentAnimState == AnimState.PLAYING_FORWARD)
             {
                 bool playing = false;
-                foreach (Animation a in anims)
+                int len = animationData.Length;
+                for (int i = 0; i < len && !playing; i++)
                 {
-                    if (a[animationName].enabled)//the animationClip/State will be enabled if it is playing; solves problems of always-active anims (thermal emissive) interfering with anim control
+                    int animLen = animationData[i].anims.Length;
+                    for (int k = 0; k < animLen && !playing; k++)
                     {
-                        playing = true;
-                        break;
+                        if (animationData[i].anims[k][animationData[i].animationName].enabled)
+                        {
+                            playing = true;
+                        }
                     }
                 }
                 //if no longer playing, set the new animation state and inform the callback of the change
@@ -191,62 +209,39 @@ namespace SSTUTools
             }
         }
 
-        private void locateAnimation()
-        {
-            Animation[] animsBase = part.gameObject.GetComponentsInChildren<Animation>(true);
-            List<Animation> al = new List<Animation>();
-            foreach (Animation a in animsBase)
-            {
-                AnimationClip c = a.GetClip(animationName);
-                if (c != null)
-                {
-                    al.Add(a);
-                }
-            }
-            anims = al.ToArray();
-            if (anims == null || anims.Length == 0)
-            {
-                SSTUUtils.recursePrintComponents(part.gameObject, "");
-                throw new NullReferenceException("Cannot instantiate SSTUAnimateControlled with no animatons; could not locate animations for: " + animationName);
-            }
-            foreach (Animation a in anims)
-            {
-                a[animationName].layer = animationLayer;
-                a[animationName].wrapMode = WrapMode.Once;
-                a.wrapMode = WrapMode.Once;
-            }
-        }
-
         private void playAnimation()
         {
-            foreach (Animation a in anims)
+            int len = animationData.Length;
+            for (int i = 0; i < len; i++)
             {
-                a.Play(animationName);
+                animationData[i].playAnimation();
             }
         }
 
         private void stopAnimation()
         {
-            foreach (Animation a in anims)
+            int len = animationData.Length;
+            for (int i = 0; i < len; i++)
             {
-                a[animationName].speed = 0f;
-                a.Stop(animationName);
+                animationData[i].stopAnimation();
             }
         }
 
         private void setAnimTime(float time)
         {
-            foreach (Animation a in anims)
+            int len = animationData.Length;
+            for (int i = 0; i < len; i++)
             {
-                a[animationName].normalizedTime = time;
+                animationData[i].setAnimTime(time);
             }
         }
 
         private void setAnimSpeed(float speed)
         {
-            foreach (Animation a in anims)
+            int len = animationData.Length;
+            for (int i = 0; i < len; i++)
             {
-                a[animationName].speed = speed * animationSpeed;
+                animationData[i].setAnimSpeed(speed);
             }
         }
 
@@ -261,6 +256,75 @@ namespace SSTUTools
                 state = AnimState.STOPPED_END;
             }
             setAnimState(state, false);
+        }
+    }
+
+    public class SSTUAnimData
+    {
+        public readonly Animation[] anims;
+        public readonly String animationName;
+        public readonly float animationSpeed = 1;
+        public readonly int animationLayer = 1;
+        
+        public SSTUAnimData(ConfigNode node, Part part)
+        {
+            animationName = node.GetStringValue("name");
+            animationSpeed = node.GetFloatValue("speed", animationSpeed);
+            animationLayer = node.GetIntValue("layer", animationLayer);
+            Animation[] animsBase = part.gameObject.GetComponentsInChildren<Animation>(true);
+            List<Animation> al = new List<Animation>();
+            foreach (Animation a in animsBase)
+            {
+                AnimationClip c = a.GetClip(animationName);
+                if (c != null)
+                {
+                    al.Add(a);
+                }
+            }
+            anims = al.ToArray();
+            if (anims == null || anims.Length == 0)
+            {
+                MonoBehaviour.print("ERROR: No animations found for animation name: " + animationName);
+            }
+            foreach (Animation a in anims)
+            {
+                a[animationName].layer = animationLayer;
+                a[animationName].wrapMode = WrapMode.Once;
+                a.wrapMode = WrapMode.Once;
+            }
+        }
+
+        public void playAnimation()
+        {
+            foreach (Animation a in anims)
+            {
+                a.Play(animationName);
+            }
+        }
+
+        public void stopAnimation()
+        {
+            foreach (Animation a in anims)
+            {
+                a[animationName].speed = 0f;
+                a.Stop(animationName);
+            }
+        }
+
+        public void setAnimTime(float time)
+        {
+            foreach (Animation a in anims)
+            {
+                a[animationName].normalizedTime = time;
+            }
+        }
+
+        public void setAnimSpeed(float speed)
+        {
+            foreach (Animation a in anims)
+            {
+                a[animationName].speed = speed * animationSpeed;
+            }
         }
     }
 }

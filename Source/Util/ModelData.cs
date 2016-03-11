@@ -350,22 +350,43 @@ namespace SSTUTools
 
         public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
         {
-            String modelName = modelDefinition.modelName;
-            if (!String.IsNullOrEmpty(modelName))
-            {                
-                model = SSTUUtils.cloneModel(modelName);
-                if (model != null)
+            setupModel(part, parent, orientation, false);
+        }
+
+        public void setupModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        {
+            if (reUse)
+            {
+                MonoBehaviour.print("attempting to re-use existing model: " + modelDefinition.modelName);
+                Transform tr = part.transform.FindModel(modelDefinition.modelName);
+                if (tr != null)
                 {
-                    model.transform.NestToParent(parent);
-                    if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
-                    {
-                        model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
-                    }
+                    MonoBehaviour.print("Found existing model!");
+                    tr.name = modelDefinition.modelName;
+                    tr.gameObject.name = modelDefinition.modelName;
                 }
                 else
                 {
-                    MonoBehaviour.print("ERROR: Could not locate model for name: " + modelName);
+                    MonoBehaviour.print("Did not find existing model, will clone and add");
                 }
+                model = tr == null ? null : tr.gameObject;
+            }
+            String modelName = modelDefinition.modelName;
+            if (!String.IsNullOrEmpty(modelName) && model==null)
+            {
+                model = SSTUUtils.cloneModel(modelName);                
+            }
+            if (model != null)
+            {
+                model.transform.NestToParent(parent);
+                if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
+                {
+                    model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
+                }
+            }
+            else
+            {
+                MonoBehaviour.print("ERROR: Could not locate model for name: " + modelName);
             }
         }
 

@@ -318,6 +318,10 @@ namespace SSTUTools
                 Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
                 pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
             }
+            else
+            {
+
+            }
         }
 
         private void updatePanelPower(PanelData pd)

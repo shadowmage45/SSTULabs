@@ -19,7 +19,8 @@ namespace SSTUTools
             foreach (ConfigNode node in partNodes)
             {
                 name = node.GetStringValue("name");
-                if (partConfigNodes.ContainsKey(name)) { continue; }           
+                name = name.Replace('_', '.');
+                if (partConfigNodes.ContainsKey(name)) { continue; }
                 partConfigNodes.Add(name, node);
             }
         }
@@ -41,12 +42,12 @@ namespace SSTUTools
 
         public static ConfigNode getPartConfig(Part p)
         {
-            if (partConfigNodes.ContainsKey(p.name)){return partConfigNodes[p.name];}
-            MonoBehaviour.print("Could not locate part config from cached database");
+            if (partConfigNodes.ContainsKey(p.name)){return partConfigNodes[p.name];}            
+            MonoBehaviour.print("Could not locate part config from cached database for part: "+p.name);
             if (p.partInfo != null && p.partInfo.partConfig != null) { return p.partInfo.partConfig; }
-            MonoBehaviour.print("Could not locate part config from part.partInfo.partConfig");
+            MonoBehaviour.print("Could not locate part config from part.partInfo.partConfig for part: " + p.name);
             if (p.partInfo != null) { return PartLoader.Instance.GetDatabaseConfig(p); }
-            MonoBehaviour.print("Could not locate part config from PartLoader.Instance.GetDatabaseConfig()");
+            MonoBehaviour.print("Could not locate part config from PartLoader.Instance.GetDatabaseConfig() for part: " + p.name);
             return null;
         }
         

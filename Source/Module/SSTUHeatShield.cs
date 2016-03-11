@@ -122,34 +122,29 @@ namespace SSTUTools
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
-            double perSecondUsage = heatCurve.Evaluate((float)tempDelta) * tempDelta * effectiveness;            
-            double perTickUsage = perSecondUsage * TimeWarp.fixedDeltaTime;//actual resource use depends on timewarp factor
+            double skinMass = part.skinThermalMass;
+            double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
+            maxFluxRemoved *= effectiveness;
             if (heatSoak)
             {
-                guiShieldUse = perSecondUsage;
-                if (perTickUsage > 0)
-                {
-                    double flux = perSecondUsage * useToFluxMultiplier;
-                    part.AddExposedThermalFlux(-flux);
-                    guiShieldFlux = flux;
-                }
+                part.AddExposedThermalFlux(-maxFluxRemoved);
+                guiShieldFlux = maxFluxRemoved;
+                guiShieldUse = 0;
             }
             else
             {
-                if (perTickUsage > resource.amount)
+                double maxResourceUsed = maxFluxRemoved / useToFluxMultiplier;
+                maxResourceUsed *= TimeWarp.fixedDeltaTime; //convert to a per-tick usage amount
+                if (maxResourceUsed > resource.amount)
                 {
-                    perTickUsage = resource.amount;
-                    perSecondUsage = perTickUsage / TimeWarp.fixedDeltaTime;//so if it changes, you need to use the inverse to correct it
+                    maxResourceUsed = resource.amount;
+                    maxFluxRemoved = maxResourceUsed * useToFluxMultiplier;
                 }
-                guiShieldUse = perSecondUsage;
-                if (perTickUsage > 0)
-                {
-                    part.TransferResource(resource, -perTickUsage);
-                    double flux = perSecondUsage * useToFluxMultiplier;
-                    part.AddExposedThermalFlux(-flux);
-                    guiShieldFlux = flux;
-                }
-            }   
+                part.TransferResource(resource, -maxResourceUsed);
+                part.AddExposedThermalFlux(-maxFluxRemoved);
+                guiShieldFlux = maxFluxRemoved;
+                guiShieldUse = maxResourceUsed;
+            }
         }
 
         //hack to fix 'glowing parts' when heatshield is really the only thing that should be glowing
@@ -180,7 +175,6 @@ namespace SSTUTools
                 useToFluxMultiplier = hsp * ablationEfficiency * resource.info.density;
             }
             baseSkinIntMult = part.skinInternalConductionMult;
-            //PhysicsGlobals.ThermalDataDisplay = true;
         }
 
     }

@@ -7,23 +7,23 @@ namespace SSTUTools.Module
     class SSTUCustomRadialDecoupler : PartModule
     {
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
         public float height = 2f;
 
-        [KSPField(isPersistant = true)]
-        public float radius = 1.25f;
+        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
+        public float diameter = 1.25f;
 
         [KSPField]
         public float heightIncrement = 1f;
 
         [KSPField]
-        public float radiusIncrement = 0.3125f;
+        public float diameterIncrement = 0.3125f;
 
         [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorHeightExtra;
 
-        [KSPField(guiActiveEditor = true, guiName = "Radius Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorRadiusExtra;
+        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float editorDiameterAdjust;
 
         [KSPField(guiName ="Raw Thrust", guiActive =true, guiActiveEditor =true)]
         public float guiEngineThrust = 0f;
@@ -37,7 +37,7 @@ namespace SSTUTools.Module
         //this is used to determine actual resultant scale from input for radius
         //should match the model default scale geometry being used...
         [KSPField]
-        public float modelRadius = 1.25f;
+        public float modelDiameter = 2.5f;
 
         /// <summary>
         /// The volume of resources that the part contains at its default model scale (e.g. modelRadius listed above)
@@ -64,10 +64,10 @@ namespace SSTUTools.Module
         public float maxHeight = 100f;
 
         [KSPField]
-        public float minRadius = 0.625f;
+        public float minDiameter = 0.625f;
 
         [KSPField]
-        public float maxRadius = 12.5f;
+        public float maxDiameter = 10f;
 
         [KSPField]
         public String topMountName = "SC-RBDC-MountUpper";
@@ -82,7 +82,7 @@ namespace SSTUTools.Module
         public String configNodeData = String.Empty;
 
         private float editorHeight;
-        private float editorRadius;
+        private float editorDiameter;
         private float lastHeightExtra;
         private float lastRadiusExtra;
 
@@ -107,16 +107,16 @@ namespace SSTUTools.Module
             setHeightFromEditor(height + heightIncrement, true);
         }
 
-        [KSPEvent(guiName = "Size-", guiActiveEditor = true)]
-        public void prevRadiusEvent()
+        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
+        public void nextDiameterEvent()
         {
-            setRadiusFromEditor(radius - radiusIncrement, true);
+            setDiameterFromEditor(diameter + diameterIncrement, true);
         }
 
-        [KSPEvent(guiName = "Size+", guiActiveEditor = true)]
-        public void nextRadiusEvent()
+        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true)]
+        public void prevRadiusEvent()
         {
-            setRadiusFromEditor(radius + radiusIncrement, true);
+            setDiameterFromEditor(diameter - diameterIncrement, true);
         }
 
         public override void OnStart(StartState state)
@@ -125,7 +125,7 @@ namespace SSTUTools.Module
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
             TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
-            if (radius * 2 > techLimitMaxDiameter) { radius = techLimitMaxDiameter * 0.5f; }
+            if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
             
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
@@ -151,6 +151,7 @@ namespace SSTUTools.Module
             {
                 configNodeData = node.ToString();
             }
+            if (node.HasValue("radius")) { diameter = node.GetFloatValue("radius") * 2f; }
         }
 
         public void Start()
@@ -171,10 +172,10 @@ namespace SSTUTools.Module
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (editorRadiusExtra != lastRadiusExtra)
+            if (editorDiameterAdjust != lastRadiusExtra)
             {
-                float newRadius = editorRadius + (editorRadiusExtra * radiusIncrement);
-                setRadiusFromEditor(newRadius, true);
+                float newDiameter = editorDiameter + (editorDiameterAdjust * diameterIncrement);
+                setDiameterFromEditor(newDiameter, true);
             }
             if (editorHeightExtra != lastHeightExtra)
             {
@@ -200,12 +201,12 @@ namespace SSTUTools.Module
         {
             float div, whole, extra;
 
-            div = radius / radiusIncrement;
+            div = diameter / diameterIncrement;
             whole = (int)div;
             extra = div - whole;
-            editorRadius = whole * radiusIncrement;
-            editorRadiusExtra = extra;
-            lastRadiusExtra = editorRadiusExtra;
+            editorDiameter = whole * diameterIncrement;
+            editorDiameterAdjust = extra;
+            lastRadiusExtra = editorDiameterAdjust;
 
             div = height / heightIncrement;
             whole = (int)div;
@@ -237,7 +238,7 @@ namespace SSTUTools.Module
 
         private float getScale()
         {
-            return radius / modelRadius;
+            return diameter / modelDiameter;
         }
 
         private void locateTransforms()
@@ -262,12 +263,12 @@ namespace SSTUTools.Module
             }
         }
 
-        private void setRadiusFromEditor(float newRadius, bool updateSymmetry)
+        private void setDiameterFromEditor(float newRadius, bool updateSymmetry)
         {
-            if (newRadius > maxRadius) { newRadius = maxRadius; }
-            if (newRadius < minRadius) { newRadius = minRadius; }
+            if (newRadius > maxDiameter) { newRadius = maxDiameter; }
+            if (newRadius < minDiameter) { newRadius = minDiameter; }
             if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
-            radius = newRadius;
+            diameter = newRadius;
             restoreEditorFields();
             updatePartResources();
             updateEngineThrust();
@@ -276,7 +277,7 @@ namespace SSTUTools.Module
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    p.GetComponent<SSTUCustomRadialDecoupler>().setRadiusFromEditor(newRadius, false);
+                    p.GetComponent<SSTUCustomRadialDecoupler>().setDiameterFromEditor(newRadius, false);
                 }
             }
         }
@@ -314,14 +315,7 @@ namespace SSTUTools.Module
 
         private float getCurrentModelScale()
         {
-            return radius / modelRadius;
-        }
-
-        /// <summary>
-        /// Update the tech limitations for this part
-        /// </summary>
-        private void updateTechLimits()
-        {
+            return diameter / modelDiameter;
         }
     }
 
