@@ -69,10 +69,7 @@ namespace SSTUTools
         //IControlledModule fields
         [KSPField]
         public int controlID = -1;
-
-        [Persistent]
-        public String configNodeString = String.Empty;
-
+        
         private ConverterRecipe recipe;
 
         private ModuleEngines engineModule;
@@ -98,7 +95,6 @@ namespace SSTUTools
             if (node.HasNode("CONVERTERRECIPE"))//load the recipe config for the prefab part instance;
             {
                 loadRecipeFromNode(node);
-                configNodeString = node.ToString();
             }
         }
 
@@ -145,7 +141,7 @@ namespace SSTUTools
 
         private void loadRecipeFromSavedConfigString()
         {
-            ConfigNode moduleNode = SSTUConfigNodeUtils.parseConfigNode(configNodeString);
+            ConfigNode moduleNode = SSTUStockInterop.getPartModuleConfig(part, this);
             loadRecipeFromNode(moduleNode);
         }
 

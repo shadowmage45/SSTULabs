@@ -69,7 +69,10 @@ namespace SSTUTools
 
         [KSPField]
         public bool useRF = false;
-        
+
+        [KSPField]
+        public String techLimitSet = "Default";
+
         #endregion REGION - KSP Config Variables
 
         #region REGION - Persistent Variables
@@ -150,17 +153,13 @@ namespace SSTUTools
         private MountModelData currentNoseModule;
         private SRBNozzleData currentNozzleModule;
         private SRBModelData currentMainModule;
-
-        private TechLimitDiameter[] techLimits;
+        
         private float techLimitMaxDiameter;
 
         private float modifiedCost;
         private float modifiedMass;
         public float prefabPartMass;
         
-        [Persistent]
-        public String configNodeData;
-
         #endregion ENDREGION - Private working variables
 
         #region REGION - KSP GUI Interaction Methods
@@ -483,10 +482,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("CAP") || node.HasNode("MAINMODEL") || node.HasNode("FUELTYPE"))
-            {
-                configNodeData = node.ToString();
-            }
             initialize();
         }
 
@@ -631,12 +626,9 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigNodeData()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
-
 
             //load singular fuel type data from config node;
             //using a node so that it may have the custom fields defined for mass fraction/etc on a per-part basis
@@ -650,7 +642,10 @@ namespace SSTUTools
                 currentMainModule = mainModules[0];
                 currentMainName = currentMainModule.name;
             }
-            if (!currentMainModule.isValidTextureSet(currentMainTexture)) { currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet; }
+            if (!currentMainModule.isValidTextureSet(currentMainTexture))
+            {
+                currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet;
+            }
 
             //load nose modules from NOSE nodes
             ConfigNode[] noseNodes = node.GetNodes("NOSE");

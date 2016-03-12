@@ -49,6 +49,9 @@ namespace SSTUTools
         [KSPField]
         public String modelName = "SSTU/Assets/SC-GEN-FR";
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         /// <summary>
         /// Persistent scale value, whatever value is here/in the config will be the 'start diameter' for parts in the editor/etc
         /// </summary>
@@ -57,11 +60,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true, guiName = "Texture Set")]
         public String currentTextureSet = "Fairings-SLS";
-
-        [Persistent]
-        public String configNodeData = String.Empty;
-
-        private TechLimitDiameter[] techLimits;
+        
         private float techLimitMaxDiameter;
 
         private ModuleProceduralFairing mpf = null;
@@ -94,10 +93,9 @@ namespace SSTUTools
         {
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);                        
             if (currentDiameter > techLimitMaxDiameter)
             {
                 currentDiameter = techLimitMaxDiameter;
@@ -110,7 +108,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("TECHLIMIT") || node.HasNode("TEXTURESET")) { configNodeData = node.ToString(); }
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//for prefab part...
             updateTexture();

@@ -18,21 +18,16 @@ namespace SSTUTools
         private static int colorID;
         private static int falloffID;
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            init();
+        }
+
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            MonoBehaviour.print("Starting highlighting fixer for part: " + part.name);
-            dummyTransform = part.transform.FindRecursive(transformName);
-            if (dummyTransform == null)//should only be null on the prefab part
-            {
-                GameObject newObj = new GameObject(transformName);
-                newObj.transform.name = transformName;
-                newObj.transform.NestToParent(part.transform.FindRecursive("model"));
-
-                Renderer render = newObj.AddComponent<MeshRenderer>();//add a new render
-                render.material = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
-                dummyTransform = newObj.transform;//cache reference to it for use for updating
-            }
+            init();
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
@@ -44,26 +39,43 @@ namespace SSTUTools
             colorID = HighLogic.ShaderPropertyID_RimColor;
             falloffID = HighLogic.ShaderPropertyID_RimFalloff;
             mpb = new MaterialPropertyBlock();
-            updateRenderCache();
+        }
+
+        private void init()
+        {
+            MonoBehaviour.print("Starting highlighting fixer for part: " + part.name);
+            dummyTransform = part.transform.FindRecursive(transformName);
+            if (dummyTransform == null)//should only be null on the prefab part
+            {
+                MonoBehaviour.print("Creating highlighter fix object!");
+                GameObject newObj = new GameObject(transformName);
+                newObj.transform.name = transformName;
+                newObj.transform.NestToParent(part.transform.FindRecursive("model"));
+
+                Renderer render = newObj.AddComponent<MeshRenderer>();//add a new render
+                render.material = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
+                dummyTransform = newObj.transform;//cache reference to it for use for updating
+            }
         }
 
         /// <summary>
-        /// Event callback for when vessel is modified in the editor.  Used in this case to update the cached render list (my modular parts always call onEditorVesselModified when their models are changed, so this is a good enough catch for them)
+        /// Event callback for when vessel is modified in the editor.  Used in this case to update the cached render list
         /// </summary>
         /// <param name="ship"></param>
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (cachedRenderList == null)//uninitialized
-            {
-                updateRenderCache();
-            }
+            cachedRenderList = null;
         }
 
         public void LateUpdate()
         {
             if (HighLogic.LoadedSceneIsEditor)
             {
+                if (cachedRenderList == null)
+                {
+                    updateRenderCache();
+                }
                 Color color = dummyTransform.renderer.material.GetColor(colorID);
                 float falloff = dummyTransform.renderer.material.GetFloat(falloffID);
 
@@ -83,7 +95,7 @@ namespace SSTUTools
                 }
                 if (updateCache)
                 {
-                    updateRenderCache();
+                    cachedRenderList = null;
                 }
             }
         }
@@ -91,7 +103,7 @@ namespace SSTUTools
         private void updateRenderCache()
         {
             cachedRenderList = null;
-            Renderer[] renders = part.transform.GetComponentsInChildren<Renderer>(true);
+            Renderer[] renders = part.transform.FindRecursive("model").GetComponentsInChildren<Renderer>(true);
             List<Renderer> rendersToCache = new List<Renderer>();
             int len = renders.Length;
             for (int i = 0; i < len; i++)

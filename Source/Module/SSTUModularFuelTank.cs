@@ -30,6 +30,9 @@ namespace SSTUTools
         public bool useRF = false;
 
         [KSPField]
+        public String techLimitSet = "Default";
+
+        [KSPField]
         public String topManagedNodeNames = "top, top2, top3, top4";
 
         [KSPField]
@@ -104,10 +107,7 @@ namespace SSTUTools
         #endregion
 
         #region REGION - private working variables
-
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+        
         private float editorTankWholeDiameter;
         private float editorPrevTankDiameterAdjust;
 
@@ -130,9 +130,7 @@ namespace SSTUTools
 
         private FuelTypeData[] fuelTypes;
         private FuelTypeData currentFuelTypeData;
-
-        private TechLimitDiameter[] techLimits;
-        
+                
         private String[] topNodeNames;
         private String[] bottomNodeNames;
 
@@ -412,10 +410,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("TANK"))//only prefab instance config node should contain this data...but whatever, grab it whenever it is present
-            {
-                configNodeData = node.ToString();
-            }
             initialize();
         }
 
@@ -529,7 +523,7 @@ namespace SSTUTools
 
             removeExistingModels();
             loadConfigData();
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
@@ -554,7 +548,7 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigData()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] tankNodes = node.GetNodes("TANK");
             ConfigNode[] mountNodes = node.GetNodes("CAP");
             ConfigNode[] fuelNodes = node.GetNodes("FUELTYPE");
@@ -584,10 +578,7 @@ namespace SSTUTools
             noseModules = noses.ToArray();
             
             fuelTypes = FuelTypeData.parseFuelTypeData(fuelNodes);
-
-            len = limitNodes.Length;
-            techLimits = TechLimitDiameter.loadTechLimits(limitNodes);
-            
+                        
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
             

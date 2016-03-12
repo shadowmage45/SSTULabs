@@ -10,10 +10,7 @@ namespace SSTUTools
 
         [KSPField]
         public int numOfPasses = 1;
-
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+        
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
@@ -23,18 +20,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("LOOK_CONST") || node.HasNode("POS_CONST") || node.HasNode("LOCKED_CONST"))
-            {
-                configNodeData = node.ToString();
-            }
-            if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
-            {
-                initialize();
-            }
-            else
-            {
-                initializePrefab();
-            }
+            initialize();
         }
 
         public void reInitialize()
@@ -47,15 +33,10 @@ namespace SSTUTools
             updateConstraints();
         }
 
-        private void initializePrefab()
-        {
-            initialize();
-        }
-
         private void initialize()
         {
             constraints.Clear();
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
 
             ConfigNode[] lookConstraintNodes = node.GetNodes("LOOK_CONST");
             foreach (ConfigNode lcn in lookConstraintNodes)

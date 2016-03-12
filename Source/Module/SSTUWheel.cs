@@ -25,10 +25,7 @@ namespace SSTUTools
         private WheelState currentState;
         private List<SSTUWheelData> wheelDatas = new List<SSTUWheelData>();
         private bool initialized;
-
-        [Persistent]
-        public String configNodeData;
-
+        
         [KSPAction("Deploy/Retract Wheel", actionGroup = KSPActionGroup.Gear, guiName = "Deploy/Retract Wheel")]
         public void toggleGearAction(KSPActionParam param)
         {
@@ -64,7 +61,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -126,7 +122,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] wheelDataNodes = node.GetNodes("WHEEL");
             foreach (ConfigNode wheelDataNode in wheelDataNodes)
             {

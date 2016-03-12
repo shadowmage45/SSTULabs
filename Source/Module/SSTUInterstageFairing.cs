@@ -102,6 +102,9 @@ namespace SSTUTools
         [KSPField]
         public float heightIncrement = 1;
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
         public String currentTextureSet = String.Empty;
 
@@ -167,12 +170,6 @@ namespace SSTUTools
 
         #region private working variables
 
-        /// <summary>
-        /// Stashed copy of the raw config node data, to hack around KSP not passing in the modules base node data after prefab construction
-        /// </summary>
-        [Persistent]
-        public String configNodeData = String.Empty;
-
         private float editorTopRadius;
         private float editorBottomRadius;
         private float editorHeight;
@@ -195,7 +192,6 @@ namespace SSTUTools
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
         private float techLimitMaxDiameter;
-        private TechLimitDiameter[] techLimits;
 
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
@@ -402,10 +398,6 @@ namespace SSTUTools
             if (node.HasValue("bottomRadius"))
             {
                 bottomDiameter = node.GetFloatValue("bottomRadius") * 2.0f;
-            }
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
-            {
-                configNodeData = node.ToString();
             }
             initialize();
         }
@@ -761,26 +753,23 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            int len = textureNodes.Length;
-            textureSetData = new TextureSet[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureSetData[i] = new TextureSet(textureNodes[i]);
-            }
+            textureSetData = TextureSet.loadTextureSets(textureNodes);
             currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.setName;
             }
-            
+
+            TextureData data = currentTextureSetData.textureDatas[0];
+            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
+
             loadMaterial();
 
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (topDiameter > techLimitMaxDiameter)
             {
                 topDiameter = techLimitMaxDiameter;

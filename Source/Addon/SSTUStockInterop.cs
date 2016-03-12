@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 
 namespace SSTUTools
@@ -37,7 +35,13 @@ namespace SSTUTools
 
         public static ConfigNode getPartModuleConfig(Part p, PartModule m)
         {
-            return getPartModuleConfig(p, p.Modules.IndexOf(m));
+            ConfigNode partNode = getPartConfig(p);
+            int index = p.Modules.IndexOf(m);
+            String type = m.GetType().Name;
+            ConfigNode moduleNode = partNode.GetNodes("MODULE")[index];
+            if (moduleNode.GetStringValue("name") == type){ return moduleNode; }
+            MonoBehaviour.print("Could not find matching index for module: " + type + " :: " + m+" returning first module by name.");
+            return getPartModuleConfig(p, type);
         }
 
         public static ConfigNode getPartConfig(Part p)

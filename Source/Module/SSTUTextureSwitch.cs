@@ -24,10 +24,7 @@ namespace SSTUTools
         //currently selected texture set, by name
         [KSPField(isPersistant = true)]
         public String currentTextureSet = String.Empty;
-
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+        
         //actual texture set names
         private String[] textureSetNames;
 
@@ -45,10 +42,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("TEXTURESET"))
-            {
-                configNodeData = node.ToString();
-            }
             initialize();
         }
 
@@ -87,7 +80,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] textureSets = node.GetNodes("TEXTURESET");
             textureSetNames = new String[textureSets.Length];
             for (int i = 0; i < textureSets.Length; i++)

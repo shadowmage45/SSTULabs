@@ -63,6 +63,9 @@ namespace SSTUTools
         [KSPField]
         public float forcePerKg = 0.75f;
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
         public float diameter = 1.25f;
 
@@ -90,8 +93,7 @@ namespace SSTUTools
 
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
-
-        private TechLimitDiameter[] techLimits;
+        
         private float techLimitMaxDiameter;
 
         private UVArea outsideUV = new UVArea(2, 2, 2+252, 2+60, 256);
@@ -99,10 +101,7 @@ namespace SSTUTools
         
         private UVArea topUV = new UVArea(0, 0.5f, 0.5f, 1f);
         private UVArea bottomUV = new UVArea(0.5f, 0.5f, 1f, 1f);
-
-        [Persistent]
-        public String configNodeData; 
-
+        
         #endregion
 
         #region KSP GUI Actions/Events
@@ -247,10 +246,6 @@ namespace SSTUTools
             {
                 diameter = node.GetFloatValue("radius") * 2f;
             }
-            if (node.HasNode("UVMAP"))
-            {
-                configNodeData = node.ToString();
-            }
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
                 loadConfigData();
@@ -261,8 +256,7 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            model.destroyModel();
-            SSTUUtils.destroyChildren(part.FindModelTransform("model"));//remove the original empty proxy model and any created models
+            model.destroyModel();            
             model = null;
             return "This part has configurable diameter, height, thickness, and ejection force.";
         }
@@ -284,7 +278,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode insideUVNode = node.GetNode("UVMAP", "name", "inside");
             ConfigNode outsideUVNode = node.GetNode("UVMAP", "name", "outside");
             ConfigNode topNode = node.GetNode("UVMAP", "name", "top");
@@ -308,11 +302,10 @@ namespace SSTUTools
                 currentTextureSet = currentTextureSetData.setName;
             }
 
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
-            if (diameter * 2 > techLimitMaxDiameter)
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            if (diameter > techLimitMaxDiameter)
             {
-                diameter = techLimitMaxDiameter * 0.5f;
+                diameter = techLimitMaxDiameter;
             }
         }
 
@@ -387,8 +380,14 @@ namespace SSTUTools
             {
                 return;
             }
-            Transform tr = part.transform.FindRecursive("model");
-            SSTUUtils.destroyChildren(tr);//remove the original empty proxy model, and any models that may have been attached during prefab init
+            String transformName = "ProcDecouplerRoot";
+            Transform modelBase = part.transform.FindRecursive(transformName);
+            if (modelBase != null)
+            {
+                GameObject.DestroyImmediate(modelBase.gameObject);
+            }
+            modelBase = new GameObject(transformName).transform;
+            modelBase.NestToParent(part.transform.FindRecursive("model"));
             model = new ProceduralCylinderModel();
             model.outsideUV = outsideUV;
             model.insideUV = insideUV;
@@ -400,7 +399,7 @@ namespace SSTUTools
             model.setMaterial(SSTUUtils.loadMaterial(data.diffuseTextureName, data.normalTextureName));
             model.setMeshColliderStatus(true, false);
             model.createModel();
-            model.setParent(tr);
+            model.setParent(modelBase);
             updatePhysicalAttributes();
             updateDecouplerForce();
             updateDragCube();
@@ -446,7 +445,6 @@ namespace SSTUTools
         public void updateAttachNodePositions(bool userInput)
         {
             float h = height * 0.5f;
-            MonoBehaviour.print("setting pdc for node height: " + h);
             AttachNode topNode = part.findAttachNode("top");
             if (topNode != null)
             {

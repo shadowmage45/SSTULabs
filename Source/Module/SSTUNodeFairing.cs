@@ -176,13 +176,7 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public String persistentDataString = String.Empty;
-        
-        /// <summary>
-        /// The raw config node for this PartModule, stashed during prefab initialization, public/peristent so that unity will serialize it to non-prefab parts correctly
-        /// </summary>
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+  
         #endregion
 
         #region REGION - fairing airstream shield vars
@@ -346,11 +340,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            //if prefab, load persistent config data into config node string
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
-            {
-                configNodeData = node.ToString();
-            }
         }
 
         public override void OnSave(ConfigNode node)
@@ -370,7 +359,7 @@ namespace SSTUTools
             }
 
             //load FairingData instances from config values (persistent data nodes also merged in)
-            loadFairingData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
+            loadFairingData(SSTUStockInterop.getPartModuleConfig(part, this));
             if (externalUpdateData != null)
             {
                 updateFromExternalData(externalUpdateData);

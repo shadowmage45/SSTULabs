@@ -8,22 +8,15 @@ namespace SSTUTools
         private bool hasOnTick = false;
         private RenameEntry[] renameEntries;
 
-        [Persistent]
-        public String configNodeData = String.Empty;
-
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("RENAME") || node.HasNode("DISABLE"))
-            {
-                configNodeData = node.ToString();
-            }
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] renameEntryNodes = node.GetNodes("RENAME");
             ConfigNode[] disableEntryNodes = node.GetNodes("DISABLE");
 

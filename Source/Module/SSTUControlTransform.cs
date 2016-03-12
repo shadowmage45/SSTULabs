@@ -21,6 +21,13 @@ namespace SSTUTools
             vessel.SetReferenceTransform(part);
         }
 
+        [KSPEvent(guiName = "Reset Control", guiActiveEditor = false, guiActive = true, guiActiveUnfocused = false, guiActiveUncommand = false, externalToEVAOnly = false)]
+        public void resetReferenceTransform()
+        {
+            part.SetReferenceTransform(part.transform);
+            vessel.SetReferenceTransform(part);
+        }
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);

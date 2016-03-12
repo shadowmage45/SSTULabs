@@ -32,10 +32,7 @@ namespace SSTUTools.Module
 
         [KSPField]
         public String baseTransformName = "InterstageDecouplerRoot";
-
-        [KSPField]
-        public String diffuseTextureName = "SC-GEN-Fairing-DIFF";
-
+        
         [KSPField]
         public int cylinderSides = 24;
 
@@ -87,6 +84,9 @@ namespace SSTUTools.Module
         [KSPField]
         public float autoDecoupleDelay = 4f;
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
 
@@ -132,9 +132,9 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true, guiName = "Auto Decouple", guiActive =true, guiActiveEditor =true)]
         public bool autoDecouple = false;
 
-        [Persistent]
-        public String configNodeData = String.Empty;
-
+        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        public String currentTextureSet = String.Empty;
+        
         private float remainingDelay;
 
         private float editorTopDiameter;
@@ -147,6 +147,9 @@ namespace SSTUTools.Module
         private float prevBottomDiameterAdjust;
         private float prevTaperHeightAdjust;
 
+
+        private TextureSet currentTextureSetData;
+        private TextureSet[] textureSetData;
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
         private InterstageDecouplerEngine[] engineModels;
@@ -155,8 +158,7 @@ namespace SSTUTools.Module
         private UVArea edgesUV;
 
         private FuelTypeData fuelType;
-
-        private TechLimitDiameter[] techLimits;
+        
         private float techLimitMaxDiameter;
 
         private bool initialized = false;
@@ -226,6 +228,13 @@ namespace SSTUTools.Module
             {
                 p.GetComponent<SSTUInterstageDecoupler>().autoDecouple = this.autoDecouple;
             }
+        }
+
+        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
+        public void nextTextureEvent()
+        {
+            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
+            setTextureFromEditor(next == null ? null : next.setName, true);
         }
 
         private void setTaperHeightFromEditor(float newHeight, bool updateSymmetry)
@@ -344,10 +353,34 @@ namespace SSTUTools.Module
             }
         }
 
+        private void setTextureFromEditor(String newTexture, bool updateSymmetry)
+        {
+            currentTextureSet = newTexture;
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+                newTexture = currentTextureSet;
+            }
+            TextureData data = currentTextureSetData.textureDatas[0];
+            fairingMaterial.mainTexture = GameDatabase.Instance.GetTexture(data.diffuseTextureName, false);
+            data.enableForced(fairingBase.rootObject.transform, true);
+            if (updateSymmetry)
+            {
+                SSTUInterstageDecoupler dc;
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    dc = p.GetComponent<SSTUInterstageDecoupler>();
+                    dc.setTextureFromEditor(newTexture, false);
+                }
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+        }
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("TECHLIMIT")) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -429,14 +462,24 @@ namespace SSTUTools.Module
         {
             if (initialized) { return; }
             initialized = true;
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
             insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
             edgesUV = new UVArea(node.GetNode("UVMAP", "name", "edges"));
 
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            textureSetData = TextureSet.loadTextureSets(textureNodes);
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            if (currentTextureSetData == null)
+            {
+                currentTextureSetData = textureSetData[0];
+                currentTextureSet = currentTextureSetData.setName;
+            }
+
+            TextureData data = currentTextureSetData.textureDatas[0];
+            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
+
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTopDiameter > techLimitMaxDiameter)
             {
                 currentTopDiameter = techLimitMaxDiameter;

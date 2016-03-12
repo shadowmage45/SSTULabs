@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace SSTUTools
 {
-    public class SSTUModularHeatShield : PartModule
+    public class SSTUModularHeatShield : PartModule, IPartMassModifier, IPartCostModifier
     {
 
         [KSPField]
@@ -40,6 +40,9 @@ namespace SSTUTools
         [KSPField]
         public float resourceQuantity = 200f;
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         [KSPField(isPersistant = true, guiName ="Shield Type", guiActiveEditor = true, guiActive = true)]
         public String currentShieldType;
 
@@ -54,7 +57,7 @@ namespace SSTUTools
         private SingleModelData mainModelData;
         private float techLimitMaxDiameter;
         private HeatShieldType currentShieldTypeData;
-        private HeatShieldType[] shieldTypeDatas;
+        private HeatShieldType[] shieldTypes;
         private float modifiedCost;
         private float modifiedMass;
 
@@ -67,6 +70,9 @@ namespace SSTUTools
 
         [KSPField(guiName = "Abl Mult", guiActiveEditor = true, guiActive = true)]
         public float ablatMult;
+
+        [KSPField(guiName = "SkinMass", guiActiveEditor = true, guiActive = true)]
+        public float skinThermalMass = 0f;
 
         #region REGION - GUI Events / interaction
 
@@ -85,7 +91,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Next Shield Type", guiActiveEditor = true)]
         public void nextShieldTypeEvent()
         {
-            HeatShieldType next = SSTUUtils.findNext(shieldTypeDatas, m => m.name == currentShieldType, false);
+            HeatShieldType next = SSTUUtils.findNext(shieldTypes, m => m.name == currentShieldType, false);
             setShieldTypeFromEditor(next.name, true);
         }
 
@@ -98,6 +104,8 @@ namespace SSTUTools
             setModelDiameter(currentDiameter);
             updateModuleStats();
             updatePartResources();
+            updatePartMass();
+            updatePartCost();
             updateAttachNodes(true);
             updateDragCube();
             if (updateSymmetry)
@@ -114,9 +122,12 @@ namespace SSTUTools
 
         private void setShieldTypeFromEditor(String newType, bool updateSymmetry)
         {
-            currentShieldType = newType;            
+            currentShieldType = newType;
+            currentShieldTypeData = Array.Find(shieldTypes, m => m.name == currentShieldType);
             updateModuleStats();
             updatePartResources();
+            updatePartMass();
+            updatePartCost();
             if (updateSymmetry)
             {
                 SSTUModularHeatShield mhs;
@@ -136,6 +147,10 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
+            {
+                prefabMass = part.mass;
+            }
             initialize();
         }
 
@@ -155,6 +170,16 @@ namespace SSTUTools
             updateModuleStats();
         }
 
+        public float GetModuleMass(float defaultMass)
+        {
+            return -defaultMass + modifiedMass;
+        }
+
+        public float GetModuleCost(float defaultCost)
+        {
+            return -defaultCost + modifiedCost;
+        }
+
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Initialization
@@ -162,30 +187,32 @@ namespace SSTUTools
         private void initialize()
         {
             if (mainModelData != null) { return; }
+            prefabMass = part.partInfo == null ? part.mass : part.partInfo.partPrefab.mass;
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            TechLimitDiameter.updateTechLimits(TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT")), out techLimitMaxDiameter);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);            
 
             ConfigNode modelNode = node.GetNode("MAINMODEL");
             mainModelData = new SingleModelData(modelNode);
             mainModelData.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
             setModelDiameter(currentDiameter);
-
+            
             ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
             int len = typeNodes.Length;
-            shieldTypeDatas = new HeatShieldType[len];
+            shieldTypes = new HeatShieldType[len];
             for (int i = 0; i < len; i++)
             {
-                shieldTypeDatas[i] = new HeatShieldType(typeNodes[i]);
+                shieldTypes[i] = new HeatShieldType(typeNodes[i]);
             }
-            currentShieldTypeData = Array.Find(shieldTypeDatas, m => m.name == currentShieldType);
-
+            currentShieldTypeData = Array.Find(shieldTypes, m => m.name == currentShieldType);
+            
             updateDragCube();
+            updateAttachNodes(false);
+            updatePartMass();
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 updatePartResources();
                 initializedResources = true;
             }
-            updateAttachNodes(false);
             if (!String.IsNullOrEmpty(transformsToRemove))
             {
                 SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
@@ -196,20 +223,35 @@ namespace SSTUTools
 
         #region REGION - Update Methods
 
-        //TODO
+        private void updateFairing()
+        {
+
+        }
+        
         private void updateModuleStats()
         {
-            fluxMult = Mathf.Pow(currentShieldTypeData.fluxMult, fluxScalePower);
+            float scale = mainModelData.currentDiameterScale;
+            fluxMult = Mathf.Pow(scale, fluxScalePower) * currentShieldTypeData.fluxMult;
+            ablatMult = Mathf.Pow(scale, ablationScalePower) * currentShieldTypeData.ablationMult;
+            skinThermalMass = (float)part.skinThermalMass;
+            SSTUHeatShield chs = part.GetComponent<SSTUHeatShield>();
+            if (chs != null)
+            {
+                chs.fluxMult = fluxMult;
+                chs.ablationMult = ablatMult;
+            }
         }
 
         private void updatePartMass()
         {
-
+            float scale = Mathf.Pow(mainModelData.currentDiameterScale, massScalePower);
+            modifiedMass = scale * prefabMass;
+            part.mass = modifiedMass;
         }
 
         private void updatePartCost()
         {
-
+            modifiedCost = 10000f;
         }
 
         private void updatePartResources()

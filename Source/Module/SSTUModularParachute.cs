@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {    
-    public class SSTUModularParachute : SSTUPartModuleConfigEnabled
+    public class SSTUModularParachute : PartModule
     {
         
         private static int TERRAIN_MASK = 1 << 15;
@@ -268,12 +268,13 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
-            initialized = true;            
+            initialized = true;
+            loadConfigData(SSTUStockInterop.getPartModuleConfig(part, this));
             initializeModels();
             setChuteState(chuteState);
         }
 
-        protected override void loadConfigData(ConfigNode node)
+        private void loadConfigData(ConfigNode node)
         {
             if (configLoaded) { return; }
             configLoaded = true;

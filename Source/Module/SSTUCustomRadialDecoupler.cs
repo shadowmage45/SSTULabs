@@ -17,7 +17,7 @@ namespace SSTUTools.Module
         public float heightIncrement = 1f;
 
         [KSPField]
-        public float diameterIncrement = 0.3125f;
+        public float diameterIncrement = 0.625f;
 
         [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorHeightExtra;
@@ -77,9 +77,9 @@ namespace SSTUTools.Module
 
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
-
-        [Persistent]
-        public String configNodeData = String.Empty;
+        
+        [KSPField]
+        public String techLimitSet = "Default";
 
         private float editorHeight;
         private float editorDiameter;
@@ -92,7 +92,6 @@ namespace SSTUTools.Module
         private FuelTypeData fuelType;
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private TechLimitDiameter[] techLimits;
         private float techLimitMaxDiameter;
 
         [KSPEvent(guiName = "Height-", guiActiveEditor = true)]
@@ -122,9 +121,8 @@ namespace SSTUTools.Module
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            techLimits = TechLimitDiameter.loadTechLimits(node.GetNodes("TECHLIMIT"));
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
             
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
@@ -141,16 +139,12 @@ namespace SSTUTools.Module
             }
             updateEngineThrust();
 
-            restoreEditorFields();
+            updateEditorFields();
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
-            {
-                configNodeData = node.ToString();
-            }
             if (node.HasValue("radius")) { diameter = node.GetFloatValue("radius") * 2f; }
         }
 
@@ -184,6 +178,41 @@ namespace SSTUTools.Module
             }
         }
 
+        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            if (newHeight > maxHeight) { newHeight = maxHeight; }
+            if (newHeight < minHeight) { newHeight = minHeight; }
+            height = newHeight;
+            updateEditorFields();
+            updateModule();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomRadialDecoupler>().setHeightFromEditor(newHeight, false);
+                }
+            }
+        }
+
+        private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
+            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+            diameter = newDiameter;
+            updateEditorFields();
+            updatePartResources();
+            updateEngineThrust();
+            updateModule();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomRadialDecoupler>().setDiameterFromEditor(newDiameter, false);
+                }
+            }
+        }
+
         private void updateTransformYPos(Transform t, float pos)
         {            
             Vector3 partSpacePosition = part.transform.InverseTransformPoint(t.position);
@@ -197,7 +226,7 @@ namespace SSTUTools.Module
         }
 
         //restores the editor field values for radius/height
-        private void restoreEditorFields()
+        private void updateEditorFields()
         {
             float div, whole, extra;
 
@@ -245,41 +274,6 @@ namespace SSTUTools.Module
         {
             topMountTransform = part.FindModelTransform(topMountName);
             bottomMountTransform = part.FindModelTransform(bottomMountName);
-        }
-
-        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
-        {
-            if (newHeight > maxHeight) { newHeight = maxHeight; }
-            if (newHeight < minHeight) { newHeight = minHeight; }
-            height = newHeight;
-            restoreEditorFields();
-            updateModule();
-            if (updateSymmetry)
-            {
-                foreach(Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUCustomRadialDecoupler>().setHeightFromEditor(newHeight, false);
-                }
-            }
-        }
-
-        private void setDiameterFromEditor(float newRadius, bool updateSymmetry)
-        {
-            if (newRadius > maxDiameter) { newRadius = maxDiameter; }
-            if (newRadius < minDiameter) { newRadius = minDiameter; }
-            if (SSTUUtils.isResearchGame() && newRadius * 2 > techLimitMaxDiameter) { newRadius = techLimitMaxDiameter * 0.5f; }
-            diameter = newRadius;
-            restoreEditorFields();
-            updatePartResources();
-            updateEngineThrust();
-            updateModule();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUCustomRadialDecoupler>().setDiameterFromEditor(newRadius, false);
-                }
-            }
         }
 
         private void updateEngineThrust()

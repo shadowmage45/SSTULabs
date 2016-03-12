@@ -151,12 +151,6 @@ namespace SSTUTools
 
         #endregion
 
-        /// <summary>
-        /// Hack around stock not passing the prefab config nodes back in at any point after init, just save them as text/reparse when needed.
-        /// </summary>
-        [Persistent]
-        public String configNodeData = String.Empty;
-
         //below here are private-local tracking fields for various data
         private List<MountModelData> engineMounts = new List<MountModelData>();//mount-link-definitions
         private MountModelData currentMountOption = null;
@@ -288,10 +282,6 @@ namespace SSTUTools
             if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
             {
                 mapLoaded = false;
-            }
-            if (node.HasNode("MOUNT"))
-            {
-                configNodeData = node.ToString();
             }
             initialize();
         }
@@ -471,15 +461,12 @@ namespace SSTUTools
             {
                 partDefaultMass = part.mass;
             }
-            if (!String.IsNullOrEmpty(configNodeData))
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode[] mountNodes = node.GetNodes("MOUNT");
+            engineMounts.Clear();
+            foreach (ConfigNode mn in mountNodes)
             {
-                ConfigNode mountData = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-                ConfigNode[] mountNodes = mountData.GetNodes("MOUNT");
-                engineMounts.Clear();
-                foreach (ConfigNode mn in mountNodes)
-                {
-                    engineMounts.Add(new MountModelData(mn));
-                }
+                engineMounts.Add(new MountModelData(mn));
             }
             Transform tr = part.transform.FindRecursive("model").FindOrCreate(mountTransformName);
             tr.NestToParent(part.transform.FindRecursive("model"));

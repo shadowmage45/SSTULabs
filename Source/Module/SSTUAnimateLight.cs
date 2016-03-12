@@ -10,7 +10,7 @@ namespace SSTUTools
     /// Intended handle float-curve based animations for emissive and light-transform setups.
     /// Loop animation will play from front-back-front-back, etc; front (start) should be the same state as the end as the on animation (not enforced...)
     /// </summary>
-    public class SSTUAnimateLight : SSTUPartModuleConfigEnabled
+    public class SSTUAnimateLight : PartModule
     {
         private enum LightAnimationState
         {
@@ -284,10 +284,11 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
+            loadConfigData(SSTUStockInterop.getPartModuleConfig(part, this));
             setState(state);
         }
 
-        protected override void loadConfigData(ConfigNode node)
+        private void loadConfigData(ConfigNode node)
         {
             ConfigNode[] emissiveNodes = node.GetNodes("EMISSIVE");
             ConfigNode[] lightNodes = node.GetNodes("LIGHT");

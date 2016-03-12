@@ -692,6 +692,7 @@ namespace SSTUTools
         private void updatePartMass()
         {
             if (!modifyMass) { modifiedMass = prefabPartMass; return; }
+
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             if (layout == null) { modifiedMass = 0f; return; }
             modifiedMass = engineMass * (float)layout.positions.Count;
@@ -699,7 +700,9 @@ namespace SSTUTools
             float mountScale = getCurrentMountScale();
             float mountScalar = Mathf.Pow(mountScale, 3.0f);
             float mountMass = currentMountData.modelDefinition.mass * mountScalar;
-            modifiedMass += currentMountData.singleModel ? mountMass : mountMass * (float)layout.positions.Count;                
+            modifiedMass += currentMountData.singleModel ? mountMass : mountMass * (float)layout.positions.Count;
+
+            part.mass = modifiedMass;         
         }
         
         private void updatePartCost()

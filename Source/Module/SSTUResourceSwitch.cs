@@ -73,10 +73,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public float persistentMass;
-
-        [Persistent]
-        public String configNodeString;
-
+        
         private TankConfig[] configs;
         private TankConfig[] optionConfigs;
         private TankConfig currentConfig;//main configuration; primary resources
@@ -108,11 +105,9 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-
             //only runs for prefab construction, e.g. loading screen or database reload while on space center screen
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
-                configNodeString = node.ToString();
                 loadConfigFromNode(node);
             }
             else
@@ -166,7 +161,7 @@ namespace SSTUTools
 
         private void loadTankConfigsFromPrefab()
         {
-            loadConfigFromNode(SSTUConfigNodeUtils.parseConfigNode(configNodeString));
+            loadConfigFromNode(SSTUStockInterop.getPartModuleConfig(part, this));
         }
 
         //OVERRIDE from IPartCostModifier

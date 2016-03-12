@@ -126,6 +126,9 @@ namespace SSTUTools
         [KSPField]
         public String rcsTransformName = "SSTUMUSRCS";
 
+        [KSPField]
+        public String techLimitSet = "Default";
+
         #endregion
 
         #region ----------------- REGION - GUI visible fields and fine tune adjustment contols - do not edit through config ----------------- 
@@ -209,18 +212,6 @@ namespace SSTUTools
 
         #endregion
 
-        #region ----------------- REGION - Public unity-serialization fields ----------------- 
-
-        //Fields below here are public/etc to be serialized by unity...
-
-        /// <summary>
-        /// Stashed copy of the raw config node data, to hack around KSP not passing in the modules base node data after prefab construction
-        /// </summary>
-        [Persistent]
-        public String configNodeData = String.Empty;
-        
-        #endregion
-
         #region ----------------- REGION - Private working value fields ----------------- 
         
         //cached values for editor updating of height/diameter        
@@ -263,8 +254,6 @@ namespace SSTUTools
         private FuelTypeData[] fuelTypes;
         private FuelTypeData currentFuelTypeData;
         private FuelTypeData reserveFuelTypeData;
-
-        private TechLimitDiameter[] techLimits;
 
         private bool initialized = false;
         #endregion
@@ -372,10 +361,6 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("MOUNT"))
-            {
-                configNodeData = node.ToString();
-            }
             initialize();
         }
         
@@ -498,7 +483,7 @@ namespace SSTUTools
                 currentFuelType = defaultFuelType;
             }
             loadConfigData();
-            TechLimitDiameter.updateTechLimits(techLimits, out techLimitMaxDiameter);
+            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
 
             if (currentTankDiameter > techLimitMaxDiameter)
             {
@@ -544,7 +529,7 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigData()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
 
             fuelTypes = FuelTypeData.parseFuelTypeData(node.GetNodes("FUELTYPE"));
             currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
@@ -561,7 +546,6 @@ namespace SSTUTools
             ConfigNode tankUpperNode = node.GetNode("TANKUPPER");
             ConfigNode upperTopCapNode = node.GetNode("TANKUPPERTOPCAP");
             ConfigNode upperBottomCapNode = node.GetNode("TANKUPPERBOTTOMCAP");
-            ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
 
             ConfigNode rcsNode = node.GetNode("RCS");
             ConfigNode[] mountNodes = node.GetNodes("MOUNT");
@@ -596,11 +580,7 @@ namespace SSTUTools
                     intertankModules[i] = new SingleModelData(intertankNodes[i]);
                 }
                 currentIntertankModule = Array.Find(intertankModules, l => l.name == currentIntertank);
-            }
-
-            len = limitNodes.Length;
-            techLimits = new TechLimitDiameter[len];
-            for (int i = 0; i < len; i++) { techLimits[i] = new TechLimitDiameter(limitNodes[i]); }            
+            }     
         }
 
         #endregion

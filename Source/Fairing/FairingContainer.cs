@@ -91,14 +91,14 @@ namespace SSTUTools
 
         public void setMaterial(Material mat)
         {
-            SSTUUtils.setMaterialRecursive(rootObject.transform, mat);
             material = mat;
+            SSTUUtils.setMaterialRecursive(rootObject.transform, mat);
         }
 
         public void setOpacity(float value)
         {
-            SSTUUtils.setOpacityRecursive(rootObject.transform, value);
             opacity = value;
+            SSTUUtils.setOpacityRecursive(rootObject.transform, value);
         }
 
         public void jettisonPanels(Part part, float force, Vector3 jettisonDirection, float perPanelMass)

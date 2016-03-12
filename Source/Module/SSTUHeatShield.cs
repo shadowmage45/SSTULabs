@@ -25,10 +25,18 @@ namespace SSTUTools
         public float ablationEfficiency = 6000f;
 
         [KSPField]
+        public float ablationMult = 1f;
+
+        [KSPField]
+        public float fluxMult = 1f;
+
+        [KSPField]
         public bool heatSoak = false;
         
         [KSPField]
         public FloatCurve heatCurve;
+
+        
 
         [KSPField(guiActive =true, guiName ="HS Flux")]
         public double guiShieldFlux = 0;
@@ -73,7 +81,36 @@ namespace SSTUTools
                 heatCurve.Add(10000, 0.05000f);//but just in case, continue the curve up to insane levels
             }
         }
-        
+
+        private void initialize()
+        {
+            mcu = new MaterialColorUpdater(part.transform.FindRecursive("model"), PhysicsGlobals.TemperaturePropertyID);
+            double hsp = 1;
+            double dens = 1;
+            if (heatSoak)
+            {
+                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(resourceName);
+                hsp = resource.specificHeatCapacity;
+                dens = resource.density;
+            }
+            else
+            {
+                resource = part.Resources[resourceName];
+                if (resource != null)
+                {
+                    hsp = resource.info.specificHeatCapacity;
+                    dens = resource.info.density;
+                }
+                else
+                {
+                    hsp = PhysicsGlobals.StandardSpecificHeatCapacity;
+                    dens = 0.005f;
+                }
+            }
+            useToFluxMultiplier = hsp * ablationEfficiency * dens * ablationMult;
+            baseSkinIntMult = part.skinInternalConductionMult;
+        }
+
         public void FixedUpdate()
         {
             guiShieldTemp = part.skinTemperature;
@@ -84,6 +121,7 @@ namespace SSTUTools
             updateDebugGuiStatus();
             if (!HighLogic.LoadedSceneIsFlight) { return; }            
             if (part.atmDensity <= 0) { return; }
+            if (part.temperature > part.skinTemperature) { return; }
 
             Vector3 localFlightDirection = -part.dragVectorDirLocal;
             float dot = Vector3.Dot(heatShieldVector, localFlightDirection);
@@ -123,8 +161,7 @@ namespace SSTUTools
         private void applyAblation(double tempDelta, float effectiveness)
         {
             double skinMass = part.skinThermalMass;
-            double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
-            maxFluxRemoved *= effectiveness;
+            double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta) * fluxMult * effectiveness;
             if (heatSoak)
             {
                 part.AddExposedThermalFlux(-maxFluxRemoved);
@@ -157,24 +194,6 @@ namespace SSTUTools
                     mcu.Update(Color.black);
                 }
             }
-        }
-
-        private void initialize()
-        {
-            mcu = new MaterialColorUpdater(part.transform.FindRecursive("model"), PhysicsGlobals.TemperaturePropertyID);
-            if (heatSoak)
-            {
-                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(resourceName);
-                float hsp = resource.specificHeatCapacity;
-                useToFluxMultiplier = hsp * ablationEfficiency * resource.density;
-            }
-            else
-            {
-                resource = part.Resources[resourceName];
-                float hsp = resource.info.specificHeatCapacity;
-                useToFluxMultiplier = hsp * ablationEfficiency * resource.info.density;
-            }
-            baseSkinIntMult = part.skinInternalConductionMult;
         }
 
     }
