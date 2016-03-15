@@ -65,14 +65,8 @@ namespace SSTUTools
         private ModuleAblator stockHeatshieldModule;//TODO
 
         //TODO -- make these private after debug and testing
-        [KSPField(guiName = "Flux Mult", guiActiveEditor = true, guiActive = true)]
-        public float fluxMult;
-
         [KSPField(guiName = "Abl Mult", guiActiveEditor = true, guiActive = true)]
         public float ablatMult;
-
-        [KSPField(guiName = "SkinMass", guiActiveEditor = true, guiActive = true)]
-        public float skinThermalMass = 0f;
 
         #region REGION - GUI Events / interaction
 
@@ -231,14 +225,12 @@ namespace SSTUTools
         private void updateModuleStats()
         {
             float scale = mainModelData.currentDiameterScale;
-            fluxMult = Mathf.Pow(scale, fluxScalePower) * currentShieldTypeData.fluxMult;
             ablatMult = Mathf.Pow(scale, ablationScalePower) * currentShieldTypeData.ablationMult;
-            skinThermalMass = (float)part.skinThermalMass;
             SSTUHeatShield chs = part.GetComponent<SSTUHeatShield>();
             if (chs != null)
             {
-                chs.fluxMult = fluxMult;
                 chs.ablationMult = ablatMult;
+                chs.heatCurve = currentShieldTypeData.heatCurve;
             }
         }
 
@@ -304,15 +296,15 @@ namespace SSTUTools
     {
         public readonly String name;
         public float resourceMult = 1f;
-        public float fluxMult = 1f;
         public float ablationMult;
         public float massMult = 1f;
+        public FloatCurve heatCurve;
 
         public HeatShieldType(ConfigNode node)
         {
             name = node.GetStringValue("name");
+            heatCurve = node.GetFloatCurve("heatCurve");
             resourceMult = node.GetFloatValue("resourceMult", resourceMult);
-            fluxMult = node.GetFloatValue("fluxMult", fluxMult);
             ablationMult = node.GetFloatValue("ablationMult", ablationMult);
             massMult = node.GetFloatValue("massMult", massMult);
         }

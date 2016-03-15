@@ -32,11 +32,12 @@ namespace SSTUTools
 
         [KSPField]
         public bool heatSoak = false;
-        
-        [KSPField]
-        public FloatCurve heatCurve;
 
-        
+        [KSPField]
+        public bool areaAdjusted = false;
+
+        [KSPField]
+        public FloatCurve heatCurve;        
 
         [KSPField(guiActive =true, guiName ="HS Flux")]
         public double guiShieldFlux = 0;
@@ -46,7 +47,11 @@ namespace SSTUTools
         public double guiShieldTemp = 0;
         [KSPField(guiActive = true, guiName = "HS Eff")]
         public double guiShieldEff = 0;
-
+        [KSPField(guiActive = true, guiName = "Flux/area")]
+        public double fluxPerSquareMeter;
+        [KSPField(guiActive = true, guiName = "Flux/mass")]
+        public double fluxPerTMass;
+        
         private double baseSkinIntMult = 1;
         private double useToFluxMultiplier = 1;
         private PartResource resource;
@@ -56,6 +61,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
+            //PhysicsGlobals.ThermalDataDisplay = true;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -150,7 +156,7 @@ namespace SSTUTools
         }
 
         private void updateDebugGuiStatus()
-        {
+        {            
             bool active = PhysicsGlobals.ThermalDataDisplay;
             Fields["guiShieldTemp"].guiActive = active;
             Fields["guiShieldFlux"].guiActive = active;
@@ -160,8 +166,13 @@ namespace SSTUTools
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
-            double skinMass = part.skinThermalMass;
             double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta) * fluxMult * effectiveness;
+            fluxPerSquareMeter = part.thermalConvectionFlux / part.skinExposedArea;
+            fluxPerTMass = part.thermalConvectionFlux / (part.skinThermalMass * part.skinExposedAreaFrac);
+            if (areaAdjusted)
+            {
+                maxFluxRemoved *= part.skinExposedArea;
+            }
             if (heatSoak)
             {
                 part.AddExposedThermalFlux(-maxFluxRemoved);

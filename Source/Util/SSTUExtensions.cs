@@ -162,6 +162,50 @@ namespace SSTUTools
             return new Vector3((float)SSTUUtils.safeParseDouble(vals[0]), (float)SSTUUtils.safeParseDouble(vals[1]), (float)SSTUUtils.safeParseDouble(vals[2]));
         }
 
+        public static FloatCurve GetFloatCurve(this ConfigNode node, String name, FloatCurve defaultValue = null)
+        {
+            FloatCurve curve = new FloatCurve();
+            if (node.HasNode(name))
+            {
+                ConfigNode curveNode = node.GetNode(name);
+                String[] values = curveNode.GetValues("key");
+                int len = values.Length;
+                String[] splitValue;
+                float a, b, c, d;
+                for (int i = 0; i < len; i++)
+                {
+                    splitValue = values[i].Split(new char[] { ' ' });
+                    if (splitValue.Length > 2)
+                    {
+                        a = SSTUUtils.safeParseFloat(splitValue[0]);
+                        b = SSTUUtils.safeParseFloat(splitValue[1]);
+                        c = SSTUUtils.safeParseFloat(splitValue[2]);
+                        d = SSTUUtils.safeParseFloat(splitValue[3]);
+                        curve.Add(a, b, c, d);
+                    }
+                    else
+                    {
+                        a = SSTUUtils.safeParseFloat(splitValue[0]);
+                        b = SSTUUtils.safeParseFloat(splitValue[1]);
+                        curve.Add(a, b);
+                    }
+                }
+            }
+            else if (defaultValue != null)
+            {
+                foreach (Keyframe f in defaultValue.Curve.keys)
+                {
+                    curve.Add(f.time, f.value, f.inTangent, f.outTangent);
+                }
+            }
+            else
+            {
+                curve.Add(0, 0);
+                curve.Add(1, 1);
+            }
+            return curve;
+        }
+
         #endregion
 
         #region Transform extensionMethods
@@ -248,6 +292,15 @@ namespace SSTUTools
 
         #endregion
 
+        public static String Print(this FloatCurve curve)
+        {
+            String output = "";
+            foreach (Keyframe f in curve.Curve.keys)
+            {
+                output = output + "\n" + f.time + " " + f.value + " " + f.inTangent + " " + f.outTangent;
+            }
+            return output;
+        }
     }
 }
 

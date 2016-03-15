@@ -43,11 +43,9 @@ namespace SSTUTools
 
         private void init()
         {
-            MonoBehaviour.print("Starting highlighting fixer for part: " + part.name);
             dummyTransform = part.transform.FindRecursive(transformName);
             if (dummyTransform == null)//should only be null on the prefab part
             {
-                MonoBehaviour.print("Creating highlighter fix object!");
                 GameObject newObj = new GameObject(transformName);
                 newObj.transform.name = transformName;
                 newObj.transform.NestToParent(part.transform.FindRecursive("model"));

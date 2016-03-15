@@ -291,7 +291,7 @@ namespace SSTUTools
             currentMountName = currentEngineLayout.defaultMount;
             currentMountData = currentEngineLayout.getMountData(currentMountName);
             currentMountDiameter = currentMountData.initialDiameter;
-            currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing) + editorEngineSpacingAdjust;
+            currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust;
             setupMountModels();
             positionMountModels();
             setupEngineModels();
@@ -411,7 +411,7 @@ namespace SSTUTools
             }
             if (prevEngineSpacingAdjust != editorEngineSpacingAdjust)
             {
-                updateEngineSpacingFromEditor(currentEngineLayout.getEngineSpacing(engineSpacing) + editorEngineSpacingAdjust, true);
+                updateEngineSpacingFromEditor(currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust, true);
             }
             if (prevEngineHeightAdjust != editorEngineHeightAdjust)
             {             
@@ -475,7 +475,7 @@ namespace SSTUTools
         {
             prefabPartMass = part.mass;
             loadConfigNodeData(node);      
-            currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing) + editorEngineSpacingAdjust;
+            currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust;
             removeStockTransforms();
             initializeSmokeTransform();
             setupMountModels();
@@ -509,7 +509,7 @@ namespace SSTUTools
             {                
                 currentMountName = currentEngineLayout.defaultMount;
                 currentMountDiameter = currentEngineLayout.getMountData(currentMountName).initialDiameter;
-                currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing);
+                currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentEngineLayout.getMountData(currentMountName));
                 editorEngineSpacingAdjust = prevEngineSpacingAdjust = 0f;
             }
             currentMountData = currentEngineLayout.getMountData(currentMountName);
@@ -728,7 +728,7 @@ namespace SSTUTools
             editorMountSizeAdjust = extra;
             prevMountSizeAdjust = extra;
 
-            float spacing = currentEngineLayout.getEngineSpacing(engineSpacing);
+            float spacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData);
             editorEngineSpacingAdjust = currentEngineSpacing - spacing;
             prevEngineSpacingAdjust = editorEngineSpacingAdjust;
 
@@ -915,8 +915,12 @@ namespace SSTUTools
             }
         }
 
-        public float getEngineSpacing(float defaultSpacing)
-        {   
+        public float getEngineSpacing(float defaultSpacing, EngineClusterLayoutMountData mount)
+        {
+            if (mount.engineSpacing != -1)
+            {
+                return mount.engineSpacing;
+            }
             return  engineSpacing == -1 ? defaultSpacing : engineSpacing;
         }
 
@@ -957,6 +961,7 @@ namespace SSTUTools
         public readonly float minDiameter;
         public readonly float maxDiameter;
         public readonly float rotateEngines = 0;
+        public readonly float engineSpacing = -1;
         public readonly bool singleModel = true;
 
         public EngineClusterLayoutMountData(ConfigNode node) : base(node)
@@ -967,6 +972,7 @@ namespace SSTUTools
             maxDiameter = node.GetFloatValue("maxSize", initialDiameter);
             rotateEngines = node.GetFloatValue("rotateEngines");
             singleModel = node.GetBoolValue("singleModel", singleModel);
+            engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
         }
     }
 
