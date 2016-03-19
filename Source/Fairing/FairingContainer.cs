@@ -33,7 +33,7 @@ namespace SSTUTools
             this.rootObject = root;
             this.faces = cylinderFaces;
             this.panels = numberOfPanels;
-            this.thickness = thickness;            
+            this.thickness = thickness;
             setNumberOfPanels(panels, false);
         }
 

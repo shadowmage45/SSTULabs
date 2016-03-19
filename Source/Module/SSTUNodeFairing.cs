@@ -922,8 +922,7 @@ namespace SSTUTools
             buildFairing();
             enableFairingRender(currentRenderEnabled);
         }
-
-        //TODO need to finish drag cube update code for NodeFairing
+        
         private void updateDragCube()
         {
             if (!updateDragCubes) { return; }

@@ -42,12 +42,6 @@ namespace SSTUTools
         public float engineYOffset = 0f;
 
         /// <summary>
-        /// How much does the engine weigh, at the given config engineScale?
-        /// </summary>
-        [KSPField]
-        public float engineMass = 0.1f;
-
-        /// <summary>
         /// How much does the engine cost per engine, not including mount
         /// </summary>
         [KSPField]
@@ -411,6 +405,7 @@ namespace SSTUTools
             }
             if (prevEngineSpacingAdjust != editorEngineSpacingAdjust)
             {
+                //MonoBehaviour.print("updating spacing: " + editorEngineSpacingAdjust);
                 updateEngineSpacingFromEditor(currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust, true);
             }
             if (prevEngineHeightAdjust != editorEngineHeightAdjust)
@@ -691,11 +686,15 @@ namespace SSTUTools
         
         private void updatePartMass()
         {
-            if (!modifyMass) { modifiedMass = prefabPartMass; return; }
+            if (!modifyMass)
+            {
+                modifiedMass = prefabPartMass;
+                return;
+            }
 
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             if (layout == null) { modifiedMass = 0f; return; }
-            modifiedMass = engineMass * (float)layout.positions.Count;
+            modifiedMass = prefabPartMass * (float)layout.positions.Count;
 
             float mountScale = getCurrentMountScale();
             float mountScalar = Mathf.Pow(mountScale, 3.0f);
@@ -730,6 +729,8 @@ namespace SSTUTools
 
             float spacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData);
             editorEngineSpacingAdjust = currentEngineSpacing - spacing;
+            //MonoBehaviour.print("prev spacing: " + prevEngineSpacingAdjust);
+            //MonoBehaviour.print("new spacing: " + editorEngineSpacingAdjust);
             prevEngineSpacingAdjust = editorEngineSpacingAdjust;
 
             prevEngineHeightAdjust = editorEngineHeightAdjust = currentEngineVerticalOffset;

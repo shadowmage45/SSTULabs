@@ -87,6 +87,9 @@ namespace SSTUTools.Module
         [KSPField]
         public String techLimitSet = "Default";
 
+        [KSPField]
+        public String uvMap = "NodeFairing";
+
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
 
@@ -147,15 +150,11 @@ namespace SSTUTools.Module
         private float prevBottomDiameterAdjust;
         private float prevTaperHeightAdjust;
 
-
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
         private InterstageDecouplerEngine[] engineModels;
-        private UVArea outsideUV;
-        private UVArea insideUV;
-        private UVArea edgesUV;
 
         private FuelTypeData fuelType;
         
@@ -463,10 +462,6 @@ namespace SSTUTools.Module
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
-            insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
-            edgesUV = new UVArea(node.GetNode("UVMAP", "name", "edges"));
-
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             textureSetData = TextureSet.loadTextureSets(textureNodes);
             currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
@@ -566,10 +561,11 @@ namespace SSTUTools.Module
         private void buildFairing()
         {
             fairingBase.clearProfile();
-
-            fairingBase.outsideUV = outsideUV;
-            fairingBase.insideUV = insideUV;
-            fairingBase.edgesUV = edgesUV;
+            
+            UVMap uvs = UVMap.GetUVMapGlobal(uvMap);
+            fairingBase.outsideUV = uvs.getArea("outside");
+            fairingBase.insideUV = uvs.getArea("inside");
+            fairingBase.edgesUV = uvs.getArea("edges");
 
             float halfHeight = currentHeight * 0.5f;
             fairingBase.addRing(-halfHeight, currentBottomDiameter * 0.5f);

@@ -105,6 +105,9 @@ namespace SSTUTools
         [KSPField]
         public String techLimitSet = "Default";
 
+        [KSPField]
+        public String uvMap = "NodeFairing";
+
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
         public String currentTextureSet = String.Empty;
 
@@ -781,9 +784,10 @@ namespace SSTUTools
 
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
             fairingBase = new InterstageFairingContainer(tr.gameObject, cylinderSides, numberOfPanels, wallThickness);
-            fairingBase.outsideUV = new UVArea(node.GetNode("UVMAP", "name", "outside"));
-            fairingBase.insideUV = new UVArea(node.GetNode("UVMAP", "name", "inside"));
-            fairingBase.edgesUV = new UVArea(node.GetNode("UVMAP", "name", "edges"));
+            UVMap uvs = UVMap.GetUVMapGlobal(uvMap);
+            fairingBase.outsideUV = uvs.getArea("outside");
+            fairingBase.insideUV = uvs.getArea("inside");
+            fairingBase.edgesUV = uvs.getArea("edges");
 
             rebuildFairing(false);//will create fairing using default / previously saved fairing configuration
             restoreEditorFields();

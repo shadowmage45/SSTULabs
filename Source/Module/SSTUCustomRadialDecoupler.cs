@@ -7,26 +7,11 @@ namespace SSTUTools.Module
     class SSTUCustomRadialDecoupler : PartModule
     {
 
-        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
-        public float height = 2f;
-
-        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
-        public float diameter = 1.25f;
-
         [KSPField]
         public float heightIncrement = 1f;
 
         [KSPField]
         public float diameterIncrement = 0.625f;
-
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorHeightExtra;
-
-        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorDiameterAdjust;
-
-        [KSPField(guiName ="Raw Thrust", guiActive =true, guiActiveEditor =true)]
-        public float guiEngineThrust = 0f;
 
         /// <summary>
         /// If true, resource updates will be sent to the RealFuels/ModularFuelTanks ModuleFuelTanks module, if present (if not present, it will not update anything).
@@ -38,6 +23,9 @@ namespace SSTUTools.Module
         //should match the model default scale geometry being used...
         [KSPField]
         public float modelDiameter = 2.5f;
+
+        [KSPField]
+        public float surfaceNodeX = -0.1f;
 
         /// <summary>
         /// The volume of resources that the part contains at its default model scale (e.g. modelRadius listed above)
@@ -75,6 +63,24 @@ namespace SSTUTools.Module
         [KSPField]
         public String bottomMountName = "SC-RBDC-MountLower";
 
+        [KSPField]
+        public String scaleTransform = "SC-RBDC-Scalar";
+
+        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float editorHeightExtra;
+
+        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
+        public float editorDiameterAdjust;
+
+        [KSPField(guiName = "Raw Thrust", guiActive = true, guiActiveEditor = true)]
+        public float guiEngineThrust = 0f;
+
+        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
+        public float height = 2f;
+
+        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
+        public float diameter = 1.25f;
+
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
         
@@ -88,6 +94,7 @@ namespace SSTUTools.Module
 
         private Transform topMountTransform;
         private Transform bottomMountTransform;
+        private Transform scalarTransform;
         
         private FuelTypeData fuelType;
 
@@ -129,8 +136,9 @@ namespace SSTUTools.Module
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             locateTransforms();
-            updateModelPositions();
             updateModelScales();
+            updateModelPositions();
+            updateAttachNodes(false);
 
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
@@ -247,8 +255,9 @@ namespace SSTUTools.Module
 
         private void updateModule()
         {
-            updateModelPositions();
             updateModelScales();
+            updateModelPositions();
+            updateAttachNodes(true);
         }
 
         private void updateModelPositions()
@@ -260,9 +269,7 @@ namespace SSTUTools.Module
 
         private void updateModelScales()
         {
-            float scale = getScale();
-            setModelScale(topMountTransform, scale);
-            setModelScale(bottomMountTransform, scale);
+            setModelScale(scalarTransform, getScale());
         }
 
         private float getScale()
@@ -272,8 +279,19 @@ namespace SSTUTools.Module
 
         private void locateTransforms()
         {
-            topMountTransform = part.FindModelTransform(topMountName);
-            bottomMountTransform = part.FindModelTransform(bottomMountName);
+            topMountTransform = part.transform.FindRecursive(topMountName);
+            bottomMountTransform = part.transform.FindRecursive(bottomMountName);
+            scalarTransform = part.transform.FindRecursive(scaleTransform);
+        }
+
+        private void updateAttachNodes(bool userInput)
+        {
+            AttachNode surface = part.srfAttachNode;
+            if (surface != null)
+            {
+                Vector3 pos = new Vector3(surfaceNodeX * getScale(), 0, 0);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, surface.orientation, userInput);
+            }
         }
 
         private void updateEngineThrust()

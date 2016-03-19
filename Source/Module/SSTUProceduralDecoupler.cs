@@ -66,6 +66,9 @@ namespace SSTUTools
         [KSPField]
         public String techLimitSet = "Default";
 
+        [KSPField]
+        public String uvMap = "NodeFairing";
+
         [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
         public float diameter = 1.25f;
 
@@ -95,13 +98,7 @@ namespace SSTUTools
         private TextureSet[] textureSetData;
         
         private float techLimitMaxDiameter;
-
-        private UVArea outsideUV = new UVArea(2, 2, 2+252, 2+60, 256);
-        private UVArea insideUV = new UVArea(2, 66, 2+252, 66+60, 256);
-        
-        private UVArea topUV = new UVArea(0, 0.5f, 0.5f, 1f);
-        private UVArea bottomUV = new UVArea(0.5f, 0.5f, 1f, 1f);
-        
+                
         #endregion
 
         #region KSP GUI Actions/Events
@@ -279,14 +276,6 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            ConfigNode insideUVNode = node.GetNode("UVMAP", "name", "inside");
-            ConfigNode outsideUVNode = node.GetNode("UVMAP", "name", "outside");
-            ConfigNode topNode = node.GetNode("UVMAP", "name", "top");
-            ConfigNode bottomNode = node.GetNode("UVMAP", "name", "bottom");
-            insideUV = new UVArea(insideUVNode);
-            outsideUV = new UVArea(outsideUVNode);
-            topUV = new UVArea(topNode);
-            bottomUV = new UVArea(bottomNode);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             int len = textureNodes.Length;
@@ -389,10 +378,12 @@ namespace SSTUTools
             modelBase = new GameObject(transformName).transform;
             modelBase.NestToParent(part.transform.FindRecursive("model"));
             model = new ProceduralCylinderModel();
-            model.outsideUV = outsideUV;
-            model.insideUV = insideUV;
-            model.topUV = topUV;
-            model.bottomUV = bottomUV;
+
+            UVMap uvs = UVMap.GetUVMapGlobal(uvMap);
+            model.outsideUV = uvs.getArea("outside");
+            model.insideUV = uvs.getArea("inside");
+            model.topUV = uvs.getArea("top");
+            model.bottomUV = uvs.getArea("top");
             updateModelParameters();
             setModelParameters();
             TextureData data = currentTextureSetData.textureDatas[0];

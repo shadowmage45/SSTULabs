@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
@@ -11,6 +12,7 @@ namespace SSTUTools
         private int vertexNumber = 0;
         private List<Vertex> vertices = new List<Vertex>();
         private List<int> triangles = new List<int>();
+        public int subdivision = 3;
 
         public Vertex addVertex(Vector3 vert, Vector3 norm, Vector2 uv)
         {
@@ -197,7 +199,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Generates a ring of vertices using circular UV mapping, where the center of the ring is the center of the UV area.  
+        /// Generates a ring of vertices using circular UV mapping, where the center of the ring is the center of the UV area.
+        /// This would be used to generate a partial ring, such as the procedural decoupler
         /// Input radius is the radius of the actual ring, uvRadius is the radius to be used for maximal UV bounds 
         /// (e.g. they will only be different on an inner-ring; where radius=ring radius, and uvRadius = outerRingRadius)
         /// </summary>
@@ -215,58 +218,117 @@ namespace SSTUTools
         public List<Vertex> generateRadialVerticesCylinderUVs(Vector3 offset, int faces, float radius, float height, float startAngle, float endAngle, UVArea area, float uvRadius, float yCos, float ySin)
         {
             List<Vertex> verts = new List<Vertex>();
-            float totalAngle = endAngle - startAngle;
-            float anglePerFace = 360f / faces;
-            int numOfFaces = (int)(totalAngle / anglePerFace);
-            float angle, xCos, zSin, nx, ny, nz, x, y, z;
+            float startRad = startAngle * Mathf.Deg2Rad;
+            float endRad = endAngle * Mathf.Deg2Rad;
+            float totalRad = endRad - startRad;
+            float radPerFace = (2f*Mathf.PI) / faces;
+            //int numOfFaces = (int)(totalRad / radPerFace);
+            int numOfFaces = (int)Math.Round(totalRad / radPerFace, 0);
+            float rads, xCos, zSin, nx, nz, x, y, z;
 
             Vector2 min = new Vector2(-uvRadius, -uvRadius);
             Vector2 max = new Vector2(uvRadius, uvRadius);
             Vector2 pos;
             Vector2 uv;
+
+            //unchanging vars
+            y = height + offset.y;
+
             for (int i = 0; i < numOfFaces + 1; i++)
             {
-                angle = startAngle + anglePerFace * i;
-                xCos = Mathf.Cos(angle * Mathf.Deg2Rad);
-                zSin = Mathf.Sin(angle * Mathf.Deg2Rad);
+                rads = startRad + (radPerFace * i);
+                xCos = Mathf.Cos(rads);
+                zSin = Mathf.Sin(rads);
                 x = xCos * radius + offset.x;
-                y = height + offset.y;
                 z = zSin * radius + offset.z;
                 nx = xCos * yCos;
-                ny = ySin;
                 nz = zSin * yCos;
                 pos = new Vector2(xCos * radius, zSin * radius);
                 uv = area.getUV(min, max, pos);
-                verts.Add(addVertex(new Vector3(x, y, z), new Vector3(nx, ny, nz), uv));
+                verts.Add(addVertex(new Vector3(x, y, z), new Vector3(nx, ySin, nz), uv));
             }
             return verts;
         }
 
+        /// <summary>
+        /// Used to generate a ring of vertices with the uvMapping appropriate for a cylinder wall (increments in +x)
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="faces"></param>
+        /// <param name="radius"></param>
+        /// <param name="height"></param>
+        /// <param name="startAngle"></param>
+        /// <param name="endAngle"></param>
+        /// <param name="v"></param>
+        /// <param name="area"></param>
+        /// <param name="yCos"></param>
+        /// <param name="ySin"></param>
+        /// <returns></returns>
         public List<Vertex> generateRadialVerticesFlatUVs(Vector3 offset, int faces, float radius, float height, float startAngle, float endAngle, float v, UVArea area, float yCos, float ySin)
         {
             List<Vertex> verts = new List<Vertex>();
-            float totalAngle = endAngle - startAngle;
-            float anglePerFace = 360f / faces;
-            int numOfFaces = (int)(totalAngle / anglePerFace);
+            float startRad = startAngle * Mathf.Deg2Rad;
+            float endRad = endAngle * Mathf.Deg2Rad;
+            float totalRad = endRad - startRad;
+            float radPerFace = (float)((2.0 * Math.PI) / faces);
+            float radPerSub = radPerFace / subdivision;
+            int numOfFaces = (int)Math.Round(totalRad / radPerFace, 0);
 
-            float anglePerVert = totalAngle / (float)(numOfFaces + 1);
+            float rads, xCos, zSin, nx, ny, nz, x, y, z, percentTotalAngle;
+            float subRads, x2 = 0, z2 = 0, x3, z3, xCos2 = 0, zSin2 = 0, nextRads = 0, nextPerc=0, subPerc, lerp;
 
-            float angle, xCos, zSin, nx, ny, nz, x, y, z, percentTotalAngle;
+            y = height + offset.y;
+            ny = ySin;
 
             for (int i = 0; i < numOfFaces + 1; i++)
             {
-                angle = startAngle + anglePerFace * i;
-                percentTotalAngle = (angle - startAngle) / totalAngle;
-
-                xCos = Mathf.Cos(angle * Mathf.Deg2Rad);
-                zSin = Mathf.Sin(angle * Mathf.Deg2Rad);
-                x = xCos * radius + offset.x;
-                y = height + offset.y;
-                z = zSin * radius + offset.z;
+                if (i > 0)//vars were caled last round for the interpolation
+                {
+                    rads = nextRads;
+                    percentTotalAngle = nextPerc;
+                    xCos = xCos2;
+                    zSin = zSin2;
+                    x = x2;
+                    z = z2;
+                }
+                else
+                {
+                    rads = startRad + (radPerFace * i);
+                    percentTotalAngle = (rads - startRad) / totalRad;
+                    xCos = Mathf.Cos(rads);
+                    zSin = Mathf.Sin(rads);
+                    x = xCos * radius + offset.x;
+                    z = zSin * radius + offset.z;
+                }                
+                
                 nx = xCos * yCos;
-                ny = ySin;
                 nz = zSin * yCos;
                 verts.Add(addVertex(new Vector3(x, y, z), new Vector3(nx, ny, nz), new Vector2(area.getU(percentTotalAngle), v)));
+                
+                //calculate the points/etc for the next panel face, to lerp between positions; data is re-used next iteration if present
+                nextRads = startRad + (radPerFace * (i + 1));
+                nextPerc = (nextRads - startRad) / totalRad;
+                xCos2 = Mathf.Cos(nextRads);
+                zSin2 = Mathf.Sin(nextRads);
+                x2 = xCos2 * radius + offset.x;
+                z2 = zSin2 * radius + offset.z;
+
+                //do not add subdivision panel if the next vertex is the last one in the ring
+                if (i == numOfFaces) { break; }
+                //if was the last vert... do not add subs
+                for (int k = 1; k < subdivision; k++)
+                {
+                    lerp = (float)k / subdivision;
+                    x3 = Mathf.Lerp(x, x2, lerp);
+                    z3 = Mathf.Lerp(z, z2, lerp);
+                    subRads = rads + (radPerSub * k);//subangle used for normal calc... position calculated from interpolation to maintain cylinder side matching
+                    subPerc = (subRads - startRad) / totalRad;
+                    xCos = Mathf.Cos(subRads);
+                    zSin = Mathf.Sin(subRads);
+                    nx = xCos * yCos;
+                    nz = zSin * yCos;
+                    verts.Add(addVertex(new Vector3(x3, y, z3), new Vector3(nx, ny, nz), new Vector2(area.getU(subPerc), v)));
+                }
             }
             return verts;
         }
@@ -409,6 +471,7 @@ namespace SSTUTools
     /// </summary>
     public class UVArea
     {
+        public String name;
         public float u1;
         public float u2;
         public float v1;
@@ -416,6 +479,7 @@ namespace SSTUTools
 
         public UVArea(ConfigNode node)
         {
+            name = node.GetStringValue("name");
             this.u1 = node.GetFloatValue("u1");
             this.u2 = node.GetFloatValue("u2");
             this.v1 = node.GetFloatValue("v1");
@@ -477,6 +541,41 @@ namespace SSTUTools
         public override string ToString()
         {
             return "{" + u1 + "," + u2 + "," + v1 + "," + v2 + "}";
+        }
+    }
+
+    public class UVMap
+    {
+        private Dictionary<string, UVArea> uvAreas = new Dictionary<string, UVArea>();
+        public UVMap(ConfigNode node)
+        {
+            ConfigNode[] areaNodes = node.GetNodes("UVAREA");
+            int len = areaNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                UVArea area = new UVArea(areaNodes[i]);
+                uvAreas.Add(area.name, area);
+            }
+        }
+
+        public UVArea getArea(string name)
+        {
+            UVArea a = null;
+            uvAreas.TryGetValue(name, out a);
+            return a;
+        }
+
+        public static UVMap GetUVMapGlobal(string name)
+        {
+            if (String.IsNullOrEmpty(name)) { return null; }
+            ConfigNode[] uvMapNodes = GameDatabase.Instance.GetConfigNodes("SSTU_UVMAP");
+            ConfigNode uvMapNode = Array.Find(uvMapNodes, m=>m.GetStringValue("name") == name);
+            UVMap map = null;
+            if (uvMapNode != null)
+            {
+                map = new UVMap(uvMapNode);
+            }
+            return map;
         }
     }
 }

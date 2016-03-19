@@ -24,15 +24,18 @@ namespace SSTUTools
         public bool removeMass = true; //if true, fairing mass is removed from parent part when jettisoned (and on part reload)
         public float fairingJettisonMass = 0.1f;//mass of the fairing to be jettisoned; combined with jettisonForce this determines how energetically they are jettisoned
         public float jettisonForce = 10;//force in N to apply to jettisonDirection to each of the jettisoned panel sections
+        public String uvMapName = "NodeFairing";
         public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is positive Z (outward)
 
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node, GameObject root)
         {
             fairingBase = new FairingContainer(root, cylinderSides, numOfSections, wallThickness);
-            fairingBase.outsideUV = new UVArea(0.00390625f, 0.00390625f, 0.49609375f, 0.99609375f);
-            fairingBase.insideUV = new UVArea(0.50390625f, 0.00390625f, 0.99609375f, 0.99609375f);
-            fairingBase.edgesUV = new UVArea(0.00390625f, 0.00390625f, 0.49609375f, 0.99609375f);
+            uvMapName = node.GetStringValue("uvMap", uvMapName);
+            UVMap uvMap = UVMap.GetUVMapGlobal(uvMapName);
+            fairingBase.outsideUV = uvMap.getArea("outside");
+            fairingBase.insideUV = uvMap.getArea("inside");
+            fairingBase.edgesUV = uvMap.getArea("edges");
             rotationOffset = node.GetVector3("rotationOffset", Vector3.zero);
             topY = node.GetFloatValue("topY", topY);
             bottomY = node.GetFloatValue("bottomY", bottomY);

@@ -55,10 +55,10 @@ namespace SSTUTools
         /// <summary>
         /// Persistent scale value, whatever value is here/in the config will be the 'start diameter' for parts in the editor/etc
         /// </summary>
-        [KSPField(isPersistant = true, guiName ="Fairing Diameter")]
+        [KSPField(isPersistant = true, guiName ="Fairing Diameter", guiActiveEditor = true)]
         public float currentDiameter = 1.25f;
 
-        [KSPField(isPersistant = true, guiName = "Texture Set")]
+        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
         public String currentTextureSet = "Fairings-SLS";
         
         private float techLimitMaxDiameter;

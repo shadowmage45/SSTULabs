@@ -390,19 +390,19 @@ namespace SSTUTools
 
         public void updateWheel(Part part)
         {
-            updateSuspension();
+            updateSuspension(part);
             updateWheelRotation();
             updateSteering(part);
             updateMotor(part);
             updateBrake(part);
         }
 
-        private void updateSuspension()
+        private void updateSuspension(Part part)
         {
             if (suspensionTransform == null) { return; }            
             RaycastHit hit;
-            float wheelRadius = wheelCollider.radius;
-            float suspensionTravel = wheelCollider.suspensionDistance + wheelRadius;
+            float wheelRadius = wheelCollider.radius * part.rescaleFactor;
+            float suspensionTravel = (wheelCollider.suspensionDistance + wheelRadius) * part.rescaleFactor;
             float rayCastLength = suspensionTravel*2f;
             int mask = SSTUWheel.wheelLayerMask;
             if (Physics.Raycast(wheelCollider.transform.position, -wheelCollider.transform.up, out hit, rayCastLength, mask))
@@ -410,7 +410,7 @@ namespace SSTUTools
                 float distance = Vector3.Distance(hit.point, wheelCollider.transform.position);
                 if (distance > suspensionTravel) { distance = suspensionTravel; }                
                 distance -= wheelRadius;
-                float compression = wheelCollider.suspensionDistance - distance;
+                float compression = (wheelCollider.suspensionDistance*part.rescaleFactor) - distance;
                 suspensionTransform.position = suspensionNeutral.position + suspensionNeutral.up * compression;
             }
             else
