@@ -185,7 +185,7 @@ namespace SSTUTools
                 Transform tr = root.transform.FindRecursive(mesh);
                 if (tr != null && tr.renderer != null)
                 {
-                    Material m = tr.renderer.sharedMaterial;
+                    Material m = tr.renderer.material;
                     if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
                     if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
                     if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }

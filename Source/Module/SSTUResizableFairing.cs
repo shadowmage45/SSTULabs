@@ -230,7 +230,7 @@ namespace SSTUTools
                     mpf.FairingMaterial.mainTexture = t;
                     foreach (var f in mpf.Panels)
                     {
-                        f.go.renderer.sharedMaterial.mainTexture = t;
+                        f.go.renderer.material.mainTexture = t;
                     }
                 }
             }

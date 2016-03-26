@@ -292,22 +292,6 @@ namespace SSTUTools
             }
         }
 
-        public static void recursePrintMaterialData(Transform tr)
-        {
-            if (tr.renderer != null)
-            {
-                Material m = tr.renderer.sharedMaterial;
-                Texture t = m.mainTexture;
-                Shader s = m.shader;
-                MonoBehaviour.print("mat: " + m + " : tex: " + t + " : shad: " + s);
-            }
-
-            foreach (Transform child in tr)
-            {
-                recursePrintMaterialData(child);
-            }
-        }
-
         public static void recursePrintChildTransforms(Transform tr, String prefix)
         {
             MonoBehaviour.print("Transform found: " + prefix + tr.name);
@@ -449,7 +433,7 @@ namespace SSTUTools
         {
             if (tr != null && tr.renderer != null && tr.renderer.sharedMaterial != null)
             {
-                tr.renderer.sharedMaterial.SetTexture(id, tex);
+                tr.renderer.material.SetTexture(id, tex);
             }
             foreach (Transform tr1 in tr)
             {
@@ -459,7 +443,7 @@ namespace SSTUTools
 
         public static void setMaterialRecursive(Transform tr, Material mat)
         {
-            if (tr.gameObject.renderer != null) { tr.gameObject.renderer.sharedMaterial = mat; }
+            if (tr.gameObject.renderer != null) { tr.gameObject.renderer.material = mat; }
             int len = tr.childCount;
             for (int i = 0; i < len; i++)
             {

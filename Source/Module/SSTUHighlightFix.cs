@@ -51,7 +51,7 @@ namespace SSTUTools
                 newObj.transform.NestToParent(part.transform.FindRecursive("model"));
 
                 Renderer render = newObj.AddComponent<MeshRenderer>();//add a new render
-                render.sharedMaterial = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
+                render.material = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
                 dummyTransform = newObj.transform;//cache reference to it for use for updating
             }
         }

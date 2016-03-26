@@ -85,7 +85,7 @@ namespace SSTUTools
                 else
                 {
                     Texture tex = SSTUUtils.findTexture(texture, false);
-                    transform.renderer.sharedMaterial.mainTexture = tex;
+                    transform.renderer.material.mainTexture = tex;
                     transform.renderer.enabled = true;
                 }
             }
