@@ -590,7 +590,6 @@ namespace SSTUTools
             float whole = (int)div;
             float extra = div - whole;
             extra = SSTUUtils.roundTo(extra, 0.05f);
-            MonoBehaviour.print("extra: " + extra);
             
             editorDiameterWhole = whole;
             editorDiameterAdjust = prevEditorDiameterAdjust = extra;
@@ -806,7 +805,6 @@ namespace SSTUTools
 
         private void updateEffectsScale()
         {
-            MonoBehaviour.print("Updating effects scales!!");
             if (part.fxGroups == null)
             {
                 return;
@@ -1021,6 +1019,9 @@ namespace SSTUTools
                 Events["prevMainModelEvent"].active = false;
                 Events["nextMainModelEvent"].active = false;
             }
+            Events["nextNoseTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            Events["nextNozzleTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            Events["nextMainTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
         }
 
         private void updateTextureSets()

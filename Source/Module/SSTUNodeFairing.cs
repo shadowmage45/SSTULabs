@@ -737,76 +737,7 @@ namespace SSTUTools
             {
                 if (!String.IsNullOrEmpty(nodeName))//should watch node
                 {
-                    AttachNode node = part.findAttachNode(nodeName);
-                    if (node != null)
-                    {
-                        float fairingPos = node.position.y;
-                        Part attachedPart = node.attachedPart;
-                        if (snapToSecondNode)
-                        {
-                            if (attachedPart != null)
-                            {
-                                AttachNode newNode = null;
-                                foreach (AttachNode n in attachedPart.attachNodes)
-                                {
-                                    if (newNode == null || n.position.y < newNode.position.y)
-                                    {
-                                        newNode = n;
-                                    }
-                                }
-                                
-                                AttachNode otn = attachedPart.findAttachNodeByPart(part);
-                                Vector3 pos = newNode.position;
-                                pos = attachedPart.transform.TransformPoint(pos);
-                                pos = part.transform.InverseTransformPoint(pos);
-                                fairingPos = pos.y;
-                                node = newNode;
-                                attachedPart = node == null ? null : node.attachedPart;
-                            }
-                        }
-
-                        if (attachedPart != null)
-                        {
-                            currentlyEnabled = true;
-                            enableFairingRender(true);
-                            prevAttachedPart = attachedPart;
-                        }
-                        else//nothing -currently- attached; if there -was- something attached, either jettison or disable the fairing
-                        {
-                            currentlyEnabled = false;
-                            if (prevAttachedPart != null)//had part previously attached, jettison it
-                            {
-                                if (HighLogic.LoadedSceneIsFlight)
-                                {
-                                    if (canAutoJettison)
-                                    {
-                                        jettisonFairing();
-                                    }
-                                    else
-                                    {
-                                        renderingJettisonedFairing = true;
-                                    }
-                                }
-                            }
-
-                            if (!renderingJettisonedFairing)
-                            {
-                                enableFairingRender(false);
-                            }
-                        }
-
-                        if (currentlyEnabled && snapToNode && node!=null)
-                        {
-                            foreach (SSTUNodeFairingData data in fairingParts)
-                            {
-                                if (data.canAdjustBottom && data.bottomY!=fairingPos)
-                                {
-                                    data.bottomY = fairingPos;
-                                    needsRebuilt = true;
-                                }
-                            }
-                        }
-                    }
+                    updateStatusForNode();
                 }
                 else//manual fairing
                 {
@@ -814,9 +745,51 @@ namespace SSTUTools
                     enableFairingRender(true);
                 }
             }
-
             needsShieldUpdate = true;
             updateGuiState();
+        }
+
+        private void updateStatusForNode()
+        {
+            AttachNode watchedNode = null;
+            Part triggerPart = null;
+            float fairingPos = 0;
+            if (shouldSpawnFairingForNode(out watchedNode, out triggerPart, out fairingPos))
+            {
+                foreach (SSTUNodeFairingData data in fairingParts)
+                {
+                    if (data.canAdjustBottom && data.bottomY != fairingPos)
+                    {
+                        data.bottomY = fairingPos;
+                        needsRebuilt = true;
+                    }
+                }
+                currentlyEnabled = true;
+                enableFairingRender(true);
+                prevAttachedPart = triggerPart;
+            }
+            else
+            {
+                currentlyEnabled = false;
+                if (prevAttachedPart != null)//had part previously attached, jettison it
+                {
+                    if (HighLogic.LoadedSceneIsFlight)
+                    {
+                        if (canAutoJettison)
+                        {
+                            jettisonFairing();
+                        }
+                        else
+                        {
+                            renderingJettisonedFairing = true;
+                        }
+                    }
+                }
+                if (!renderingJettisonedFairing)
+                {
+                    enableFairingRender(false);
+                }
+            }
         }
         
         /// <summary>
@@ -984,14 +957,87 @@ namespace SSTUTools
             Events["nextTextureEvent"].active = currentlyEnabled && textureSets!=null && textureSets.Length>1;
             Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
 
+            bool enableButtonActive = false;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                enableButtonActive = (currentlyEnabled && canDisableInEditor) || canSpawnFairing();
+            }
+            else
+            {
+                enableButtonActive = currentlyEnabled && canManuallyJettison && (numOfSections>1 || String.IsNullOrEmpty(nodeName));
+            }
             String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable" ) : actionName;
             Events["jettisonEvent"].guiName = guiActionName + " " + fairingName;
             Actions["jettisonAction"].guiName = actionName + " " + fairingName;
-            Events["jettisonEvent"].active = Actions["jettisonAction"].active = (HighLogic.LoadedSceneIsEditor && canDisableInEditor) || (currentlyEnabled && canManuallyJettison);
+            Events["jettisonEvent"].active = Actions["jettisonAction"].active = enableButtonActive;
 
             Fields["shieldedPartCount"].guiActive = Fields["shieldedPartCount"].guiActiveEditor = currentlyEnabled && shieldParts;
 
             shieldedPartCount = shieldedParts.Count;
+        }
+
+        private bool shouldSpawnFairingForNode(out AttachNode watchedNode, out Part triggerPart, out float fairingPos)
+        {
+            watchedNode = part.findAttachNode(nodeName);
+            if (watchedNode == null)
+            {
+                //no node found, return false
+                fairingPos = 0;
+                triggerPart = null;
+                return false;
+            }
+            triggerPart = watchedNode.attachedPart;
+            fairingPos = watchedNode.position.y;
+            if (snapToSecondNode && triggerPart!=null)
+            {
+                watchedNode = getLowestNode(triggerPart, out fairingPos);
+                if (watchedNode != null && watchedNode.attachedPart!=part)//don't spawn fairing if there is only one node and this is the part attached
+                {
+                    triggerPart = watchedNode.attachedPart;
+                }
+                else
+                {
+                    triggerPart = null;
+                }
+            }
+            return triggerPart != null;
+        }
+
+        /// <summary>
+        /// Returns true for empty/null node name (whereas shouldSpawnFairing returns false)
+        /// </summary>
+        /// <returns></returns>
+        private bool canSpawnFairing()
+        {
+            if (String.IsNullOrEmpty(nodeName)) { return true; }
+            AttachNode n = null;
+            Part p = null;
+            float pos;
+            return shouldSpawnFairingForNode(out n, out p, out pos);
+        }
+
+        private AttachNode getLowestNode(Part p, out float fairingPos)
+        {
+            AttachNode node = null;
+            AttachNode nodeTemp;
+            float pos = float.PositiveInfinity;
+            Vector3 posTemp;
+            int len = p.attachNodes.Count;
+            
+            for (int i = 0; i < len; i++)
+            {
+                nodeTemp = p.attachNodes[i];
+                posTemp = nodeTemp.position;
+                posTemp = p.transform.TransformPoint(posTemp);
+                posTemp = part.transform.InverseTransformPoint(posTemp);
+                if (posTemp.y < pos)
+                {
+                    node = nodeTemp;
+                    pos = posTemp.y;
+                }
+            }
+            fairingPos = pos;
+            return node;
         }
         
         #endregion

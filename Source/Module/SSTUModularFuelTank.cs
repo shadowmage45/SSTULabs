@@ -149,64 +149,55 @@ namespace SSTUTools
         [KSPEvent(guiName = "Next Fuel Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextFuelEvent()
         {
-            setFuelTypeFromEditor(SSTUUtils.findNext(fuelTypes, m => m == currentFuelTypeData, false), true);
-            if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }            
+            setFuelTypeFromEditor(SSTUUtils.findNext(fuelTypes, m => m == currentFuelTypeData, false), true);    
         }
 
         [KSPEvent(guiName = "Tank Length -", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void prevTankEvent()
         {
             setMainTankModuleFromEditor(getNextTankLength(currentMainTankModule, true), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Tank Length +", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextTankEvent()
         {
             setMainTankModuleFromEditor(getNextTankLength(currentMainTankModule, false), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Tank Diameter --", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void prevTankDiameterEvent()
         {
             setTankDiameterFromEditor(currentTankDiameter - tankDiameterIncrement, true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
         
         [KSPEvent(guiName = "Tank Diameter ++", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextTankDiameterEvent()
         {
             setTankDiameterFromEditor(currentTankDiameter + tankDiameterIncrement, true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Prev Nose Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void prevTopEvent()
         {
             setNoseModuleFromEditor(getNextCap(noseModules, currentNoseModule, topNodeNames, true), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Next Nose Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextTopEvent()
         {
             setNoseModuleFromEditor(getNextCap(noseModules, currentNoseModule, topNodeNames, false), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Prev Mount Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void prevBottomEvent()
         {
             setMountModuleFromEditor(getNextCap(mountModules, currentMountModule, bottomNodeNames, true), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextBottomEvent()
         {
             setMountModuleFromEditor(getNextCap(mountModules, currentMountModule, bottomNodeNames, false), true);
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
 
         [KSPEvent(guiName = "Next Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
@@ -243,6 +234,7 @@ namespace SSTUTools
                     if (tank == null) { continue; }
                     tank.setFuelTypeFromEditor(Array.Find(tank.fuelTypes, m => m.name == currentFuelType), false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -265,6 +257,7 @@ namespace SSTUTools
                     MountModelData mt = Array.Find(mft.noseModules, t => t.name == newModule.name);
                     mft.setNoseModuleFromEditor(mt, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -287,6 +280,7 @@ namespace SSTUTools
                     SingleModelData mt = Array.Find(mft.mainTankModules, t => t.name == newModule.name);
                     mft.setMainTankModuleFromEditor(mt, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -310,6 +304,7 @@ namespace SSTUTools
                     mft.setMountModuleFromEditor(mt, false);
                 }
             }
+            if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
         }
 
         private void setTankDiameterFromEditor(float newDiameter, bool updateSymmetry)
@@ -332,6 +327,7 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankDiameterFromEditor(newDiameter, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -358,6 +354,7 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankScaleFromEditor(editorScaleValue, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
         
@@ -372,6 +369,7 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setNoseTextureFromEditor(newSet, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
         
@@ -386,6 +384,7 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankTextureFromEditor(newSet, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
         
@@ -400,6 +399,7 @@ namespace SSTUTools
                 {
                    p.GetComponent<SSTUModularFuelTank>().setMountTextureFromEditor(newSet, false);
                 }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -428,6 +428,25 @@ namespace SSTUTools
                 Fields["guiTankCost"].guiActiveEditor = false;
                 Fields["guiDryMass"].guiActiveEditor = false;
                 Fields["guiTankVolume"].guiActiveEditor = false;
+            }
+            if (fuelTypes.Length <= 1)
+            {
+                Events["nextFuelEvent"].guiActiveEditor = false;
+            }
+            if (mainTankModules.Length <= 1)
+            {
+                Events["nextTankEvent"].guiActiveEditor = false;
+                Events["prevTankEvent"].guiActiveEditor = false;
+            }
+            if (noseModules.Length <= 1)
+            {
+                Events["nextTopEvent"].guiActiveEditor = false;
+                Events["prevTopEvent"].guiActiveEditor = false;
+            }
+            if (mountModules.Length <= 1)
+            {
+                Events["nextBottomEvent"].guiActiveEditor = false;
+                Events["prevBottomEvent"].guiActiveEditor = false;
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -667,11 +686,6 @@ namespace SSTUTools
         {
             float diameterScale = currentTankDiameter / currentMainTankModule.modelDefinition.diameter;
             currentMainTankModule.updateScale(diameterScale, currentTankVerticalScale*diameterScale);
-            //float tankHeight = currentMainTankModule.modelDefinition.height * currentTankVerticalScale * diameterScale;
-            //MonoBehaviour.print("new tank height: " + tankHeight);
-            //currentMainTankModule.updateScaleForHeightAndDiameter(tankHeight, currentTankDiameter);
-
-            //currentMainTankModule.updateScaleForDiameter(currentTankDiameter);
             currentNoseModule.updateScaleForDiameter(currentTankDiameter);
             currentMountModule.updateScaleForDiameter(currentTankDiameter);
             float totalHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
@@ -761,6 +775,7 @@ namespace SSTUTools
             updateTextureSet(false);
             updateAttachNodes(userInput);
             updateFairing();
+            updateGuiState();
         }
 
         private void updateTextureSet(bool updateSymmetry)
@@ -794,6 +809,10 @@ namespace SSTUTools
             guiTankDiameter = currentTankDiameter;
             guiTankHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
             Fields["editorTankHeightAdjust"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
+
+            Events["nextTankTextureEvent"].guiActiveEditor = currentMainTankModule.modelDefinition.textureSets.Length>1;
+            Events["nextNoseTextureEvent"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
         }
 
         private void updateAttachNodes(bool userInput)

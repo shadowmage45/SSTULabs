@@ -56,9 +56,10 @@ namespace SSTUTools
         {
             for (int i = 0; i < numOfPasses; i++)
             {
-                foreach (SSTUConstraint lc in constraints)
+                int len = constraints.Count;
+                for (int k = 0; k < len; k++)
                 {
-                    lc.updateConstraint(i);
+                    constraints[k].updateConstraint(i);
                 }
             }
         }

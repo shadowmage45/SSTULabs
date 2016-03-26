@@ -64,7 +64,7 @@ namespace SSTUTools
                 {
                     if (tr.renderer != null)
                     {
-                        tr.renderer.material.mainTexture = texture;
+                        tr.renderer.sharedMaterial.mainTexture = texture;
                         tr.renderer.enabled = true;
                     }
                 }

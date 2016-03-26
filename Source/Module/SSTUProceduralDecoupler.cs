@@ -267,6 +267,7 @@ namespace SSTUTools
             updateGuiState();
             Fields["ejectionForce"].guiName = "Ejection Force";
             Fields["ejectionForce"].guiActiveEditor = true;
+            Events["nextTextureEvent"].active = textureSetData.Length > 1;
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));

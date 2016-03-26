@@ -76,17 +76,16 @@ namespace SSTUTools
 
         public void enable(Transform transform)
         {
-            if (transform.renderer != null && transform.renderer.material != null)
+            if (transform.renderer != null)
             {
                 if (string.IsNullOrEmpty(texture))
                 {
-                    transform.renderer.material.mainTexture = null;
                     transform.renderer.enabled = false;
                 }
                 else
                 {
                     Texture tex = SSTUUtils.findTexture(texture, false);
-                    transform.renderer.material.mainTexture = tex;
+                    transform.renderer.sharedMaterial.mainTexture = tex;
                     transform.renderer.enabled = true;
                 }
             }

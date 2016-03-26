@@ -51,7 +51,7 @@ namespace SSTUTools
                 newObj.transform.NestToParent(part.transform.FindRecursive("model"));
 
                 Renderer render = newObj.AddComponent<MeshRenderer>();//add a new render
-                render.material = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
+                render.sharedMaterial = SSTUUtils.loadMaterial(null, null);//with an empty dummy material, also it doesn't actually have any mesh
                 dummyTransform = newObj.transform;//cache reference to it for use for updating
             }
         }
@@ -74,8 +74,8 @@ namespace SSTUTools
                 {
                     updateRenderCache();
                 }
-                Color color = dummyTransform.renderer.material.GetColor(colorID);
-                float falloff = dummyTransform.renderer.material.GetFloat(falloffID);
+                Color color = dummyTransform.renderer.sharedMaterial.GetColor(colorID);
+                float falloff = dummyTransform.renderer.sharedMaterial.GetFloat(falloffID);
 
                 mpb.SetColor(colorID, color);
                 mpb.SetFloat(falloffID, falloff);

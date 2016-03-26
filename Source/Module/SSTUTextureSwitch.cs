@@ -10,28 +10,20 @@ namespace SSTUTools
     // may be controlled through external module (e.g resource or mesh-switch) through the two methods restoreDefaultTexture() and enableTextureSet(String setName)
     public class SSTUTextureSwitch : PartModule
     {
-        //the default texture set to apply, only needed if you want to change the default texture of a mesh from whatever was compiled in the model
-        [KSPField]
-        public String defaultTextureSet = String.Empty;
-
         [KSPField]
         public bool allowInFlightChange = false;
-
-        //if should be controlled through external module; disables the built-in switching buttons in favour of allowing the external control source to do it
-        [KSPField]
-        public bool externalControl = false;
 
         //currently selected texture set, by name
         [KSPField(isPersistant = true)]
         public String currentTextureSet = String.Empty;
-        
-        //actual texture set names
-        private String[] textureSetNames;
 
+        //actual texture set names
+        private TextureSet[] textureSets;
+        
         [KSPEvent(guiActiveEditor = true, guiActive = false, guiName = "Next Texture Set")]
         public void nextTextureSetEvent()
         {
-            enableTextureSet(findNextTextureSet(currentTextureSet, false));
+            enableTextureSet(SSTUUtils.findNext(textureSets, m=>m.setName==currentTextureSet, false).setName);
             int index = part.Modules.IndexOf(this);
             foreach (Part p in part.symmetryCounterparts)
             {
@@ -49,87 +41,33 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            if (externalControl)
-            {
-                Events["nextTextureSetEvent"].active = false;
-            }
-            Events["nextTextureSetEvent"].guiActiveUnfocused = !externalControl && allowInFlightChange;
         }
 
         //restores texture set data and either loads default texture set or saved texture set (if any)
         private void initialize()
         {
             loadConfigData();
-            int len = textureSetNames.Length;
-            for (int i = 0; i < len; i++)
-            {
-                textureSetNames[i] = textureSetNames[i].Trim();
-            }
-            if (!externalControl)
-            {
-                if (String.IsNullOrEmpty(currentTextureSet))//uninitialized, use defaults
-                {
-                    enableTextureSet(defaultTextureSet);
-                }
-                else
-                {
-                    enableTextureSet(currentTextureSet);
-                }
-            }            
+            TextureSet currentSet = Array.Find(textureSets, m => m.setName == currentTextureSet);
+            currentSet.enableFromMeshes(part);
         }
 
         private void loadConfigData()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            ConfigNode[] textureSets = node.GetNodes("TEXTURESET");
-            textureSetNames = new String[textureSets.Length];
-            for (int i = 0; i < textureSets.Length; i++)
-            {
-                textureSetNames[i] = textureSets[i].GetStringValue("name");
-            }
+            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
         }
-
-        //clears the persistent 'enabled texture set' data, and restores 'default texture set' 
-        public void restoreDefaultTexture()
-        {
-            enableTextureSet(defaultTextureSet);
-        }
-
+        
         //enables a specific texture set, by name
         public void enableTextureSet(String name)
         {
-            print("enabling texture set: " + name);
-            TextureSet ts = TextureSets.INSTANCE.getTextureSet(name);
+            TextureSet ts = Array.Find(textureSets, m => m.setName == name);
             if (ts != null)
             {
                 ts.enableFromMeshes(part);
-            }
-            currentTextureSet = name;           
+                currentTextureSet = name;
+            } 
         }
 
-        private String findNextTextureSet(String currentType, bool iterateBackwards)
-        {
-            int index = -1;
-            int len = textureSetNames.Length;
-            int iter = iterateBackwards ? -1 : 1;
-            for (int i = 0; i < len; i++)
-            {
-                if (textureSetNames[i].Equals(currentType))
-                {
-                    index = i;
-                }
-            }
-            if (index == -1)
-            {
-                MonoBehaviour.print("Could not locate current fuel type, returning first texture set name");
-                return textureSetNames[0];
-            }
-            index += iter;
-            if (index < 0) { index += len; }
-            if (index >= len) { index -= len; }
-            return textureSetNames[index];
-        }
     }
-
 }
 

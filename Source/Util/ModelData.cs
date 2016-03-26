@@ -185,7 +185,7 @@ namespace SSTUTools
                 Transform tr = root.transform.FindRecursive(mesh);
                 if (tr != null && tr.renderer != null)
                 {
-                    Material m = tr.renderer.material;
+                    Material m = tr.renderer.sharedMaterial;
                     if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
                     if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
                     if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }
@@ -329,7 +329,6 @@ namespace SSTUTools
 
         }
 
-        //TODO
         /// <summary>
         /// Enables the input texture set name, or default texture for the model if 'none' or 'default' is input for the set name
         /// </summary>
@@ -339,10 +338,25 @@ namespace SSTUTools
             ModelTextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
             if (String.IsNullOrEmpty(setName) || setName == "none" || setName == "default" ||  mts==null)
             {
+                if (setName == "none" || setName == "default")
+                {
+                    return;
+                }
                 MonoBehaviour.print("ERROR: No texture set data for set by name: " + setName + "  --  for model: " + name);
-                //TODO load default texture for the part
+                if (String.IsNullOrEmpty(modelDefinition.defaultTextureSet))
+                {
+                    MonoBehaviour.print("Default texture set was null or empty string, this is a configuration error. " +
+                        "Please correct the model definition for model: " +
+                        modelDefinition.name + " to add a proper default texture set definition.");
+                }
+                int len = modelDefinition.textureSets.Length;
+                MonoBehaviour.print("Texture sets avaialble for model: "+len +". Default set: "+modelDefinition.defaultTextureSet);                
+                for (int i = 0; i < len; i++)
+                {
+                    MonoBehaviour.print("\n" + modelDefinition.textureSets[i].name);
+                }
             }
-            else
+            else if(model!=null)
             {
                 mts.enable(model);
             }
@@ -355,23 +369,27 @@ namespace SSTUTools
 
         public void setupModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
         {
+            String modelName = modelDefinition.modelName;
+            if (String.IsNullOrEmpty(modelName))//no model to setup
+            {
+                return;
+            }
             if (reUse)
             {
                 MonoBehaviour.print("attempting to re-use existing model: " + modelDefinition.modelName);
                 Transform tr = part.transform.FindModel(modelDefinition.modelName);
                 if (tr != null)
                 {
-                    MonoBehaviour.print("Found existing model!");
+                    MonoBehaviour.print("Found existing model for re-use: "+tr.name);
                     tr.name = modelDefinition.modelName;
                     tr.gameObject.name = modelDefinition.modelName;
                 }
                 else
                 {
-                    MonoBehaviour.print("Did not find existing model, will clone and add");
+                    MonoBehaviour.print("Did not find existing model, will clone and add new model");
                 }
                 model = tr == null ? null : tr.gameObject;
             }
-            String modelName = modelDefinition.modelName;
             if (!String.IsNullOrEmpty(modelName) && model==null)
             {
                 model = SSTUUtils.cloneModel(modelName);                

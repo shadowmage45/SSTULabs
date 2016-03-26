@@ -137,6 +137,12 @@ namespace SSTUTools
                 gos[i].transform.localPosition = Vector3.zero;
                 gos[i].transform.rotation = parent.rotation;
             }
+            Transform[] trs;
+            for (int i = len; i <8; i++)
+            {
+                trs = parent.transform.FindChildren("FairingPanel-" + i);
+                for (int k = 0; k < trs.Length; k++) { GameObject.Destroy(trs[k].gameObject); }
+            }
             return gos;
         }
 

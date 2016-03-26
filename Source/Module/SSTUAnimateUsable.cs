@@ -16,9 +16,6 @@ namespace SSTUTools
         [KSPField]
         public bool showState = false;
 
-        [KSPField(guiName = "AnimState", isPersistant = true)]
-        public String displayState = string.Empty;
-
         [KSPField]
         public String stateLabel = "AnimState";
 
@@ -43,17 +40,34 @@ namespace SSTUTools
         [KSPField]
         public String resourceAmounts = string.Empty;
 
-        //IControlledModule fields
-        [KSPField(isPersistant = true)]
-        public bool moduleControlEnabled = false;
+        [KSPField]
+        public bool usableInFlight = true;
+
+        [KSPField]
+        public bool usableInEditor = true;
+
+        [KSPField]
+        public bool usableFromEVA = false;
+
+        [KSPField]
+        public bool usableUnfocused = false;
+
+        [KSPField]
+        public bool usableUncommanded = false;
+
+        [KSPField]
+        public float unfocusedRange = 200f;
 
         [KSPField]
         public int controlID = -1;
 
-        //TODO - add resource use
-        //private String[] resNames;
-        //private float[] resAmounts;
+        [KSPField(guiName = "AnimState", isPersistant = true)]
+        public String displayState = string.Empty;
 
+        //IControlledModule fields
+        [KSPField(isPersistant = true)]
+        public bool moduleControlEnabled = false;
+        
         private SSTUAnimateControlled animationControl;
 
         [KSPEvent(guiName = "Deploy", guiActive = true, guiActiveEditor = true)]
@@ -88,54 +102,48 @@ namespace SSTUTools
             initializeGuiFields();
             updateGuiDataFromState(animationControl.getAnimationState());
         }
-
-        //DONE
+        
         private void updateGuiDataFromState(AnimState state)
         {
+            BaseEvent deployEvent = Events["deployEvent"];
+            BaseEvent retractEvent = Events["retractEvent"];
             if (!moduleControlEnabled)
             {
-                Events["deployEvent"].active = false;
-                Events["retractEvent"].active = false;
+                deployEvent.active = false;
+                retractEvent.active = false;
                 Actions["deployAction"].active = false;
                 Actions["retractAction"].active = false;
                 Fields["displayState"].guiActiveEditor = Fields["displayState"].guiActive = false;
                 return;
             }
+            bool sceneEnabled = (HighLogic.LoadedSceneIsFlight && usableInFlight) || (HighLogic.LoadedSceneIsEditor && usableInEditor);
             switch (state)
             {
                 case AnimState.PLAYING_BACKWARD:
                     {
-                        Events["deployEvent"].active = true;
-                        Events["retractEvent"].active = false;
-                        Actions["deployAction"].active = true;
-                        Actions["retractAction"].active = true;
+                        deployEvent.active = sceneEnabled && true;
+                        retractEvent.active = false;
                         displayState = retractingStateName;
                         break;
                     }
                 case AnimState.PLAYING_FORWARD:
                     {
-                        Events["deployEvent"].active = false;
-                        Events["retractEvent"].active = true;
-                        Actions["deployAction"].active = true;
-                        Actions["retractAction"].active = true;
+                        deployEvent.active = false;
+                        retractEvent.active = sceneEnabled && true;
                         displayState = deployingStateName;
                         break;
                     }
                 case AnimState.STOPPED_END:
                     {
-                        Events["deployEvent"].active = false;
-                        Events["retractEvent"].active = true;
-                        Actions["deployAction"].active = true;
-                        Actions["retractAction"].active = true;
+                        deployEvent.active = false;
+                        retractEvent.active = sceneEnabled && true;
                         displayState = deployedStateName;
                         break;
                     }
                 case AnimState.STOPPED_START:
                     {
-                        Events["deployEvent"].active = true;
-                        Events["retractEvent"].active = false;
-                        Actions["deployAction"].active = true;
-                        Actions["retractAction"].active = true;
+                        deployEvent.active = sceneEnabled && true;
+                        retractEvent.active = false;
                         displayState = retractedStateName;
                         break;
                     }
@@ -167,32 +175,38 @@ namespace SSTUTools
         {
             return controlID;
         }
-
-        //DONE
+        
         public void onAnimationStatusChanged(AnimState state)
         {
             updateGuiDataFromState(state);
         }
-
-        //DONE
+        
         private void setAnimationState(AnimState state)
         {
             if (animationControl != null) { animationControl.setToState(state); }
             updateGuiDataFromState(state);
         }
-
-        //DONE
+        
         private void initializeGuiFields()
         {
             Fields["displayState"].guiName = stateLabel;
-            if (showState)
-            {
-                Fields["displayState"].guiActive = Fields["displayState"].guiActiveEditor = true;
-            }
-            Events["deployEvent"].guiName = deployActionName;
-            Events["retractEvent"].guiName = retractActionName;
+            Fields["displayState"].guiActive = Fields["displayState"].guiActiveEditor = showState;
+
             Actions["deployAction"].guiName = deployActionName;
             Actions["retractAction"].guiName = retractActionName;
+
+            BaseEvent deployEvent = Events["deployEvent"];
+            deployEvent.guiName = deployActionName;
+            deployEvent.externalToEVAOnly = usableFromEVA;
+            deployEvent.guiActiveUncommand = usableUncommanded;
+            deployEvent.guiActiveUnfocused = usableUnfocused;
+            deployEvent.unfocusedRange = unfocusedRange;
+            BaseEvent retractEvent = Events["retractEvent"];
+            retractEvent.guiName = retractActionName;
+            retractEvent.externalToEVAOnly = usableFromEVA;
+            retractEvent.guiActiveUncommand = usableUncommanded;
+            retractEvent.guiActiveUnfocused = usableUnfocused;
+            retractEvent.unfocusedRange = unfocusedRange;
         }
     }
 }

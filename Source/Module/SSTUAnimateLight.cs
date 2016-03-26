@@ -382,7 +382,7 @@ namespace SSTUTools
             {
                 if (tr.renderer != null)
                 {
-                    tr.renderer.material.SetColor(shaderEmissiveID, color);
+                    tr.renderer.sharedMaterial.SetColor(shaderEmissiveID, color);
                 }
             }
         }

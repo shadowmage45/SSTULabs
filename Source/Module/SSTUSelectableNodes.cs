@@ -71,10 +71,6 @@ namespace SSTUTools
                     }
                 }
             }
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-            }
         }
 
         public void toggleNode()
@@ -90,7 +86,6 @@ namespace SSTUTools
                 currentlyEnabled = false;
                 SSTUAttachNodeUtils.destroyAttachNode(part, node);
             }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
         }
     }
 }

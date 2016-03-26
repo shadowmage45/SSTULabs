@@ -296,7 +296,7 @@ namespace SSTUTools
         {
             if (tr.renderer != null)
             {
-                Material m = tr.renderer.material;
+                Material m = tr.renderer.sharedMaterial;
                 Texture t = m.mainTexture;
                 Shader s = m.shader;
                 MonoBehaviour.print("mat: " + m + " : tex: " + t + " : shad: " + s);
@@ -447,9 +447,9 @@ namespace SSTUTools
 
         public static void setTextureRecursive(Transform tr, Texture tex, int id)
         {
-            if (tr != null && tr.renderer != null && tr.renderer.material != null)
+            if (tr != null && tr.renderer != null && tr.renderer.sharedMaterial != null)
             {
-                tr.renderer.material.SetTexture(id, tex);
+                tr.renderer.sharedMaterial.SetTexture(id, tex);
             }
             foreach (Transform tr1 in tr)
             {
@@ -459,7 +459,7 @@ namespace SSTUTools
 
         public static void setMaterialRecursive(Transform tr, Material mat)
         {
-            if (tr.gameObject.renderer != null) { tr.gameObject.renderer.material = mat; }
+            if (tr.gameObject.renderer != null) { tr.gameObject.renderer.sharedMaterial = mat; }
             int len = tr.childCount;
             for (int i = 0; i < len; i++)
             {
@@ -469,10 +469,10 @@ namespace SSTUTools
 
         public static void setOpacityRecursive(Transform tr, float opacity)
         {
-            if (tr.renderer != null && tr.renderer.material != null)
+            if (tr.renderer != null && tr.renderer.sharedMaterial != null)
             {
-                tr.renderer.material.SetFloat("_Opacity", opacity);
-                tr.renderer.material.renderQueue = opacity >= 1f ? 2000 : 3000;
+                tr.renderer.sharedMaterial.SetFloat("_Opacity", opacity);
+                tr.renderer.sharedMaterial.renderQueue = opacity >= 1f ? 2000 : 3000;
             }
             foreach (Transform child in tr) { setOpacityRecursive(child, opacity); }
         }

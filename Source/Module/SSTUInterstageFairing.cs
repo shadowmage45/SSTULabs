@@ -417,6 +417,7 @@ namespace SSTUTools
             GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onVesselUnpack));
             GameEvents.onVesselGoOnRails.Add(new EventData<Vessel>.OnEvent(onVesselPack));
             GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
+            Events["nextTextureEvent"].guiActiveEditor = textureSetData.Length > 1;
         }
 
         public override void OnActive()

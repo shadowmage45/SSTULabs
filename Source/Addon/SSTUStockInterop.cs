@@ -36,11 +36,17 @@ namespace SSTUTools
         public static ConfigNode getPartModuleConfig(Part p, PartModule m)
         {
             ConfigNode partNode = getPartConfig(p);
+            ConfigNode[] moduleNodes = partNode.GetNodes("MODULE");
             int index = p.Modules.IndexOf(m);
+            if (index >= moduleNodes.Length)
+            {
+                MonoBehaviour.print("Module index was out of range: " + index + " : " + moduleNodes.Length);
+                return null;
+            }
             String type = m.GetType().Name;
-            ConfigNode moduleNode = partNode.GetNodes("MODULE")[index];
+            ConfigNode moduleNode = moduleNodes[index];
             if (moduleNode.GetStringValue("name") == type){ return moduleNode; }
-            MonoBehaviour.print("Could not find matching index for module: " + type + " :: " + m+" returning first module by name.");
+            MonoBehaviour.print("Could not find matching index for module: " + type + " :: " + m + " returning first module by name.");
             return getPartModuleConfig(p, type);
         }
 

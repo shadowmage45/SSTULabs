@@ -96,7 +96,7 @@ namespace SSTUTools
 
         private void initialize()
         {
-            animatedTransforms = part.FindModelTransforms(meshName);
+            animatedTransforms = part.transform.FindChildren(meshName);
             if (animatedTransforms == null || animatedTransforms.Length == 0) { print("ERROR: Could not locate transform(s) for name: " + meshName); }
             locateEngineModule();
         }
@@ -106,7 +106,6 @@ namespace SSTUTools
             animatedTransforms = null;
             engineModule = null;
             initialize();
-            if (HighLogic.LoadedSceneIsFlight) { setEmissiveColors(); }
         }
 
         private void locateEngineModule()
@@ -164,9 +163,10 @@ namespace SSTUTools
         {
             if (animatedTransforms != null)
             {
-                foreach (Transform tr in animatedTransforms)
+                int len = animatedTransforms.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    setTransfromEmissive(tr, emissiveColor);
+                    setTransfromEmissive(animatedTransforms[i], emissiveColor);
                 }                
             }
         }
@@ -175,7 +175,7 @@ namespace SSTUTools
         {
             if (tr.renderer != null)
             {
-                tr.renderer.material.SetColor(shaderEmissiveID, color);
+                tr.renderer.sharedMaterial.SetColor(shaderEmissiveID, color);
             }
             int len = tr.childCount;
             for (int i = 0; i < len; i++)

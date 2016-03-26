@@ -391,6 +391,7 @@ namespace SSTUTools.Module
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            Events["nextTextureEvent"].guiActiveEditor = textureSetData.Length>1;
         }
 
         public void Start()
@@ -614,6 +615,7 @@ namespace SSTUTools.Module
 
         private void updatePartMass()
         {
+
             //TODO
         }
 
