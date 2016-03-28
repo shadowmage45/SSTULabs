@@ -525,10 +525,6 @@ namespace SSTUTools
                 editorPrevTankHeightAdjust = editorTankHeightAdjust;                
                 setTankScaleFromEditor(editorTankHeightAdjust, true);
             }
-            else
-            {
-                updateAttachNodes(true);
-            }
         }
 
         #endregion ENDREGION - Standard KSP Overrides
