@@ -60,10 +60,7 @@ namespace SSTUTools
         private HeatShieldType[] shieldTypes;
         private float modifiedCost;
         private float modifiedMass;
-
-        private SSTUHeatShield customHeatshieldModule;//TODO
-        private ModuleAblator stockHeatshieldModule;//TODO
-
+        
         //TODO -- make these private after debug and testing
         [KSPField(guiName = "Abl Mult", guiActiveEditor = true, guiActive = true)]
         public float ablatMult;

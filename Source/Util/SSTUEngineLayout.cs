@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 using System.Collections.Generic;
 
 namespace SSTUTools
@@ -8,15 +9,72 @@ namespace SSTUTools
     {
         public String name = String.Empty;
         public List<SSTUEnginePosition> positions = new List<SSTUEnginePosition>();
+        public readonly String defaultUpperStageMount = "Mount-None";
+        public readonly String defaultLowerStageMount = "Mount-None";
+        public readonly float mountSizeMult = 1f;
+        public SSTUEngineLayoutMountOption[] mountOptions;
 
         public SSTUEngineLayout(ConfigNode node)
         {
             name = node.GetStringValue("name");
+            mountSizeMult = node.GetFloatValue("mountSizeMult", mountSizeMult);
+            defaultUpperStageMount = node.GetStringValue("defaultUpperStageMount", defaultUpperStageMount);
+            defaultLowerStageMount = node.GetStringValue("defaultLowerStageMount", defaultLowerStageMount);
+
             ConfigNode[] posNodes = node.GetNodes("POSITION");
-            foreach (ConfigNode posNode in posNodes)
+            int len = posNodes.Length;
+            for (int i = 0; i < len; i++)
             {
-                positions.Add(new SSTUEnginePosition(posNode));
+                positions.Add(new SSTUEnginePosition(posNodes[i]));
             }
+
+            ConfigNode[] mountNodes = node.GetNodes("MOUNT");
+            len = mountNodes.Length;
+            mountOptions = new SSTUEngineLayoutMountOption[len];
+            for (int i = 0; i < len; i++)
+            {
+                mountOptions[i] = new SSTUEngineLayoutMountOption(mountNodes[i]);
+            }
+        }
+        
+        public static SSTUEngineLayout findLayoutForName(String name)
+        {
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_ENGINELAYOUT");
+            foreach (ConfigNode node in nodes)
+            {
+                if (node.GetStringValue("name") == name)
+                {
+                    return new SSTUEngineLayout(node);
+                }
+            }
+            MonoBehaviour.print("ERROR: Could not locate engine layout for name: " + name + ". Please check the spelling and make sure it is defined properly.");
+            return null;
+        }
+
+        public static SSTUEngineLayout[] getAllLayouts()
+        {
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_ENGINELAYOUT");
+            int len = nodes.Length;
+            SSTUEngineLayout[] layouts = new SSTUEngineLayout[len];
+            for (int i = 0; i < len; i++)
+            {
+                layouts[i] = new SSTUEngineLayout(nodes[i]);
+            }
+            return layouts;
+        }
+
+        public static Dictionary<String, SSTUEngineLayout> getAllLayoutsDict()
+        {
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_ENGINELAYOUT");
+            int len = nodes.Length;
+            Dictionary<String, SSTUEngineLayout> layouts = new Dictionary<String, SSTUEngineLayout>();
+            SSTUEngineLayout layout;
+            for (int i = 0; i < len; i++)
+            {
+                layout = new SSTUEngineLayout(nodes[i]);
+                layouts.Add(layout.name, layout);
+            }
+            return layouts;
         }
     }
 
@@ -25,9 +83,9 @@ namespace SSTUTools
     /// </summary>
     public class SSTUEnginePosition
     {
-        public float x;
-        public float z;
-        public float rotation;
+        public readonly float x;
+        public readonly float z;
+        public readonly float rotation;
 
         public SSTUEnginePosition(ConfigNode node)
         {
@@ -44,6 +102,19 @@ namespace SSTUTools
         public float scaledZ(float scale)
         {
             return scale * z;
+        }
+    }
+
+    public class SSTUEngineLayoutMountOption
+    {
+        public readonly String mountName;
+        public readonly bool upperStage = true;
+        public readonly bool lowerStage = true;
+        public SSTUEngineLayoutMountOption(ConfigNode node)
+        {
+            mountName = node.GetStringValue("name");
+            upperStage = node.GetBoolValue("upperStage", upperStage);
+            lowerStage = node.GetBoolValue("lowerStage", lowerStage);
         }
     }
 }

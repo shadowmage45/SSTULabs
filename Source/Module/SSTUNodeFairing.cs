@@ -756,12 +756,15 @@ namespace SSTUTools
             float fairingPos = 0;
             if (shouldSpawnFairingForNode(out watchedNode, out triggerPart, out fairingPos))
             {
-                foreach (SSTUNodeFairingData data in fairingParts)
+                if (snapToNode)
                 {
-                    if (data.canAdjustBottom && data.bottomY != fairingPos)
+                    foreach (SSTUNodeFairingData data in fairingParts)
                     {
-                        data.bottomY = fairingPos;
-                        needsRebuilt = true;
+                        if (data.canAdjustBottom && data.bottomY != fairingPos)
+                        {
+                            data.bottomY = fairingPos;
+                            needsRebuilt = true;
+                        }
                     }
                 }
                 currentlyEnabled = true;

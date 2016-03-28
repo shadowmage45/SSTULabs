@@ -732,12 +732,17 @@ namespace SSTUTools
             AttachNode bottomNode = part.findAttachNode("bottom");
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
 
-            AttachNode interstage = part.findAttachNode(interstageNodeName);
-            if (interstage != null)
-            {                
+
+            if (!String.IsNullOrEmpty(interstageNodeName))
+            {
                 Vector3 pos = new Vector3(0, bottomFairingTopY, 0);
-                Vector3 orientation = new Vector3(0, -1, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
+                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                if (interstage != null)
+                {
+                    Vector3 orientation = new Vector3(0, -1, 0);
+                    SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                }
             }
         }
 

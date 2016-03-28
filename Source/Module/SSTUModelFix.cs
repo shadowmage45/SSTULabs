@@ -6,6 +6,7 @@ namespace SSTUTools
     {
         [KSPField]
         public string model;
+
         [KSPField]
         public string parent;
 

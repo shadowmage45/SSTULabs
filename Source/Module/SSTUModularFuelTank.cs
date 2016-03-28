@@ -550,7 +550,7 @@ namespace SSTUTools
             updateModuleStats();
             restoreModels();
             updateModels();
-            updateTextureSet(true);
+            updateTextureSet(false);
             restoreEditorFields();
             updateTankStats();
             updateAttachNodes(false);
@@ -667,6 +667,8 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
+            Transform oldBase = part.transform.FindRecursive(rootTransformName);
+            if (oldBase != null) { GameObject.Destroy(oldBase.gameObject); }
             Transform modelBase = new GameObject(rootTransformName).transform;
             modelBase.NestToParent(part.transform.FindRecursive("model"));
             currentMainTankModule.setupModel(part, modelBase, ModelOrientation.CENTRAL);
@@ -825,14 +827,19 @@ namespace SSTUTools
                 Vector3 pos = currentMainTankModule.modelDefinition.surfaceNode.position * currentMainTankModule.currentDiameterScale;
                 Vector3 rot = currentMainTankModule.modelDefinition.surfaceNode.orientation;
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);                
-            }
-            AttachNode interstage = part.findAttachNode(interstageNodeName);
-            if (interstage != null)
+            }            
+            
+            if (!String.IsNullOrEmpty(interstageNodeName))
             {
                 float y = currentMountModule.currentVerticalPosition + (currentMountModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale);
                 Vector3 pos = new Vector3(0, y, 0);
-                Vector3 orientation = new Vector3(0, -1, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
+                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                if (interstage != null)
+                {
+                    Vector3 orientation = new Vector3(0, -1, 0);
+                    SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                }
             }
         }
 

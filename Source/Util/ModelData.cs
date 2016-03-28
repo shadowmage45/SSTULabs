@@ -32,7 +32,14 @@ namespace SSTUTools
             if (!defsLoaded) { loadDefs(); }
             ModelDefinition data = null;
             baseModelData.TryGetValue(name, out data);
-            return data;            
+            return data;
+        }
+
+        public static void reloadData()
+        {
+            defsLoaded = false;
+            baseModelData.Clear();
+            loadDefs();
         }
     }
 
@@ -43,9 +50,10 @@ namespace SSTUTools
     /// </summary>
     public class ModelDefinition
     {
+        public readonly ConfigNode configNode;
         public readonly String modelName;
         public readonly String name;
-        public readonly String techLimit = "start";
+        public readonly String techLimit = "start";        
         public readonly float height = 1;
         public readonly float volume = 0;
         public readonly float mass = 0;
@@ -67,6 +75,7 @@ namespace SSTUTools
         
         public ModelDefinition(ConfigNode node)
         {
+            configNode = node;
             name = node.GetStringValue("name", String.Empty);
             modelName = node.GetStringValue("modelName", String.Empty);
             techLimit = node.GetStringValue("techLimit", techLimit);
@@ -443,54 +452,11 @@ namespace SSTUTools
     /// Includes utility methods to update attach node positions based on an input length/vertical offset.
     /// </summary>
     public class MountModelData : SingleModelData
-    {
-        /// <summary>
-        /// List of layout names that are possible for this mount.  If more than one layout is possible, the 'Next Layout' button will be visible in the VAB
-        /// </summary>
-        public String[] layoutNames = null;
-
-        /// <summary>
-        /// The default diameter for this mount option, can be further adjusted between minDiameter and maxDiameter.
-        /// </summary>
-        public float defaultDiameter = 5f;
-
-        /// <summary>
-        /// minimum selectable diameter for this mount option in the VAB
-        /// </summary>
-        public float minDiameter = 0.625f;
-
-        /// <summary>
-        /// maximum selectable diameter for this mount option in the VAB
-        /// </summary>
-        public float maxDiameter = 10f;
-
-        /// <summary>
-        /// Default spacing for this mount, when mount is switched to this spacing will be applied along with the default mount scale, and first listed layout name
-        /// </summary>
-        public float engineSpacing = 0f;
-
-        /// <summary>
-        /// If user can adjust mount size in VAB
-        /// </summary>
-        public bool canAdjustSize = true;
-
-        /// <summary>
-        /// If the engines should be rotated for
-        /// </summary>
-        public float[] rotateEngineModels;
-
-        public readonly bool singleModel = true;
+    {    
         
         public MountModelData(ConfigNode node) : base(node)
         {            
-            layoutNames = node.GetValues("layoutName");
-            defaultDiameter = node.GetFloatValue("size", defaultDiameter);
-            minDiameter = node.GetFloatValue("minSize", minDiameter);
-            maxDiameter = node.GetFloatValue("maxSize", maxDiameter);
-            engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
-            canAdjustSize = node.GetBoolValue("canAdjustSize", canAdjustSize);
-            rotateEngineModels = node.GetFloatValues("rotateEngines");
-            singleModel = node.GetBoolValue("singleModel", singleModel);            
+
         }
         
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
@@ -562,16 +528,6 @@ namespace SSTUTools
                 else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount
             }
             return true;//and if all node checks go okay, return true by default...
-        }
-
-        public String getNextLayout(String currentLayout, bool iterateBackwards = false)
-        {
-            return SSTUUtils.findNext(layoutNames, l => l == currentLayout, iterateBackwards);
-        }
-
-        public int getLayoutIndex(String layoutName)
-        {
-            return SSTUUtils.findIndex<String>(layoutNames, l => l == layoutName);
         }
     }
 }

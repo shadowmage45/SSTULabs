@@ -21,6 +21,7 @@ namespace SSTUTools
                 if (partConfigNodes.ContainsKey(name)) { continue; }
                 partConfigNodes.Add(name, node);
             }
+            SSTUModelData.reloadData();
         }
         
         public static ConfigNode getPartModuleConfig(Part p, int moduleIndex)

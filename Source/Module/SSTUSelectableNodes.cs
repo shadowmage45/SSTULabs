@@ -23,13 +23,19 @@ namespace SSTUTools
         public Vector3 nodeDefaultPosition = Vector3.zero;
 
         [KSPField]
-        public Vector3 nodeDefaultOrientation = Vector3.up;
+        public Vector3 nodeDefaultOrientation = Vector3.down;
          
         
         [KSPEvent(guiName = "Toggle Node", guiActiveEditor = true)]
         public void toggleNodeEvent()
         {
             toggleNode();
+        }
+
+        [KSPEvent(guiName = "Invert Node", guiActiveEditor = false)]
+        public void invertNodeEvent()
+        {
+            //TODO
         }
 
         public override void OnStart(PartModule.StartState state)
@@ -85,6 +91,19 @@ namespace SSTUTools
             {
                 currentlyEnabled = false;
                 SSTUAttachNodeUtils.destroyAttachNode(part, node);
+            }
+        }
+
+        public static void updateNodePosition(Part part, String nodeName, Vector3 pos)
+        {
+            SSTUSelectableNodes[] modules = part.GetComponents<SSTUSelectableNodes>();
+            int len = modules.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (modules[i].nodeName == nodeName)
+                {
+                    modules[i].nodeDefaultPosition = pos;
+                }
             }
         }
     }

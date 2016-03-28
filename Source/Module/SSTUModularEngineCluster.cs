@@ -20,18 +20,21 @@ namespace SSTUTools
         /// </summary>
         [KSPField]
         public float engineSpacing = 3f;
-
-        /// <summary>
-        /// The scale to render the engine model at.  engineYOffset and engineHeight will both be scaled by this value
-        /// </summary>
+        
         [KSPField]
-        public float engineScale = 1f;
+        public float engineMountDiameter = 3f;
 
         /// <summary>
         /// The height of the engine model at normal scale.  This should be the distance from the top mounting plane to the bottom of the engine (where the attach-node should be)
         /// </summary>
         [KSPField]
         public float engineHeight = 1f;
+
+        /// <summary>
+        /// The scale to render the engine model at.  engineYOffset and engineHeight will both be scaled by this value
+        /// </summary>
+        [KSPField]
+        public float engineScale = 1f;
 
         /// <summary>
         /// This field determines how much vertical offset should be given to the engine model (to correct for the default-COM positioning of stock/other mods engine models).        
@@ -46,6 +49,12 @@ namespace SSTUTools
         /// </summary>
         [KSPField]
         public float engineCost = 0.1f;
+
+        [KSPField]
+        public bool upperStageMounts = true;
+
+        [KSPField]
+        public bool lowerStageMounts = true;
 
         /// <summary>
         /// A transform of this name will be added to the main model, at a position determined by mount height + smokeTransformOffset
@@ -398,7 +407,7 @@ namespace SSTUTools
             else
             {
                 initialize();
-            }
+            }            
         }
 
         public void Start()
@@ -521,18 +530,15 @@ namespace SSTUTools
 
         private void loadConfigNodeData(ConfigNode node)
         {            
-            ConfigNode[] layoutNodes = node.GetNodes("LAYOUT");            
-            int len = layoutNodes.Length;
-            engineLayouts = new EngineClusterLayoutData[len];
-            for (int i = 0; i < len; i++)
-            {
-                engineLayouts[i] = new EngineClusterLayoutData(layoutNodes[i]);
-            }
+            ConfigNode[] layoutNodes = node.GetNodes("LAYOUT");
+            loadEngineLayouts(layoutNodes);
+
             if (String.IsNullOrEmpty(currentEngineLayoutName))
             {
                 currentEngineLayoutName = engineLayouts[0].layoutName;
             }
             currentEngineLayout = Array.Find(engineLayouts, m => m.layoutName == currentEngineLayoutName);
+            
             if (currentEngineLayout == null)
             {
                 currentEngineLayout = engineLayouts[0];
@@ -548,6 +554,47 @@ namespace SSTUTools
             currentMountData = currentEngineLayout.getMountData(currentMountName);
             if (currentMountDiameter > currentMountData.maxDiameter) { currentMountDiameter = currentMountData.maxDiameter; }
             if (currentMountDiameter < currentMountData.minDiameter) { currentMountDiameter = currentMountData.minDiameter; }
+        }
+
+        private void loadEngineLayouts(ConfigNode[] moduleLayoutNodes)
+        {
+            Dictionary<String, SSTUEngineLayout> allBaseLayouts = SSTUEngineLayout.getAllLayoutsDict();
+            Dictionary<String, ConfigNode> layoutConfigNodes = new Dictionary<string, ConfigNode>();
+            String name;
+            ConfigNode localLayoutNode;
+            int len = moduleLayoutNodes.Length;            
+            for (int i = 0; i < len; i++)
+            {
+                localLayoutNode = moduleLayoutNodes[i];
+                name = localLayoutNode.GetStringValue("name");
+                if (allBaseLayouts.ContainsKey(name))
+                {
+                    if (localLayoutNode.GetBoolValue("remove", false))//remove any layouts flagged for removal
+                    {
+                        MonoBehaviour.print("Removing global layout: " + name + " from engine: " + part);
+                        allBaseLayouts.Remove(name);
+                    }
+                    else
+                    {
+                        //MonoBehaviour.print("storing customized config for layout: " + name + " for part: " + part);
+                        layoutConfigNodes.Add(name, localLayoutNode);
+                    }
+                }
+            }
+
+            len = allBaseLayouts.Keys.Count;
+            engineLayouts = new EngineClusterLayoutData[len];
+            int index = 0;
+            foreach (String key in allBaseLayouts.Keys)
+            {
+                localLayoutNode = null;
+                layoutConfigNodes.TryGetValue(key, out localLayoutNode);
+                //MonoBehaviour.print("Loading layout : " + key + " for engine: " + part+" with custom data of: "+localLayoutNode);
+                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineSpacing, engineMountDiameter*engineScale, upperStageMounts, lowerStageMounts);
+                index++;
+            }
+            //sort usable layout list by the # of positions in the layout, 1..2..3..x..99
+            Array.Sort(engineLayouts, delegate (EngineClusterLayoutData x, EngineClusterLayoutData y) { return x.getLayoutData().positions.Count - y.getLayoutData().positions.Count; });
         }
 
         private void initializeSmokeTransform()
@@ -654,8 +701,8 @@ namespace SSTUTools
             {
                 position = layout.positions[i];
                 model = models[i].gameObject;
-                posX = position.scaledX(currentEngineSpacing);
-                posZ = position.scaledZ(currentEngineSpacing);
+                posX = position.scaledX(currentEngineSpacing*engineScale);
+                posZ = position.scaledZ(currentEngineSpacing*engineScale);
                 rot = position.rotation;
                 rot += rotateEngines;
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
@@ -790,14 +837,18 @@ namespace SSTUTools
             Vector3 pos = bottomNode.position;
             pos.y = fairingBottomY;
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
-
-            AttachNode interstage = part.findAttachNode(interstageNodeName);
-            if (interstage != null)
+                        
+            if (!String.IsNullOrEmpty(interstageNodeName))
             {
                 float y = partTopY + (currentMountData.modelDefinition.fairingTopOffset * getCurrentMountScale());
                 pos = new Vector3(0, y, 0);
-                Vector3 orientation = new Vector3(0, -1, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
+                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                if (interstage != null)
+                {
+                    Vector3 orientation = new Vector3(0, -1, 0);
+                    SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
+                }
             }
         }
 
@@ -904,21 +955,119 @@ namespace SSTUTools
     {
         public readonly String layoutName;
         public readonly String defaultMount;
-        public readonly float engineSpacing = -1f;
+        public readonly float engineSpacingOverride = -1f;
+
+        //base layout for positional data
+        private readonly SSTUEngineLayout layoutData;
+
+        //available mounts for this layout
         public EngineClusterLayoutMountData[] mountData;
 
-        public EngineClusterLayoutData(ConfigNode node)
-        {            
-            layoutName = node.GetStringValue("name");
-            defaultMount = node.GetStringValue("defaultMount");
-            engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
-            ConfigNode[] mountNodes = node.GetNodes("MOUNT");
-            int len = mountNodes.Length;
-            mountData = new EngineClusterLayoutMountData[len];
+        public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float moduleEngineSpacing, float moduleMountSize, bool upperMounts, bool lowerMounts)
+        {
+            layoutName = layoutData.name;
+            this.layoutData = layoutData;
+
+            defaultMount = lowerMounts? layoutData.defaultLowerStageMount : layoutData.defaultUpperStageMount;
+            engineSpacingOverride = moduleEngineSpacing;
+
+            Dictionary<String, ConfigNode> localMountNodes = new Dictionary<String, ConfigNode>();
+            Dictionary<String, SSTUEngineLayoutMountOption> globalMountOptions = new Dictionary<String, SSTUEngineLayoutMountOption>();
+            List<ConfigNode> customMounts = new List<ConfigNode>();
+
+            String name;
+            ConfigNode mountNode;
+
+            SSTUEngineLayoutMountOption mountOption;
+            int len = layoutData.mountOptions.Length;
             for (int i = 0; i < len; i++)
             {
-                mountData[i] = new EngineClusterLayoutMountData(mountNodes[i]);
+                mountOption = layoutData.mountOptions[i];
+                if ((mountOption.upperStage && upperMounts) || (mountOption.lowerStage && lowerMounts))
+                {
+                    globalMountOptions.Add(mountOption.mountName, mountOption);
+                }
             }
+
+            if (node != null)
+            {
+                //override data from the config node
+                defaultMount = node.GetStringValue("defaultMount", defaultMount);
+                engineSpacingOverride = node.GetFloatValue("engineSpacing", engineSpacingOverride);
+                ConfigNode[] mountNodes = node.GetNodes("MOUNT");
+                len = mountNodes.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    mountNode = mountNodes[i];
+                    name = mountNode.GetStringValue("name");
+                    if (mountNode.GetBoolValue("remove", false))
+                    {
+                        globalMountOptions.Remove(name);
+                        MonoBehaviour.print("Removing mount:" + name + " from layout: " + layoutName);
+                    }
+                    else
+                    {
+                        localMountNodes.Add(name, mountNode);
+                    }
+                    if (!globalMountOptions.ContainsKey(name))
+                    {
+                        customMounts.Add(mountNode);
+                    }
+                }
+            }
+
+            
+            List<EngineClusterLayoutMountData> mountDataTemp = new List<EngineClusterLayoutMountData>();            
+            foreach(String key in globalMountOptions.Keys)
+            {
+                if (localMountNodes.ContainsKey(key))
+                {
+                    mountNode = localMountNodes[key];
+                    //MonoBehaviour.print("Loading manual-sized mount: " + key + " for layout: " + layoutName + "\n" + mountNode);
+                }
+                else
+                {
+                    mountNode = getAutoSizeNode(globalMountOptions[key], moduleEngineSpacing, moduleMountSize, 0.625f);
+                    //MonoBehaviour.print("Loading auto-sized mount: " + key + " for layout: " + layoutName + "\n" + mountNode);
+                }
+                mountDataTemp.Add(new EngineClusterLayoutMountData(mountNode));
+            }
+            foreach (ConfigNode cm in customMounts)
+            {
+                mountDataTemp.Add(new EngineClusterLayoutMountData(cm));
+            }
+            mountData = mountDataTemp.ToArray();
+        }
+
+        private ConfigNode getAutoSizeNode(SSTUEngineLayoutMountOption option, float engineSpacing, float engineMountSize, float increment)
+        {
+            
+            float sizeDelta = engineSpacing - engineMountSize;
+            float minMountingArea = (layoutData.mountSizeMult * engineSpacing) - sizeDelta;
+                        
+            float minSize = 2.5f, maxSize = 10f, size = 2.5f;
+
+            ModelDefinition mdf = SSTUModelData.getModelDefinition(option.mountName);
+            float modelMountArea = mdf.configNode.GetFloatValue("mountingDiameter");
+            float modelSize = mdf.diameter;
+            float mountPercent = modelMountArea / modelSize;
+            float minMountAreaCalc = minMountingArea / mountPercent;
+            float whole = minMountAreaCalc / increment;
+            whole = (float)Math.Ceiling(whole);
+            minMountAreaCalc = whole * increment;
+            size = minMountAreaCalc;
+            minSize = size - increment;
+            //TODO fix this/clean up
+            if (size >= increment*4) { minSize -= increment; }
+            if (size >= increment*8) { minSize -= increment; }
+            if (size >= increment * 12) { minSize -= increment; }
+
+            ConfigNode node = new ConfigNode("MOUNT");
+            node.AddValue("name", option.mountName);
+            node.AddValue("size", size);
+            node.AddValue("minSize", minSize);
+            node.AddValue("maxSize", maxSize);
+            return node;
         }
 
         public float getEngineSpacing(float defaultSpacing, EngineClusterLayoutMountData mount)
@@ -927,7 +1076,7 @@ namespace SSTUTools
             {
                 return mount.engineSpacing;
             }
-            return  engineSpacing == -1 ? defaultSpacing : engineSpacing;
+            return  engineSpacingOverride == -1 ? defaultSpacing : engineSpacingOverride;
         }
 
         public bool isValidMount(String mountName)
@@ -942,22 +1091,9 @@ namespace SSTUTools
 
         public SSTUEngineLayout getLayoutData()
         {
-            return findLayoutForName(layoutName);
+            return layoutData;
         }
 
-        public static SSTUEngineLayout findLayoutForName(String name)
-        {
-            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_ENGINELAYOUT");
-            foreach (ConfigNode node in nodes)
-            {
-                if (node.GetStringValue("name") == name)
-                {
-                    return new SSTUEngineLayout(node);
-                }
-            }
-            MonoBehaviour.print("ERROR: Could not locate engine layout for name: " + name + ". Please check the spelling and make sure it is defined properly.");
-            return null;
-        }
     }
 
     public class EngineClusterLayoutMountData : SingleModelData
@@ -979,5 +1115,6 @@ namespace SSTUTools
             engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
         }
     }
+
 }
 
