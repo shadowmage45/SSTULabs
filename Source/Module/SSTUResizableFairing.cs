@@ -59,7 +59,7 @@ namespace SSTUTools
         public float currentDiameter = 1.25f;
 
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
-        public String currentTextureSet = "Fairings-SLS";
+        public String currentTextureSet = "Fairings-White";
 
         [KSPField(guiName = "Diameter +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = 0f, maxValue = 0.95f, stepIncrement = 0.05f)]
         public float editorDiameterAdjust;

@@ -590,7 +590,7 @@ namespace SSTUTools
                 localLayoutNode = null;
                 layoutConfigNodes.TryGetValue(key, out localLayoutNode);
                 //MonoBehaviour.print("Loading layout : " + key + " for engine: " + part+" with custom data of: "+localLayoutNode);
-                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineSpacing, engineMountDiameter*engineScale, upperStageMounts, lowerStageMounts);
+                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineSpacing*engineScale, engineMountDiameter*engineScale, upperStageMounts, lowerStageMounts);
                 index++;
             }
             //sort usable layout list by the # of positions in the layout, 1..2..3..x..99
@@ -701,8 +701,8 @@ namespace SSTUTools
             {
                 position = layout.positions[i];
                 model = models[i].gameObject;
-                posX = position.scaledX(currentEngineSpacing*engineScale);
-                posZ = position.scaledZ(currentEngineSpacing*engineScale);
+                posX = position.scaledX(currentEngineSpacing);
+                posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
                 rot += rotateEngines;
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
@@ -1113,6 +1113,7 @@ namespace SSTUTools
             maxDiameter = node.GetFloatValue("maxSize", initialDiameter);
             rotateEngines = node.GetFloatValue("rotateEngines");
             engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
+            if (String.IsNullOrEmpty(modelDefinition.modelName)) { canAdjustSize = false; }
         }
     }
 

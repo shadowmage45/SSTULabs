@@ -423,25 +423,18 @@ namespace SSTUTools
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
-            bool updated = false;
             if (prevEditorTankHeightAdjust != editorTankHeightAdjust)
             {
                 prevEditorTankHeightAdjust = editorTankHeightAdjust;
                 float newHeight = editorTankHeight + (tankHeightIncrement * editorTankHeightAdjust);
                 newHeight *= (currentTankDiameter / defaultTankDiameter);
                 updateTankHeightFromEditor(newHeight, true);
-                updated = true;
             }
             if (prevEditorTankDiameterAdjust != editorTankDiameterAdjust)
             {
                 prevEditorTankDiameterAdjust = editorTankDiameterAdjust;
                 float newDiameter = editorTankDiameter + (editorTankDiameterAdjust * tankDiameterIncrement);
                 setTankDiameterFromEditor(newDiameter, true);
-                updated = true;
-            }
-            if (!updated)
-            {
-                updateNodePositions(true);   
             }
         }
 
