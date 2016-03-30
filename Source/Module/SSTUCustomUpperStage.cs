@@ -191,6 +191,21 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String currentIntertank = String.Empty;
 
+        [KSPField(isPersistant = true)]
+        public String currentMountTexture = String.Empty;
+
+        //[KSPField(isPersistant = true)]
+        //public String currentCapTextureSet = String.Empty;
+
+        //[KSPField(isPersistant = true)]
+        //public String currentIntertankTextureSet = String.Empty;
+
+        //[KSPField(isPersistant = true)]
+        //public String currentUpperTankTextureSet = String.Empty;
+
+        //[KSPField(isPersistant = true)]
+        //public String currentLowerTankTextureSet = String.Empty;
+
         /// <summary>
         /// The current RCS thrust; this value will be 'set' into the RCS module (if found/present)
         /// </summary>
@@ -258,7 +273,7 @@ namespace SSTUTools
         private bool initialized = false;
         #endregion
 
-        #region ----------------- REGION - GUI methods ----------------- 
+        #region ----------------- REGION - GUI Interaction methods ----------------- 
 
         [KSPEvent(guiName = "Prev Tank Diameter", guiActive = false, guiActiveEditor = true, active = true)]
         public void prevTankDiameterEvent()
@@ -348,6 +363,144 @@ namespace SSTUTools
                 cus.updateFuelTypeFromEditor(nextFuelType);
             }
             GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
+        public void nextMountTextureEvent()
+        {
+            setMountTextureFromEditor(currentMountModule.getNextTextureSetName(currentMountTexture, false), true);
+        }
+        
+        /// <summary>
+        /// Editor callback method for when tank height changes.  Updates model positions, attach node/attached part positions, 
+        /// </summary>
+        private void updateTankHeightFromEditor(float newHeight, bool updateSymmetry)
+        {
+            float scalar = currentTankDiameter / defaultTankDiameter;
+            if (newHeight > scalar * maxTankHeight) { newHeight = scalar * maxTankHeight; }
+            if (newHeight < scalar * minTankHeight) { newHeight = scalar * minTankHeight; }
+            currentTankHeight = newHeight;
+            restoreEditorFields();
+            updateModules(true);
+            updateModels();
+            updateTankStats();
+            updatePartResources();
+            updateGuiState();
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().updateTankHeightFromEditor(newHeight, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        /// <summary>
+        /// Updates the current tank diameter from user input.  Subsequently updates internal and GUI variables, and redoes the setup for the part resources
+        /// </summary>
+        private void setTankDiameterFromEditor(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxTankDiameter)
+            {
+                newDiameter = maxTankDiameter;
+            }
+            if (newDiameter < minTankDiameter)
+            {
+                newDiameter = minTankDiameter;
+            }
+            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+
+            float scalar = currentTankDiameter / defaultTankDiameter;
+            float inverseScalar = 1 / scalar;
+
+            currentTankDiameter = newDiameter;
+            scalar = currentTankDiameter / defaultTankDiameter;
+
+            float scaledHeight = currentTankHeight * inverseScalar;
+            currentTankHeight = scalar * scaledHeight;
+
+
+            restoreEditorFields();
+            updateModules(true);
+            updateModels();
+            updateTankStats();
+            updatePartResources();
+            updateGuiState();
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setTankDiameterFromEditor(newDiameter, false);
+                }
+            }
+            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+        }
+
+        /// <summary>
+        /// Updates the selected mount model from user input
+        /// </summary>
+        /// <param name="nextDef"></param>
+        private void updateMountModelFromEditor(MountModelData nextDef)
+        {
+            removeCurrentModel(currentMountModule);
+            currentMountModule = nextDef;
+            currentMount = nextDef.name;
+            setupModel(currentMountModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.BOTTOM);
+            updateModules(true);
+            updateModels();
+            updateFuelVolume();
+            updatePartResources();
+            updateGuiState();
+            if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
+            currentMountModule.enableTextureSet(currentMountTexture);
+        }
+
+        /// <summary>
+        /// Updates the current intertank mesh/model from user input
+        /// </summary>
+        /// <param name="newDef"></param>
+        private void updateIntertankModelFromEditor(SingleModelData newDef)
+        {
+            removeCurrentModel(currentIntertankModule);
+            currentIntertankModule = newDef;
+            currentIntertank = newDef.name;
+            setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.CENTRAL);
+            updateModules(true);
+            updateModels();
+            updateTankStats();
+            updatePartResources();
+            updateGuiState();
+        }
+
+        /// <summary>
+        /// Updates the current fuel type from user input
+        /// </summary>
+        /// <param name="newFuelType"></param>
+        private void updateFuelTypeFromEditor(FuelTypeData newFuelType)
+        {
+            currentFuelTypeData = newFuelType;
+            currentFuelType = newFuelType.name;
+            updateTankStats();
+            updatePartResources();
+            updateGuiState();
+        }
+
+        private void setMountTextureFromEditor(String newSet, bool updateSymmetry)
+        {
+            currentMountTexture = newSet;
+            currentMountModule.enableTextureSet(newSet);
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setMountTextureFromEditor(newSet, false);
+                }
+                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
+            }
         }
 
         #endregion
@@ -495,6 +648,7 @@ namespace SSTUTools
             }
             restoreEditorFields();
             updateGuiState();
+            updateTextureSet(false);
         }
                 
         /// <summary>
@@ -556,6 +710,10 @@ namespace SSTUTools
                 mountModules[i] = new MountModelData(mountNodes[i]);
             }
             currentMountModule = Array.Find(mountModules, l => l.name == currentMount);
+            if (!currentMountModule.isValidTextureSet(currentMountTexture))
+            {
+                currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet;
+            }
 
             if (splitTank)
             {
@@ -573,7 +731,7 @@ namespace SSTUTools
                     intertankModules[i] = new SingleModelData(intertankNodes[i]);
                 }
                 currentIntertankModule = Array.Find(intertankModules, l => l.name == currentIntertank);
-            }     
+            }
         }
 
         #endregion
@@ -739,6 +897,18 @@ namespace SSTUTools
             }
         }
 
+        private void updateTextureSet(bool updateSymmetry)
+        {
+            currentMountModule.enableTextureSet(currentMountTexture);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().updateTextureSet(false);
+                }
+            }
+        }
+
         #endregion
 
         #region ----------------- REGION - Model Build / Updating ----------------- 
@@ -816,121 +986,6 @@ namespace SSTUTools
             rcsModule.updateModel();
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        /// <summary>
-        /// Editor callback method for when tank height changes.  Updates model positions, attach node/attached part positions, 
-        /// </summary>
-        private void updateTankHeightFromEditor(float newHeight, bool updateSymmetry)
-        {
-            float scalar = currentTankDiameter / defaultTankDiameter;
-            if (newHeight > scalar * maxTankHeight) { newHeight = scalar * maxTankHeight; }
-            if (newHeight < scalar * minTankHeight) { newHeight = scalar * minTankHeight; }
-            currentTankHeight = newHeight;
-            restoreEditorFields();
-            updateModules(true);
-            updateModels();
-            updateTankStats();
-            updatePartResources();
-            updateGuiState();
-
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUCustomUpperStage>().updateTankHeightFromEditor(newHeight, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        /// <summary>
-        /// Updates the current tank diameter from user input.  Subsequently updates internal and GUI variables, and redoes the setup for the part resources
-        /// </summary>
-        private void setTankDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            if (newDiameter > maxTankDiameter)
-            {
-                newDiameter = maxTankDiameter;
-            }
-            if (newDiameter < minTankDiameter)
-            {
-                newDiameter = minTankDiameter;
-            }
-            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
-
-            float scalar = currentTankDiameter / defaultTankDiameter;
-            float inverseScalar = 1 / scalar;
-
-            currentTankDiameter = newDiameter;
-            scalar = currentTankDiameter / defaultTankDiameter;
-
-            float scaledHeight = currentTankHeight * inverseScalar;
-            currentTankHeight = scalar * scaledHeight;
-
-
-            restoreEditorFields();
-            updateModules(true);
-            updateModels();
-            updateTankStats();
-            updatePartResources();
-            updateGuiState();
-
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUCustomUpperStage>().setTankDiameterFromEditor(newDiameter, false);
-                }
-            }
-            GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-        }
-
-        /// <summary>
-        /// Updates the selected mount model from user input
-        /// </summary>
-        /// <param name="nextDef"></param>
-        private void updateMountModelFromEditor(MountModelData nextDef)
-        {
-            removeCurrentModel(currentMountModule);
-            currentMountModule = nextDef;
-            currentMount = nextDef.name;
-            setupModel(currentMountModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.BOTTOM);
-            updateModules(true);
-            updateModels();
-            updateFuelVolume();
-            updatePartResources();
-            updateGuiState();
-        }
-
-        /// <summary>
-        /// Updates the current intertank mesh/model from user input
-        /// </summary>
-        /// <param name="newDef"></param>
-        private void updateIntertankModelFromEditor(SingleModelData newDef)
-        {
-            removeCurrentModel(currentIntertankModule);
-            currentIntertankModule = newDef;
-            currentIntertank = newDef.name;
-            setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.CENTRAL);
-            updateModules(true);
-            updateModels();
-            updateTankStats();
-            updatePartResources();
-            updateGuiState();
-        }
-
-        /// <summary>
-        /// Updates the current fuel type from user input
-        /// </summary>
-        /// <param name="newFuelType"></param>
-        private void updateFuelTypeFromEditor(FuelTypeData newFuelType)
-        {
-            currentFuelTypeData = newFuelType;
-            currentFuelType = newFuelType.name;
-            updateTankStats();
-            updatePartResources();
-            updateGuiState();
         }
 
         #endregion
@@ -1045,7 +1100,7 @@ namespace SSTUTools
                 Fields["guiDryMass"].guiActiveEditor = false;
                 Events["nextFuelTypeEvent"].active = false;
             }
-
+            Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
             guiRawVolume = totalTankVolume;
             guiFuelVolume = totalFuelVolume;
             guiDryMass = tankageMass + moduleMass;

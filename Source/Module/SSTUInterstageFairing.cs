@@ -686,8 +686,8 @@ namespace SSTUTools
         {
             float baseScale = bottomDiameter / defaultModelDiameter;
             float baseVolume = baseScale * baseScale * baseScale * defaultBaseVolume;
-            float avgRadius = bottomDiameter + (topDiameter - bottomDiameter) * 0.5f * 0.5f;
-            float panelArea = avgRadius * 2f * Mathf.PI * currentHeight;
+            float avgDiameter = bottomDiameter + (topDiameter - bottomDiameter) * 0.5f;
+            float panelArea = avgDiameter * Mathf.PI * currentHeight;//circumference * height = area
 
             float baseCost = costPerBaseVolume * baseVolume;
             float panelCost = costPerPanelArea * panelArea;

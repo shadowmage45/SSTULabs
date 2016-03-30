@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools.Module
 {
-    class SSTUInterstageDecoupler : ModuleDecouple
+    class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier
     {
         [KSPField]
         public String modelName = "SSTU/Assets/SC-ENG-ULLAGE-A";
@@ -29,6 +29,15 @@ namespace SSTUTools.Module
 
         [KSPField]
         public bool useRF = false;
+
+        [KSPField]
+        public float baseCost = 150f;
+
+        [KSPField]
+        public float costPerPanelArea = 50f;
+        
+        [KSPField]
+        public float massPerPanelArea = 0.025f;
 
         [KSPField]
         public String baseTransformName = "InterstageDecouplerRoot";
@@ -93,29 +102,26 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true)]
         public float currentHeight = 1.0f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Top Diameter")]
         public float currentTopDiameter = 2.5f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Bottom Diameter")]
         public float currentBottomDiameter = 2.5f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Taper Height")]
         public float currentTaperHeight = 0.0f;
 
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
-
-        [KSPField(guiActiveEditor = true, guiActive =true, guiName = "Top Diameter")]
-        public float guiTopDiameter;
-
-        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Bottom Diameter")]
-        public float guiBottomDiameter;
-
-        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Taper Height")]
-        public float guiTaperHeight;
-
+        
         [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Total Thrust")]
         public float guiEngineThrust;
+
+        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Fairing Mass")]
+        public float guiFairingMass;
+
+        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Fairing Cost")]
+        public float guiFairingCost;
 
         [KSPField(guiActiveEditor = true, guiName = "Top Diam. Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
         public float editorTopDiameterAdjust;
@@ -150,6 +156,9 @@ namespace SSTUTools.Module
         private float prevBottomDiameterAdjust;
         private float prevTaperHeightAdjust;
 
+        private float modifiedMass;
+        private float modifiedCost;
+
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
         private Material fairingMaterial;
@@ -164,6 +173,8 @@ namespace SSTUTools.Module
 
         private ModuleEngines engineModule;
         private ModuleDecouple decoupler;
+
+        #region REGION - GUI Interaction
 
         [KSPEvent(guiName = "Top Diameter -", guiActiveEditor = true)]
         public void prevTopDiameterEvent()
@@ -377,6 +388,8 @@ namespace SSTUTools.Module
             }
         }
 
+        #endregion ENDREGION - GUI Interaction
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
@@ -456,6 +469,16 @@ namespace SSTUTools.Module
             {
                 setTaperHeightFromEditor(editorTaperHeight + editorTaperHeightAdjust * heightIncrement, false);
             }
+        }
+
+        public float GetModuleMass(float defaultMass)
+        {
+            return -defaultMass + modifiedMass;
+        }
+
+        public float GetModuleCost(float defaultCost)
+        {
+            return -defaultCost + modifiedCost;
         }
 
         private void initialize()
@@ -615,8 +638,26 @@ namespace SSTUTools.Module
 
         private void updatePartMass()
         {
+            float avgDiameter = currentBottomDiameter + (currentTopDiameter - currentBottomDiameter) * 0.5f;
+            float panelArea = avgDiameter * Mathf.PI * currentHeight;//circumference * height = area
 
-            //TODO
+            float scale = getEngineScale();
+            scale = Mathf.Pow(scale, 3);
+
+            float escale = Mathf.Pow(getEngineScale(), thrustScalePower);
+            float volume = resourceVolume * escale * numberOfEngines;
+
+            float engineScaledMass = engineMass * scale;
+            float panelMass = massPerPanelArea * panelArea;
+            modifiedMass = engineScaledMass + panelMass;
+            part.mass = modifiedMass;
+
+            float engineScaledCost = baseCost * scale;
+            float panelCost = costPerPanelArea * panelArea;
+            modifiedCost = engineScaledCost + panelCost + fuelType.getResourceCost(volume);
+
+            guiFairingCost = panelCost;
+            guiFairingMass = panelMass;
         }
 
         private void updateEngineThrust()
@@ -640,8 +681,9 @@ namespace SSTUTools.Module
 
         private void updateNodePositions(bool userInput)
         {
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("top"), new Vector3(0, currentHeight * 0.5f, 0), Vector3.up, userInput);
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -currentHeight * 0.5f, 0), Vector3.down, userInput);
+            float h = currentHeight * 0.5f;
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("top"), new Vector3(0, h, 0), Vector3.up, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -h, 0), Vector3.down, userInput);
         }
 
         private float getEngineScale()
@@ -651,9 +693,7 @@ namespace SSTUTools.Module
 
         private void updateGuiFields()
         {
-            guiTaperHeight = currentTaperHeight;
-            guiTopDiameter = currentTopDiameter;
-            guiBottomDiameter = currentBottomDiameter;
+            //NOOP?
         }
 
         private class InterstageDecouplerEngine

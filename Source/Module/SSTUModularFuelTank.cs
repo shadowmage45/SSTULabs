@@ -242,7 +242,7 @@ namespace SSTUTools
         {
             currentNoseModule.destroyCurrentModel();
             currentNoseModule = newModule;
-            newModule.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.TOP);
+            newModule.setupModel(part, getRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet; }
             currentNoseModule.enableTextureSet(currentNoseTexture);
@@ -265,7 +265,7 @@ namespace SSTUTools
         {
             currentMainTankModule.destroyCurrentModel();
             currentMainTankModule = newModule;
-            currentMainTankModule.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL);
+            currentMainTankModule.setupModel(part, getRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.modelDefinition.defaultTextureSet; }
             currentMainTankModule.enableTextureSet(currentTankTexture);
@@ -288,7 +288,7 @@ namespace SSTUTools
         {
             currentMountModule.destroyCurrentModel();
             currentMountModule = newModule;
-            newModule.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.BOTTOM);
+            newModule.setupModel(part, getRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
             currentMountModule.enableTextureSet(currentMountTexture);
@@ -415,7 +415,7 @@ namespace SSTUTools
 
         public override void OnStart(StartState state)
         {
-            base.OnStart(state);           
+            base.OnStart(state);
             initialize();
             if (canChangeInFlight)
             {
@@ -663,13 +663,10 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
-            Transform oldBase = part.transform.FindRecursive(rootTransformName);
-            if (oldBase != null) { GameObject.Destroy(oldBase.gameObject); }
-            Transform modelBase = new GameObject(rootTransformName).transform;
-            modelBase.NestToParent(part.transform.FindRecursive("model"));
-            currentMainTankModule.setupModel(part, modelBase, ModelOrientation.CENTRAL);
-            currentNoseModule.setupModel(part, modelBase, ModelOrientation.TOP);
-            currentMountModule.setupModel(part, modelBase, ModelOrientation.BOTTOM);
+            Transform parentTransform = getRootTransform(true);
+            currentMainTankModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
+            currentNoseModule.setupModel(part, parentTransform, ModelOrientation.TOP);
+            currentMountModule.setupModel(part, parentTransform, ModelOrientation.BOTTOM);
         }
 
         #endregion ENDREGION - Initialization
@@ -849,6 +846,22 @@ namespace SSTUTools
             data.setTopRadius(currentTankDiameter * 0.5f);
             if (currentMountModule.modelDefinition.fairingDisabled) { data.setEnable(false); }
             fairing.updateExternal(data);
+        }
+
+        private Transform getRootTransform(bool recreate)
+        {
+            Transform root = part.transform.FindRecursive(rootTransformName);
+            if (recreate && root!=null)
+            {
+                GameObject.DestroyImmediate(root);
+                root = null;
+            }
+            if (root == null)
+            {
+                root = new GameObject(rootTransformName).transform;
+            }
+            root.NestToParent(part.transform.FindRecursive("model"));
+            return root;
         }
 
         #endregion ENDREGION - Updating methods

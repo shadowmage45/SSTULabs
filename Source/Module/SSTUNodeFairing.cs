@@ -382,23 +382,15 @@ namespace SSTUTools
 
             if (textureSets != null)
             {
-                print("checking texture sets length...");
                 if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
                 {
-                    print("disabling next texture button due to no more textures");
                     Events["nextTextureEvent"].active = false;
                 }
                 if (textureSets.Length > 0 && String.IsNullOrEmpty(currentTextureSet))
                 {
-                    print("setting current texture set to first available");
                     TextureSet s = textureSets[0];
-                    print("loading from texture set: " + s);
                     currentTextureSet = textureSets[0].setName;
                 }
-            }
-            else
-            {
-                print("textures were null!");
             }
             StartCoroutine(delayedDragUpdate());
         }

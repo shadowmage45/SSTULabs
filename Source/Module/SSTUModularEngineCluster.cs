@@ -262,7 +262,6 @@ namespace SSTUTools
             positionMountModels();
             positionEngineModels();
             updateNodePositions(true);
-            updateFairing(true);
             updateDragCubes();
             updateEditorFields();
             updateGuiState();
@@ -270,7 +269,7 @@ namespace SSTUTools
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularEngineCluster>().updateEngineSpacingFromEditor(newSpacing, false); }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+                //GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
         
@@ -441,11 +440,15 @@ namespace SSTUTools
             }
             if (prevEngineSpacingAdjust != editorEngineSpacingAdjust)
             {
-                //MonoBehaviour.print("updating spacing: " + editorEngineSpacingAdjust);
-                updateEngineSpacingFromEditor(currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust, true);
+                float d = prevEngineSpacingAdjust - editorEngineSpacingAdjust;
+                if (Mathf.Abs(d) > 0.001)
+                {
+                    updateEngineSpacingFromEditor(currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + editorEngineSpacingAdjust, true);
+                }
+                prevEngineSpacingAdjust = editorEngineSpacingAdjust;
             }
             if (prevEngineHeightAdjust != editorEngineHeightAdjust)
-            {             
+            {
                 updateEngineOffsetFromEditor(editorEngineHeightAdjust, true);
             }
         }
