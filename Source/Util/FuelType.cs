@@ -49,6 +49,20 @@ namespace SSTUTools
             return t;
         }
 
+        public FuelType[] getFuelTypes()
+        {
+            loadDefs();
+            FuelType[] types = new FuelType[fuelTypes.Count];            
+            int i = 0;
+            foreach (FuelType t in fuelTypes.Values)
+            {
+                types[i] = t;
+                i++;
+            }
+            Array.Sort(types, delegate (FuelType x, FuelType y) { return String.Compare(x.name,y.name); });
+            return types;
+        }
+
         public FuelTypeData getFuelTypeData(String type)
         {
             loadDefs();
@@ -65,8 +79,7 @@ namespace SSTUTools
             return val;
         }
     }
-    
-        
+            
     public class FuelTypeData
     {
         public readonly FuelType fuelType;
@@ -144,7 +157,7 @@ namespace SSTUTools
 
     public class FuelType
     {
-        private List<SSTUFuelEntry> fuelEntries = new List<SSTUFuelEntry>();
+        public readonly List<SSTUFuelEntry> fuelEntries = new List<SSTUFuelEntry>();
         public readonly String name;
         public readonly float tankageVolumeLoss;
         public readonly float tankageMassFactor;
@@ -154,7 +167,7 @@ namespace SSTUTools
         public readonly float costPerUnit;
         public readonly float unitsPerCubicMeter;
         public bool isValid = true;
-
+        
         public FuelType(ConfigNode node)
         {
             name = node.GetStringValue("name");
@@ -162,54 +175,54 @@ namespace SSTUTools
             tankageMassFactor = node.GetFloatValue("tankageMassFactor", 0.15f);
             costPerDryTon = node.GetFloatValue("costPerDryTon");
             ConfigNode[] fuelConfigs = node.GetNodes("RESOURCE");
-            SSTUFuelEntry e = null;
-            PartResourceDefinition def;
-            float massPerUnit = 0;
-            foreach (ConfigNode n in fuelConfigs)
+            if (fuelConfigs == null || fuelConfigs.Length == 0)
             {
-                e = new SSTUFuelEntry(n);
-                fuelEntries.Add(e);
-                litersPerUnit += FuelTypes.INSTANCE.getResourceVolume(e.resourceName) * e.ratio;
-                def = PartResourceLibrary.Instance.GetDefinition(e.resourceName);
-                if (def == null)
-                {
-                    MonoBehaviour.print("Could not locate resource definition for: " + e.resourceName+" :: Fuel type: "+name+" will be unavailable.");
-                    isValid = false;
-                    return;
-                }
-                costPerUnit += def.unitCost * e.ratio;
-                massPerUnit += def.density * e.ratio;
+                litersPerUnit = 1;
+                tonsPerCubicMeter = tankageMassFactor;
+                costPerUnit = costPerDryTon * 0.001f;
+                unitsPerCubicMeter = 1000f;// 1 liter fake units
             }
-            unitsPerCubicMeter = 1000f / litersPerUnit;
-            tonsPerCubicMeter = massPerUnit * unitsPerCubicMeter;
+            else
+            {
+                SSTUFuelEntry e = null;
+                PartResourceDefinition def;
+                float massPerUnit = 0;
+                foreach (ConfigNode n in fuelConfigs)
+                {
+                    e = new SSTUFuelEntry(n);
+                    fuelEntries.Add(e);
+                    litersPerUnit += FuelTypes.INSTANCE.getResourceVolume(e.resourceName) * e.ratio;
+                    def = PartResourceLibrary.Instance.GetDefinition(e.resourceName);
+                    if (def == null)
+                    {
+                        MonoBehaviour.print("Could not locate resource definition for: " + e.resourceName + " :: Fuel type: " + name + " will be unavailable.");
+                        isValid = false;
+                        return;
+                    }
+                    costPerUnit += def.unitCost * e.ratio;
+                    massPerUnit += def.density * e.ratio;
+                }
+                unitsPerCubicMeter = 1000f / litersPerUnit;
+                tonsPerCubicMeter = massPerUnit * unitsPerCubicMeter;
+            }
+        }
+
+        public string[] getResourceTypes()
+        {
+            int len = fuelEntries.Count;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++) { names[i] = fuelEntries[i].resourceName; }
+            return names;
+        }
+
+        public List<SSTUFuelEntry> getFuelEntries()
+        {
+            return fuelEntries;
         }
 
         public override string ToString()
         {
             return string.Format("[SSTUFuelType: " + name + "]");
-        }
-
-        public void setResourcesInPart(Part part, float volume, bool fill)
-        {
-            part.Resources.list.Clear();
-            PartResource[] resources = part.GetComponents<PartResource>();
-            int len = resources.Length;
-            for (int i = 0; i < len; i++)
-            {
-                GameObject.Destroy(resources[i]);
-            }
-            int rawFuelUnits = (int)(volume * unitsPerCubicMeter);
-            int units;
-            ConfigNode resourceNode;
-            foreach (SSTUFuelEntry entry in fuelEntries)
-            {
-                units = entry.ratio * rawFuelUnits;
-                resourceNode = new ConfigNode("RESOURCE");
-                resourceNode.AddValue("name", entry.resourceName);
-                resourceNode.AddValue("maxAmount", units);
-                resourceNode.AddValue("amount", fill ? units : 0);
-                part.AddResource(resourceNode);
-            }
         }
 
         public SSTUResourceList getResourceList(float volume)
@@ -238,8 +251,8 @@ namespace SSTUTools
 
     public class SSTUFuelEntry
     {
-        public String resourceName;
-        public int ratio;
+        public readonly String resourceName;
+        public readonly int ratio;
         public SSTUFuelEntry(ConfigNode node)
         {
             resourceName = node.GetStringValue("resource");
@@ -253,7 +266,6 @@ namespace SSTUTools
     public class SSTUResourceList
     {
         private Dictionary<String, float> resourceMax = new Dictionary<string, float>();
-        private Dictionary<String, float> resourceMin = new Dictionary<string, float>();
 
         public void addResourceByVolume(String name, float volume)
         {
@@ -299,15 +311,41 @@ namespace SSTUTools
 
         public void setResourcesToPart(Part part, bool fill)
         {
+            int len = part.Resources.Count;
+            float amt;
+            if (len == resourceMax.Count)//potentially the same resources exist as we are trying to setup
+            {
+                bool foundAll = true;                         
+                foreach (String name in resourceMax.Keys)
+                {
+                    if (part.Resources.Contains(name))//go ahead and set them as found; if not all are found we'll delete them anyway...
+                    {
+                        amt = resourceMax[name];
+                        PartResource pr = part.Resources[name];
+                        pr.maxAmount = amt;
+                        pr.amount = fill ? amt : 0;
+                    }
+                    else
+                    {
+                        foundAll = false;
+                        break;
+                    }
+                }
+                if (foundAll)
+                {
+                    updatePartResourceGui(part);
+                    //TODO update min/max for existing resources
+                    return;
+                }
+            }
             part.Resources.list.Clear();
             PartResource[] resources = part.GetComponents<PartResource>();
-            int len = resources.Length;
+            len = resources.Length;
             for (int i = 0; i < len; i++)
             {
                 GameObject.Destroy(resources[i]);
             }            
             ConfigNode resourceNode;
-            float amt = 0;
             foreach (String name in resourceMax.Keys)
             {
                 amt = resourceMax[name];
@@ -317,6 +355,13 @@ namespace SSTUTools
                 resourceNode.AddValue("amount", fill ? amt : 0);
                 part.AddResource(resourceNode);
             }
+            updatePartResourceGui(part);
+        }
+
+        private void updatePartResourceGui(Part part)
+        {
+            UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
+            if (window != null) { window.displayDirty = true; }
         }
     }
 

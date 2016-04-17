@@ -42,30 +42,49 @@ namespace SSTUTools
             updateFlagTransform();
         }
 
+        public void onPartGeometryChanged(Part part)
+        {
+            if (part == this.part)
+            {
+                MonoBehaviour.print("Updating part flag from on flag changed PartMessage");
+                updateFlagTransform();
+            }
+        }
+
         public void updateFlagTransform()
         {
             
             String textureName = part.flagURL;
             if (HighLogic.LoadedSceneIsEditor && String.IsNullOrEmpty(textureName)) { textureName = EditorLogic.FlagURL; }
             if (String.IsNullOrEmpty(textureName) && HighLogic.CurrentGame!=null) { textureName = HighLogic.CurrentGame.flagURL; }
-            print("updating flag transform... texture: "+textureName);
             Transform[] trs = part.FindModelTransforms(transformName);
             if (String.IsNullOrEmpty(textureName) || !flagEnabled)
             {
-                foreach (Transform tr in trs)
+                Renderer r;
+                Transform t;
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    if (tr.renderer != null) { tr.renderer.enabled = false; }
+                    t = trs[i];
+                    if ((r = t.GetComponent<Renderer>()) != null)
+                    {
+                        r.enabled = false;
+                    }
                 }
             }
             else
             {
                 Texture texture = GameDatabase.Instance.GetTexture(textureName, false);
-                foreach (Transform tr in trs)
+                Renderer r;
+                Transform t;
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    if (tr.renderer != null)
+                    t = trs[i];
+                    if ((r = t.GetComponent<Renderer>()) != null)
                     {
-                        tr.renderer.material.mainTexture = texture;
-                        tr.renderer.enabled = true;
+                        r.material.mainTexture = texture;
+                        r.enabled = true;
                     }
                 }
             }

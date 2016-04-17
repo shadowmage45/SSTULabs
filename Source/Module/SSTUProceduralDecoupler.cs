@@ -5,25 +5,7 @@ namespace SSTUTools
     public class SSTUProceduralDecoupler : ModuleDecouple, IPartCostModifier, IPartMassModifier
     {
         #region fields
-
-        [KSPField]
-        public bool canAdjustDiameter = false;
-
-        [KSPField]
-        public bool canAdjustThickness = false;
-
-        [KSPField]
-        public bool canAdjustHeight = false;
-
-        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float diameterExtra;
-
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float heightExtra;
-
-        [KSPField(guiActiveEditor = true, guiName = "Thick Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, maxValue = 1)]
-        public float thicknessExtra;
-        
+                
         [KSPField]
         public int cylinderSides = 24;
 
@@ -69,14 +51,20 @@ namespace SSTUTools
         [KSPField]
         public String uvMap = "NodeFairing";
 
-        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 2, suppressEditorShipModified =true)]
         public float diameter = 1.25f;
 
-        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 2, suppressEditorShipModified = true)]
         public float height = 0.1f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiName = "Thickness", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 2, suppressEditorShipModified = true)]
         public float thickness = 0.1f;
+
+        [KSPField(isPersistant = true, guiName = "Hollow Collider", guiActiveEditor = true), UI_Toggle(disabledText ="Disabled", enabledText ="Enabled")]
+        public bool hollowCollider = false;
 
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
         public String currentTextureSet = String.Empty;
@@ -86,13 +74,11 @@ namespace SSTUTools
         private float volume = 0;
 
         private ProceduralCylinderModel model;
-
-        private float editorDiameter;
-        private float editorHeight;
-        private float editorThickness;
-        private float prevDiameterExtra;
-        private float prevHeightExtra;
-        private float prevThicknessExtra;
+        
+        private float prevDiameter;
+        private float prevHeight;
+        private float prevThickness;
+        private bool prevCollider;
 
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
@@ -103,47 +89,47 @@ namespace SSTUTools
 
         #region KSP GUI Actions/Events
 
-        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
-        public void increaseDiameter()
-        {
-            setDiameterFromEditor(diameter + diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true)]
-        public void decreaseDiameter()
-        {
-            setDiameterFromEditor( diameter - diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Height +", guiActiveEditor = true)]
-        public void increaseHeight()
-        {
-            setHeightFromEditor(height + heightIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Height -", guiActiveEditor = true)]
-        public void decreaseHeight()
-        {
-            setHeightFromEditor(height - heightIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Thickness +", guiActiveEditor = true)]
-        public void increaseThickness()
-        {
-            setThicknessFromEditor(thickness + thicknessIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Thickness -", guiActiveEditor = true)]
-        public void decreaseThickness()
-        {
-            setThicknessFromEditor(thickness - thicknessIncrement, true);
-        }
-
         [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
         public void nextTextureEvent()
         {
             TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
             setTextureFromEditor(next == null ? null : next.setName, true);
+        }
+        
+        public void onHeightUpdated(BaseField field, object obj)
+        {
+            if (prevHeight != height)
+            {
+                prevHeight = height;
+                setHeightFromEditor(height, true);
+            }
+        }
+
+        public void onDiameterUpdated(BaseField field, object obj)
+        {
+            if (prevDiameter != diameter)
+            {
+                prevDiameter = diameter;
+                setDiameterFromEditor(diameter, true);
+            }
+        }
+
+        public void onThicknessUpdated(BaseField field, object obj)
+        {
+            if (prevThickness != thickness)
+            {
+                prevThickness = thickness;
+                setThicknessFromEditor(thickness, true);
+            }
+        }
+
+        public void onColliderUpdated(BaseField field, object obj)
+        {
+            if (prevCollider != hollowCollider)
+            {
+                prevCollider = hollowCollider;
+                recreateModel();
+            }
         }
 
         private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
@@ -163,7 +149,6 @@ namespace SSTUTools
                     dc = p.GetComponent<SSTUProceduralDecoupler>();
                     dc.setDiameterFromEditor(newDiameter, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -183,7 +168,6 @@ namespace SSTUTools
                     dc = p.GetComponent<SSTUProceduralDecoupler>();
                     dc.setHeightFromEditor(newHeight, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -203,7 +187,6 @@ namespace SSTUTools
                     dc = p.GetComponent<SSTUProceduralDecoupler>();
                     dc.setThicknessFromEditor(newThickness, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -228,21 +211,16 @@ namespace SSTUTools
                     dc = p.GetComponent<SSTUProceduralDecoupler>();
                     dc.setTextureFromEditor(newTexture, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
         #endregion
 
         #region KSP Lifecycle and KSP Overrides
-
+        
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasValue("radius"))
-            {
-                diameter = node.GetFloatValue("radius") * 2f;
-            }
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
                 loadConfigData();
@@ -262,16 +240,19 @@ namespace SSTUTools
         {
             base.OnStart(state);
             loadConfigData();
+            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2f, heightIncrement, heightIncrement*0.05f, true, height);
+            this.updateUIFloatEditControl("diameter", minDiameter, max, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, diameter);
+            this.updateUIFloatEditControl("thickness", minThickness, maxThickness, thicknessIncrement*2f, thicknessIncrement, thicknessIncrement*0.05f, true, thickness);
             updateEditorFields();
             prepModel();
-            updateGuiState();
             Fields["ejectionForce"].guiName = "Ejection Force";
             Fields["ejectionForce"].guiActiveEditor = true;
             Events["nextTextureEvent"].active = textureSetData.Length > 1;
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
+            Fields["height"].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields["diameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields["thickness"].uiControlEditor.onFieldChanged = onThicknessUpdated;
+            Fields["hollowCollider"].uiControlEditor.onFieldChanged = onColliderUpdated;
         }
 
         private void loadConfigData()
@@ -299,42 +280,17 @@ namespace SSTUTools
             }
         }
 
-        public void OnDestroy()
-        {
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
-        }
-
-        public void onEditorVesselModified(ShipConstruct ship)
-        {
-            if (prevDiameterExtra != diameterExtra)
-            {
-                prevDiameterExtra = diameterExtra;
-                setDiameterFromEditor(editorDiameter + diameterExtra * diameterIncrement, true);
-            }
-            if (prevHeightExtra != heightExtra)
-            {
-                prevHeightExtra = heightExtra;
-                setHeightFromEditor(editorHeight + heightExtra * heightIncrement, true);
-            }
-            if (prevThicknessExtra != thicknessExtra)
-            {
-                prevThicknessExtra = thicknessExtra;
-                setThicknessFromEditor(editorThickness + thicknessExtra * thicknessIncrement, true);
-            }
-        }
-
-        public float GetModuleCost(float defaultCost)
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             return modifiedCost;
         }
 
-        public float GetModuleMass(float defaultMass)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             return -defaultMass + modifiedMass;
         }
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         #endregion
 
@@ -342,26 +298,10 @@ namespace SSTUTools
 
         public void updateEditorFields()
         {
-            float div = diameter / diameterIncrement;
-            float whole = (int)div;
-            float extra = div - whole;
-            editorDiameter = whole * diameterIncrement;
-            diameterExtra = extra;
-            prevDiameterExtra = diameterExtra;
-
-            div = height / heightIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorHeight = whole * heightIncrement;
-            heightExtra = extra;
-            prevHeightExtra = heightExtra;
-
-            div = thickness / thicknessIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorThickness = whole * thicknessIncrement;
-            thicknessExtra = extra;
-            prevThicknessExtra = thicknessExtra;
+            prevHeight = height;
+            prevThickness = thickness;
+            prevDiameter = diameter;
+            prevCollider = hollowCollider;
         }
 
         public void prepModel()
@@ -370,6 +310,7 @@ namespace SSTUTools
             {
                 return;
             }
+
             String transformName = "ProcDecouplerRoot";
             Transform modelBase = part.transform.FindRecursive(transformName);
             if (modelBase != null)
@@ -385,55 +326,32 @@ namespace SSTUTools
             model.insideUV = uvs.getArea("inside");
             model.topUV = uvs.getArea("top");
             model.bottomUV = uvs.getArea("top");
-            updateModelParameters();
             setModelParameters();
             TextureData data = currentTextureSetData.textureDatas[0];
             model.setMaterial(SSTUUtils.loadMaterial(data.diffuseTextureName, data.normalTextureName));
-            model.setMeshColliderStatus(true, false);
+            model.setMeshColliderStatus(true, true);
             model.createModel();
             model.setParent(modelBase);
             updatePhysicalAttributes();
             updateDecouplerForce();
-            updateDragCube();
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void recreateModel()
         {
-            updateModelParameters();
             setModelParameters();
             model.recreateModel();
             updatePhysicalAttributes();
             updateDecouplerForce();
-            updateDragCube();
+            SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
-
-        private void updateModelParameters()
-        {
-            prevDiameterExtra = diameterExtra;
-            prevHeightExtra = heightExtra;
-            prevThicknessExtra = thicknessExtra;
-            diameter = editorDiameter + (diameterExtra * diameterIncrement);
-            height = editorHeight + (heightExtra * heightIncrement);
-            thickness = editorThickness + (thicknessExtra * thicknessIncrement);
-        }
-
+        
         private void setModelParameters()
         {
-            model.setModelParameters(diameter * 0.5f, height, thickness, cylinderSides);
+            model.setModelParameters(diameter * 0.5f, height, thickness, cylinderSides, !hollowCollider);
         }
-
-        public void updateGuiState()
-        {
-            Events["increaseDiameter"].guiActiveEditor = Events["increaseDiameter"].guiActiveEditor = canAdjustDiameter;
-            Events["increaseHeight"].guiActiveEditor = Events["decreaseHeight"].guiActiveEditor = canAdjustHeight;
-            Events["increaseThickness"].guiActiveEditor = Events["decreaseThickness"].guiActiveEditor = canAdjustThickness;
-            Fields["diameterExtra"].guiActiveEditor = canAdjustDiameter;
-            Fields["heightExtra"].guiActiveEditor = canAdjustHeight;
-            Fields["thicknessExtra"].guiActiveEditor = canAdjustThickness;
-        }
-
+        
         public void updateAttachNodePositions(bool userInput)
         {
             float h = height * 0.5f;
@@ -464,21 +382,9 @@ namespace SSTUTools
             modifiedMass = volume * massPerCubicMeter;
             modifiedCost = volume * costPerCubicMeter;
             part.mass = modifiedMass;
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-            }
+            SSTUStockInterop.fireEditorUpdate();
         }
     
-        public void updateDragCube()
-        {
-            if (!HighLogic.LoadedSceneIsFlight)
-            {
-                return;//NOOP except in flight
-            }
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
         private void updateDecouplerForce()
         {
             ejectionForce = forcePerKg * (modifiedMass * 1000f);

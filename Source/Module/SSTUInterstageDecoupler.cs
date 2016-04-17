@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools.Module
@@ -26,10 +25,7 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float thrustScalePower = 2f;
-
-        [KSPField]
-        public bool useRF = false;
-
+        
         [KSPField]
         public float baseCost = 150f;
 
@@ -99,16 +95,29 @@ namespace SSTUTools.Module
         [KSPField]
         public String uvMap = "NodeFairing";
 
-        [KSPField(isPersistant = true)]
+        [KSPField]
+        public bool shieldsParts = true;
+                
+        [KSPField(guiName = "Editor Transparency", guiActiveEditor = true), UI_Toggle(enabledText = "On", disabledText = "Off", suppressEditorShipModified = true)]
+        public bool editorTransparency = true;
+
+        [KSPField(guiName = "Colliders", guiActiveEditor = true, isPersistant = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
+        public bool generateColliders = false;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Height"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentHeight = 1.0f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Top Diameter")]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Top Diameter"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentTopDiameter = 2.5f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Bottom Diameter")]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Bottom Diameter"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentBottomDiameter = 2.5f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = true, guiName = "Taper Height")]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Taper Height"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentTaperHeight = 0.0f;
 
         [KSPField(isPersistant = true)]
@@ -123,18 +132,6 @@ namespace SSTUTools.Module
         [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Fairing Cost")]
         public float guiFairingCost;
 
-        [KSPField(guiActiveEditor = true, guiName = "Top Diam. Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorTopDiameterAdjust;
-
-        [KSPField(guiActiveEditor = true, guiName = "Bottom Diam. Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorBottomDiameterAdjust;
-
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorHeightAdjust;
-
-        [KSPField(guiActiveEditor = true, guiName = "Taper Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorTaperHeightAdjust;
-
         [KSPField(isPersistant = true)]
         public bool invertEngines = false;
 
@@ -146,15 +143,11 @@ namespace SSTUTools.Module
         
         private float remainingDelay;
 
-        private float editorTopDiameter;
-        private float editorBottomDiameter;
-        private float editorTaperHeight;
-        private float editorHeight;
-
-        private float prevHeightAdjust;
-        private float prevTopDiameterAdjust;
-        private float prevBottomDiameterAdjust;
-        private float prevTaperHeightAdjust;
+        private float minHeight;
+        private float prevHeight;
+        private float prevTopDiameter;
+        private float prevBottomDiameter;
+        private float prevTaperHeight;
 
         private float modifiedMass;
         private float modifiedCost;
@@ -175,54 +168,6 @@ namespace SSTUTools.Module
         private ModuleDecouple decoupler;
 
         #region REGION - GUI Interaction
-
-        [KSPEvent(guiName = "Top Diameter -", guiActiveEditor = true)]
-        public void prevTopDiameterEvent()
-        {
-            setTopDiameterFromEditor(currentTopDiameter - diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Top Diameter +", guiActiveEditor = true)]
-        public void nextTopDiameterEvent()
-        {
-            setTopDiameterFromEditor(currentTopDiameter + diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Bottom Diameter -", guiActiveEditor = true)]
-        public void prevBottomDiameterEvent()
-        {
-            setBottomDiameterFromEditor(currentBottomDiameter - diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Bottom Diameter +", guiActiveEditor = true)]
-        public void nextBottomDiameterEvent()
-        {
-            setBottomDiameterFromEditor(currentBottomDiameter + diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Height -", guiActiveEditor = true)]
-        public void prevHeightEvent()
-        {
-            setHeightFromEditor(currentHeight - heightIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Height +", guiActiveEditor = true)]
-        public void nextHeightEvent()
-        {
-            setHeightFromEditor(currentHeight + heightIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Taper Height -", guiActiveEditor =true)]
-        public void prevTaperHeightEvent()
-        {
-            setTaperHeightFromEditor(currentTaperHeight - heightIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Taper Height +", guiActiveEditor = true)]
-        public void nextTaperHeightEvent()
-        {
-            setTaperHeightFromEditor(currentTaperHeight + heightIncrement, true);
-        }
 
         [KSPEvent(guiName = "Invert Engines", guiActiveEditor = true)]
         public void invertEnginesEvent()
@@ -246,19 +191,66 @@ namespace SSTUTools.Module
             TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
             setTextureFromEditor(next == null ? null : next.setName, true);
         }
+        
+        public void onTopDiameterUpdated(BaseField field, object obj)
+        {
+            if (prevTopDiameter != currentTopDiameter)
+            {
+                prevTopDiameter = currentTopDiameter;
+                setTopDiameterFromEditor(currentTopDiameter, true);
+            }
+        }
+
+        public void onBottomDiameterUpdated(BaseField field, object obj)
+        {
+            if (prevBottomDiameter != currentBottomDiameter)
+            {
+                prevBottomDiameter = currentBottomDiameter;
+                setBottomDiameterFromEditor(currentBottomDiameter, true);
+            }
+        }
+
+        public void onHeightUpdated(BaseField field, object obj)
+        {
+            if (prevHeight != currentHeight)
+            {
+                prevHeight = currentHeight;
+                setHeightFromEditor(currentHeight, true);
+            }
+        }
+
+        public void onStraightUpdated(BaseField field, object obj)
+        {
+            if (prevTaperHeight != currentTaperHeight)
+            {
+                prevTaperHeight = currentTaperHeight;
+                setTaperHeightFromEditor(currentTaperHeight, true);
+            }
+        }
+        
+        public void onTransparencyUpdated(BaseField field, object obj)
+        {
+            fairingBase.setOpacity(editorTransparency ? 0.25f : 1);
+        }
+
+        public void onCollidersUpdated(BaseField field, object obj)
+        {
+            if (fairingBase.generateColliders != this.generateColliders)
+            {
+                fairingBase.generateColliders = this.generateColliders;
+                buildFairing();
+            }
+        }
 
         private void setTaperHeightFromEditor(float newHeight, bool updateSymmetry)
         {
-            if (newHeight > currentHeight) { newHeight = currentHeight; }
-            if (newHeight > maxHeight) { newHeight = maxHeight; }
-            float minTaperHeight = engineHeight * getEngineScale();
-            if (newHeight < minTaperHeight) { newHeight = minTaperHeight; }
             currentTaperHeight = newHeight;
             updateEditorFields();
             buildFairing();
-            updateGuiFields();
             updateNodePositions(true);
             updatePartMass();
+            updateShielding();
+            updateDragCubes();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -267,21 +259,18 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setTaperHeightFromEditor(newHeight, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
         private void setHeightFromEditor(float newHeight, bool updateSymmetry)
         {
-            if (newHeight > maxHeight) { newHeight = maxHeight; }
-            float minTaperHeight = engineHeight * getEngineScale();
-            if (newHeight < minTaperHeight) { newHeight = minTaperHeight; }
             currentHeight = newHeight;
             updateEditorFields();
             buildFairing();
-            updateGuiFields();
             updateNodePositions(true);
             updatePartMass();
+            updateShielding();
+            updateDragCubes();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -290,21 +279,19 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setHeightFromEditor(newHeight, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
         private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             currentTopDiameter = newDiameter;
             updateEditorFields();
             buildFairing();
-            updateGuiFields();
             updateNodePositions(true);
             updatePartMass();
+            updateShielding();
+            updateDragCubes();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -313,27 +300,21 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setTopDiameterFromEditor(newDiameter, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
         private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             currentBottomDiameter = newDiameter;
-            float minHeight = getEngineScale() * engineHeight;
-            if (currentHeight < minHeight) { currentHeight = minHeight; }
-            if (currentTaperHeight < minHeight){currentTaperHeight = minHeight;}
-
             updateEditorFields();
             buildFairing();
-            updateGuiFields();
             updateNodePositions(true);
             updateResources();
             updatePartMass();
             updateEngineThrust();
+            updateShielding();
+            updateDragCubes();
             if (updateSymmetry)
             {
                 SSTUInterstageDecoupler idc;
@@ -342,8 +323,8 @@ namespace SSTUTools.Module
                     idc = part.GetComponent<SSTUInterstageDecoupler>();
                     idc.setBottomDiameterFromEditor(newDiameter, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
+
         }
 
         private void invertEnginesFromEditor(bool updateSymmetry)
@@ -359,7 +340,7 @@ namespace SSTUTools.Module
                     idc.invertEngines = invertEngines;
                     idc.updateEnginePositionAndScale();
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+                SSTUStockInterop.fireEditorUpdate();
             }
         }
 
@@ -384,7 +365,6 @@ namespace SSTUTools.Module
                     dc = p.GetComponent<SSTUInterstageDecoupler>();
                     dc.setTextureFromEditor(newTexture, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -400,11 +380,30 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             initialize();
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
             Events["nextTextureEvent"].guiActiveEditor = textureSetData.Length>1;
+            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            this.updateUIFloatEditControl("currentTopDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
+            this.updateUIFloatEditControl("currentBottomDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
+            this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
+            this.updateUIFloatEditControl("currentTaperHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
+            Fields["currentTopDiameter"].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
+            Fields["currentBottomDiameter"].uiControlEditor.onFieldChanged = onBottomDiameterUpdated;
+            Fields["currentHeight"].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields["currentTaperHeight"].uiControlEditor.onFieldChanged = onStraightUpdated;
+            Fields["editorTransparency"].uiControlEditor.onFieldChanged = onTransparencyUpdated;
+            Fields["generateColliders"].uiControlEditor.onFieldChanged = onCollidersUpdated;
+            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
+        }
+
+        public void OnDestroy()
+        {
+            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
+        }
+
+        public void onEditorShipModified(ShipConstruct ship)
+        {
+            if (!HighLogic.LoadedSceneIsEditor) { return; }
+            fairingBase.setOpacity(editorTransparency ? 0.25f : 1);
         }
 
         public void Start()
@@ -416,6 +415,7 @@ namespace SSTUTools.Module
                 if (dc != this) { decoupler = dc; break; }
             }
             updateEngineThrust();
+            updateShielding();
         }
 
         public void FixedUpdate()
@@ -442,44 +442,18 @@ namespace SSTUTools.Module
                 }
             }
         }
-        
-        public void OnDestroy()
-        {
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
-        }
 
-        public void onEditorVesselModified(ShipConstruct ship)
-        {
-            if (prevBottomDiameterAdjust != editorBottomDiameterAdjust)
-            {
-                setBottomDiameterFromEditor( editorBottomDiameter + editorBottomDiameterAdjust * diameterIncrement, true );
-            }
-            if (prevTopDiameterAdjust != editorTopDiameterAdjust)
-            {
-                setTopDiameterFromEditor(editorTopDiameter + editorTopDiameterAdjust * diameterIncrement, false);
-            }
-            if (prevHeightAdjust != editorHeightAdjust)
-            {
-                setHeightFromEditor(editorHeight + editorHeightAdjust * heightIncrement, false);
-            }
-            if (prevTaperHeightAdjust != editorTaperHeightAdjust)
-            {
-                setTaperHeightFromEditor(editorTaperHeight + editorTaperHeightAdjust * heightIncrement, false);
-            }
-        }
-
-        public float GetModuleMass(float defaultMass)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             return -defaultMass + modifiedMass;
         }
 
-        public float GetModuleCost(float defaultCost)
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             return -defaultCost + modifiedCost;
         }
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         private void initialize()
         {
@@ -511,16 +485,14 @@ namespace SSTUTools.Module
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
 
             Transform modelBase = part.transform.FindRecursive("model");
-
             setupEngineModels(modelBase);
-
+            minHeight = engineHeight * getEngineScale();
             Transform root = modelBase.FindOrCreate(baseTransformName);
             Transform collider = modelBase.FindOrCreate("InterstageFairingBaseCollider");
             fairingBase = new InterstageDecouplerModel(root.gameObject, collider.gameObject, 0.25f, cylinderSides, numberOfPanels, wallThickness);
+            updateEditorFields();
             buildFairing();
             updateNodePositions(false);
-            updateEditorFields();
-
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
                 initializedResources = true;
@@ -528,34 +500,29 @@ namespace SSTUTools.Module
             }
             updatePartMass();
             updateEngineThrust();
-            updateGuiFields();
         }
 
         private void updateEditorFields()
         {
-            float div = currentTopDiameter / diameterIncrement;
-            float whole = (int)div;
-            float extra = div - whole;
-            editorTopDiameter = whole * diameterIncrement;
-            editorTopDiameterAdjust = prevTopDiameterAdjust = extra;
-
-            div = currentBottomDiameter / diameterIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorBottomDiameter = whole * diameterIncrement;
-            editorBottomDiameterAdjust = prevBottomDiameterAdjust = extra;
-
-            div = currentHeight / heightIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorHeight = whole * heightIncrement;
-            editorHeightAdjust = prevHeightAdjust = extra;
-            
-            div = currentTaperHeight / heightIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorTaperHeight = whole * heightIncrement;
-            editorTaperHeightAdjust = prevTaperHeightAdjust = extra;
+            prevTopDiameter = currentTopDiameter;
+            prevBottomDiameter = currentBottomDiameter;
+            prevHeight = currentHeight;
+            prevTaperHeight = currentTaperHeight;
+            minHeight = engineHeight * getEngineScale();
+            if (currentTaperHeight < minHeight)
+            {
+                currentTaperHeight = minHeight;
+            }
+            else if (currentTaperHeight > currentHeight)
+            {
+                currentTaperHeight = currentHeight;
+            }
+            this.updateUIFloatEditControl("currentTaperHeight", minHeight, currentHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentTaperHeight);
+            if (currentHeight < minHeight)
+            {
+                currentHeight = minHeight;
+            }
+            this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement * 2, heightIncrement, heightIncrement * 0.05f, true, currentHeight);
         }
 
         private void setupEngineModels(Transform modelBase)
@@ -592,22 +559,24 @@ namespace SSTUTools.Module
             fairingBase.edgesUV = uvs.getArea("edges");
 
             float halfHeight = currentHeight * 0.5f;
+
             fairingBase.addRing(-halfHeight, currentBottomDiameter * 0.5f);
-            if (currentTaperHeight > 0)
+            if (currentTopDiameter != currentBottomDiameter)
             {
                 fairingBase.addRing(-halfHeight + currentTaperHeight, currentBottomDiameter * 0.5f);
             }
-            if (currentTaperHeight < currentHeight)
+            if (currentHeight != currentTaperHeight || currentTopDiameter == currentBottomDiameter)
             {
                 fairingBase.addRing(halfHeight, currentTopDiameter * 0.5f);
             }
-
+            fairingBase.generateColliders = this.generateColliders;
             fairingBase.generateFairing();
             fairingBase.setMaterial(fairingMaterial);
-            fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
+            fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor && editorTransparency ? 0.25f : 1.0f);
 
             updateEnginePositionAndScale();
             SSTUModInterop.onPartGeometryUpdate(part, true);
+            SSTUStockInterop.fireEditorUpdate();
         }
 
         private void updateEnginePositionAndScale()
@@ -624,7 +593,7 @@ namespace SSTUTools.Module
         {
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
             float volume = resourceVolume * scale * numberOfEngines;
-            if (useRF)
+            if (SSTUModInterop.isRFInstalled())
             {
                 SSTUModInterop.onPartFuelVolumeUpdate(part, volume);
             }
@@ -650,7 +619,6 @@ namespace SSTUTools.Module
             float engineScaledMass = engineMass * scale;
             float panelMass = massPerPanelArea * panelArea;
             modifiedMass = engineScaledMass + panelMass;
-            part.mass = modifiedMass;
 
             float engineScaledCost = baseCost * scale;
             float panelCost = costPerPanelArea * panelArea;
@@ -686,16 +654,26 @@ namespace SSTUTools.Module
             SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -h, 0), Vector3.down, userInput);
         }
 
+        private void updateDragCubes()
+        {
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+        }
+
+        private void updateShielding()
+        {
+            if (!shieldsParts) { return; }
+            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
+            if (shield != null)
+            {
+                shield.addShieldArea("ISDC-Shielding", currentTopDiameter * 0.5f, currentTopDiameter * 0.5f, currentHeight * 0.5f, -currentHeight * 0.5f, true, true);
+            }
+        }
+
         private float getEngineScale()
         {
             return currentBottomDiameter / defaultModelScale;
         }
-
-        private void updateGuiFields()
-        {
-            //NOOP?
-        }
-
+        
         private class InterstageDecouplerEngine
         {
             Transform model;

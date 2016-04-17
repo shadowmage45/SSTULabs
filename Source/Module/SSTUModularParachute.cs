@@ -695,7 +695,7 @@ namespace SSTUTools
         /// </summary>
         private void updateParachuteStats()
         {
-            if (part == null || part.rigidbody == null || vessel == null)
+            if (part == null || part.rb == null || vessel == null)
             {
                 atmoDensity = 0.2;
                 squareVelocity = 1;
@@ -704,7 +704,7 @@ namespace SSTUTools
                 return;
             }
             atmoDensity = part.atmDensity;
-            squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rigidbody.velocity.sqrMagnitude;
+            squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rb.velocity.sqrMagnitude;
             externalTemp = vessel.externalTemperature;
             dynamicPressure = atmoDensity * squareVelocity * 0.5d;
             //print("dens: " + atmoDensity);
@@ -730,7 +730,7 @@ namespace SSTUTools
             if (jettison)
             {
                 Vector3 force = (part.transform.up * 100) + (part.transform.forward * 10);
-                GameObject jettisoned = SSTUUtils.createJettisonedObject(tr.gameObject, part.rigidbody.velocity, force, 0.15f);
+                GameObject jettisoned = SSTUUtils.createJettisonedObject(tr.gameObject, part.rb.velocity, force, 0.15f);
                 //umm..nothing left to do?
             }
             else
@@ -837,7 +837,7 @@ namespace SSTUTools
             Vector3 dragDirLocal = part.dragVectorDirLocal;
             dragPoint = Vector3.Lerp(dragPoint, dragDirLocal, 0.5f);//lerp between these to stabalize the oscilations
             Vector3 dragPointWorld = part.transform.TransformPoint(dragPoint);
-            part.rigidbody.AddForceAtPosition(dragForce, dragPointWorld, ForceMode.Force);
+            part.rb.AddForceAtPosition(dragForce, dragPointWorld, ForceMode.Force);
         }
 
         private Vector3 getDragForce()

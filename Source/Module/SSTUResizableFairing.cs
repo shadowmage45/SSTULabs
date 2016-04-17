@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    class SSTUResizableFairing : PartModule
+    class SSTUResizableFairing : PartModule, IPartMassModifier, IPartCostModifier
     {
 
         /// <summary>
@@ -55,43 +55,51 @@ namespace SSTUTools
         /// <summary>
         /// Persistent scale value, whatever value is here/in the config will be the 'start diameter' for parts in the editor/etc
         /// </summary>
-        [KSPField(isPersistant = true, guiName ="Fairing Diameter", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName ="Fairing Diameter", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter = 1.25f;
 
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
         public String currentTextureSet = "Fairings-White";
-
-        [KSPField(guiName = "Diameter +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = 0f, maxValue = 0.95f, stepIncrement = 0.05f)]
-        public float editorDiameterAdjust;
-
-        private float editorWholeDiameter;
-        private float editorPrevDiameterAdjust;
+                
+        private float prevDiameter;
         private float techLimitMaxDiameter;
 
         private ModuleProceduralFairing mpf = null;
 
         private TextureSet[] textureSets;
         
-        [KSPEvent(guiName ="Diameter --", guiActiveEditor =true)]
-        public void prevDiameter()
-        {
-            currentDiameter -= diameterIncrement;
-            onUserSizeChange();
-        }
-
-        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
-        public void nextDiameter()
-        {
-            currentDiameter += diameterIncrement;
-            onUserSizeChange();
-        }
-
         [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
         public void nextTextureSet()
         {
             TextureSet s = SSTUUtils.findNext(textureSets, m=>m.setName==currentTextureSet, false);
-            currentTextureSet = s.setName;
-            updateTexture();
+            updateTexture(s.setName);
+            foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUResizableFairing>().updateTexture(s.setName); }
+        }
+
+        public void onDiameterUpdated(BaseField field, object obj)
+        {
+            if (prevDiameter != currentDiameter)
+            {
+                prevDiameter = currentDiameter;
+                onUserSizeChange(currentDiameter, true);
+            }
+        }
+
+        public void onUserSizeChange(float newDiameter, bool updateSymmetry)
+        {
+            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
+            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
+            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
+            currentDiameter = newDiameter;
+            updateModelScale();
+            mpf.DeleteFairing();
+            updateNodePositions(true);
+            updateEditorFields();
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUResizableFairing>().onUserSizeChange(currentDiameter, false); }
+            }
         }
 
         public override void OnStart(StartState state)
@@ -110,14 +118,12 @@ namespace SSTUTools
                 currentDiameter = techLimitMaxDiameter;
             }
             updateModelScale();
-            updateTexture();
+            updateTexture(currentTextureSet);
             updateNodePositions(false);
+            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
+            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             updateEditorFields();
-
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
         }
 
         public override void OnLoad(ConfigNode node)
@@ -125,78 +131,44 @@ namespace SSTUTools
             base.OnLoad(node);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//for prefab part...
-            updateTexture();
+            updateTexture(currentTextureSet);
             updateEditorFields();
-        }
-
-        /// <summary>
-        /// Overriden/defined in order to remove the on-editor-ship-modified event from the game-event callback queue
-        /// </summary>
-        public void OnDestroy()
-        {
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
         }
 
         public void Start()
         {
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//make sure to update the mpf after it is initialized
-            updateTexture();
+            updateTexture(currentTextureSet);
         }
-        
-        public void onEditorVesselModified(ShipConstruct ship)
+
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (editorPrevDiameterAdjust != editorDiameterAdjust)
-            {
-                editorPrevDiameterAdjust = editorDiameterAdjust;
-                float newDiameter = editorWholeDiameter + (editorDiameterAdjust * diameterIncrement);
-                currentDiameter = newDiameter;
-                onUserSizeChange();
-            }
+            float scale = currentDiameter / modelDiameter;
+            return -defaultMass + defaultMass * Mathf.Pow(scale, 3f);
         }
+
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
+        {
+            float scale = currentDiameter / modelDiameter;
+            return -defaultCost + defaultCost * Mathf.Pow(scale, 3f);
+        }
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         private void updateEditorFields()
         {
-            float div = currentDiameter / diameterIncrement;
-            float whole = (int)div;
-            float extra = div - whole;
-            editorWholeDiameter = whole * diameterIncrement;
-            editorPrevDiameterAdjust = editorDiameterAdjust = extra;            
-        }
-
-        //TODO update symmetry counterparts
-        public void onUserSizeChange()
-        {
-            if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }
-            if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
-            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }
-            updateModelScale();
-            mpf.DeleteFairing();
-            updateNodePositions(true);
-            updateEditorFields();
-            //TODO update symmetry counterparts
-        }
+            prevDiameter = currentDiameter;
+        }        
 
         private void updateModelScale()
         {
             float scale = currentDiameter / modelDiameter;
-
             Transform tr = part.transform.FindModel(modelName);
-
             if (tr != null)
             {
                 tr.localScale = new Vector3(scale, scale, scale);
             }
-            else
-            {
-                MonoBehaviour.print("ERROR: Could not locate transform for model name: " + modelName);
-                SSTUUtils.recursePrintComponents(part.gameObject, "");
-            }
-
             if (mpf != null)
             {
                 mpf.baseRadius = scale * fairingDiameter * 0.5f;
@@ -217,8 +189,9 @@ namespace SSTUTools
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
         }
 
-        private void updateTexture()
+        private void updateTexture(String name)
         {
+            currentTextureSet = name;
             if (mpf != null)
             {
                 TextureSet set = getCurrentTextureSet();
@@ -230,7 +203,7 @@ namespace SSTUTools
                     mpf.FairingMaterial.mainTexture = t;
                     foreach (var f in mpf.Panels)
                     {
-                        f.go.renderer.material.mainTexture = t;
+                        f.mat.mainTexture = t;
                     }
                 }
             }

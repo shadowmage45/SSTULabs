@@ -14,7 +14,7 @@ namespace SSTUTools
 
     //should make it a generic converter with delta-catchup and optional inputs or ?
     //should make it also function as an alternator module, generating EC from throttle for engine on the part?
-    public class SSTUConverter : PartModule, IControlledModule
+    public class SSTUConverter : PartModule
     {
 
         //  if >=0, module will attempt to look for a stock-derived engine at the given index
@@ -62,14 +62,6 @@ namespace SSTUTools
         [KSPField]
         public float heatOutput = 0;
 
-        //IControlledModule fields
-        [KSPField(isPersistant = true)]
-        public bool moduleControlEnabled = false;
-
-        //IControlledModule fields
-        [KSPField]
-        public int controlID = -1;
-        
         private ConverterRecipe recipe;
 
         private ModuleEngines engineModule;
@@ -101,10 +93,6 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            if (controlID == -1)
-            {
-                moduleControlEnabled = true;
-            }
             loadRecipeFromSavedConfigString();
             if (recipe == null)
             {
@@ -148,41 +136,10 @@ namespace SSTUTools
         //unity fixedUpdate; for processing of the recipe in relation to time-delta
         public void FixedUpdate()
         {
-            if (moduleControlEnabled && !isDisabled && HighLogic.LoadedSceneIsFlight)
+            if (!isDisabled && HighLogic.LoadedSceneIsFlight)
             {
                 processRecipe();
             }
-        }
-
-        //IControlledModule method
-        public void enableModule()
-        {
-            moduleControlEnabled = true;
-            if (!isDisabled)
-            {
-                enableConverter();
-            }
-            updateGuiState();
-        }
-
-        //IControlledModule method
-        public void disableModule()
-        {
-            moduleControlEnabled = false;
-            disableConverter();
-            updateGuiState();
-        }
-
-        //IControlledModule method
-        public bool isControlEnabled()
-        {
-            return moduleControlEnabled;
-        }
-
-        //IControlledModule method
-        public int getControlID()
-        {
-            return controlID;
         }
 
         private void processRecipe()
@@ -259,12 +216,7 @@ namespace SSTUTools
 
         private void updateGuiState()
         {
-            if (!moduleControlEnabled)
-            {
-                Events["disableConverter"].active = false;
-                Events["enableConverter"].active = false;
-            }
-            else if (isDisabled)
+            if (isDisabled)
             {
                 Events["disableConverter"].active = false;
                 Events["enableConverter"].active = true;

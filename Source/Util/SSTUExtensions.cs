@@ -1,6 +1,9 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Events;
 using System.Collections.Generic;
+
 namespace SSTUTools
 {
     public static class SSTUExtensions
@@ -292,6 +295,209 @@ namespace SSTUTools
 
         #endregion
 
+        public static void updateUIFloatEditControl(this PartModule module, string fieldName, float min, float max, float incLarge, float incSmall, float incSlide, bool forceUpdate, float forceVal)
+        {
+            UI_FloatEdit widget = null;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                widget = (UI_FloatEdit)module.Fields[fieldName].uiControlEditor;
+            }
+            else if (HighLogic.LoadedSceneIsFlight)
+            {
+                widget = (UI_FloatEdit)module.Fields[fieldName].uiControlFlight;
+            }
+            else
+            {
+                return;
+            }
+            if (widget == null)
+            {
+                return;
+            }
+            widget.minValue = min;
+            widget.maxValue = max;
+            widget.incrementLarge = incLarge;
+            widget.incrementSmall = incSmall;
+            widget.incrementSlide = incSlide;
+            if (forceUpdate && widget.partActionItem!=null)
+            {
+                UIPartActionFloatEdit ctr = (UIPartActionFloatEdit)widget.partActionItem;
+                var t = widget.onFieldChanged;//temporarily remove the callback
+                widget.onFieldChanged = null;
+                ctr.incSmall.onToggle.RemoveAllListeners();
+                ctr.incLarge.onToggle.RemoveAllListeners();
+                ctr.decSmall.onToggle.RemoveAllListeners();
+                ctr.decLarge.onToggle.RemoveAllListeners();
+                ctr.slider.onValueChanged.RemoveAllListeners();
+                ctr.Setup(ctr.Window, module.part, module, HighLogic.LoadedSceneIsEditor ? UI_Scene.Editor : UI_Scene.Flight, widget, module.Fields[fieldName]);
+                widget.onFieldChanged = t;//re-seat callback
+            }
+        }
+
+        public static void updateUIFloatEditControl(this PartModule module, string fieldName, float newValue)
+        {
+            UI_FloatEdit widget = null;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                widget = (UI_FloatEdit)module.Fields[fieldName].uiControlEditor;
+            }
+            else if (HighLogic.LoadedSceneIsFlight)
+            {
+                widget = (UI_FloatEdit)module.Fields[fieldName].uiControlFlight;
+            }
+            else
+            {
+                return;
+            }
+            if (widget == null)
+            {
+                return;
+            }
+            BaseField field = module.Fields[fieldName];
+            field.SetValue(newValue, field.host);
+            if (widget.partActionItem != null)//force widget re-setup for changed values; this will update the GUI value and slider positions/internal cached data
+            {
+                UIPartActionFloatEdit ctr = (UIPartActionFloatEdit)widget.partActionItem;
+                var t = widget.onFieldChanged;//temporarily remove the callback; we don't need an event fired when -we- are the ones editing the value...            
+                widget.onFieldChanged = null;
+                ctr.incSmall.onToggle.RemoveAllListeners();
+                ctr.incLarge.onToggle.RemoveAllListeners();
+                ctr.decSmall.onToggle.RemoveAllListeners();
+                ctr.decLarge.onToggle.RemoveAllListeners();
+                ctr.slider.onValueChanged.RemoveAllListeners();
+                ctr.Setup(ctr.Window, module.part, module, HighLogic.LoadedSceneIsEditor ? UI_Scene.Editor : UI_Scene.Flight, widget, module.Fields[fieldName]);
+                widget.onFieldChanged = t;//re-seat callback
+            }
+        }
+
+        public static void updateUIChooseOptionControl(this PartModule module, string fieldName, string[] options, string[] display, bool forceUpdate, string forceVal="")
+        {
+            UI_ChooseOption widget = null;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                widget = (UI_ChooseOption)module.Fields[fieldName].uiControlEditor;
+            }
+            else if (HighLogic.LoadedSceneIsFlight)
+            {
+                widget = (UI_ChooseOption)module.Fields[fieldName].uiControlFlight;
+            }
+            else { return; }
+            if (widget == null) { return; }
+            widget.display = display;
+            widget.options = options;
+            if (forceUpdate && widget.partActionItem != null)
+            {
+                UIPartActionChooseOption control = (UIPartActionChooseOption)widget.partActionItem;
+                var t = widget.onFieldChanged;
+                widget.onFieldChanged = null;
+                int index = Array.IndexOf(options, forceVal);
+                control.slider.minValue = 0;
+                control.slider.maxValue = options.Length - 1;
+                control.slider.value = index;
+                control.OnValueChanged(0);
+                widget.onFieldChanged = t;
+            }
+        }
+        
+        public static void updateUIScaleEditControl(this PartModule module, string fieldName, float[] intervals, float[] increments, bool forceUpdate, float forceValue=0)
+        {
+            UI_ScaleEdit widget = null;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                widget = (UI_ScaleEdit)module.Fields[fieldName].uiControlEditor;
+            }
+            else if (HighLogic.LoadedSceneIsFlight)
+            {
+                widget = (UI_ScaleEdit)module.Fields[fieldName].uiControlFlight;
+            }
+            else
+            {
+                return;
+            }
+            if (widget == null)
+            {
+                return;
+            }
+            widget.intervals = intervals;
+            widget.incrementSlide = increments;
+            if (forceUpdate && widget.partActionItem != null)
+            {
+                UIPartActionScaleEdit ctr = (UIPartActionScaleEdit)widget.partActionItem;
+                var t = widget.onFieldChanged;
+                widget.onFieldChanged = null;
+                ctr.inc.onToggle.RemoveAllListeners();
+                ctr.dec.onToggle.RemoveAllListeners();
+                ctr.slider.onValueChanged.RemoveAllListeners();
+                ctr.Setup(ctr.Window, module.part, module, HighLogic.LoadedSceneIsEditor ? UI_Scene.Editor : UI_Scene.Flight, widget, module.Fields[fieldName]);
+                widget.onFieldChanged = t;
+            }
+        }
+
+        public static void updateUIScaleEditControl(this PartModule module, string fieldName, float min, float max, float increment, bool flight, bool editor, bool forceUpdate, float forceValue = 0)
+        {
+            BaseField field = module.Fields[fieldName];
+            if (increment <= 0)//div/0 error
+            {
+                field.guiActive = false;
+                field.guiActiveEditor = false;
+                return;
+            }
+            float seg = (max - min) / increment;
+            int numOfIntervals = (int)Math.Round(seg) + 1;
+            float sliderInterval = increment * 0.05f;
+            float[] intervals = new float[numOfIntervals];
+            float[] increments = new float[numOfIntervals];
+            UI_Scene scene = HighLogic.LoadedSceneIsFlight ? UI_Scene.Flight : UI_Scene.Editor;
+            if (numOfIntervals <= 1)//not enough data...
+            {
+                field.guiActive = false;
+                field.guiActiveEditor = false;
+                MonoBehaviour.print("ERROR: Not enough data to create intervals: " + min + " : " + max + " :: " + increment); 
+            }
+            else
+            {
+                field.guiActive = flight;
+                field.guiActiveEditor = editor;
+                intervals = new float[numOfIntervals];
+                increments = new float[numOfIntervals];
+                for (int i = 0; i < numOfIntervals; i++)
+                {
+                    intervals[i] = min + (increment * (float)i);
+                    increments[i] = sliderInterval;
+                }
+                module.updateUIScaleEditControl(fieldName, intervals, increments, forceUpdate, forceValue);
+            }
+        }
+
+        public static void updateUIScaleEditControl(this PartModule module, string fieldName, float value)
+        {
+            UI_ScaleEdit widget = null;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                widget = (UI_ScaleEdit)module.Fields[fieldName].uiControlEditor;
+            }
+            else if (HighLogic.LoadedSceneIsFlight)
+            {
+                widget = (UI_ScaleEdit)module.Fields[fieldName].uiControlFlight;
+            }
+            else
+            {
+                return;
+            }
+            if (widget == null || widget.partActionItem==null)
+            {
+                return;
+            }
+            UIPartActionScaleEdit ctr = (UIPartActionScaleEdit)widget.partActionItem;
+            var t = widget.onFieldChanged;
+            widget.onFieldChanged = null;
+            ctr.inc.onToggle.RemoveAllListeners();
+            ctr.dec.onToggle.RemoveAllListeners();
+            ctr.slider.onValueChanged.RemoveAllListeners();
+            ctr.Setup(ctr.Window, module.part, module, HighLogic.LoadedSceneIsEditor ? UI_Scene.Editor : UI_Scene.Flight, widget, module.Fields[fieldName]);
+            widget.onFieldChanged = t;
+        }
+        
         public static String Print(this FloatCurve curve)
         {
             String output = "";

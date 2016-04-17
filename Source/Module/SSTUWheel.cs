@@ -61,17 +61,45 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            initialize();
+            //initialize();
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            initialize();
             if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
                 StartCoroutine(delayedBoundsCoroutine());
             }
+            GameEvents.onVesselGoOnRails.Add(new EventData<Vessel>.OnEvent(onVesselPack));
+            GameEvents.onVesselGoOffRails.Add(new EventData<Vessel>.OnEvent(onVesselUnpack));
+        }
+
+        public void OnDestroy()
+        {
+            GameEvents.onVesselGoOnRails.Remove(new EventData<Vessel>.OnEvent(onVesselPack));
+            GameEvents.onVesselGoOffRails.Remove(new EventData<Vessel>.OnEvent(onVesselUnpack));
+        }
+
+        public void onVesselPack(Vessel v)
+        {
+
+        }
+
+        public void onVesselUnpack(Vessel v)
+        {
+            MonoBehaviour.print("Re-init wheels from unpack!");
+            int len = wheelDatas.Count;
+            for (int i = 0; i < len; i++)
+            {
+                wheelDatas[i].initializeWheel();
+            }
+
+        }
+
+        public void Start()
+        {
+            initialize();
         }
 
         private IEnumerator delayedBoundsCoroutine()
@@ -138,20 +166,15 @@ namespace SSTUTools
                 animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStateChanged);
             }
             setWheelState(currentState);
-            if (currentState == WheelState.RETRACTED || currentState == WheelState.RETRACTING)
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
-                int len = wheelDatas.Count;
-                for (int i = 0; i < len; i++)
+                if (currentState == WheelState.RETRACTED || currentState == WheelState.RETRACTING)
                 {
-                    wheelDatas[i].disableBoundsCollider();
-                }
-            }
-            else
-            {
-                int len = wheelDatas.Count;
-                for (int i = 0; i < len; i++)
-                {
-                    wheelDatas[i].enableBoundsCollider();
+                    int len = wheelDatas.Count;
+                    for (int i = 0; i < len; i++)
+                    {
+                        wheelDatas[i].disableBoundsCollider();
+                    }
                 }
             }
         }
@@ -291,7 +314,8 @@ namespace SSTUTools
     public class SSTUWheelData
     {
         public readonly SSTUWheelInfo wheelInfo;
-        public readonly WheelCollider wheelCollider;
+        public readonly GameObject debugModel;
+        public readonly Transform wheelColliderTransform;
         public readonly Transform suspensionTransform;
         public readonly Transform steeringTransform;
         public readonly Transform wheelMesh;
@@ -303,11 +327,12 @@ namespace SSTUTools
         private float fullBrakeValue;
         private float fullMotorValue;
         private float decompressTime = 0f;
+        private WheelCollider wheelCollider;
 
-        public SSTUWheelData(SSTUWheelInfo info, WheelCollider collider, Transform suspension, Transform neutral, Transform steering, Transform wheelMesh, Transform wheelDamagedMesh, Transform boundsCollider)
+        public SSTUWheelData(SSTUWheelInfo info, Transform wheelColliderTransform, Transform suspension, Transform neutral, Transform steering, Transform wheelMesh, Transform wheelDamagedMesh, Transform boundsCollider)
         {
             this.wheelInfo = info;
-            this.wheelCollider = collider;
+            this.wheelColliderTransform = wheelColliderTransform;
             this.suspensionTransform = suspension;
             this.steeringTransform = steering;
             this.wheelMesh = wheelMesh;
@@ -319,16 +344,34 @@ namespace SSTUTools
             {
                 steeringDefaultOrientation = steering.localRotation;
             }
+
+            if (HighLogic.LoadedSceneIsFlight)
+            {
+                debugModel = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
+                debugModel.SetActive(true);
+                debugModel.transform.NestToParent(wheelColliderTransform.gameObject.transform);
+            }
         }
         
         public void initializeWheel()
         {
-            float travel = wheelInfo.suspensionTravel == -1 ? wheelCollider.suspensionDistance : wheelInfo.suspensionTravel;
+            wheelCollider = wheelColliderTransform.GetComponent<WheelCollider>();
+            if (wheelCollider != null) { Component.DestroyImmediate(wheelCollider); }
+            wheelCollider = wheelColliderTransform.gameObject.AddComponent<WheelCollider>();
+
+            wheelCollider.brakeTorque = 0;
+            wheelCollider.motorTorque = 0;
+            wheelCollider.forceAppPointDistance = 1.0f;
+
+            wheelCollider.mass = wheelInfo.wheelMass;
+            wheelCollider.radius = wheelInfo.wheelRadius;
+            wheelCollider.suspensionDistance = wheelInfo.suspensionTravel;
+
             float target = wheelInfo.suspensionTarget == -1 ? wheelCollider.suspensionSpring.targetPosition : wheelInfo.suspensionTarget;
             float spring = wheelInfo.suspensionSpring == -1 ? wheelCollider.suspensionSpring.spring : wheelInfo.suspensionSpring;
             float damper = wheelInfo.suspensionDamper == -1 ? wheelCollider.suspensionSpring.damper : wheelInfo.suspensionDamper;
-            float brake = wheelInfo.brakeStrength == -1 ? wheelCollider.brakeTorque : wheelInfo.brakeStrength;
-            float motor = wheelInfo.motorStrength == -1 ? wheelCollider.motorTorque : wheelInfo.motorStrength;
+            fullBrakeValue = wheelInfo.brakeStrength == -1 ? wheelCollider.brakeTorque : wheelInfo.brakeStrength;
+            fullMotorValue = wheelInfo.motorStrength == -1 ? wheelCollider.motorTorque : wheelInfo.motorStrength;
 
             float fwdExSlip = wheelInfo.forwardExtremumSlip == -1 ? wheelCollider.forwardFriction.extremumSlip : wheelInfo.forwardExtremumSlip;
             float fwdExVal = wheelInfo.forwardExtremumValue == -1 ? wheelCollider.forwardFriction.extremumValue : wheelInfo.forwardExtremumValue;
@@ -340,14 +383,7 @@ namespace SSTUTools
             float sideAsSlip = wheelInfo.sideAsymptoteSlip == -1 ? wheelCollider.sidewaysFriction.asymptoteSlip : wheelInfo.sideAsymptoteSlip;
             float sideAsVal = wheelInfo.sideAsymptoteValue == -1 ? wheelCollider.sidewaysFriction.asymptoteValue : wheelInfo.sideAsymptoteValue;
             float sideStiff = wheelInfo.sideStiffness == -1 ? wheelCollider.sidewaysFriction.stiffness : wheelInfo.sideStiffness;
-                        
-            wheelCollider.brakeTorque = 0;
-            fullBrakeValue = brake;
-            wheelCollider.motorTorque = 0;
-            fullMotorValue = motor;
-
-            wheelCollider.suspensionDistance = travel;            
-
+            
             WheelFrictionCurve fwdCurve = wheelCollider.forwardFriction;
             fwdCurve.extremumSlip = fwdExSlip;
             fwdCurve.extremumValue = fwdExVal;
@@ -368,23 +404,18 @@ namespace SSTUTools
             joint.spring = spring;
             joint.damper = damper;
             joint.targetPosition = target;
+            
             wheelCollider.suspensionSpring = joint;
             wheelCollider.enabled = true;
         }
 
         public void disableBoundsCollider()
         {
-            if (boundsCollider != null && boundsCollider.collider != null && boundsCollider.collider.enabled)
+            Collider c = boundsCollider == null ? null : boundsCollider.GetComponent<Collider>();
+            if (c!=null)
             {
-                boundsCollider.collider.enabled = false;
-            }
-        }
-
-        public void enableBoundsCollider()
-        {
-            if (boundsCollider != null && boundsCollider.collider != null && !boundsCollider.collider.enabled)
-            {
-                boundsCollider.collider.enabled = true;
+                Component.Destroy(c);
+                c.enabled = false;
             }
         }
 
@@ -399,7 +430,7 @@ namespace SSTUTools
 
         private void updateSuspension(Part part)
         {
-            if (suspensionTransform == null) { return; }            
+            if (suspensionTransform == null || wheelCollider==null) { return; }            
             RaycastHit hit;
             float wheelRadius = wheelCollider.radius * part.rescaleFactor;
             float suspensionTravel = (wheelCollider.suspensionDistance + wheelRadius) * part.rescaleFactor;
@@ -411,7 +442,7 @@ namespace SSTUTools
                 if (distance > suspensionTravel) { distance = suspensionTravel; }                
                 distance -= wheelRadius;
                 float compression = (wheelCollider.suspensionDistance*part.rescaleFactor) - distance;
-                suspensionTransform.position = suspensionNeutral.position + suspensionNeutral.up * compression;
+                suspensionTransform.position = suspensionNeutral.position + wheelCollider.transform.up * compression;                
             }
             else
             {
@@ -432,27 +463,29 @@ namespace SSTUTools
 
         private void updateWheelRotation()
         {
-            if (wheelMesh == null || wheelCollider.rpm==0) { return; }
+            if (wheelMesh == null || wheelCollider==null || wheelCollider.rpm==0) { return; }
             float rotation = Time.deltaTime * wheelCollider.rpm / 60 * 360;
             wheelMesh.Rotate(Vector3.left, rotation);
         }
 
         private void updateSteering(Part part)
         {
-            if (steeringTransform == null || wheelInfo.steeringAngle==0) { return; }
+            if (part.vessel == null) { return; }
+            if (wheelCollider == null || wheelInfo.steeringAngle == 0) { return; }
             Vessel vessel = part.vessel;
             float steeringValue = vessel.ctrlState.wheelSteer + vessel.ctrlState.wheelSteerTrim;
             float steeringAngle = steeringValue * wheelInfo.steeringAngle;
             steeringAngle = -steeringAngle;
             if (wheelInfo.invertSteering) { steeringAngle = -steeringAngle; }
             wheelCollider.steerAngle = steeringAngle;
+            if (steeringTransform == null) { return; }
             steeringTransform.localRotation = steeringDefaultOrientation;
             steeringTransform.Rotate(Vector3.up, steeringAngle, Space.Self);
         }
 
         private void updateMotor(Part part)
         {
-            if (fullMotorValue <= 0) { return; }
+            if (fullMotorValue <= 0) { return; }            
             float input = part.vessel.ctrlState.wheelThrottle + part.vessel.ctrlState.wheelThrottleTrim;
             wheelCollider.motorTorque = input * fullMotorValue;
         }
@@ -503,25 +536,28 @@ namespace SSTUTools
 
             for (int i = 0; i < len; i++)
             {
-                wheelCollider = wheelColliderTransforms[i].GetComponent<WheelCollider>();
-                if (wheelCollider == null) { throw new NullReferenceException("Wheel collider is null, this is an error!"); }
+                wheelCollider = wheelColliderTransforms[i].GetComponent<WheelCollider>();                
+                if (wheelCollider != null)
+                {
+                    Component.DestroyImmediate(wheelCollider);
+                }
                 suspensionTransform = susLen == len ? suspensionTransforms[i] : null;
                 steeringTransform = steerLen == len ? steeringTransforms[i] : null;
                 suspensionNeutral = nutLen == len ? suspensionNeutralTransforms[i] : null;
                 wheelMesh = meshLen == len ? wheelMeshes[i] : null;
                 wheelDamagedMesh = meshDamLen == len ? wheelDamagedMeshes[i] : null;
-                boundsCollider = boundsLen == len ? boundsColliders[i] : null;
+                boundsCollider = boundsLen == len ? boundsColliders[i] : null;                
                 if (boundsCollider != null)
                 {
                     boundsCollider.gameObject.layer = SSTUWheel.boundsLayer;
                 }
 
-                wheelData = new SSTUWheelData(info, wheelCollider, suspensionTransform, suspensionNeutral, steeringTransform, wheelMesh, wheelDamagedMesh, boundsCollider);
-                wheelData.initializeWheel();
+                wheelData = new SSTUWheelData(info, wheelColliderTransforms[i], suspensionTransform, suspensionNeutral, steeringTransform, wheelMesh, wheelDamagedMesh, boundsCollider);                
                 wheelDatas[i] = wheelData;
             }
 
             return wheelDatas;
         }
+
     }
 }

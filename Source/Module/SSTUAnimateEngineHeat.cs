@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 namespace SSTUTools
 {
@@ -57,7 +58,7 @@ namespace SSTUTools
 
         private ModuleEngines engineModule;
 
-        private Transform[] animatedTransforms;
+        private Renderer[] animatedRenderers;
 
         private Color emissiveColor = new Color(0f, 0f, 0f, 1f);
 
@@ -96,14 +97,13 @@ namespace SSTUTools
 
         private void initialize()
         {
-            animatedTransforms = part.transform.FindChildren(meshName);
-            if (animatedTransforms == null || animatedTransforms.Length == 0) { print("ERROR: Could not locate transform(s) for name: " + meshName); }
+            locateAnimatedTransforms();
             locateEngineModule();
         }
 
         public void reInitialize()
         {
-            animatedTransforms = null;
+            animatedRenderers = null;
             engineModule = null;
             initialize();
         }
@@ -123,6 +123,19 @@ namespace SSTUTools
             {
                 print("ERROR!  SSTUAnimateHeat could not locate engine module at index: " + engineModuleIndex);
             }
+        }
+
+        private void locateAnimatedTransforms()
+        {
+            List<Renderer> renderers = new List<Renderer>();
+            Transform[] animatedTransforms = part.transform.FindChildren(meshName);
+            int len = animatedTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                renderers.AddRange(animatedTransforms[i].GetComponentsInChildren<Renderer>(false));
+            }
+            animatedRenderers = renderers.ToArray();
+            if (animatedRenderers == null || animatedRenderers.Length == 0) { print("ERROR: Could not locate any emissive meshes for name: " + meshName); }
         }
 
         private void updateHeat()
@@ -161,26 +174,24 @@ namespace SSTUTools
 
         private void setEmissiveColors()
         {
-            if (animatedTransforms != null)
+            if (animatedRenderers != null)
             {
-                int len = animatedTransforms.Length;
+                bool rebuild = false;
+                int len = animatedRenderers.Length;
                 for (int i = 0; i < len; i++)
                 {
-                    setTransfromEmissive(animatedTransforms[i], emissiveColor);
-                }                
-            }
-        }
-
-        private void setTransfromEmissive(Transform tr, Color color)
-        {
-            if (tr.renderer != null)
-            {
-                tr.renderer.sharedMaterial.SetColor(shaderEmissiveID, color);
-            }
-            int len = tr.childCount;
-            for (int i = 0; i < len; i++)
-            {
-                setTransfromEmissive(tr.GetChild(i), color);
+                    if (animatedRenderers[i] == null)
+                    {
+                        rebuild = true;
+                        continue;
+                    }
+                    animatedRenderers[i].sharedMaterial.SetColor(shaderEmissiveID, emissiveColor);
+                }
+                if (rebuild)
+                {
+                    animatedRenderers = null;
+                    locateAnimatedTransforms();
+                }
             }
         }
 

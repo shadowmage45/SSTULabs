@@ -39,8 +39,15 @@ namespace SSTUTools
             mesh.tangents = calculateTangents();
             mesh.RecalculateBounds();
             mesh.name = "Procedural Mesh";
-            MonoBehaviour.print("creating procedural mesh with vertex count of: " + mesh.vertices.Length);
+            //MonoBehaviour.print("creating procedural mesh with vertex count of: " + mesh.vertices.Length);
             return mesh;
+        }
+
+        public void clear()
+        {
+            vertexNumber = 0;
+            vertices.Clear();
+            triangles.Clear();
         }
 
         /// <summary>
@@ -133,6 +140,98 @@ namespace SSTUTools
             generateQuads(v1, v2, false);
             v1.Clear();
             v2.Clear();
+        }
+        
+        public void generatePanelCollider(Vector3 center, float startAngle, float endAngle, float startY, float height, float bottomRadius, float topRadius, float thickness)
+        {
+            float bottomInnerRadius = bottomRadius - thickness;
+            float topInnerRadius = topRadius - thickness;
+            float startRads = Mathf.Deg2Rad * startAngle;
+            float endRads = Mathf.Deg2Rad * endAngle;
+            float startXSin = -Mathf.Sin(startRads);
+            float startZCos = Mathf.Cos(startRads);
+            float endXSin = -Mathf.Sin(endRads);
+            float endZCos = Mathf.Cos(endRads);
+
+            Vector3 frontBottomLeft = new Vector3(center.x + bottomRadius * startXSin, center.y + startY, center.z + bottomRadius * startZCos);
+            Vector3 frontBottomRight = new Vector3(center.x + bottomRadius * endXSin, center.y + startY, center.z + bottomRadius * endZCos);
+            Vector3 frontTopLeft = new Vector3(center.x + topRadius * startXSin, center.y + height + startY, center.z + topRadius * startZCos);
+            Vector3 frontTopRight = new Vector3(center.x + topRadius * endXSin, center.y + height + startY, center.z + topRadius * endZCos);
+
+            Vector3 rearBottomLeft = new Vector3(center.x + bottomInnerRadius * startXSin, center.y + startY, center.z + bottomInnerRadius * startZCos);
+            Vector3 rearBottomRight = new Vector3(center.x + bottomInnerRadius * endXSin, center.y + startY, center.z + bottomInnerRadius * endZCos);
+            Vector3 rearTopLeft = new Vector3(center.x + topInnerRadius * startXSin, center.y + height + startY, center.z + topInnerRadius * startZCos);
+            Vector3 rearTopRight = new Vector3(center.x + topInnerRadius * endXSin, center.y + height + startY, center.z + topInnerRadius * endZCos);
+
+            Vector3 normFront = Vector3.forward;
+            Vector3 normRear = Vector3.back;
+            Vector3 normLeft = Vector3.left;
+            Vector3 normRight = Vector3.right;
+            Vector3 normUp = Vector3.up;
+            Vector3 normDown = Vector3.down;
+
+            Vector2 uv1 = new Vector2(0, 0);
+            Vector2 uv2 = new Vector2(1, 0);
+            Vector2 uv3 = new Vector2(0, 1);
+            Vector2 uv4 = new Vector2(1, 1);
+
+
+            List<Vertex> v1 = new List<Vertex>();
+            List<Vertex> v2 = new List<Vertex>();
+
+            //generate front face
+            v1.Add(addVertex(frontBottomLeft, normFront, uv1));
+            v1.Add(addVertex(frontBottomRight, normFront, uv2));
+            v2.Add(addVertex(frontTopLeft, normFront, uv3));
+            v2.Add(addVertex(frontTopRight, normFront, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();
+
+            //generate rear face
+            v1.Add(addVertex(rearBottomLeft, normRear, uv2));
+            v1.Add(addVertex(rearBottomRight, normRear, uv1));
+            v2.Add(addVertex(rearTopLeft, normRear, uv4));
+            v2.Add(addVertex(rearTopRight, normRear, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate left face
+            v1.Add(addVertex(frontBottomLeft, normLeft, uv2));
+            v1.Add(addVertex(rearBottomLeft, normLeft, uv1));
+            v2.Add(addVertex(frontTopLeft, normLeft, uv4));
+            v2.Add(addVertex(rearTopLeft, normLeft, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate right face
+            v1.Add(addVertex(frontBottomRight, normRight, uv1));
+            v1.Add(addVertex(rearBottomRight, normRight, uv2));
+            v2.Add(addVertex(frontTopRight, normRight, uv3));
+            v2.Add(addVertex(rearTopRight, normRight, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();
+
+            //generate top face
+            v1.Add(addVertex(frontTopRight, normUp, uv2));
+            v1.Add(addVertex(frontTopLeft, normUp, uv1));
+            v2.Add(addVertex(rearTopRight, normUp, uv4));
+            v2.Add(addVertex(rearTopLeft, normUp, uv3));
+            generateQuads(v1, v2, true);
+            v1.Clear();
+            v2.Clear();
+
+            //generate bottom face
+            v1.Add(addVertex(frontBottomRight, normUp, uv1));
+            v1.Add(addVertex(frontBottomLeft, normUp, uv2));
+            v2.Add(addVertex(rearBottomRight, normUp, uv3));
+            v2.Add(addVertex(rearBottomLeft, normUp, uv4));
+            generateQuads(v1, v2, false);
+            v1.Clear();
+            v2.Clear();            
         }
 
         public void generateQuads(List<Vertex> verts1, List<Vertex> verts2, bool invertFaces)

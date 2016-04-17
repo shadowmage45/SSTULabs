@@ -26,6 +26,8 @@ namespace SSTUTools
         public float jettisonForce = 10;//force in N to apply to jettisonDirection to each of the jettisoned panel sections
         public String uvMapName = "NodeFairing";
         public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is positive Z (outward)
+        public bool generateColliders = true;
+        public int facesPerCollider = 1;
 
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node, GameObject root)
@@ -55,20 +57,22 @@ namespace SSTUTools
             fairingName = node.GetStringValue("name", fairingName);
         }
 
-        public void createFairing(Material material)
+        public void createFairing(Material material, float editorOpacity)
         {
+            fairingBase.generateColliders = this.generateColliders;
+            fairingBase.facesPerCollider = this.facesPerCollider;
             fairingBase.clearProfile();
             fairingBase.setNumberOfPanels(numOfSections, false);
             fairingBase.addRing(bottomY, bottomRadius);
             fairingBase.addRing(topY, topRadius);
             fairingBase.generateFairing();
             fairingBase.setMaterial(material);
-            fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? 0.25f : 1.0f);
+            fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? editorOpacity : 1.0f);
         } 
 
-        public void recreateFairing(Material material)
+        public void recreateFairing(Material material, float editorOpacity)
         {
-            createFairing(material);
+            createFairing(material, editorOpacity);
         }
 
         public void jettisonPanels(Part part)
@@ -83,6 +87,11 @@ namespace SSTUTools
             {
                 fairingBase.setOpacity(0.25f);
             }
+        }
+
+        public void enableColliders(bool val)
+        {
+
         }
 
         public void setMaterial(Material mat)

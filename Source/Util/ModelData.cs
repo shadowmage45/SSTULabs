@@ -189,18 +189,21 @@ namespace SSTUTools
 
         public void enable(GameObject root)
         {
+            Renderer r;
             foreach (String mesh in meshNames)
             {
                 Transform tr = root.transform.FindRecursive(mesh);
-                if (tr != null && tr.renderer != null)
+                if (tr == null) { continue; }
+                if (tr != null && (r=tr.GetComponent<Renderer>()) != null)
                 {
-                    Material m = tr.renderer.material;
+                    Material m = r.material;
                     if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
                     if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
                     if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }
                 }
             }
         }
+
     }
 
     public enum ModelOrientation
@@ -347,7 +350,7 @@ namespace SSTUTools
             ModelTextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
             if (String.IsNullOrEmpty(setName) || setName == "none" || setName == "default" ||  mts==null)
             {
-                if (setName == "none" || setName == "default")
+                if (setName == "none" || setName == "default" || String.IsNullOrEmpty(setName))
                 {
                     return;
                 }
@@ -460,8 +463,7 @@ namespace SSTUTools
         }
         
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
-        {
-            
+        {            
             Vector3 basePos = new Vector3(0, currentVerticalPosition, 0);
             AttachNode node = null;
             AttachNodeBaseData data;

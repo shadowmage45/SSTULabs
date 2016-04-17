@@ -77,7 +77,7 @@ namespace SSTUTools
         private bool initialized = false;
         private LightAnimationState state = LightAnimationState.OFF;
         private SSTUAnimateControlled animationController;
-        private Transform[] emissiveMeshes;
+        private List<Renderer> emissiveRenderers = new List<Renderer>();
         private LightData[] lightTransforms;
         private int shaderEmissiveID;
 
@@ -292,14 +292,20 @@ namespace SSTUTools
         {
             ConfigNode[] emissiveNodes = node.GetNodes("EMISSIVE");
             ConfigNode[] lightNodes = node.GetNodes("LIGHT");
-            List<Transform> trs = new List<Transform>();
+            emissiveRenderers.Clear();
+            Renderer render;
             foreach(ConfigNode enode in emissiveNodes)
             {
                 Transform[] trs1 = part.transform.FindChildren(enode.GetStringValue("name"));
-                foreach (Transform tr in trs1) { trs.Add(tr); }
+                foreach (Transform tr in trs1)
+                {
+                    render = tr.GetComponent<Renderer>();
+                    if (render != null)
+                    {
+                        emissiveRenderers.Add(render);
+                    }
+                }
             }
-            emissiveMeshes = trs.ToArray();
-            trs.Clear();
             lightTransforms = new LightData[lightNodes.Length];
             for (int i = 0; i < lightNodes.Length; i++)
             {
@@ -377,12 +383,12 @@ namespace SSTUTools
             color.r = rCurve.Evaluate(p);
             color.b = bCurve.Evaluate(p);
             color.g = gCurve.Evaluate(p);
-            
-            foreach (Transform tr in emissiveMeshes)
+            int len = emissiveRenderers.Count;
+            for (int i = 0; i < len; i++)
             {
-                if (tr.renderer != null)
+                if (emissiveRenderers[i] != null)
                 {
-                    tr.renderer.sharedMaterial.SetColor(shaderEmissiveID, color);
+                    emissiveRenderers[i].sharedMaterial.SetColor(shaderEmissiveID, color);
                 }
             }
         }
@@ -465,13 +471,10 @@ namespace SSTUTools
             type = (LightType)Enum.Parse(typeof(LightType), node.GetStringValue("type", LightType.Point.ToString()));
 
             transform = part.transform.FindRecursive(name);
-            if (transform.light == null)
+            light = transform.GetComponent<Light>();
+            if (light == null)
             {
                 light = transform.gameObject.AddComponent<Light>();//add it if it does not exist                
-            }
-            else
-            {
-                light = transform.light;
             }
 
             light.intensity = intensity;

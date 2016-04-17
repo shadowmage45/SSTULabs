@@ -137,13 +137,14 @@ namespace SSTUTools
 
         private void enableTexture(Transform tr)
         {
-            if (tr.renderer == null || tr.renderer.material == null)
+            Renderer r = tr.GetComponent<Renderer>();
+            if (r == null || r.material == null)
             {
                 //MonoBehaviour.print("ERROR: transform does not contain a renderer for mesh name: " + tr.name);
                 return;
             }
             //TODO check / update the shader for the material
-            Material m = tr.renderer.material;
+            Material m = r.material;
             if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
             if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
             if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }

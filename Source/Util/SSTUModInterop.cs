@@ -36,18 +36,17 @@ namespace SSTUTools
 
         public static void onPartGeometryUpdate(Part part, bool createDefaultCube)
         {
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//noop on prefabs
+            //MonoBehaviour.print(System.Environment.StackTrace);
+            part.HighlightRenderers = null;//force refresh of part highlighting
+            part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
             if (isFARInstalled())
             {
                 part.SendMessage("GeometryPartModuleRebuildMeshData");
             }
             else if (createDefaultCube && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
-            { 
-                DragCube newDefaultCube =DragCubeSystem.Instance.RenderProceduralDragCube(part);
-                newDefaultCube.Weight = 1f;
-                newDefaultCube.Name = "Default";
-                part.DragCubes.ClearCubes();
-                part.DragCubes.Cubes.Add(newDefaultCube);
-                part.DragCubes.ResetCubeWeights();
+            {
+                SSTUStockInterop.addDragUpdatePart(part);
             }
         }
 

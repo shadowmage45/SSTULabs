@@ -9,7 +9,7 @@ namespace SSTUTools
     //Multi-panel solar panel module, each with own suncatcher and pivot and occlusion checks
     //Animation code based from stock, Near-Future, and Firespitter code
     //Solar panel code based from stock code
-    public class SSTUSolarPanelDeployable : SSTUControlledModule
+    public class SSTUSolarPanelDeployable : PartModule
     {
         //panel state enum, each represents a discrete state
         public enum SSTUPanelState
@@ -169,10 +169,6 @@ namespace SSTUTools
 
         public void FixedUpdate()
         {
-            if (!moduleControlEnabled)
-            {
-                return;
-            }
             energyFlow = 0.0f;
             occluderName = String.Empty;
             if (retractLerp > 0)
@@ -206,11 +202,6 @@ namespace SSTUTools
             {
                 setPanelState(SSTUPanelState.RETRACTED);
             }
-        }
-
-        public override void updateGuiControlsFromState(bool enabled)
-        {
-            updateGuiData();
         }
 
         private void initializeState()
@@ -511,13 +502,6 @@ namespace SSTUTools
         
         private void updateGuiData()
         {
-            if (!moduleControlEnabled)
-            {
-                Events["extendEvent"].active = false;
-                Events["retractEvent"].active = false;
-                Fields["guiStatus"].guiActive = false;
-                return;
-            }
             if (energyFlow == 0 && occluderName.Length > 0)//if occluded, state that information first
             {
                 guiStatus = "OCC: " + occluderName;

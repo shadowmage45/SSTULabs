@@ -1,8 +1,9 @@
 using System;
+using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAnimateUsable : PartModule, IControlledModule
+    public class SSTUAnimateUsable : PartModule
     {
         [KSPField]
         public int animationID;
@@ -32,6 +33,12 @@ namespace SSTUTools
         public String deployingStateName = "Deploying";
 
         [KSPField]
+        public string deployActionGroup = "NONE";
+
+        [KSPField]
+        public string retractActionGroup = "NONE";
+
+        [KSPField]
         public bool useResourcesWhileDeployed = false;
 
         [KSPField]
@@ -57,16 +64,9 @@ namespace SSTUTools
 
         [KSPField]
         public float unfocusedRange = 200f;
-
-        [KSPField]
-        public int controlID = -1;
-
+        
         [KSPField(guiName = "AnimState", isPersistant = true)]
         public String displayState = string.Empty;
-
-        //IControlledModule fields
-        [KSPField(isPersistant = true)]
-        public bool moduleControlEnabled = false;
         
         private SSTUAnimateControlled animationControl;
 
@@ -85,18 +85,23 @@ namespace SSTUTools
         [KSPAction("Deploy")]
         public void deployAction(KSPActionParam p)
         {
-            deployEvent();
+            if (p.type == KSPActionType.Activate)
+            {
+                deployEvent();
+            }
         }
 
         [KSPAction("Retract")]
         public void retractAction(KSPActionParam p)
         {
-            retractEvent();
+            if (p.type == KSPActionType.Deactivate)
+            {
+                retractEvent();
+            }
         }
 
         public override void OnStart(PartModule.StartState state)
         {
-            if (controlID == -1) { moduleControlEnabled = true; }
             base.OnStart(state);
             animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
             initializeGuiFields();
@@ -107,15 +112,6 @@ namespace SSTUTools
         {
             BaseEvent deployEvent = Events["deployEvent"];
             BaseEvent retractEvent = Events["retractEvent"];
-            if (!moduleControlEnabled)
-            {
-                deployEvent.active = false;
-                retractEvent.active = false;
-                Actions["deployAction"].active = false;
-                Actions["retractAction"].active = false;
-                Fields["displayState"].guiActiveEditor = Fields["displayState"].guiActive = false;
-                return;
-            }
             bool sceneEnabled = (HighLogic.LoadedSceneIsFlight && usableInFlight) || (HighLogic.LoadedSceneIsEditor && usableInEditor);
             switch (state)
             {
@@ -149,32 +145,6 @@ namespace SSTUTools
                     }
             }
         }
-
-        //IControlledModule method
-        public void enableModule()
-        {
-            moduleControlEnabled = true;
-            updateGuiDataFromState(animationControl.getAnimationState());
-        }
-
-        //IControlledModule method
-        public void disableModule()
-        {
-            moduleControlEnabled = false;
-            updateGuiDataFromState(animationControl.getAnimationState());
-        }
-
-        //IControlledModule method
-        public bool isControlEnabled()
-        {
-            return moduleControlEnabled;
-        }
-
-        //IControlledModule method
-        public int getControlID()
-        {
-            return controlID;
-        }
         
         public void onAnimationStatusChanged(AnimState state)
         {
@@ -194,6 +164,32 @@ namespace SSTUTools
 
             Actions["deployAction"].guiName = deployActionName;
             Actions["retractAction"].guiName = retractActionName;
+
+            if (deployActionGroup != "NONE")
+            {
+                try
+                {
+                    KSPActionGroup ag = (KSPActionGroup)Enum.Parse(typeof(KSPActionGroup), deployActionGroup, true);
+                    Actions["deployAction"].defaultActionGroup = ag;
+                }
+                catch (Exception e)
+                {
+                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + deployActionGroup);
+                }                                
+            }
+            if (retractActionGroup != "NONE")
+            {
+                try
+                {
+                    KSPActionGroup ag = (KSPActionGroup)Enum.Parse(typeof(KSPActionGroup), retractActionGroup, true);
+                    Actions["retractAction"].defaultActionGroup = ag;
+                }
+                catch (Exception e)
+                {
+                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + retractActionGroup);
+                }
+            }
+
 
             BaseEvent deployEvent = Events["deployEvent"];
             deployEvent.guiName = deployActionName;

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools.Module
 {
-    class SSTUCustomRadialDecoupler : PartModule
+    class SSTUCustomRadialDecoupler : PartModule, IPartMassModifier, IPartCostModifier
     {
 
         [KSPField]
@@ -12,13 +12,7 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float diameterIncrement = 0.625f;
-
-        /// <summary>
-        /// If true, resource updates will be sent to the RealFuels/ModularFuelTanks ModuleFuelTanks module, if present (if not present, it will not update anything).
-        /// </summary>
-        [KSPField]
-        public bool useRF = false;
-
+        
         //this is used to determine actual resultant scale from input for radius
         //should match the model default scale geometry being used...
         [KSPField]
@@ -66,31 +60,25 @@ namespace SSTUTools.Module
         [KSPField]
         public String scaleTransform = "SC-RBDC-Scalar";
 
-        [KSPField(guiActiveEditor = true, guiName = "Height Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorHeightExtra;
+        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified =true)]
+        public float height = 2f;
 
-        [KSPField(guiActiveEditor = true, guiName = "Diameter Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float editorDiameterAdjust;
+        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float diameter = 1.25f;
 
         [KSPField(guiName = "Raw Thrust", guiActive = true, guiActiveEditor = true)]
         public float guiEngineThrust = 0f;
-
-        [KSPField(isPersistant = true, guiName = "Height", guiActiveEditor = true)]
-        public float height = 2f;
-
-        [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true)]
-        public float diameter = 1.25f;
 
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
         
         [KSPField]
         public String techLimitSet = "Default";
-
-        private float editorHeight;
-        private float editorDiameter;
-        private float lastHeightExtra;
-        private float lastRadiusExtra;
+                
+        private float prevHeight;
+        private float prevDiameter;
 
         private Transform topMountTransform;
         private Transform bottomMountTransform;
@@ -101,28 +89,27 @@ namespace SSTUTools.Module
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
         private float techLimitMaxDiameter;
 
-        [KSPEvent(guiName = "Height-", guiActiveEditor = true)]
-        public void prevHeightEvent()
+        public void onHeightUpdated(BaseField field, object obj)
         {
-            setHeightFromEditor(height - heightIncrement, true);
+            if(prevHeight!= height)
+            {
+                prevHeight = height;
+                setHeightFromEditor(height, true);
+            }
         }
 
-        [KSPEvent(guiName = "Height+", guiActiveEditor = true)]
-        public void nextHeightEvent()
+        public void onDiameterUpdated(BaseField field, object obj)
         {
-            setHeightFromEditor(height + heightIncrement, true);
+            if (prevDiameter != diameter)
+            {
+                prevDiameter = diameter;
+                setDiameterFromEditor(diameter, true);
+            }
         }
 
-        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true)]
-        public void nextDiameterEvent()
+        public override void OnLoad(ConfigNode node)
         {
-            setDiameterFromEditor(diameter + diameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true)]
-        public void prevRadiusEvent()
-        {
-            setDiameterFromEditor(diameter - diameterIncrement, true);
+            base.OnLoad(node);
         }
 
         public override void OnStart(StartState state)
@@ -131,30 +118,44 @@ namespace SSTUTools.Module
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
-            
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
-
-            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, height);
+            this.updateUIFloatEditControl("diameter", max, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
             locateTransforms();
             updateModelScales();
             updateModelPositions();
             updateAttachNodes(false);
 
+            //can just check if part has -any- resources? if it does, then don't touch it... if it does not, then put some there (as long as it is not the prefab...)
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
                 initializedResources = true;
                 updatePartResources();
             }
-            updateEngineThrust();
-
             updateEditorFields();
+            Fields["height"].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields["diameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
         }
 
-        public override void OnLoad(ConfigNode node)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            base.OnLoad(node);
-            if (node.HasValue("radius")) { diameter = node.GetFloatValue("radius") * 2f; }
+            float scale = getScale();
+            float modifiedMass = defaultMass * Mathf.Pow(scale, 3);
+            return -defaultMass + modifiedMass;
         }
+
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
+        {
+            float scale = getScale();
+            float modifiedCost = defaultCost * Mathf.Pow(scale, 3);
+            float currentVolume = resourceVolume * Mathf.Pow(getCurrentModelScale(), thrustScalePower);            
+            modifiedCost += fuelType.getResourceCost(currentVolume);
+            return -defaultCost + modifiedCost;
+        }
+
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         public void Start()
         {
@@ -165,27 +166,7 @@ namespace SSTUTools.Module
         {
             return "This part has configurable diameter, height, and ejection force.  Includes separation motors for the attached payload.  Motor thrust and resource volume scale with part size.";
         }
-
-        public void OnDestroy()
-        {
-            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-        }
-
-        public void onEditorVesselModified(ShipConstruct ship)
-        {
-            if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (editorDiameterAdjust != lastRadiusExtra)
-            {
-                float newDiameter = editorDiameter + (editorDiameterAdjust * diameterIncrement);
-                setDiameterFromEditor(newDiameter, true);
-            }
-            if (editorHeightExtra != lastHeightExtra)
-            {
-                float newHeight = editorHeight + (editorHeightExtra * heightIncrement);
-                setHeightFromEditor(newHeight, true);
-            }
-        }
-
+        
         private void setHeightFromEditor(float newHeight, bool updateSymmetry)
         {
             if (newHeight > maxHeight) { newHeight = maxHeight; }
@@ -236,21 +217,8 @@ namespace SSTUTools.Module
         //restores the editor field values for radius/height
         private void updateEditorFields()
         {
-            float div, whole, extra;
-
-            div = diameter / diameterIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorDiameter = whole * diameterIncrement;
-            editorDiameterAdjust = extra;
-            lastRadiusExtra = editorDiameterAdjust;
-
-            div = height / heightIncrement;
-            whole = (int)div;
-            extra = div - whole;
-            editorHeight = whole * heightIncrement;
-            editorHeightExtra = extra;
-            lastHeightExtra = editorHeightExtra;
+            prevHeight = height;
+            prevDiameter = diameter;
         }
 
         private void updateModule()
@@ -314,7 +282,7 @@ namespace SSTUTools.Module
         {
             float resourceScalar = Mathf.Pow(getCurrentModelScale(), thrustScalePower);
             float currentVolume = resourceVolume * resourceScalar;
-            if (useRF)
+            if (SSTUModInterop.isRFInstalled())
             {
                 SSTUModInterop.onPartFuelVolumeUpdate(part, currentVolume);
             }
@@ -324,7 +292,7 @@ namespace SSTUTools.Module
                 res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
             }
         }
-
+        
         private float getCurrentModelScale()
         {
             return diameter / modelDiameter;

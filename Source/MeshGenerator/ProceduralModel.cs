@@ -8,6 +8,7 @@ namespace SSTUTools
         public String rootName = "PModel";
         public GameObject root;
         protected Material currentMaterial;
+
         protected bool meshColliderEnabled = false;
         protected bool meshColliderConvex = false;
 

@@ -1,16 +1,77 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
 {
-    [KSPAddon(KSPAddon.Startup.Instantly, true)]
+    [KSPAddon(KSPAddon.Startup.Instantly|KSPAddon.Startup.EveryScene, false)]
     public class SSTUStockInterop : MonoBehaviour
     {
         private static Dictionary<String, ConfigNode> partConfigNodes = new Dictionary<string, ConfigNode>();
+
+        private static List<Part> dragCubeUpdateParts = new List<Part>();
+        private static List<Part> delayedUpdateDragCubeParts = new List<Part>();
+
+        private static bool fireEditorEvent = false;
+
+        public static SSTUStockInterop INSTANCE;
+        
+        public void Start()
+        {
+            INSTANCE = this;
+            //TODO investigate why it gets destroyed even when flagged for 'once' type setup
+            //GameObject.DontDestroyOnLoad(this);
+            //MonoBehaviour.print("SSTUStockInterop Start"); 
+        }
+
+        public void OnDestroy()
+        {
+            //MonoBehaviour.print("SSTUStockInterop Destroy");
+        }
+
+        public static void addDragUpdatePart(Part part)
+        {            
+            if(part!=null && !dragCubeUpdateParts.Contains(part))
+            {
+                dragCubeUpdateParts.Add(part); 
+            }          
+        }
+
+        public static void fireEditorUpdate()
+        {
+            fireEditorEvent = HighLogic.LoadedSceneIsEditor;
+        }
+
+        public void FixedUpdate()
+        {
+            int len = dragCubeUpdateParts.Count;
+            if (len>0 && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            {
+                Part p;                
+                for (int i = 0; i < len; i++)
+                {
+                    p = dragCubeUpdateParts[i];
+                    if (p == null) { continue; }
+                    MonoBehaviour.print("Updating procedural drag cube for: " + p);
+                    updatePartDragCube(p);
+                }
+                dragCubeUpdateParts.Clear();               
+            }
+        }
+
+        public void LateUpdate()
+        {
+            if (HighLogic.LoadedSceneIsEditor && fireEditorEvent)
+            {
+                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
+            }
+            fireEditorEvent = false;
+        }
         
         public void ModuleManagerPostLoad()
         {
+            MonoBehaviour.print("SSTU Creating Part Config cache.");
             partConfigNodes.Clear();
             ConfigNode[] partNodes = GameDatabase.Instance.GetConfigNodes("PART");
             String name;
@@ -22,8 +83,24 @@ namespace SSTUTools
                 partConfigNodes.Add(name, node);
             }
             SSTUModelData.reloadData();
+            VolumeContainerLoader.loadConfigs();
         }
-        
+
+        private static void updatePartDragCube(Part part)
+        {
+            DragCube newDefaultCube = DragCubeSystem.Instance.RenderProceduralDragCube(part);
+            newDefaultCube.Weight = 1f;
+            newDefaultCube.Name = "Default";
+            part.DragCubes.ClearCubes();
+            part.DragCubes.Cubes.Add(newDefaultCube);
+            part.DragCubes.ResetCubeWeights();
+        }
+
+        public static ConfigNode getPartModuleConfig(PartModule module)
+        {
+            return getPartModuleConfig(module.part, module);
+        }
+
         public static ConfigNode getPartModuleConfig(Part p, int moduleIndex)
         {
             return getPartConfig(p).GetNodes("MODULE")[moduleIndex];
@@ -53,12 +130,13 @@ namespace SSTUTools
 
         public static ConfigNode getPartConfig(Part p)
         {
-            if (partConfigNodes.ContainsKey(p.name)){return partConfigNodes[p.name];}            
-            MonoBehaviour.print("Could not locate part config from cached database for part: "+p.name);
+            String name = p.name;
+            if (partConfigNodes.ContainsKey(name)){return partConfigNodes[name];}            
+            MonoBehaviour.print("ERROR: Could not locate part config from cached database for part: "+name);
             if (p.partInfo != null && p.partInfo.partConfig != null) { return p.partInfo.partConfig; }
-            MonoBehaviour.print("Could not locate part config from part.partInfo.partConfig for part: " + p.name);
+            MonoBehaviour.print("MAJOR ERROR: Could not locate part config from part.partInfo.partConfig for part: " + name);
             if (p.partInfo != null) { return PartLoader.Instance.GetDatabaseConfig(p); }
-            MonoBehaviour.print("Could not locate part config from PartLoader.Instance.GetDatabaseConfig() for part: " + p.name);
+            MonoBehaviour.print("SEVERE ERROR: Could not locate part config from PartLoader.Instance.GetDatabaseConfig() for part: " + name+"  Things are about to crash :)");
             return null;
         }
         

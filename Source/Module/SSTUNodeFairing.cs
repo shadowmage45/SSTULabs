@@ -8,7 +8,7 @@ namespace SSTUTools
     /// <summary>
     /// Procedrually created (and adjustable/configurable) replacement for engine fairings, or any other part-attached fairing.
     /// </summary>           
-    public class SSTUNodeFairing : PartModule, IAirstreamShield
+    public class SSTUNodeFairing : PartModule
     {
         #region REGION - Standard KSP Config Fields
         
@@ -63,17 +63,13 @@ namespace SSTUTools
         [KSPField]
         public bool canAutoJettison = true;
 
+        //determines if user can adjust bottom diameter (also needs per-fairing canAdjustBottom flag)
         [KSPField]
         public bool canAdjustTop = false;
 
+        //determines if user can adjust top diameter (also needs per-fairing canAdjustTop flag)
         [KSPField]
-        public bool canAdjustBottom = false; 
-
-        /// <summary>
-        /// Can user adjust the enabled/disabled and fairing type?
-        /// </summary>
-        [KSPField]
-        public bool canAdjustType = false;
+        public bool canAdjustBottom = false;
 
         /// <summary>
         /// Can user adjust how many fairing sections this fairing consists of?
@@ -85,72 +81,69 @@ namespace SSTUTools
         /// Increment to be used when adjusting top radius
         /// </summary>
         [KSPField]
-        public float topRadiusAdjustSize = 0.3125f;
+        public float topDiameterIncrement = 0.625f;
 
         /// <summary>
         /// Increment to be used when adjusting bottom radius
         /// </summary>
         [KSPField]
-        public float bottomRadiusAdjustSize = 0.3125f;
+        public float bottomDiameterIncrement = 0.625f;
 
         /// <summary>
         /// Maximum top radius (by whole increment; adjust slider will allow this + one radius increment)
         /// </summary>
         [KSPField]
-        public float maxTopRadius = 5;
+        public float maxTopDiameter = 10;
 
         /// <summary>
         /// Minimum top radius
         /// </summary>
         [KSPField]
-        public float minTopRadius = 0.3125f;
+        public float minTopDiameter = 0.625f;
 
         /// <summary>
         /// Maximum bottom radius (by whole increment; adjust slider will allow this + one radius increment)
         /// </summary>
         [KSPField]
-        public float maxBottomRadius = 5;
+        public float maxBottomDiameter = 10;
 
         /// <summary>
         /// Minimum bottom radius
         /// </summary>
         [KSPField]
-        public float minBottomRadius = 0.3125f;
+        public float minBottomDiameter = 0.625f;
 
         #endregion
 
         #region REGION - GUI Visible Config Fields
 
-        /// <summary>
-        /// UI field to tell user how many parts are shielded by fairing.  Only enabled on those fairings that have shielding enabled
-        /// </summary>
-        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Shielded Part Count")]
-        public int shieldedPartCount = 0;
+        [KSPField(guiActiveEditor = true, guiName ="Opacity"), UI_Toggle(disabledText ="Opaque", enabledText = "Transparent", suppressEditorShipModified = true)]
+        public bool editorTransparency = true;
 
         /// <summary>
         /// Number of sections for the fairing, only enabled for editing if 'canAdjustSections' == true
         /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Fairing Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f)]
+        [KSPField(guiActiveEditor = true, guiName = "Fairing Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f, suppressEditorShipModified = true)]
         public float numOfSections = 1;
 
-        /// <summary>
-        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
-        /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Top Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float topRadiusExtra;
+        [KSPField(guiName = "Top Diam", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs =4, suppressEditorShipModified = true)]
+        public float guiTopDiameter = 1.25f;
 
-        /// <summary>
-        /// UI and functional fields to allow for fine-grained adjustment of fairing radius
-        /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Bot Rad Adj"), UI_FloatRange(minValue = 0f, stepIncrement = 0.05f, maxValue = 0.95f)]
-        public float bottomRadiusExtra;
+        [KSPField(guiName = "Bottom Diam", guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
+        public float guiBottomDiameter = 1.25f;
 
         [KSPField(isPersistant = true)]
         public String currentTextureSet = String.Empty;
 
+        [KSPField(isPersistant = true, guiName ="Colliders", guiActiveEditor = true), UI_Toggle(disabledText = "No", enabledText = "Yes", suppressEditorShipModified = true)]
+        public bool generateColliders = false;
+
         #endregion
 
         #region REGION - Persistent config fields
+
 
         /// <summary>
         /// Has the fairing been jettisoned?  If true, no further interaction is possible.  Only set to true by in-flight jettison actions
@@ -169,7 +162,7 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool removedMass = false;
-
+        
         //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
         /// <summary>
         /// Persistent data from fairing parts; stores their current top/bottom positions and radius data
@@ -178,40 +171,11 @@ namespace SSTUTools
         public String persistentDataString = String.Empty;
   
         #endregion
-
-        #region REGION - fairing airstream shield vars
-
-        /// <summary>
-        /// Determines if this fairing should check for part shielding.
-        /// If true, the shieldTopY, shieldBottomY, shieldTopRadius, and shieldBottomRadius fields will need to be properly populated in the config
-        /// </summary>
-        [KSPField]
-        public bool shieldParts = false;
-
-        [KSPField]
-        public float shieldTopY;
-
-        [KSPField]
-        public float shieldBottomY;
-
-        [KSPField]
-        public float shieldTopRadius;
-
-        [KSPField]
-        public float shieldBottomRadius;
-        #endregion
-
+        
         #region REGION - private working vars, not user editable
-        //radius adjustment fields, mostly used in editor
-        //these values are restored during the OnStart operation, and only used in the editor
-        //the 'live' values for the fairing are stored persistently and used directly to update the
-        //fairing physical attributes.
-        //the 'live' values will be set from these values for further operations in the editor		
-        private float editorTopRadius = 0;
-        private float editorBottomRadius = 0;
-        private float lastTopExtra = 0;
-        private float lastBottomExtra = 0;
         private float prevNumOfSections = 0;
+        private float prevTopDiameter;
+        private float prevBottomDiameter;
 
         private bool currentlyEnabled = false;
         private bool renderingJettisonedFairing = false;
@@ -223,28 +187,25 @@ namespace SSTUTools
         /// If not null, will be applied during initialization or late update tick
         /// </summary>
         private FairingUpdateData externalUpdateData = null;
+        private FairingUpdateData internalUpdateData = null;
 
-        private bool canAdjustBottomRadius;
-        private bool canAdjustTopRadius;
+        //private vars set from examining the individual fairing sections; these basically control gui enabled/disabled status
+        private bool enableBottomDiameterControls;
+        private bool enableTopDiameterControls;
         
         //material used for procedural fairing, created from the texture references above
         private Material fairingMaterial;
 
         private TextureSet[] textureSets;
-
-        //list of shielded parts
-        private List<Part> shieldedParts = new List<Part>();
-
+        
         private Part prevAttachedPart = null;
-
-        private bool needsShieldUpdate = false;
-
+        
         private bool needsRebuilt = false;
 
         private bool needsGuiUpdate = false;
 
         private bool currentRenderEnabled = true;
-        
+                
         #endregion
 
         #region REGION - Gui Interaction Methods
@@ -255,8 +216,7 @@ namespace SSTUTools
             jettisonFairing();
             updateGuiState();
         }
-
-        //TODO symmetry updates
+        
         [KSPEvent(guiName = "Jettison Fairing", guiActive = true, guiActiveEditor = true)]
         public void jettisonEvent()
         {
@@ -269,57 +229,17 @@ namespace SSTUTools
                 jettisonFairing();
             }
             updateGuiState();
-        }
-
-        //TODO symmetry updates
-        [KSPEvent(guiName = "Top Rad +", guiActiveEditor = true)]
-        public void increaseTopRadiusEvent()
-        {
-            if (canAdjustTopRadius && editorTopRadius < maxTopRadius)
+            SSTUNodeFairing f;
+            int index = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts)
             {
-                editorTopRadius += topRadiusAdjustSize;
-                if (editorTopRadius > maxTopRadius) { editorTopRadius = maxTopRadius; }
-                needsRebuilt = true;
+                f = (SSTUNodeFairing)p.Modules[index];
+                if (HighLogic.LoadedSceneIsEditor) { f.enableFairing(fairingEnabled); }
+                else { f.jettisonFairing(); }
+                f.updateGuiState();
             }
         }
-
-        //TODO symmetry updates
-        [KSPEvent(guiName = "Top Rad -", guiActiveEditor = true)]
-        public void decreaseTopRadiusEvent()
-        {
-            if (canAdjustTopRadius && editorTopRadius > minTopRadius)
-            {
-                editorTopRadius -= topRadiusAdjustSize;
-                if (editorTopRadius < minTopRadius) { editorTopRadius = minTopRadius; }
-                needsRebuilt = true;
-            }
-        }
-
-        //TODO symmetry updates
-        [KSPEvent(guiName = "Bottom Rad +", guiActiveEditor = true)]
-        public void increaseBottomRadiusEvent()
-        {
-            if (canAdjustBottomRadius && editorBottomRadius < maxBottomRadius)
-            {
-                editorBottomRadius += bottomRadiusAdjustSize;
-                if (editorBottomRadius > maxBottomRadius) { editorBottomRadius = maxBottomRadius; }
-                needsRebuilt = true;
-            }
-        }
-
-        //TODO symmetry updates
-        [KSPEvent(guiName = "Bottom Rad -", guiActiveEditor = true)]
-        public void decreaseBottomRadiusEvent()
-        {
-            if (canAdjustBottomRadius && editorBottomRadius > minBottomRadius)
-            {
-                editorBottomRadius -= bottomRadiusAdjustSize;
-                if (editorBottomRadius < minBottomRadius) { editorBottomRadius = minBottomRadius; }
-                needsRebuilt = true;
-            }
-        }
-
-        //TODO symmetry updates
+        
         [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
         public void nextTextureEvent()
         {
@@ -327,8 +247,77 @@ namespace SSTUTools
             {
                 TextureSet s = SSTUUtils.findNext(textureSets, m => m.setName == currentTextureSet, false);
                 currentTextureSet = s.setName;
-                MonoBehaviour.print("set texture set name to: " + currentTextureSet);
                 updateTextureSet();
+            }
+            SSTUNodeFairing f;
+            int index = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                f = (SSTUNodeFairing)p.Modules[index];
+                f.currentTextureSet = this.currentTextureSet;
+                f.updateTextureSet();
+            }
+        }
+
+        public void colliderGuiUpdated(BaseField field, object obj)
+        {
+            foreach (FairingData fd in fairingParts)
+            {
+                if (fd.generateColliders != generateColliders)
+                {
+                    MonoBehaviour.print("Rebuilding fairing for collider status change");
+                    fd.generateColliders = this.generateColliders;
+                    needsRebuilt = true;
+                }
+            }
+        }
+
+        public void transparencyUpdated(BaseField field, object obj)
+        {
+            MonoBehaviour.print("Updating fairing transparency");
+            updateOpacity();
+        }
+
+        public void topDiameterUpdated(BaseField field, object obj)
+        {
+            float radius = guiTopDiameter * 0.5f;
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustTop)
+                {
+                    if (data.topRadius != radius)
+                    {
+                        needsRebuilt = true;
+                        data.topRadius = radius;
+                    }
+                }
+            }
+            prevTopDiameter = guiTopDiameter;
+        }
+
+        public void bottomDiameterUpdated(BaseField field, object obj)
+        {
+            float radius = guiBottomDiameter * 0.5f;
+            foreach (SSTUNodeFairingData data in fairingParts)
+            {
+                if (data.canAdjustBottom)
+                {
+                    if (data.bottomRadius != radius)
+                    {
+                        needsRebuilt = true;
+                        data.bottomRadius = radius;
+                    }
+                }
+            }
+            prevBottomDiameter = guiBottomDiameter;
+        }
+
+        public void sectionsUpdated(BaseField field, object obj)
+        {
+            if (numOfSections != prevNumOfSections)
+            {
+                needsRebuilt = true;
+                prevNumOfSections = numOfSections;
             }
         }
 
@@ -351,35 +340,57 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            
+            initialize();
+            this.updateUIFloatEditControl("guiTopDiameter", minTopDiameter, maxTopDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, guiTopDiameter);
+            this.updateUIFloatEditControl("guiBottomDiameter", minBottomDiameter, maxBottomDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, guiBottomDiameter);
+            Fields["guiTopDiameter"].uiControlEditor.onFieldChanged = topDiameterUpdated;
+            Fields["guiBottomDiameter"].uiControlEditor.onFieldChanged = bottomDiameterUpdated;
+            Fields["numOfSections"].uiControlEditor.onFieldChanged = sectionsUpdated;
+            Fields["editorTransparency"].uiControlEditor.onFieldChanged = transparencyUpdated;
+            Fields["generateColliders"].uiControlEditor.onFieldChanged = colliderGuiUpdated;
+            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
+        }
+        
+        public void OnDestroy()
+        {
+            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            GameEvents.onVesselWasModified.Remove(new EventData<Vessel>.OnEvent(onVesselModified));
+        }
+
+        public void onVesselModified(Vessel v)
+        {
+            if (HighLogic.LoadedSceneIsEditor) { return; }
+            updateFairingStatus();
+        }
+
+        public void onEditorVesselModified(ShipConstruct ship)
+        {         
+            updateFairingStatus();
+            updateOpacity();
+        }
+
+        private void initialize()
+        {
             //remove any stock transforms for engine-fairing overrides
             if (rendersToRemove != null && rendersToRemove.Length > 0)
             {
-                removeTransforms();
+                SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(rendersToRemove));
             }
-
             //load FairingData instances from config values (persistent data nodes also merged in)
             loadFairingData(SSTUStockInterop.getPartModuleConfig(part, this));
+            //set up the increment values for the gui controls
+            //initialize gui controls to the current fairing values
             if (externalUpdateData != null)
             {
                 updateFromExternalData(externalUpdateData);
                 externalUpdateData = null;
             }
-            loadMaterial();
-
-            restoreEditorFields();
-
+            updateEditorFields(false);
             //construct fairing from loaded data
             buildFairing();
-
             //update the visible and attachment status for the fairing
-            updateFairingStatus();
-            updateGuiState();
-
-            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onPartDie.Add(new EventData<Part>.OnEvent(onPartDestroyed));
-
+            updateFairingStatus();            
             if (textureSets != null)
             {
                 if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
@@ -392,59 +403,10 @@ namespace SSTUTools
                     currentTextureSet = textureSets[0].setName;
                 }
             }
-            StartCoroutine(delayedDragUpdate());
-        }
-        
-        public void OnDestroy()
-        {
-            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            GameEvents.onVesselWasModified.Remove(new EventData<Vessel>.OnEvent(onVesselModified));
-            GameEvents.onPartDie.Remove(new EventData<Part>.OnEvent(onPartDestroyed));
-        }
-
-        public void onVesselModified(Vessel v)
-        {
-            if (HighLogic.LoadedSceneIsEditor) { return; }
-            updateFairingStatus();
-        }
-
-        public void onEditorVesselModified(ShipConstruct ship)
-        {
-            if (canAdjustTopRadius && topRadiusExtra != lastTopExtra)
-            {
-                lastTopExtra = topRadiusExtra;
-                needsRebuilt = true;
-            }
-            if (canAdjustBottomRadius && bottomRadiusExtra != lastBottomExtra)
-            {
-                lastBottomExtra = bottomRadiusExtra;
-                needsRebuilt = true;
-            }
-            if (numOfSections != prevNumOfSections)
-            {
-                prevNumOfSections = numOfSections;
-                needsRebuilt = true;
-            }
-            updateFairingStatus();
-        }
-        
-        public void onPartDestroyed(Part p)
-        {
-            clearShieldedParts();
-            if (p != part)
-            {
-                needsShieldUpdate = true;
-            }
-        }
-        
-        private IEnumerator delayedDragUpdate()
-        {
-            yield return new WaitForFixedUpdate();
-            updateDragCube();
         }
 
         private void updatePersistentDataString()
-        {
+        {            
             if (fairingParts == null) { return; }
             StringBuilder sb = new StringBuilder();
             int len = fairingParts.Length;
@@ -465,22 +427,16 @@ namespace SSTUTools
             {
                 updateFromExternalData(externalUpdateData);
                 externalUpdateData = null;
-                needsRebuilt = true;
             }
             if (needsRebuilt)
             {
                 updateFairingStatus();
                 rebuildFairing();
-                needsShieldUpdate = true;
+                updatePersistentDataString();
+                updateEditorFields(false);
+                SSTUStockInterop.fireEditorUpdate();
                 needsGuiUpdate = true;
                 needsRebuilt = false;
-                updatePersistentDataString();
-            }
-            if (needsShieldUpdate)
-            {
-                updateShieldStatus();
-                needsGuiUpdate = true;
-                needsShieldUpdate = false;
             }
             if (needsGuiUpdate)
             {
@@ -489,53 +445,6 @@ namespace SSTUTools
             }
         }
         
-        #endregion
-
-        #region REGION - KSP AirstreamShield update methods
-
-        //IAirstreamShield override
-        public bool ClosedAndLocked() { return currentlyEnabled; }
-
-        //IAirstreamShield override
-        public Vessel GetVessel() { return part.vessel; }
-
-        //IAirstreamShield override
-        public Part GetPart() { return part; }
-
-        private void updateShieldStatus()
-        {
-            clearShieldedParts();
-            if (shieldParts && currentlyEnabled)
-            {
-                findShieldedParts();
-            }
-        }
-
-        private void clearShieldedParts()
-        {
-            if (shieldedParts.Count > 0)
-            {
-                foreach (Part part in shieldedParts)
-                {
-                    part.RemoveShield(this);
-                }
-                shieldedParts.Clear();
-            }
-        }
-
-        private void findShieldedParts()
-        {
-            clearShieldedParts();
-            //TODO verify this works as intended.... could have weird side-effects (originally was pulling render bounds for the fairing object)
-            //TODO instead of using entire part render bounds... combine the render bounds of all fairingData represented by this module
-            Bounds combinedBounds = SSTUUtils.getRendererBoundsRecursive(part.gameObject);
-            SSTUUtils.findShieldedPartsCylinder(part, combinedBounds, shieldedParts, shieldTopY, shieldBottomY, shieldTopRadius, shieldBottomRadius);
-            for (int i = 0; i < shieldedParts.Count; i++)
-            {
-                shieldedParts[i].AddShield(this);
-                //print("SSTUNodeFairing is shielding: " + shieldedParts[i].name);
-            }
-        }
         #endregion
         
         #region REGION - external interaction methods
@@ -586,22 +495,25 @@ namespace SSTUTools
             {
                 enableFairing(eData.enable);
             }
-            restoreEditorFields();
-            if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }//force saving of vessel..
+            updateEditorFields(true);
         }
-          
+
         #endregion
-        
+
         //TODO updateDragCube
         #region REGION - private utility methods
 
         #region REGION - Initialization methods
 
         //restores the values to the editor size-adjust fields from the loaded values from the fairing
-        private void restoreEditorFields()
+        /// <summary>
+        /// Updates the editor GUI fields with current live values and upates the prev/cached check values
+        /// </summary>
+        private void updateEditorFields(bool forceUpdate)
         {
+            if (!HighLogic.LoadedSceneIsEditor) { return; }
             float topRadius = 0;
-            float bottomRadius = 0;
+            float bottomRadius = 0;            
             foreach (FairingData data in fairingParts)
             {
                 if (data.canAdjustTop && data.topRadius > topRadius) { topRadius = data.topRadius; }
@@ -614,28 +526,18 @@ namespace SSTUTools
                 if (data.canAdjustBottom && data.bottomRadius < bottomRadius) { data.bottomRadius = bottomRadius; }
                 if (data.numOfSections < numOfSections) { data.numOfSections = (int)Math.Round(numOfSections); }
             }
-            float div, whole, extra;
+            prevTopDiameter = guiTopDiameter = topRadius * 2f;
+            prevBottomDiameter = guiBottomDiameter = bottomRadius * 2f;
             prevNumOfSections = numOfSections;
-            if (canAdjustTopRadius)
+            if (forceUpdate)
             {
-                div = topRadius / topRadiusAdjustSize;
-                whole = (int)div;
-                extra = div - whole;
-                editorTopRadius = whole * topRadiusAdjustSize;
-                topRadiusExtra = extra;
-                lastTopExtra = topRadiusExtra;
+                this.updateUIFloatEditControl("guiTopDiameter", topRadius * 2f);
+                this.updateUIFloatEditControl("guiBottomDiameter", bottomRadius * 2f);
             }
-            if (canAdjustBottomRadius)
-            {
-                div = bottomRadius / bottomRadiusAdjustSize;
-                whole = (int)div;
-                extra = div - whole;
-                editorBottomRadius = whole * bottomRadiusAdjustSize;
-                bottomRadiusExtra = extra;
-                lastBottomExtra = bottomRadiusExtra;
-            }
-            
-        }
+            //re-seat the values due to stock firing more update events in the middle of force-updating the widgets
+            prevTopDiameter = guiTopDiameter = topRadius * 2f;
+            prevBottomDiameter = guiBottomDiameter = bottomRadius * 2f;
+        }        
 
         //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
         private void loadFairingData(ConfigNode node)
@@ -647,7 +549,7 @@ namespace SSTUTools
             Transform parent;
             SSTUNodeFairing[] cs = part.GetComponents<SSTUNodeFairing>();
             int l = Array.IndexOf(cs, this);
-            int moduleIndex = l;// part.Modules.IndexOf(this);
+            int moduleIndex = l;
             for (int i = 0; i < fairingNodes.Length; i++)
             {
                 parent = modelBase.FindOrCreate(fairingName + "-" + moduleIndex + "-"+i);
@@ -655,11 +557,11 @@ namespace SSTUTools
                 fairingParts[i].load(fairingNodes[i], parent.gameObject);
                 if (fairingParts[i].canAdjustTop)
                 {
-                    canAdjustTopRadius = true;
+                    enableTopDiameterControls = true;
                 }
                 if (fairingParts[i].canAdjustBottom)
                 {
-                    canAdjustBottomRadius = true;
+                    enableBottomDiameterControls = true;
                 }
             }
             if (!String.IsNullOrEmpty(persistentDataString))
@@ -673,10 +575,7 @@ namespace SSTUTools
             }
             
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
-        }
 
-        private void loadMaterial()
-        {
             if (fairingMaterial != null)
             {
                 Material.Destroy(fairingMaterial);
@@ -696,22 +595,52 @@ namespace SSTUTools
                 }
             }
             fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
-        } 
-        
-        //removes any existing render transforms, for removal/overwriting of stock fairing module
-        private void removeTransforms()
+        }
+
+        /// <summary>
+        /// Updates GUI labels and action availability based on current module state (jettisoned, watchedNode attached status, canAdjustRadius, etc)
+        /// </summary>
+        private void updateGuiState()
         {
-            if (!String.IsNullOrEmpty(rendersToRemove))
+            bool topAdjustEnabled = enableTopDiameterControls && canAdjustTop;
+            bool bottomAdjustEnabled = enableBottomDiameterControls && canAdjustBottom;
+            if (!currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
             {
-                String[] names = SSTUUtils.parseCSV(rendersToRemove);
-                SSTUUtils.removeTransforms(part, names);
+                topAdjustEnabled = bottomAdjustEnabled = false;
             }
+            Fields["guiTopDiameter"].guiActiveEditor = topAdjustEnabled;
+            Fields["guiBottomDiameter"].guiActiveEditor = bottomAdjustEnabled;
+            Fields["numOfSections"].guiActiveEditor = currentlyEnabled;
+            Events["nextTextureEvent"].active = currentlyEnabled && textureSets != null && textureSets.Length > 1;
+            Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
+
+            bool enableButtonActive = false;
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                enableButtonActive = (currentlyEnabled && canDisableInEditor) || canSpawnFairing();
+            }
+            else
+            {
+                enableButtonActive = currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
+            }
+            String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable") : actionName;
+            Events["jettisonEvent"].guiName = guiActionName + " " + fairingName;
+            Actions["jettisonAction"].guiName = actionName + " " + fairingName;
+            Events["jettisonEvent"].active = Actions["jettisonAction"].active = enableButtonActive;
+            Fields["editorTransparency"].guiActiveEditor = currentlyEnabled;
+            Fields["generateColliders"].guiActiveEditor = currentlyEnabled;
+        }
+
+        private void updateOpacity()
+        {
+            float opacity = editorTransparency && HighLogic.LoadedSceneIsEditor ? 0.25f : 1f;
+            foreach (FairingData fd in fairingParts) { fd.fairingBase.setOpacity(opacity); }
         }
 
         #endregion
 
         #region REGION - Fairing Update Methods
-        
+
         /// <summary>
         /// Blanket method to update the attached/visible status of the fairing based on its fairing type, current jettisoned status, and if a part is present on the fairings watched node (if any/applicable)
         /// </summary>
@@ -737,7 +666,7 @@ namespace SSTUTools
                     enableFairingRender(true);
                 }
             }
-            needsShieldUpdate = true;
+            updateShieldingStatus();
             updateGuiState();
         }
 
@@ -822,42 +751,16 @@ namespace SSTUTools
             fairingEnabled = enable;
             updateFairingStatus();
         }
-
-        private void removeFairingMass()
-        {
-            if (removedMass) { return; }
-            removedMass = true;
-            foreach (FairingData fd in fairingParts)
-            {
-                if (fd.removeMass)
-                {
-                    part.mass -= fd.fairingJettisonMass;
-                }
-            }
-        }
-
-        private void addFairingMass(Part part)
-        {
-            if (part == null)
-            {
-                return;
-            }
-            foreach (FairingData fd in fairingParts)
-            {
-                if (fd.removeMass)
-                {
-                    part.mass += fd.fairingJettisonMass;
-                }
-            }
-        }
-
+        
         private void enableFairingRender(bool val)
         {
             currentRenderEnabled = val;
             foreach (FairingData fd in fairingParts)
             {
                 fd.enableRenders(val);
+                fd.enableColliders(generateColliders);
             }
+            updateOpacity();
         }
 
         private void buildFairing()
@@ -868,35 +771,31 @@ namespace SSTUTools
                 {
                     if (fd.canAdjustTop)
                     {
-                        fd.topRadius = editorTopRadius + (topRadiusExtra * topRadiusAdjustSize);
+                        fd.topRadius = guiTopDiameter * 0.5f;
                     }
                     if (fd.canAdjustBottom)
                     {
-                        fd.bottomRadius = editorBottomRadius + (bottomRadiusExtra * bottomRadiusAdjustSize);
+                        fd.bottomRadius = guiBottomDiameter * 0.5f;
                     }
                 }
             }
             foreach (FairingData fd in fairingParts)
             {
+                fd.generateColliders = generateColliders;
+                fd.facesPerCollider = 1;
                 fd.numOfSections = (int)Math.Round(numOfSections);
-                fd.createFairing(fairingMaterial);
+                fd.createFairing(fairingMaterial, editorTransparency? 0.25f : 1f);
             }
-            updateDragCube();
-            needsShieldUpdate = true;
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
-
+        
         private void rebuildFairing()
         {
             buildFairing();
             enableFairingRender(currentRenderEnabled);
+            updateOpacity();
         }
         
-        private void updateDragCube()
-        {
-            if (!updateDragCubes) { return; }
-            SSTUModInterop.onPartGeometryUpdate(part, updateDragCubes);
-        }
-
         private void updateTextureSet()
         {
             if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
@@ -904,7 +803,6 @@ namespace SSTUTools
                 TextureSet t = Array.Find(textureSets, m => m.setName == currentTextureSet);
                 if (t != null)
                 {
-                    MonoBehaviour.print("updating texture set for: " + t.setName);
                     TextureData d = t.textureDatas[0];
                     if (d != null)
                     {
@@ -916,59 +814,10 @@ namespace SSTUTools
                     }
                     else
                     {
-                        MonoBehaviour.print("ERROR: Could not locate texture data for set name: " + t.setName);
+                        MonoBehaviour.print("ERROR: Could not locate fairing texture data for set name: " + t.setName);
                     }
                 }
             }
-        }
-
-        #endregion
-
-        /// <summary>
-        /// Updates GUI labels and action availability based on current module state (jettisoned, watchedNode attached status, canAdjustRadius, etc)
-        /// </summary>
-        private void updateGuiState()
-        {
-            bool topAdjustEnabled = canAdjustTop;
-            bool bottomAdjustEnabled = canAdjustBottom;
-            if (!currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
-            {
-                topAdjustEnabled = bottomAdjustEnabled = false;
-            }
-
-            Events["decreaseTopRadiusEvent"].guiName = fairingName + " Top Rad -";
-            Events["increaseTopRadiusEvent"].guiName = fairingName + " Top Rad +";
-            Events["decreaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad -";
-            Events["increaseBottomRadiusEvent"].guiName = fairingName + " Bottom Rad +";
-
-            Events["decreaseTopRadiusEvent"].active = topAdjustEnabled;
-            Events["increaseTopRadiusEvent"].active = topAdjustEnabled;
-            Fields["topRadiusExtra"].guiActiveEditor = topAdjustEnabled;
-            Events["decreaseBottomRadiusEvent"].active = bottomAdjustEnabled;
-            Events["increaseBottomRadiusEvent"].active = bottomAdjustEnabled;
-            Fields["bottomRadiusExtra"].guiActiveEditor = bottomAdjustEnabled;
-
-            Fields["numOfSections"].guiActiveEditor = currentlyEnabled;
-            Events["nextTextureEvent"].active = currentlyEnabled && textureSets!=null && textureSets.Length>1;
-            Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
-
-            bool enableButtonActive = false;
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                enableButtonActive = (currentlyEnabled && canDisableInEditor) || canSpawnFairing();
-            }
-            else
-            {
-                enableButtonActive = currentlyEnabled && canManuallyJettison && (numOfSections>1 || String.IsNullOrEmpty(nodeName));
-            }
-            String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable" ) : actionName;
-            Events["jettisonEvent"].guiName = guiActionName + " " + fairingName;
-            Actions["jettisonAction"].guiName = actionName + " " + fairingName;
-            Events["jettisonEvent"].active = Actions["jettisonAction"].active = enableButtonActive;
-
-            Fields["shieldedPartCount"].guiActive = Fields["shieldedPartCount"].guiActiveEditor = currentlyEnabled && shieldParts;
-
-            shieldedPartCount = shieldedParts.Count;
         }
 
         private bool shouldSpawnFairingForNode(out AttachNode watchedNode, out Part triggerPart, out float fairingPos)
@@ -983,10 +832,10 @@ namespace SSTUTools
             }
             triggerPart = watchedNode.attachedPart;
             fairingPos = watchedNode.position.y;
-            if (snapToSecondNode && triggerPart!=null)
+            if (snapToSecondNode && triggerPart != null)
             {
                 watchedNode = getLowestNode(triggerPart, out fairingPos);
-                if (watchedNode != null && watchedNode.attachedPart!=part)//don't spawn fairing if there is only one node and this is the part attached
+                if (watchedNode != null && watchedNode.attachedPart != part)//don't spawn fairing if there is only one node and this is the part attached
                 {
                     triggerPart = watchedNode.attachedPart;
                 }
@@ -1018,7 +867,7 @@ namespace SSTUTools
             float pos = float.PositiveInfinity;
             Vector3 posTemp;
             int len = p.attachNodes.Count;
-            
+
             for (int i = 0; i < len; i++)
             {
                 nodeTemp = p.attachNodes[i];
@@ -1034,7 +883,44 @@ namespace SSTUTools
             fairingPos = pos;
             return node;
         }
-        
+
+        private void updateShieldingStatus()
+        {
+            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
+            if (shield != null)
+            {
+                MonoBehaviour.print("SSTUNodeFairing updating shielding status for module: " + shield + " :: enabled: " + currentlyEnabled);
+                if (currentlyEnabled)
+                {
+                    string name = fairingName + "" + part.Modules.IndexOf(this);
+                    float top=float.NegativeInfinity, bottom=float.PositiveInfinity, topRad=0, botRad=0;
+                    bool useTop=false, useBottom=false;
+                    if (!string.IsNullOrEmpty(nodeName))
+                    {
+                        useTop = nodeName == "top";
+                        useBottom = nodeName == "bottom";
+                    }
+                    int len = fairingParts.Length;
+                    FairingData fp;
+                    for (int i = 0; i < len; i++)
+                    {
+                        fp = fairingParts[i];
+                        if (fp.topY > top) { top = fp.topY; }
+                        if (fp.bottomY < bottom) { bottom = fp.bottomY; }
+                        if (fp.topRadius > topRad) { topRad = fp.topRadius; }
+                        if (fp.bottomRadius > botRad) { botRad = fp.bottomRadius; }
+                    }
+                    shield.addShieldArea(name, topRad, botRad, top, bottom, useTop, useBottom);
+                }
+                else
+                {
+                    shield.removeShieldArea(fairingName + "" + part.Modules.IndexOf(this));
+                }
+            }
+        }
+
+        #endregion
+
         #endregion
     }
 
@@ -1079,5 +965,6 @@ namespace SSTUTools
             return enable + ", " + topY + ", " + bottomY + ", " + topRadius + ", " + bottomRadius;
         }
     }
+
 }
 

@@ -27,6 +27,8 @@ namespace SSTUTools
         public UVArea outsideUV;
         public UVArea insideUV;
         public UVArea edgesUV;
+        public bool generateColliders = false;
+        public int facesPerCollider = 1;
 
         public FairingContainer(GameObject root, int cylinderFaces, int numberOfPanels, float thickness)
         {
@@ -52,7 +54,7 @@ namespace SSTUTools
         
         public virtual void generateFairing()
         {
-            ArcMeshGenerator gen = new ArcMeshGenerator(Vector3.zero, faces, panels, startAngle, endAngle, thickness);
+            ArcMeshGenerator gen = new ArcMeshGenerator(Vector3.zero, faces, panels, startAngle, endAngle, thickness, generateColliders, facesPerCollider);
             gen.outsideUV = outsideUV;
             gen.insideUV = insideUV;
             gen.edgesUV = edgesUV;
@@ -112,7 +114,7 @@ namespace SSTUTools
                 panelGO.transform.parent = null;
                 panelGO.AddComponent<physicalObject>();//auto-destroy when more than 1km away
                 rb = panelGO.AddComponent<Rigidbody>();
-                rb.velocity = part.rigidbody.velocity;
+                rb.velocity = part.rb.velocity;
                 rb.mass = perPanelMass;
                 globalForceDirection = panelGO.transform.TransformDirection(jettisonDirection);
                 rb.AddForce(globalForceDirection * force);
@@ -163,6 +165,11 @@ namespace SSTUTools
         public void enableRender(bool val)
         {
             SSTUUtils.enableRenderRecursive(rootObject.transform, val);
+        }
+
+        public void enableColliders(bool val)
+        {
+            SSTUUtils.enableColliderRecursive(rootObject.transform, val);
         }
     }
 }

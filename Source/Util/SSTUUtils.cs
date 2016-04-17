@@ -1,6 +1,6 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 
 namespace SSTUTools
@@ -64,7 +64,12 @@ namespace SSTUTools
             return interfacesList.ToArray();
         }
 
-        public static T findNext<T>(T[] array, System.Predicate<T> alg, bool iterateBackwards)
+        public static string[] getNames<T>(T[] input, Func<T, string> alg)
+        {
+            return input.Select(alg).ToArray();
+        }
+
+        public static T findNext<T>(T[] array, System.Predicate<T> alg, bool iterateBackwards=false)
         {
             int index = findIndex<T>(array, alg);
             int len = array.Length;
@@ -79,7 +84,7 @@ namespace SSTUTools
             return array[index];
         }
 
-        public static T findNext<T>(List<T> list, System.Predicate<T> alg, bool iterateBackwards)
+        public static T findNext<T>(List<T> list, System.Predicate<T> alg, bool iterateBackwards=false)
         {
             int index = findIndex<T>(list, alg);
             int len = list.Count;
@@ -357,25 +362,17 @@ namespace SSTUTools
 
         public static void enableRenderRecursive(Transform tr, bool val)
         {
-            if (tr.renderer != null)
+            foreach (Renderer rend in tr.GetComponentsInChildren<Renderer>())
             {
-                tr.renderer.enabled = val;
-            }
-            for (int i = 0; i < tr.childCount; i++)
-            {
-                enableRenderRecursive(tr.GetChild(i), val);
+                rend.enabled = val;
             }
         }
 
         public static void enableColliderRecursive(Transform tr, bool val)
         {
-            foreach (Collider collider in tr.gameObject.GetComponents<Collider>())
+            foreach (Collider collider in tr.gameObject.GetComponentsInChildren<Collider>(false))
             {
                 collider.enabled = val;
-            }
-            for (int i = 0; i < tr.childCount; i++)
-            {
-                enableColliderRecursive(tr.GetChild(i), val);
             }
         }
 
@@ -431,9 +428,11 @@ namespace SSTUTools
 
         public static void setTextureRecursive(Transform tr, Texture tex, int id)
         {
-            if (tr != null && tr.renderer != null && tr.renderer.sharedMaterial != null)
+            if (tr == null) { return; }
+            Renderer renderer = tr.GetComponent<Renderer>();
+            if (renderer != null && renderer.sharedMaterial != null)
             {
-                tr.renderer.material.SetTexture(id, tex);
+                renderer.material.SetTexture(id, tex);
             }
             foreach (Transform tr1 in tr)
             {
@@ -443,7 +442,11 @@ namespace SSTUTools
 
         public static void setMaterialRecursive(Transform tr, Material mat)
         {
-            if (tr.gameObject.renderer != null) { tr.gameObject.renderer.material = mat; }
+            Renderer renderer = tr.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material = mat;
+            }
             int len = tr.childCount;
             for (int i = 0; i < len; i++)
             {
@@ -453,10 +456,11 @@ namespace SSTUTools
 
         public static void setOpacityRecursive(Transform tr, float opacity)
         {
-            if (tr.renderer != null && tr.renderer.sharedMaterial != null)
+            Renderer renderer = tr.GetComponent<Renderer>();
+            if (renderer != null && renderer.sharedMaterial != null)
             {
-                tr.renderer.sharedMaterial.SetFloat("_Opacity", opacity);
-                tr.renderer.sharedMaterial.renderQueue = opacity >= 1f ? 2000 : 3000;
+                renderer.sharedMaterial.SetFloat("_Opacity", opacity);
+                renderer.sharedMaterial.renderQueue = opacity >= 1f ? 2000 : 3000;
             }
             foreach (Transform child in tr) { setOpacityRecursive(child, opacity); }
         }
@@ -629,6 +633,7 @@ namespace SSTUTools
             int wholeBits = (int)Math.Round((value / roundTo), 0);
             return (float)wholeBits * roundTo;
         }
+
     }
 }
 

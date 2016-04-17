@@ -16,13 +16,14 @@ namespace SSTUTools
         public UVArea insideUV;
         public UVArea topUV;
         public UVArea bottomUV;
-
-        public void setModelParameters(float radius, float height, float thickness, int cylinderSides)
+        
+        public void setModelParameters(float radius, float height, float thickness, int cylinderSides, bool convex)
         {
             this.radius = radius;
             this.height = height;
             this.thickness = thickness;
             this.cylinderSides = cylinderSides;
+            this.meshColliderConvex = convex;
         }
 
         protected override void generateModel(GameObject root)
@@ -40,8 +41,21 @@ namespace SSTUTools
             mf.mesh = mesh;
             MeshCollider mc = root.GetComponent<MeshCollider>();
             if (mc != null) { Component.DestroyImmediate(mc); }
-            mc = root.AddComponent<MeshCollider>();//re-init mesh collider
-            mc.sharedMesh = mesh;
+            if (meshColliderConvex)
+            {
+                mc = root.AddComponent<MeshCollider>();//re-init mesh collider
+                mc.sharedMesh = mesh;
+                mc.convex = true;
+            }
+            else
+            {
+                GameObject[] cols = gen2.generateColliders();
+                int len = cols.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    cols[i].transform.NestToParent(root.transform);
+                }
+            }
         }
     }
 }

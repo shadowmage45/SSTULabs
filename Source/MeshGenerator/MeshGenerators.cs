@@ -58,6 +58,40 @@ namespace SSTUTools
             mesh.name = "ProceduralCylinderMesh";
             return mesh;
         }
+
+        public GameObject[] generateColliders()
+        {
+            MonoBehaviour.print("Generating hollow convex colliders for faces: " + faces);
+            GameObject[] colliders = new GameObject[faces];
+            
+            float anglePerFace = 360f / (float)faces;
+            float start = 0;
+            float end = start + anglePerFace;
+            float thickness = topRadius - topInnerRadius;
+            
+            Mesh mesh;
+            MeshFilter mf;
+            MeshCollider mc;
+            MeshBuilder builder = new MeshBuilder();
+            
+            GameObject collider;
+            for (int i = 0; i < faces; i++)
+            {
+                collider = new GameObject("ProceduralCylinderCollider-" + i);                
+                colliders[i] = collider;
+                start = (float)i * anglePerFace;
+                end = start + anglePerFace;
+                builder.generatePanelCollider(offset, start, end, 0, height, bottomRadius, topRadius, thickness);
+                mesh = builder.buildMesh();
+                mf = collider.AddComponent<MeshFilter>();
+                mf.mesh = mesh;
+                mc = collider.AddComponent<MeshCollider>();
+                mc.sharedMesh = mesh;
+                mc.convex = true;
+                builder.clear();
+            }
+            return colliders;
+        }
     }
 
     public class ArcRing
@@ -80,6 +114,7 @@ namespace SSTUTools
         * and generate vertical panel sections dependant upon the generator settings.
         * 
         * Output is an array of game objects, one per panel.  They will have no material set, only mesh/meshrenderer.
+        * Optionally may include a set of collider objects per X faces
         *
         * TODO - determine how to generate convex colliders, or if to do such at all.
         * 
@@ -98,8 +133,10 @@ namespace SSTUTools
         public UVArea edgesUV = new UVArea(0.50390625f, 0.00390625f, 0.99609375f, 0.99609375f);
 
         private PanelArcGroup[] panelGroups;
+        private bool colliders;
+        private int facesPerCollider;
 
-        public ArcMeshGenerator(Vector3 offset, int sides, int panels, float startAngle, float endAngle, float thickness)
+        public ArcMeshGenerator(Vector3 offset, int sides, int panels, float startAngle, float endAngle, float thickness, bool colliders, int facesPerCollider)
         {
             this.offset = offset;
             this.faces = sides;
@@ -107,6 +144,8 @@ namespace SSTUTools
             this.startAngle = startAngle;
             this.endAngle = endAngle;
             this.thickness = thickness;
+            this.colliders = colliders;
+            this.facesPerCollider = facesPerCollider;
             generatePanelGroups();
         }
 
@@ -127,10 +166,15 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 gos[i] = parent.FindOrCreate("FairingPanel-"+i).gameObject;
+                SSTUUtils.destroyChildren(gos[i].transform);//remove any existing colliders
                 MeshFilter mf = gos[i].GetComponent<MeshFilter>();
                 if (mf == null) { mf = gos[i].AddComponent<MeshFilter>(); }
                 mf.mesh = panelGroups[i].generatePanels(offset, outsideUV, insideUV, edgesUV);
-
+                if (colliders)
+                {
+                    GameObject[] cols = panelGroups[i].generateColliders(offset, facesPerCollider);
+                    for (int k = 0; k < cols.Length; k++) { cols[k].transform.NestToParent(gos[i].transform); }
+                }
                 MeshRenderer mr = gos[i].GetComponent<MeshRenderer>();
                 if (mr == null) { mr = gos[i].AddComponent<MeshRenderer>(); }
                 gos[i].transform.parent = parent;
@@ -138,7 +182,7 @@ namespace SSTUTools
                 gos[i].transform.rotation = parent.rotation;
             }
             Transform[] trs;
-            for (int i = len; i <8; i++)
+            for (int i = len; i <8; i++)//destroy extra unused panels
             {
                 trs = parent.transform.FindChildren("FairingPanel-" + i);
                 for (int k = 0; k < trs.Length; k++) { GameObject.Destroy(trs[k].gameObject); }
@@ -167,12 +211,7 @@ namespace SSTUTools
                 pivotObject.transform.rotation = parent.transform.rotation;
                 pivotObject.transform.localPosition = newPivot + offset;
                 pivotObject.transform.Rotate(new Vector3(0, 1, 0), -yRot + 90f, Space.Self);                
-
-                //GameObject debugModel = SSTUUtils.cloneModel("SSTU/Assets/DEBUG_MODEL");
-                //debugModel.transform.parent = pivotObject.transform;
-                //debugModel.transform.rotation = pivotObject.transform.rotation;
-                //debugModel.transform.position = pivotObject.transform.position;
-
+                
                 gos[i].transform.parent = pivotObject.transform;
                 gos[i] = pivotObject;
             }
@@ -194,7 +233,7 @@ namespace SSTUTools
             {
                 start = startAngle + anglePerPanel * i;
                 end = start + anglePerPanel;
-                panelGroups[i] = new PanelArcGroup(start, end, thickness, faces);
+                panelGroups[i] = new PanelArcGroup(start, end, thickness, faces, colliders);
             }
         }
     }
@@ -257,17 +296,14 @@ namespace SSTUTools
     public class PanelArcGroup
     {
         private List<Arc> outerArcs = new List<Arc>();
-        private List<Arc> innerArcs = new List<Arc>();//calculated from outer loops
-
-        private List<Mesh> colliderMeshes = new List<Mesh>();//TODO
-        
+        private List<Arc> innerArcs = new List<Arc>();//calculated from outer loops                
         public readonly float startAngle;
         public readonly float endAngle;
         public readonly float thickness;
         public readonly int faces;
         public readonly bool shouldGenerateSidewalls;
 
-        public PanelArcGroup(float start, float end, float thickness, int faces)
+        public PanelArcGroup(float start, float end, float thickness, int faces, bool colliders)
         {
             startAngle = start;
             endAngle = end;
@@ -282,6 +318,47 @@ namespace SSTUTools
             Arc inner = new Arc(radius - thickness, height, startAngle, endAngle, faces);
             outerArcs.Add(outer);
             innerArcs.Add(inner);            
+        }
+
+        public GameObject[] generateColliders(Vector3 center, int facesPerCollider)
+        {            
+            float totalAngle = endAngle - startAngle;
+            float anglePerFace = 360f / (float)faces;
+            int localFaces = (int)Math.Round(totalAngle / anglePerFace);
+            localFaces /= facesPerCollider;
+            MonoBehaviour.print("local faces: " + localFaces);
+            GameObject[] colliders = new GameObject[localFaces];
+            float localStart, localEnd, startY, height, topRadius, bottomRadius, thickness;
+            Mesh colliderMesh;
+            MeshFilter mf;
+            //MeshRenderer mr;
+            MeshCollider mc;
+            thickness = outerArcs[0].radius - innerArcs[0].radius;
+            MeshBuilder builder = new MeshBuilder();
+            for (int i = 0; i < localFaces; i++)
+            {
+                localStart = startAngle + (float)i * anglePerFace;
+                localEnd = localStart + (anglePerFace * facesPerCollider);
+                for (int k = 0; k < innerArcs.Count - 1; k++)
+                {
+                    startY = innerArcs[k].height;
+                    height = innerArcs[k+1].height - startY;
+                    bottomRadius = outerArcs[k].radius;
+                    topRadius = outerArcs[k+1].radius;
+                    builder.generatePanelCollider(center, localStart, localEnd, startY, height, bottomRadius, topRadius, thickness);
+                    colliderMesh = builder.buildMesh();
+                    builder.clear();
+                    colliders[i] = new GameObject("PanelCollider"+i+"-"+k);
+                    mf = colliders[i].AddComponent<MeshFilter>();
+                    //mr = colliders[i].AddComponent<MeshRenderer>();
+                    mc = colliders[i].AddComponent<MeshCollider>();
+                    mf.mesh = colliderMesh;
+                    //mr.enabled = true;
+                    mc.sharedMesh = colliderMesh;
+                    mc.enabled = mc.convex = true;
+                }
+            }
+            return colliders;
         }
 
         public Mesh generatePanels(Vector3 pos, UVArea outer, UVArea inner, UVArea caps)
@@ -301,108 +378,6 @@ namespace SSTUTools
             {
                 generateSidewalls(builder, caps);
             }
-
-            return builder.buildMesh();
-        }
-
-        //TODO
-        public void generateMeshColliders(Vector3 pos, int facesPerCollider)
-        {
-            throw new NotImplementedException();
-        }
-                
-        private Mesh generatePanelCollider(Vector3 center, float startAngle, float endAngle, float height, float bottomRadius, float topRadius, float thickness)
-        {
-            MeshBuilder builder = new MeshBuilder();
-
-            float bottomInnerRadius = bottomRadius - thickness;
-            float topInnerRadius = topRadius - thickness;
-            float startRads = Mathf.Deg2Rad * startAngle;
-            float endRads = Mathf.Deg2Rad * endAngle;
-            float startXSin = -Mathf.Sin(startRads);
-            float startZCos = Mathf.Cos(startRads);
-            float endXSin = -Mathf.Sin(endRads);
-            float endZCos = Mathf.Cos(endRads);
-
-            Vector3 frontBottomLeft = new Vector3(center.x + bottomRadius * startXSin, center.y, center.z + bottomRadius * startZCos);
-            Vector3 frontBottomRight = new Vector3(center.x + bottomRadius * endXSin, center.y, center.z + bottomRadius * endZCos);
-            Vector3 frontTopLeft = new Vector3(center.x + topRadius * startXSin, center.y + height, center.z + topRadius * startZCos);
-            Vector3 frontTopRight = new Vector3(center.x + topRadius * endXSin, center.y + height, center.z + topRadius * endZCos);
-
-            Vector3 rearBottomLeft = new Vector3(center.x + bottomInnerRadius * startXSin, center.y, center.z + bottomInnerRadius * startZCos);
-            Vector3 rearBottomRight = new Vector3(center.x + bottomInnerRadius * endXSin, center.y, center.z + bottomInnerRadius * endZCos);
-            Vector3 rearTopLeft = new Vector3(center.x + topInnerRadius * startXSin, center.y + height, center.z + topInnerRadius * startZCos);
-            Vector3 rearTopRight = new Vector3(center.x + topInnerRadius * endXSin, center.y + height, center.z + topInnerRadius * endZCos);
-
-            Vector3 normFront = Vector3.forward;
-            Vector3 normRear = Vector3.back;
-            Vector3 normLeft = Vector3.left;
-            Vector3 normRight = Vector3.right;
-            Vector3 normUp = Vector3.up;
-            Vector3 normDown = Vector3.down;
-
-            Vector2 uv1 = new Vector2(0, 0);
-            Vector2 uv2 = new Vector2(1, 0);
-            Vector2 uv3 = new Vector2(0, 1);
-            Vector2 uv4 = new Vector2(1, 1);
-
-
-            List<Vertex> v1 = new List<Vertex>();
-            List<Vertex> v2 = new List<Vertex>();
-
-            //generate front face
-            v1.Add(builder.addVertex(frontBottomLeft, normFront, uv1));
-            v1.Add(builder.addVertex(frontBottomRight, normFront, uv2));
-            v2.Add(builder.addVertex(frontTopLeft, normFront, uv3));
-            v2.Add(builder.addVertex(frontTopRight, normFront, uv4));
-            builder.generateQuads(v1, v2, false);
-            v1.Clear();
-            v2.Clear();
-
-            //generate rear face
-            v1.Add(builder.addVertex(rearBottomLeft, normRear, uv2));
-            v1.Add(builder.addVertex(rearBottomRight, normRear, uv1));
-            v2.Add(builder.addVertex(rearTopLeft, normRear, uv4));
-            v2.Add(builder.addVertex(rearTopRight, normRear, uv3));
-            builder.generateQuads(v1, v2, true);
-            v1.Clear();
-            v2.Clear();
-
-            //generate left face
-            v1.Add(builder.addVertex(frontBottomLeft, normLeft, uv2));
-            v1.Add(builder.addVertex(rearBottomLeft, normLeft, uv1));
-            v2.Add(builder.addVertex(frontTopLeft, normLeft, uv4));
-            v2.Add(builder.addVertex(rearTopLeft, normLeft, uv3));
-            builder.generateQuads(v1, v2, true);
-            v1.Clear();
-            v2.Clear();
-
-            //generate right face
-            v1.Add(builder.addVertex(frontBottomRight, normRight, uv1));
-            v1.Add(builder.addVertex(rearBottomRight, normRight, uv2));
-            v2.Add(builder.addVertex(frontTopRight, normRight, uv3));
-            v2.Add(builder.addVertex(rearTopRight, normRight, uv4));
-            builder.generateQuads(v1, v2, false);
-            v1.Clear();
-            v2.Clear();
-
-            //generate top face
-            v1.Add(builder.addVertex(frontTopRight, normUp, uv2));
-            v1.Add(builder.addVertex(frontTopLeft, normUp, uv1));
-            v2.Add(builder.addVertex(rearTopRight, normUp, uv4));
-            v2.Add(builder.addVertex(rearTopLeft, normUp, uv3));
-            builder.generateQuads(v1, v2, true);
-            v1.Clear();
-            v2.Clear();
-
-            //generate bottom face
-            v1.Add(builder.addVertex(frontBottomRight, normUp, uv1));
-            v1.Add(builder.addVertex(frontBottomLeft, normUp, uv2));
-            v2.Add(builder.addVertex(rearBottomRight, normUp, uv3));
-            v2.Add(builder.addVertex(rearBottomLeft, normUp, uv4));
-            builder.generateQuads(v1, v2, false);
-            v1.Clear();
-            v2.Clear();
 
             return builder.buildMesh();
         }

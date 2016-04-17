@@ -1,24 +1,19 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
 {
     public class SSTUAirstreamShield : PartModule, IAirstreamShield
-    { 
-
-        [KSPField]
-        public String meshName;
-
+    {
+        
         [KSPField]
         public bool useAttachNodeTop = false;
 
         [KSPField]
         public bool useAttachNodeBottom = false;
-
-        [KSPField]
-        public bool shieldSelf = false;
-
+        
         [KSPField]
         public float topY;
 
@@ -30,21 +25,25 @@ namespace SSTUTools
 
         [KSPField]
         public float bottomRadius;
-
-        [KSPField]
-        public int shieldID = 0;
-
-        [KSPField(guiName ="Shielded Parts", guiActive =true, guiActiveEditor =true)]
+        
+        [KSPField(guiName = "Shielded Parts", guiActive = true, guiActiveEditor = true)]
         public int partsShielded = 0;
-
-        [KSPField(isPersistant = true)]
-        public bool shieldEnabled = true;
         
         private List<Part> shieldedParts = new List<Part>();
+
+        private List<AirstreamShieldArea> shieldedAreas = new List<AirstreamShieldArea>();
+
+        private bool needsUpdate = true;
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+            if (topRadius != 0 && bottomRadius != 0)//add a shield based on base config params
+            {
+                AirstreamShieldArea area = new AirstreamShieldArea("baseArea", topRadius, bottomRadius, topY, bottomY, useAttachNodeTop, useAttachNodeBottom);
+                shieldedAreas.Add(area);
+            }
+            //TODO check config node for additional shield defs; persist these regardless of external modules
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
         }
@@ -53,7 +52,7 @@ namespace SSTUTools
         {
             base.OnLoad(node);
         }
-        
+
         public void OnDestroy()
         {
             GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
@@ -62,22 +61,31 @@ namespace SSTUTools
 
         public void Start()
         {
-            updateShieldStatus();
-        }        
+            needsUpdate = true;
+        }
+
+        public void LateUpdate()
+        {
+            if ((HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight) && needsUpdate)
+            {
+                needsUpdate = false;
+                updateShieldStatus();
+            }
+        }
 
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            updateShieldStatus();
+            needsUpdate = true;
         }
 
         public void onVesselModified(Vessel vessel)
         {
-            updateShieldStatus();
+            needsUpdate = true;
         }
 
         public bool ClosedAndLocked()
         {
-            return shieldEnabled;
+            return shieldedAreas.Count>0;
         }
 
         public Part GetPart()
@@ -90,24 +98,27 @@ namespace SSTUTools
             return vessel;
         }
 
+        public void addShieldArea(String name, float topRad, float bottomRad, float topY, float bottomY, bool topNode, bool bottomNode)
+        {
+            AirstreamShieldArea area = shieldedAreas.Find(m => m.name == name);
+            if (area != null) { shieldedAreas.Remove(area); }
+            area = new AirstreamShieldArea(name, topRad, bottomRad, topY, bottomY, topNode, bottomNode);
+            shieldedAreas.Add(area);
+            needsUpdate = true;
+        }
+
+        public void removeShieldArea(String name)
+        {
+            AirstreamShieldArea area = shieldedAreas.Find(m => m.name == name);
+            if (area != null) { shieldedAreas.Remove(area); }
+            needsUpdate = true;
+        }
+
         private void updateShieldStatus()
         {
             clearShieldedParts();
-            if (shieldEnabled)
-            {
-                if (useAttachNodeTop)
-                {
-                    AttachNode node = part.findAttachNode("top");
-                    if (node == null || node.attachedPart == null) { return; }
-                }
-                if (useAttachNodeBottom)
-                {
-                    AttachNode node = part.findAttachNode("bottom");
-                    if (node == null || node.attachedPart == null) { return; }
-                }
-                findShieldedParts();
-            }
-            print("updated shielding status, new shielded part count: " + partsShielded);
+            findShieldedParts();
+            print("Updated shielding status, new shielded part count: " + partsShielded);
         }
 
         private void clearShieldedParts()
@@ -115,9 +126,11 @@ namespace SSTUTools
             partsShielded = 0;
             if (shieldedParts.Count > 0)
             {
-                foreach (Part part in shieldedParts)
+                int len = shieldedParts.Count;
+                for (int i = 0; i < len; i++)
                 {
-                    part.RemoveShield(this);
+                    if (shieldedParts[i] == null) { continue; }
+                    shieldedParts[i].RemoveShield(this);
                 }
                 shieldedParts.Clear();
             }
@@ -126,38 +139,37 @@ namespace SSTUTools
         private void findShieldedParts()
         {
             clearShieldedParts();
-            float height = topY - bottomY;
-            if (!String.IsNullOrEmpty(meshName))
-            {
-                findShieldedPartsMesh();
-            }
-            else
-            {
-                findShieldedPartsCylinder();
-            }
-        }
-
-        private void findShieldedPartsMesh()
-        {
-
+            findShieldedPartsCylinder();
         }
 
         private void findShieldedPartsCylinder()
         {
-            float height = topY - bottomY;
-            findShieldedPartsCylinder(part, shieldedParts, topY, bottomY, topRadius, bottomRadius);
-            if (shieldEnabled && shieldSelf)
+            int len = shieldedAreas.Count;
+            AirstreamShieldArea area;
+            for (int i = 0; i < len; i++)
             {
-                shieldedParts.Add(part);
+                area = shieldedAreas[i];
+                if (area.useTopNode)
+                {
+                    AttachNode node = part.findAttachNode("top");
+                    if (node != null && node.attachedPart == null) { continue; }
+                }
+                if (area.useBottomNode)
+                {
+                    AttachNode node = part.findAttachNode("bottom");
+                    if (node != null && node.attachedPart == null) { continue; }
+                }
+                shieldedAreas[i].updateShieldStatus(part, shieldedParts);
             }
-            for (int i = 0; i < shieldedParts.Count; i++)
+            len = shieldedParts.Count;
+            for (int i = 0; i < len; i++)
             {
                 shieldedParts[i].AddShield(this);
             }
             partsShielded = shieldedParts.Count;
         }
 
-        //TODO
+        //TODO check for shielded parts using mesh occlusion/containment rather than cylinder bounding containment
         public static void findShieldedPartsMesh(Part basePart, String rootMeshName, List<Part> shieldedParts)
         {
             Bounds combinedBounds = SSTUUtils.getRendererBoundsRecursive(basePart.transform.FindRecursive(rootMeshName).gameObject);
@@ -187,7 +199,7 @@ namespace SSTUTools
                     partsFound.Add(pt);
                 }
             }
-            
+
             Vector3 otherPartCenterLocal;
 
             float partYPos;
@@ -197,7 +209,7 @@ namespace SSTUTools
 
             foreach (Part pt in partsFound)
             {
-                Vector3 otherPartCenter = pt.partTransform.TransformPoint(PartGeometryUtil.FindBoundsCentroid(pt.GetRendererBounds(), pt.transform));               
+                Vector3 otherPartCenter = pt.partTransform.TransformPoint(PartGeometryUtil.FindBoundsCentroid(pt.GetRendererBounds(), pt.transform));
                 //check part bounds center point against conic projection of the fairing
                 otherPartCenterLocal = basePart.transform.InverseTransformPoint(otherPartCenter);
 
@@ -226,6 +238,35 @@ namespace SSTUTools
                 //print("Shielding part: " + pt);
             }
         }
+        
+    }
+
+    public class AirstreamShieldArea
+    {
+        public readonly string name;
+        public readonly float topY;
+        public readonly float topRadius;
+        public readonly float bottomY;
+        public readonly float bottomRadius;
+        public readonly bool useTopNode;
+        public readonly bool useBottomNode;
+
+        public AirstreamShieldArea(string name, float topRad, float bottomRad, float topY, float bottomY, bool topNode, bool bottomNode)
+        {
+            this.name = name;
+            this.topY = topY;
+            this.bottomY = bottomY;
+            this.topRadius = topRad;
+            this.bottomRadius = bottomRad;
+            this.useTopNode = topNode;
+            this.useBottomNode = bottomNode;
+        }
+
+        public void updateShieldStatus(Part p, List<Part> shieldedParts)
+        {
+            SSTUAirstreamShield.findShieldedPartsCylinder(p, shieldedParts, topY, bottomY, topRadius, bottomRadius);
+        }
+
     }
 
 }

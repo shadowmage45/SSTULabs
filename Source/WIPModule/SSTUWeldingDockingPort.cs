@@ -124,15 +124,17 @@ namespace SSTUTools
             }
         }
 
-        public float GetModuleMass(float defaultMass)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             return -defaultMass + modifiedMass;
         }
                 
-        public float GetModuleCost(float defaultCost)
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             return -defaultCost + modifiedCost;
         }
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         public void onEditorVesselModified(ShipConstruct ship)
         {

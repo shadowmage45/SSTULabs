@@ -35,6 +35,9 @@ namespace SSTUTools
 
         [KSPField]
         public bool areaAdjusted = false;
+        
+        [KSPField]
+        public bool autoDebug = false;
 
         [KSPField]
         public FloatCurve heatCurve;        
@@ -61,7 +64,10 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            //PhysicsGlobals.ThermalDataDisplay = true;
+            if (autoDebug)
+            {
+                PhysicsGlobals.ThermalDataDisplay = true;
+            }
         }
 
         public override void OnLoad(ConfigNode node)
@@ -188,7 +194,7 @@ namespace SSTUTools
                     maxResourceUsed = resource.amount;
                     maxFluxRemoved = maxResourceUsed * useToFluxMultiplier;
                 }
-                part.TransferResource(resource, -maxResourceUsed);
+                part.TransferResource(resource.info.id, -maxResourceUsed);
                 part.AddExposedThermalFlux(-maxFluxRemoved);
                 guiShieldFlux = maxFluxRemoved;
                 guiShieldUse = maxResourceUsed;

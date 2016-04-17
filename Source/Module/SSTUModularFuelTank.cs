@@ -13,7 +13,13 @@ namespace SSTUTools
 
         [KSPField]
         public String rootTransformName = "SSTUModularFuelTankRoot";
-        
+
+        [KSPField]
+        public String rootNoseTransformName = "SSTUModularFuelTankNoseRoot";
+
+        [KSPField]
+        public String rootMountTransformName = "SSTUModularFuelTankMountRoot";
+
         [KSPField]
         public float tankDiameterIncrement = 0.625f;
 
@@ -25,10 +31,7 @@ namespace SSTUTools
 
         [KSPField]
         public bool canChangeInFlight = false;
-
-        [KSPField]
-        public bool useRF = false;
-
+        
         [KSPField]
         public String techLimitSet = "Default";
 
@@ -41,18 +44,6 @@ namespace SSTUTools
         [KSPField]
         public String interstageNodeName = "interstage";
 
-        [KSPField(guiName = "Tank Diameter +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = 0f, maxValue = 0.95f, stepIncrement = 0.05f)]
-        public float editorTankDiameterAdjust;
-
-        [KSPField(guiName = "Tank Height +/-", guiActive = false, guiActiveEditor = true), UI_FloatRange(minValue = -1f, maxValue = 1f, stepIncrement = 0.05f)]
-        public float editorTankHeightAdjust;
-
-        [KSPField(guiActiveEditor = true, guiName = "Tank Diameter (m)")]
-        public float guiTankDiameter = 0;
-
-        [KSPField(guiActiveEditor = true, guiName = "Tank Height (m)")]
-        public float guiTankHeight = 0;
-
         [KSPField(guiActiveEditor = true, guiName = "Tank Usable Vol. (m^3)")]
         public float guiTankVolume = 0;
 
@@ -63,23 +54,27 @@ namespace SSTUTools
         public float guiTankCost = 0;
 
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
-
         [KSPField(isPersistant = true)]
         public String currentFuelType = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Tank"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTankType = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNoseType = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountType = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentTankDiameter = 2.5f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "V.Scale"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentTankVerticalScale = 1f;
 
         [KSPField(isPersistant = true)]
@@ -98,20 +93,18 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
-        /// <summary>
-        /// Tracks whether -this- part module has been initialized in the editor or flight scenes; this check determines if certain update functions run, mostly related to inter-module interaction
-        /// </summary>
         [KSPField(isPersistant = true)]
-        public bool initializedModule = false;
+        public bool initializedFairing = false;
 
         #endregion
 
         #region REGION - private working variables
-        
-        private float editorTankWholeDiameter;
-        private float editorPrevTankDiameterAdjust;
 
-        private float editorPrevTankHeightAdjust;
+        private float prevTankDiameter;
+        private float prevTankHeightScale;
+        private string prevNose;
+        private string prevTank;
+        private string prevMount;
 
         private float currentTankVolume;
         private float currentTankMass;
@@ -134,6 +127,9 @@ namespace SSTUTools
         private String[] topNodeNames;
         private String[] bottomNodeNames;
 
+        private string[] noseVariants;
+        private string[] mountVariants;
+
         private bool initialized = false;
 
         #endregion
@@ -150,54 +146,6 @@ namespace SSTUTools
         public void nextFuelEvent()
         {
             setFuelTypeFromEditor(SSTUUtils.findNext(fuelTypes, m => m == currentFuelTypeData, false), true);    
-        }
-
-        [KSPEvent(guiName = "Tank Length -", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void prevTankEvent()
-        {
-            setMainTankModuleFromEditor(getNextTankLength(currentMainTankModule, true), true);
-        }
-
-        [KSPEvent(guiName = "Tank Length +", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextTankEvent()
-        {
-            setMainTankModuleFromEditor(getNextTankLength(currentMainTankModule, false), true);
-        }
-
-        [KSPEvent(guiName = "Tank Diameter --", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void prevTankDiameterEvent()
-        {
-            setTankDiameterFromEditor(currentTankDiameter - tankDiameterIncrement, true);
-        }
-        
-        [KSPEvent(guiName = "Tank Diameter ++", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextTankDiameterEvent()
-        {
-            setTankDiameterFromEditor(currentTankDiameter + tankDiameterIncrement, true);
-        }
-
-        [KSPEvent(guiName = "Prev Nose Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void prevTopEvent()
-        {
-            setNoseModuleFromEditor(getNextCap(noseModules, currentNoseModule, topNodeNames, true), true);
-        }
-
-        [KSPEvent(guiName = "Next Nose Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextTopEvent()
-        {
-            setNoseModuleFromEditor(getNextCap(noseModules, currentNoseModule, topNodeNames, false), true);
-        }
-
-        [KSPEvent(guiName = "Prev Mount Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void prevBottomEvent()
-        {
-            setMountModuleFromEditor(getNextCap(mountModules, currentMountModule, bottomNodeNames, true), true);
-        }
-
-        [KSPEvent(guiName = "Next Mount Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextBottomEvent()
-        {
-            setMountModuleFromEditor(getNextCap(mountModules, currentMountModule, bottomNodeNames, false), true);
         }
 
         [KSPEvent(guiName = "Next Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
@@ -218,6 +166,82 @@ namespace SSTUTools
             setMountTextureFromEditor(currentMountModule.getNextTextureSetName(currentMountTexture, false), true);
         }
 
+        public void tankDiameterUpdated(BaseField field, object obj)
+        {
+            if (prevTankDiameter != currentTankDiameter)
+            {
+                setTankDiameterFromEditor(currentTankDiameter, true);
+            }
+        }
+
+        public void tankHeightScaleUpdated(BaseField field, object obj)
+        {
+            if (prevTankHeightScale != currentTankVerticalScale)
+            {
+                setTankScaleFromEditor(currentTankVerticalScale, true);
+            }
+        }
+
+        public void noseTypeUpdated(BaseField field, object obj)
+        {
+            if (prevNose != currentNoseType || currentNoseModule.name!=currentNoseType)
+            {
+                setNoseModuleFromEditor(currentNoseType, true);
+            }
+        }
+
+        public void tankTypeUpdated(BaseField field, object obj)
+        {
+            if (prevTank != currentTankType || currentMainTankModule.name!=currentTankType)
+            {
+                setMainTankModuleFromEditor(currentTankType, true);
+            }
+        }
+
+        public void mountTypeUpdated(BaseField field, object obj)
+        {
+            if (prevMount != currentMountType || currentMountModule.name!=currentMountType)
+            {
+                setMountModuleFromEditor(currentMountType, true);
+            }
+        }
+        
+        private void updateAvailableVariants()
+        {
+            List<String> availNoseTypes = new List<string>();
+            List<String> availMountTypes = new List<string>();
+            int len = noseModules.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (noseModules[i].canSwitchTo(part, topNodeNames)) { availNoseTypes.Add(noseModules[i].name); }
+            }
+            len = mountModules.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (mountModules[i].canSwitchTo(part, bottomNodeNames)) { availMountTypes.Add(mountModules[i].name); }
+            }
+            noseVariants = availNoseTypes.ToArray();
+            mountVariants = availMountTypes.ToArray();
+            this.updateUIChooseOptionControl("currentNoseType", noseVariants, noseVariants, true, currentNoseType);
+            this.updateUIChooseOptionControl("currentMountType", mountVariants, mountVariants, true, currentMountType);
+            Fields["currentNoseType"].guiActiveEditor = noseVariants.Length>1;
+            Fields["currentMountType"].guiActiveEditor = mountVariants.Length>1;
+        }
+
+        private void updateUIScaleControls()
+        {
+            float min = 0.5f;
+            float max = 1.5f;
+            min = currentMainTankModule.minVerticalScale;
+            max = currentMainTankModule.maxVerticalScale;
+            float diff = max - min;
+            if (diff > 0)
+            {
+                this.updateUIFloatEditControl("currentTankVerticalScale", min, max, diff*0.5f, diff*0.25f, diff*0.05f, true, currentTankVerticalScale);
+            }
+            Fields["currentTankVerticalScale"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
+        }
+
         private void setFuelTypeFromEditor(FuelTypeData newFuelType, bool updateSymmetry)
         {
             if (!canChangeFuelType()) { return; }
@@ -236,59 +260,61 @@ namespace SSTUTools
                 }
                 if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
+            SSTUStockInterop.fireEditorUpdate();
         }
 
-        private void setNoseModuleFromEditor(MountModelData newModule, bool updateSymmetry)
+        private void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
         {
+            MountModelData newModule = Array.Find(noseModules, m => m.name == newNoseType);
             currentNoseModule.destroyCurrentModel();
             currentNoseModule = newModule;
-            newModule.setupModel(part, getRootTransform(false), ModelOrientation.TOP);
+            newModule.setupModel(part, getNoseRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet; }
             currentNoseModule.enableTextureSet(currentNoseTexture);
-
             updateEditorStats(true);
-
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
-                    MountModelData mt = Array.Find(mft.noseModules, t => t.name == newModule.name);
-                    mft.setNoseModuleFromEditor(mt, false);
+                    p.GetComponent<SSTUModularFuelTank>().setNoseModuleFromEditor(newNoseType, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        private void setMainTankModuleFromEditor(SingleModelData newModule, bool updateSymmetry)
+        private void setMainTankModuleFromEditor(String newMainTank, bool updateSymmetry)
         {
+            SingleModelData newModule = Array.Find(mainTankModules, m => m.name == newMainTank);
             currentMainTankModule.destroyCurrentModel();
             currentMainTankModule = newModule;
-            currentMainTankModule.setupModel(part, getRootTransform(false), ModelOrientation.CENTRAL);
+            currentMainTankModule.setupModel(part, getTankRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.modelDefinition.defaultTextureSet; }
             currentMainTankModule.enableTextureSet(currentTankTexture);
 
+            updateUIScaleControls();
             updateEditorStats(true);
 
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
-                    SingleModelData mt = Array.Find(mft.mainTankModules, t => t.name == newModule.name);
-                    mft.setMainTankModuleFromEditor(mt, false);
+                    p.GetComponent<SSTUModularFuelTank>().setMainTankModuleFromEditor(newMainTank, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+
         }
 
-        private void setMountModuleFromEditor(MountModelData newModule, bool updateSymmetry)
+        private void setMountModuleFromEditor(String newMountType, bool updateSymmetry)
         {
+            MountModelData newModule = Array.Find(mountModules, m => m.name == newMountType);
             currentMountModule.destroyCurrentModel();
             currentMountModule = newModule;
-            newModule.setupModel(part, getRootTransform(false), ModelOrientation.BOTTOM);
+            newModule.setupModel(part, getMountRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
             currentMountModule.enableTextureSet(currentMountTexture);
@@ -299,26 +325,19 @@ namespace SSTUTools
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
-                    SSTUModularFuelTank mft = p.GetComponent<SSTUModularFuelTank>();
-                    MountModelData mt = Array.Find(mft.mountModules, t => t.name == newModule.name);
-                    mft.setMountModuleFromEditor(mt, false);
+                    p.GetComponent<SSTUModularFuelTank>().setMountModuleFromEditor(newMountType, false);
                 }
             }
-            if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void setTankDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter < minTankDiameter) { newDiameter = minTankDiameter; }
-            if (newDiameter > maxTankDiameter) { newDiameter = maxTankDiameter; }
-            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
-            float oldDiameter = currentTankDiameter;
+            float oldDiameter = prevTankDiameter;
             currentTankDiameter = newDiameter;
-
             restoreEditorFields();
-
             updateEditorStats(true);
-
             SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, oldDiameter, newDiameter);
 
             if (updateSymmetry)
@@ -327,24 +346,14 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankDiameterFromEditor(newDiameter, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void setTankScaleFromEditor(float editorScaleValue, bool updateSymmetry)
-        {
-            float newScale = 1;
-            float maxDelta = 0f;
-            if (editorScaleValue < 0)
-            {
-                maxDelta = 1.0f - currentMainTankModule.minVerticalScale;
-            }
-            else
-            {
-                maxDelta = currentMainTankModule.maxVerticalScale - 1.0f;
-            }            
-            newScale = 1.0f + (maxDelta * editorScaleValue);
-            currentTankVerticalScale = newScale;
+        {      
+            currentTankVerticalScale = editorScaleValue;
 
             restoreEditorFields();
             updateEditorStats(true);
@@ -354,8 +363,9 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankScaleFromEditor(editorScaleValue, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
         private void setNoseTextureFromEditor(String newSet, bool updateSymmetry)
@@ -369,7 +379,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setNoseTextureFromEditor(newSet, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
         
@@ -384,7 +393,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularFuelTank>().setTankTextureFromEditor(newSet, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
         
@@ -399,7 +407,6 @@ namespace SSTUTools
                 {
                    p.GetComponent<SSTUModularFuelTank>().setMountTextureFromEditor(newSet, false);
                 }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
             }
         }
 
@@ -417,12 +424,23 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
+            float max = techLimitMaxDiameter < maxTankDiameter ? techLimitMaxDiameter : maxTankDiameter;
+            string[] names = SSTUUtils.getNames(mainTankModules, m => m.name);
+            this.updateUIChooseOptionControl("currentTankType", names, names, true, currentTankType);            
+            this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, max, tankDiameterIncrement*2, tankDiameterIncrement, tankDiameterIncrement*0.05f, true, currentTankDiameter);            
+            updateAvailableVariants();
+            updateUIScaleControls();
+            Fields["currentTankDiameter"].uiControlEditor.onFieldChanged = tankDiameterUpdated;
+            Fields["currentTankVerticalScale"].uiControlEditor.onFieldChanged = tankHeightScaleUpdated;
+            Fields["currentTankType"].uiControlEditor.onFieldChanged = tankTypeUpdated;
+            Fields["currentNoseType"].uiControlEditor.onFieldChanged = noseTypeUpdated;
+            Fields["currentMountType"].uiControlEditor.onFieldChanged = mountTypeUpdated;
             if (canChangeInFlight)
             {
                 Events["nextFuelEvent"].guiActive = true;
                 Events["jettisonContentsEvent"].active = Events["jettisonContentsEvent"].guiActive = true;
             }
-            if (useRF)
+            if (SSTUModInterop.isRFInstalled())
             {
                 Events["nextFuelEvent"].active = false;
                 Fields["guiTankCost"].guiActiveEditor = false;
@@ -435,40 +453,35 @@ namespace SSTUTools
             }
             if (mainTankModules.Length <= 1)
             {
-                Events["nextTankEvent"].guiActiveEditor = false;
-                Events["prevTankEvent"].guiActiveEditor = false;
+                Fields["currentTankType"].guiActiveEditor = false;
             }
             if (noseModules.Length <= 1)
             {
-                Events["nextTopEvent"].guiActiveEditor = false;
-                Events["prevTopEvent"].guiActiveEditor = false;
+                Fields["currentNoseType"].guiActiveEditor = false;
             }
             if (mountModules.Length <= 1)
             {
-                Events["nextBottomEvent"].guiActiveEditor = false;
-                Events["prevBottomEvent"].guiActiveEditor = false;
+                Fields["currentMountType"].guiActiveEditor = false;
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
             if (HighLogic.LoadedSceneIsEditor)
             {
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
-            StartCoroutine(delayedDragUpdate());
-        }
-
-        private IEnumerator delayedDragUpdate()
-        {
-            yield return new WaitForFixedUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void Start()
         {
-            if (!initializedModule && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
-                initializedModule = true;
-                updateFairing();
+                if (!initializedFairing)
+                {
+                    initializedFairing = true;
+                    updateFairing();
+                }
             }
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
         /// <summary>
@@ -486,16 +499,18 @@ namespace SSTUTools
         /// </summary>
         /// <param name="defaultCost"></param>
         /// <returns></returns>
-        public float GetModuleCost(float defaultCost)
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            return currentTankCost;
+            return -defaultCost + currentTankCost;
         }
 
-        public float GetModuleMass(float defaultMass)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             return -defaultMass + currentTankMass;
         }
-        
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
         /// <summary>
         /// Overriden/defined in order to remove the on-editor-ship-modified event from the game-event callback queue
         /// </summary>
@@ -513,18 +528,7 @@ namespace SSTUTools
         /// <param name="ship"></param>
         public void onEditorVesselModified(ShipConstruct ship)
         {
-            if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (editorPrevTankDiameterAdjust != editorTankDiameterAdjust)
-            {
-                editorPrevTankDiameterAdjust = editorTankDiameterAdjust;
-                float newDiameter = editorTankWholeDiameter + (editorTankDiameterAdjust * tankDiameterIncrement);
-                setTankDiameterFromEditor(newDiameter, true);
-            }
-            else if (editorPrevTankHeightAdjust != editorTankHeightAdjust)
-            {
-                editorPrevTankHeightAdjust = editorTankHeightAdjust;                
-                setTankScaleFromEditor(editorTankHeightAdjust, true);
-            }
+            updateAvailableVariants();
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -649,13 +653,11 @@ namespace SSTUTools
         /// </summary>
         private void restoreEditorFields()
         {
-            float div = currentTankDiameter / tankDiameterIncrement;
-            float whole = (int)div;
-            float extra = div - whole;
-            editorTankWholeDiameter = whole * tankDiameterIncrement;
-            editorPrevTankDiameterAdjust = editorTankDiameterAdjust = extra;
-
-            editorPrevTankHeightAdjust = editorTankHeightAdjust;
+            prevTankDiameter = currentTankDiameter;
+            prevTankHeightScale = currentTankVerticalScale;
+            prevNose = currentNoseType;
+            prevMount = currentMountType;
+            prevTank = currentTankType;
         }
 
         /// <summary>
@@ -663,10 +665,9 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
-            Transform parentTransform = getRootTransform(true);
-            currentMainTankModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
-            currentNoseModule.setupModel(part, parentTransform, ModelOrientation.TOP);
-            currentMountModule.setupModel(part, parentTransform, ModelOrientation.BOTTOM);
+            currentMainTankModule.setupModel(part, getTankRootTransform(true), ModelOrientation.CENTRAL);
+            currentNoseModule.setupModel(part, getNoseRootTransform(true), ModelOrientation.TOP);
+            currentMountModule.setupModel(part, getMountRootTransform(true), ModelOrientation.BOTTOM);
         }
 
         #endregion ENDREGION - Initialization
@@ -683,14 +684,22 @@ namespace SSTUTools
             currentMainTankModule.updateScale(diameterScale, currentTankVerticalScale*diameterScale);
             currentNoseModule.updateScaleForDiameter(currentTankDiameter);
             currentMountModule.updateScaleForDiameter(currentTankDiameter);
+
             float totalHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
-            float startY = totalHeight * 0.5f;
+            float startY = totalHeight * 0.5f;//start at the top of the first tank
             startY -= currentNoseModule.currentHeight;
-            currentNoseModule.currentVerticalPosition = startY + currentNoseModule.currentHeightScale * currentNoseModule.modelDefinition.verticalOffset;
+
+            float offset = currentNoseModule.currentHeightScale * currentNoseModule.modelDefinition.verticalOffset;
+            if (currentNoseModule.modelDefinition.invertForTop) { offset = currentNoseModule.currentHeight-offset; }      
+            currentNoseModule.currentVerticalPosition = startY + offset;
+
             startY -= currentMainTankModule.currentHeight * 0.5f;
             currentMainTankModule.currentVerticalPosition = startY;
+
             startY -= currentMainTankModule.currentHeight * 0.5f;
-            currentMountModule.currentVerticalPosition = startY + currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;
+            offset = currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;
+            if (currentMountModule.modelDefinition.invertForBottom) { offset = currentMountModule.currentHeight-offset; }
+            currentMountModule.currentVerticalPosition = startY - offset;
         }
 
         private void updateModels()
@@ -704,7 +713,7 @@ namespace SSTUTools
         private void updateTankStats()
         {
             currentTankVolume = currentMainTankModule.getModuleVolume() + currentNoseModule.getModuleVolume() + currentMountModule.getModuleVolume();
-            if (useRF)
+            if (SSTUModInterop.isRFInstalled())
             {
                 SSTUModInterop.onPartFuelVolumeUpdate(part, currentTankVolume);
             }
@@ -713,23 +722,32 @@ namespace SSTUTools
                 currentTankVolume = currentFuelTypeData.getUsableVolume(currentTankVolume);
                 currentTankMass = currentFuelTypeData.getTankageMass(currentTankVolume);
                 currentTankCost = currentFuelTypeData.getDryCost(currentTankVolume) + currentFuelTypeData.getResourceCost(currentTankVolume);
-                part.mass = currentTankMass;
             }
             updateGuiState();
         }
 
         private void removeExistingModels()
         {
-            Transform toDelete = part.transform.FindRecursive(rootTransformName);
-            if (toDelete != null)
-            {
-                GameObject.DestroyImmediate(toDelete.gameObject);
-            }
+            //Transform toDelete = part.transform.FindRecursive(rootTransformName);
+            //if (toDelete != null)
+            //{
+            //    GameObject.DestroyImmediate(toDelete.gameObject);
+            //}
+            //toDelete = part.transform.FindRecursive(rootNoseTransformName);
+            //if (toDelete != null)
+            //{
+            //    GameObject.DestroyImmediate(toDelete.gameObject);
+            //}
+            //toDelete = part.transform.FindRecursive(rootMountTransformName);
+            //if (toDelete != null)
+            //{
+            //    GameObject.DestroyImmediate(toDelete.gameObject);
+            //}
         }
 
         private bool canChangeFuelType()
         {
-            if (useRF) { return false; }
+            if (SSTUModInterop.isRFInstalled()) { return false; }
             if (HighLogic.LoadedSceneIsFlight)
             {
                 if (!canChangeInFlight) { return false; }
@@ -753,7 +771,7 @@ namespace SSTUTools
 
         private void updatePartResources()
         {
-            if (useRF)
+            if (SSTUModInterop.isRFInstalled())
             {
                 return;
             }
@@ -775,8 +793,6 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
-            updateFlagTransform();
-
             currentNoseModule.enableTextureSet(currentNoseTexture);
             currentMainTankModule.enableTextureSet(currentTankTexture);
             currentMountModule.enableTextureSet(currentMountTexture);
@@ -790,21 +806,11 @@ namespace SSTUTools
             }
         }
 
-        private void updateFlagTransform()
-        {
-            SSTUFlagDecal[] decals = part.GetComponents<SSTUFlagDecal>();
-            foreach (SSTUFlagDecal decal in decals) { decal.updateFlagTransform(); }
-        }
-
         private void updateGuiState()
         {
             guiDryMass = currentTankMass;
             guiTankCost = currentTankCost;
             guiTankVolume = currentTankVolume;
-            guiTankDiameter = currentTankDiameter;
-            guiTankHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
-            Fields["editorTankHeightAdjust"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
-
             Events["nextTankTextureEvent"].guiActiveEditor = currentMainTankModule.modelDefinition.textureSets.Length>1;
             Events["nextNoseTextureEvent"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
@@ -848,12 +854,12 @@ namespace SSTUTools
             fairing.updateExternal(data);
         }
 
-        private Transform getRootTransform(bool recreate)
+        private Transform getTankRootTransform(bool recreate)
         {
             Transform root = part.transform.FindRecursive(rootTransformName);
             if (recreate && root!=null)
             {
-                GameObject.DestroyImmediate(root);
+                GameObject.DestroyImmediate(root.gameObject);
                 root = null;
             }
             if (root == null)
@@ -864,8 +870,40 @@ namespace SSTUTools
             return root;
         }
 
+        private Transform getNoseRootTransform(bool recreate)
+        {
+            Transform root = part.transform.FindRecursive(rootNoseTransformName);
+            if (recreate && root != null)
+            {
+                GameObject.DestroyImmediate(root.gameObject);
+                root = null;
+            }
+            if (root == null)
+            {
+                root = new GameObject(rootNoseTransformName).transform;
+            }
+            root.NestToParent(part.transform.FindRecursive("model"));
+            return root;
+        }
+
+        private Transform getMountRootTransform(bool recreate)
+        {
+            Transform root = part.transform.FindRecursive(rootMountTransformName);
+            if (recreate && root != null)
+            {
+                GameObject.DestroyImmediate(root.gameObject);
+                root = null;
+            }
+            if (root == null)
+            {
+                root = new GameObject(rootMountTransformName).transform;
+            }
+            root.NestToParent(part.transform.FindRecursive("model"));
+            return root;
+        }
+
         #endregion ENDREGION - Updating methods
-        
+
         private SingleModelData getNextTankLength(SingleModelData currentModule, bool iterateBackwards)
         {
             return SSTUUtils.findNext(mainTankModules, m => m == currentModule, iterateBackwards);

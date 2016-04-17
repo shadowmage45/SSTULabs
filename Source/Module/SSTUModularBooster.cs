@@ -77,19 +77,24 @@ namespace SSTUTools
 
         #region REGION - Persistent Variables
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentMainName;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float currentDiameter;
+
+        [KSPField(isPersistant = true, guiActiveEditor =true, guiName ="Nose"),
+         UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentNoseName;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nozzle"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNozzleName;
-
-        [KSPField(isPersistant = true)]
-        public String currentMainName;
         
-        [KSPField(isPersistant = true)]
-        public float currentDiameter;
-        
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal Offset"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
 
         [KSPField(isPersistant = true)]
@@ -107,10 +112,7 @@ namespace SSTUTools
 
         #endregion ENDREGION - Persistent variables
 
-        #region REGION - GUI Variables
-
-        [KSPField(guiName = "Diameter", guiActiveEditor = true)]
-        public float guiDiameter = 0f;
+        #region REGION - GUI Display Variables
 
         [KSPField(guiName = "Height", guiActiveEditor = true)]
         public float guiHeight = 0f;
@@ -127,22 +129,17 @@ namespace SSTUTools
         [KSPField(guiName = "Burn Tme", guiActiveEditor = true)]
         public float guiBurnTime = 0f;
 
-        [KSPField(guiName = "Diameter Adjust", guiActiveEditor = true, guiActive = false), UI_FloatRange(minValue = 0f, maxValue = 0.95f, stepIncrement = 0.05f)]
-        public float editorDiameterAdjust = 0f;
-
-        [KSPField(guiName = "Nozzle Angle", guiActiveEditor = true, guiActive = false), UI_FloatRange(minValue = -1f, maxValue = 1f, stepIncrement = 0.1f)]
-        public float editorNozzleAdjust = 0f;
-
         #endregion
 
         #region REGION - Private working variables
 
         private bool initialized = false;
 
-        private float editorDiameterWhole;
-        private float prevEditorDiameterAdjust;
-
-        private float prevEditorNozzleAdjust;
+        private float prevDiameter;
+        private float prevGimbal;
+        private string prevNose;
+        private string prevBody;
+        private string prevNozzle;
                 
         private FuelTypeData fuelTypeData;
 
@@ -158,70 +155,59 @@ namespace SSTUTools
 
         private float modifiedCost;
         private float modifiedMass;
-        public float prefabPartMass;
-        
+
         #endregion ENDREGION - Private working variables
 
         #region REGION - KSP GUI Interaction Methods
-
-        /// <summary>
-        /// Called when user presses the decrease diameter button in editor
-        /// </summary>
-        [KSPEvent(guiName = "Diameter --", guiActiveEditor = true, guiActive = false)]
-        public void prevDiameterEvent()
+        
+        public void onDiameterUpdated(BaseField field, object obj)
         {
-            updateDiameterFromEditor(currentDiameter - diameterIncrement, true);
+            if (currentDiameter != prevDiameter)
+            {
+                updateDiameterFromEditor(currentDiameter, true);
+            }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+        }
+        
+        public void onNoseUpdated(BaseField field, object obj)
+        {
+            if (currentNoseName != prevNose)
+            {
+                updateNoseFromEditor(currentNoseName, true);
+            }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        /// <summary>
-        /// Called when user presses the increase diameter button in editor
-        /// </summary>
-        [KSPEvent(guiName = "Diameter ++", guiActiveEditor = true, guiActive = false)]
-        public void nextDiameterEvent()
+        public void onBodyUpdated(BaseField field, object obj)
         {
-            updateDiameterFromEditor(currentDiameter + diameterIncrement, true);
+            if (currentMainName != prevBody)
+            {
+                updateMainModelFromEditor(currentMainName, true);
+            }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        [KSPEvent(guiName = "Length --", guiActiveEditor = true, guiActive = false)]
-        public void prevMainModelEvent()
+        public void onNozzleUpdated(BaseField field, object obj)
         {
-            SingleModelData d = SSTUUtils.findNext(mainModules, m => m.name == currentMainName, true);
-            updateMainModelFromEditor(d.name, true);
+            if (currentNozzleName != prevNozzle)
+            {
+                updateMountFromEditor(currentNozzleName, true);
+            }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        [KSPEvent(guiName = "Length ++", guiActiveEditor = true, guiActive = false)]
-        public void nextMainModelEvent()
+        public void onGimbalUpdated(BaseField field, object obj)
         {
-            SingleModelData d = SSTUUtils.findNext(mainModules, m => m.name == currentMainName, false);
-            updateMainModelFromEditor(d.name, true);
-        }
-
-        [KSPEvent(guiName = "Prev Nose", guiActiveEditor = true, guiActive = false)]
-        public void prevNoseModelEvent()
-        {
-            SingleModelData d = SSTUUtils.findNext(noseModules, m => m.name == currentNoseName, true);
-            updateNoseFromEditor(d.name, true);
-        }
-
-        [KSPEvent(guiName = "Next Nose", guiActiveEditor = true, guiActive = false)]
-        public void nextNoseModelEvent()
-        {
-            SingleModelData d = SSTUUtils.findNext(noseModules, m => m.name == currentNoseName, false);
-            updateNoseFromEditor(d.name, true);
-        }
-
-        [KSPEvent(guiName = "Prev Nozzle", guiActiveEditor = true, guiActive = false)]
-        public void prevMountModelEvent()
-        {
-            SingleModelData d = SSTUUtils.findNext(nozzleModules, m => m.name == currentNozzleName, true);
-            updateMountFromEditor(d.name, true);
-        }
-
-        [KSPEvent(guiName = "Next Nozzle", guiActiveEditor = true, guiActive = false)]
-        public void nextMountModelEvent()
-        {
-            SingleModelData d = SSTUUtils.findNext(nozzleModules, m => m.name == currentNozzleName, false);
-            updateMountFromEditor(d.name, true);
+            if (currentGimbalOffset != prevGimbal)
+            {
+                updateGimbalOffsetFromEditor(currentGimbalOffset, true);
+            }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         [KSPEvent(guiName = "Next Nose Texture", guiActiveEditor = true, guiActive = false)]
@@ -252,10 +238,6 @@ namespace SSTUTools
         /// <param name="updateSymmetry"></param>
         private void updateDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
-            float oldDiameter = currentDiameter;
             currentDiameter = newDiameter;
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -263,7 +245,7 @@ namespace SSTUTools
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
-            SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, oldDiameter, currentDiameter);
+            SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, prevDiameter, currentDiameter);
             updateEditorValues();
             updateThrustOutput();
             updateGui();
@@ -273,7 +255,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularBooster>().updateDiameterFromEditor(newDiameter, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -312,7 +293,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularBooster>().updateMainModelFromEditor(newModel, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -350,7 +330,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularBooster>().updateNoseFromEditor(newNose, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -389,6 +368,8 @@ namespace SSTUTools
             updateEngineISP();
             updateEditorValues();
             updateThrustOutput();
+            float val = currentNozzleModule.gimbalAdjustmentRange;
+            this.updateUIFloatEditControl("currentGimbalOffset", -val, val, 2f, 1f, 0.1f, true, currentGimbalOffset);
             updateGui();
 
             if (updateSymmetry)
@@ -397,7 +378,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularBooster>().updateMountFromEditor(newMount, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -420,7 +400,6 @@ namespace SSTUTools
                 {
                     p.GetComponent<SSTUModularBooster>().updateGimbalOffsetFromEditor(newOffset, false);
                 }
-                GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
         }
 
@@ -471,12 +450,33 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            if (HighLogic.LoadedSceneIsEditor)
+            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields["currentGimbalOffset"].uiControlEditor.onFieldChanged = onGimbalUpdated;
+            Fields["currentNoseName"].uiControlEditor.onFieldChanged = onNoseUpdated;
+            Fields["currentMainName"].uiControlEditor.onFieldChanged = onBodyUpdated;
+            Fields["currentNozzleName"].uiControlEditor.onFieldChanged = onNozzleUpdated;
+            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
+            this.updateUIFloatEditControl("currentGimbalOffset", -currentNozzleModule.gimbalAdjustmentRange, currentNozzleModule.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
+            string[] names = SSTUUtils.getNames(noseModules, m => m.name);
+            this.updateUIChooseOptionControl("currentNoseName", names, names, true, currentNoseName);
+            names = SSTUUtils.getNames(mainModules, m => m.name);
+            this.updateUIChooseOptionControl("currentMainName", names, names, true, currentMainName);
+            names = SSTUUtils.getNames(nozzleModules, m => m.name);
+            this.updateUIChooseOptionControl("currentNozzleName", names, names, true, currentNozzleName);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+            if (noseModules.Length <= 1)
             {
-                //GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
-                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+                Fields["currentNoseName"].guiActiveEditor = false;
             }
-            StartCoroutine(delayedDragUpdate());
+            if (nozzleModules.Length <= 1)
+            {
+                Fields["currentNozzleName"].guiActiveEditor = false;
+            }
+            if (mainModules.Length <= 1)
+            {
+                Fields["currentMainName"].guiActiveEditor = false;
+            }
         }
 
         public override void OnLoad(ConfigNode node)
@@ -484,8 +484,7 @@ namespace SSTUTools
             base.OnLoad(node);
             initialize();
         }
-
-        //TODO -- what?
+        
         public void Start()
         {
             updateGimbalOffset();
@@ -493,61 +492,19 @@ namespace SSTUTools
             updateGui();
         }
 
-        /// <summary>
-        /// Overriden/defined in order to remove the on-editor-ship-modified event from the game-event callback queue
-        /// </summary>
-        public void OnDestroy()
-        {
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
-        }
-
-        /// <summary>
-        /// Initializes a delayed update to the drag cube for this part
-        /// </summary>
-        /// <returns></returns>
-        private IEnumerator delayedDragUpdate()
-        {
-            yield return new WaitForFixedUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        /// <summary>
-        /// Event callback for when vessel is modified in the editor.  Used to know when the gui-fields for this module have been updated.
-        /// </summary>
-        /// <param name="ship"></param>
-        public void onEditorVesselModified(ShipConstruct ship)
-        {
-            if (!HighLogic.LoadedSceneIsEditor) { return; }
-            if (prevEditorDiameterAdjust != editorDiameterAdjust)
-            {             
-                prevEditorDiameterAdjust = editorDiameterAdjust;
-                float newDiameter = editorDiameterWhole * diameterIncrement + diameterIncrement * editorDiameterAdjust;
-                updateDiameterFromEditor(newDiameter, true);
-            }
-            if (prevEditorNozzleAdjust != editorNozzleAdjust)
-            {
-                prevEditorNozzleAdjust = editorNozzleAdjust;
-                float newOffset = editorNozzleAdjust * currentNozzleModule.gimbalAdjustmentRange;
-                updateGimbalOffsetFromEditor(newOffset, true);
-            }
-        }
-
         //IModuleCostModifier Override
-        public float GetModuleCost(float defaultCost)
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            //MonoBehaviour.print("default cost: " + defaultCost + " modified cost: " + modifiedCost);
             return -defaultCost + modifiedCost;
         }
 
         //IModuleMassModifier Override
-        public float GetModuleMass(float defaultMass)
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            //MonoBehaviour.print("defaultmass: " + defaultMass + " prefab mass: " + prefabPartMass + " modified mass: " + modifiedMass);
-            return -prefabPartMass + modifiedMass;
+            return -defaultMass + modifiedMass;
         }
+        public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+        public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         #endregion ENDREGION - Standard KSP Overrides
 
@@ -577,6 +534,7 @@ namespace SSTUTools
             }
             updateGui();
             updateTextureSets();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>
@@ -586,18 +544,11 @@ namespace SSTUTools
         /// </summary>
         private void updateEditorValues()
         {
-            float div = currentDiameter / diameterIncrement;
-            float whole = (int)div;
-            float extra = div - whole;
-            extra = SSTUUtils.roundTo(extra, 0.05f);
-            
-            editorDiameterWhole = whole;
-            editorDiameterAdjust = prevEditorDiameterAdjust = extra;
-
-            float max = currentNozzleModule.gimbalAdjustmentRange;
-            float percent = max == 0 ? 0 : currentGimbalOffset / max;
-            editorNozzleAdjust = percent;
-            prevEditorNozzleAdjust = editorNozzleAdjust;
+            prevDiameter = currentDiameter;
+            prevNose = currentNoseName;
+            prevBody = currentMainName;
+            prevNozzle = currentNozzleName;
+            prevGimbal = currentGimbalOffset;
         }
 
         /// <summary>
@@ -610,14 +561,10 @@ namespace SSTUTools
             GameObject thrustTransformGO = new GameObject(thrustTransformName);
             thrustTransformGO.transform.NestToParent(modelBase.transform);
             thrustTransformGO.SetActive(true);
-            //MonoBehaviour.print("SSTUModularBooster - Created reference thrust transform during prefab construction: " + thrustTransformGO);
 
             GameObject gimbalTransformGO = new GameObject(gimbalTransformName);
             gimbalTransformGO.transform.NestToParent(modelBase.transform);
             gimbalTransformGO.SetActive(true);
-            //MonoBehaviour.print("SSTUModularBooster - Created reference gimbal transform during prefab construction: " + gimbalTransformGO);
-
-            prefabPartMass = part.mass;
         }
 
         /// <summary>
@@ -955,8 +902,7 @@ namespace SSTUTools
             }
             float usableVolume = fuelTypeData.getUsableVolume(volume);
             float dryMass = fuelTypeData.getTankageMass(usableVolume);
-            part.mass = dryMass + currentNozzleModule.getModuleMass();
-            modifiedMass = part.mass;
+            modifiedMass = dryMass + currentNozzleModule.getModuleMass() + currentNoseModule.getModuleMass();
         }
 
         private void updatePartCost()
@@ -974,7 +920,6 @@ namespace SSTUTools
         private void updateGui()
         {
             guiHeight = currentMainModule.currentHeight;
-            guiDiameter = currentDiameter;
             if (useRF)
             {
                 Fields["guiDryMass"].guiActiveEditor = false;
@@ -984,7 +929,7 @@ namespace SSTUTools
             }
             else
             {
-                guiDryMass = part.mass;
+                guiDryMass = modifiedMass;
                 guiPropellantMass = fuelTypeData.getResourceMass(fuelTypeData.getUsableVolume(currentMainModule.getModuleVolume()));
 
                 ModuleEngines engine = part.GetComponent<ModuleEngines>();
@@ -1002,22 +947,6 @@ namespace SSTUTools
                     guiThrust = 0;
                     guiBurnTime = 0;
                 }
-            }
-
-            if (noseModules.Length <= 1)
-            {
-                Events["prevNoseModelEvent"].active = false;
-                Events["nextNoseModelEvent"].active = false;
-            }
-            if (nozzleModules.Length <= 1)
-            {
-                Events["prevMountModelEvent"].active = false;
-                Events["nextMountModelEvent"].active = false;
-            }
-            if (mainModules.Length <= 1)
-            {
-                Events["prevMainModelEvent"].active = false;
-                Events["nextMainModelEvent"].active = false;
             }
             Events["nextNoseTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextNozzleTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
