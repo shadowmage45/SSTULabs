@@ -117,27 +117,27 @@ namespace SSTUTools
 
         #region REGION - GUI Visible Config Fields
 
-        [KSPField(guiActiveEditor = true, guiName ="Opacity"), UI_Toggle(disabledText ="Opaque", enabledText = "Transparent", suppressEditorShipModified = true)]
+        [KSPField(isPersistant =true, guiActiveEditor = true, guiName ="Opacity"), UI_Toggle(disabledText ="Opaque", enabledText = "Transparent", suppressEditorShipModified = true)]
         public bool editorTransparency = true;
 
         /// <summary>
         /// Number of sections for the fairing, only enabled for editing if 'canAdjustSections' == true
         /// </summary>
-        [KSPField(guiActiveEditor = true, guiName = "Fairing Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f, suppressEditorShipModified = true)]
+        [KSPField(guiActiveEditor = true, guiName = "Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f, suppressEditorShipModified = true)]
         public float numOfSections = 1;
 
         [KSPField(guiName = "Top Diam", guiActiveEditor = true),
          UI_FloatEdit(sigFigs =4, suppressEditorShipModified = true)]
         public float guiTopDiameter = 1.25f;
 
-        [KSPField(guiName = "Bottom Diam", guiActiveEditor = true),
+        [KSPField(guiName = "Bot. Diam", guiActiveEditor = true),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float guiBottomDiameter = 1.25f;
 
         [KSPField(isPersistant = true)]
         public String currentTextureSet = String.Empty;
 
-        [KSPField(isPersistant = true, guiName ="Colliders", guiActiveEditor = true), UI_Toggle(disabledText = "No", enabledText = "Yes", suppressEditorShipModified = true)]
+        [KSPField(isPersistant = true, guiName ="Colliders", guiActiveEditor = true), UI_Toggle(disabledText = "Disabled", enabledText = "Enabled", suppressEditorShipModified = true)]
         public bool generateColliders = false;
 
         #endregion
@@ -187,7 +187,6 @@ namespace SSTUTools
         /// If not null, will be applied during initialization or late update tick
         /// </summary>
         private FairingUpdateData externalUpdateData = null;
-        private FairingUpdateData internalUpdateData = null;
 
         //private vars set from examining the individual fairing sections; these basically control gui enabled/disabled status
         private bool enableBottomDiameterControls;

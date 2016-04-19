@@ -539,8 +539,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-
-            removeExistingModels();
+            
             loadConfigData();
             TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
@@ -698,7 +697,10 @@ namespace SSTUTools
 
             startY -= currentMainTankModule.currentHeight * 0.5f;
             offset = currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;
-            if (currentMountModule.modelDefinition.invertForBottom) { offset = currentMountModule.currentHeight-offset; }
+            if (!currentMountModule.modelDefinition.invertForBottom)
+            {
+                offset = currentMountModule.currentHeight - offset;
+            }
             currentMountModule.currentVerticalPosition = startY - offset;
         }
 
@@ -724,25 +726,6 @@ namespace SSTUTools
                 currentTankCost = currentFuelTypeData.getDryCost(currentTankVolume) + currentFuelTypeData.getResourceCost(currentTankVolume);
             }
             updateGuiState();
-        }
-
-        private void removeExistingModels()
-        {
-            //Transform toDelete = part.transform.FindRecursive(rootTransformName);
-            //if (toDelete != null)
-            //{
-            //    GameObject.DestroyImmediate(toDelete.gameObject);
-            //}
-            //toDelete = part.transform.FindRecursive(rootNoseTransformName);
-            //if (toDelete != null)
-            //{
-            //    GameObject.DestroyImmediate(toDelete.gameObject);
-            //}
-            //toDelete = part.transform.FindRecursive(rootMountTransformName);
-            //if (toDelete != null)
-            //{
-            //    GameObject.DestroyImmediate(toDelete.gameObject);
-            //}
         }
 
         private bool canChangeFuelType()

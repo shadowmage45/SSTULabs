@@ -98,7 +98,7 @@ namespace SSTUTools.Module
         [KSPField]
         public bool shieldsParts = true;
                 
-        [KSPField(guiName = "Editor Transparency", guiActiveEditor = true), UI_Toggle(enabledText = "On", disabledText = "Off", suppressEditorShipModified = true)]
+        [KSPField(isPersistant =true, guiName = "Transparency", guiActiveEditor = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool editorTransparency = true;
 
         [KSPField(guiName = "Colliders", guiActiveEditor = true, isPersistant = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
@@ -108,11 +108,11 @@ namespace SSTUTools.Module
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentHeight = 1.0f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Top Diameter"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Top Diam"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentTopDiameter = 2.5f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Bottom Diameter"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Bot. Diam"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentBottomDiameter = 2.5f;
 

@@ -121,7 +121,7 @@ namespace SSTUTools.Module
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, height);
-            this.updateUIFloatEditControl("diameter", max, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
+            this.updateUIFloatEditControl("diameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
             locateTransforms();
             updateModelScales();
             updateModelPositions();

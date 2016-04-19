@@ -12,7 +12,7 @@ namespace SSTUTools
     /// </summary>
     public class ContainerDefinition
     {
-        public readonly string name = "custom";// user config specified tank name; used to display the name and for ease of MM node patching
+        public readonly string name = "Main";// config specified tank name; used to display the name and for ease of MM node patching
         public readonly string[] availableResources;// user config specified resources
         public readonly string[] resourceSets;// user config specified resource sets
         public readonly string[] tankModifierNames;// user config specified tank mods
@@ -25,17 +25,23 @@ namespace SSTUTools
         public readonly string defaultModifier;// the default tank modifier; set to first modifier if it is blank or invalid
 
         public readonly string[] applicableResources;
-        public readonly ContainerVolumeData[] tankData;
-        public readonly ContainerModifier[] modifiers;
         public readonly ContainerFuelPreset[] fuelPresets;
+        public readonly ContainerModifier[] modifiers;
 
-        public string currentModifier;
-        public string currentFuelPreset;
-        public float currentRawVolume;
-        public float currentUsableVolume;
+        private SubContainerDefinition[] subContainerData;
+        private Dictionary<string, SubContainerDefinition> subContainersByName = new Dictionary<string, SubContainerDefinition>();
 
-        private float currentContainerMass = -1;
-        private float currentContainerCost = -1;
+        private ContainerModifier currentModifier;
+        private string currentFuelPreset;
+        private float currentRawVolume;
+        private float currentUsableVolume;
+        private string currentModifierName;
+        private float currentResourceMass;
+        private float currentResourceCost;
+        private float currentContainerMass;
+        private float currentContainerCost;
+        private int currentTotalRatio;
+        private bool resourcesDirty = false;
 
         public ContainerDefinition(ConfigNode node, float tankTotalVolume)
         {
@@ -80,10 +86,11 @@ namespace SSTUTools
 
             //setup volume data
             len = applicableResources.Length;
-            tankData = new ContainerVolumeData[len];
+            subContainerData = new SubContainerDefinition[len];
             for (int i = 0; i < len; i++)
             {
-                tankData[i] = new ContainerVolumeData(applicableResources[i]);
+                subContainerData[i] = new SubContainerDefinition(this, applicableResources[i]);
+                subContainersByName.Add(subContainerData[i].name, subContainerData[i]);
             }
 
             //setup preset data
@@ -95,87 +102,117 @@ namespace SSTUTools
                 if (presets[i].applicable(applicableResources)) { usablePresets.Add(presets[i]); }
             }
             fuelPresets = usablePresets.ToArray();
-            currentModifier = defaultModifier;
-            updateVolume(tankTotalVolume);
-            initializeDefaults();
+            currentModifierName = defaultModifier;
+            currentModifier = internalGetModifier(currentModifierName);
+            currentRawVolume = tankTotalVolume * percentOfTankVolume;
+            internalInitializeDefaults();
             MonoBehaviour.print("Loaded container with percent volume of: " + percentOfTankVolume);
-        }
-
-        /// <summary>
-        /// return cached mass value for the dry tank; update first if currently invalid
-        /// </summary>
-        public float currentMass
-        {
-            get
-            {
-                if (currentContainerMass == -1) { updateContainerMass(); }
-                return currentContainerMass;
-            }
-        }
-
-        /// <summary>
-        /// return cached cost value for the dry tank; update first if currently invalid
-        /// </summary>
-        public float currentCost
-        {
-            get
-            {
-                if (currentContainerCost == -1) { updateContainerCost(); }
-                return currentContainerCost;
-            }
         }
 
         public void load(ConfigNode node)
         {
-            currentModifier = node.GetStringValue("modifier");
+            currentModifierName = node.GetStringValue("modifier");
             currentFuelPreset = node.GetStringValue("preset");
             currentRawVolume = node.GetFloatValue("volume");
-            int len = tankData.Length;
+            int len = subContainerData.Length;
             ConfigNode[] dataNodes = node.GetNodes("TANK");
             for (int i = 0; i < len; i++)
             {
-                tankData[i].load(dataNodes[i]);
+                subContainerData[i].load(dataNodes[i]);
             }
         }
 
         public void save(ConfigNode node)
         {
-            node.AddValue("modifier", currentModifier);
+            node.AddValue("modifier", currentModifierName);
             node.AddValue("preset", currentFuelPreset);
             node.AddValue("volume", currentRawVolume);
-            int len = tankData.Length;
+            int len = subContainerData.Length;
             ConfigNode saveData;
             for (int i = 0; i < len; i++)
             {
                 saveData = new ConfigNode("TANK");
-                tankData[i].save(saveData);
+                subContainerData[i].save(saveData);
                 node.AddNode(saveData);
             }
         }
 
-        public void updateVolume(float tankRawTotal)
+        public int totalRatio { get { return currentTotalRatio; } }
+
+        public float containerMass{ get { return currentContainerMass; } }
+        
+        public float containerCost{ get { return currentContainerCost; } }
+
+        public float resourceMass { get { return currentResourceMass; } }
+
+        public float resourceCost { get { return currentResourceCost; } }
+
+        public int getResourceRatio(string name) { return internalGetVolumeData(name).unitRatio; }
+
+        public float getResourceVolume(string name) { return internalGetVolumeData(name).resourceVolume; }
+
+        public float getResourceUnits(string name) { return internalGetVolumeData(name).resourceUnits; }
+
+        public float rawVolume { get { return currentRawVolume; } }
+
+        public float usableVolume { get { return currentUsableVolume; } }
+
+        public string fuelPreset { get { return currentFuelPreset; } }
+
+        public int Length { get { return subContainerData.Length; } }
+
+        public bool isDirty { get { return resourcesDirty; } }
+
+        public void clearDirty() { resourcesDirty = false; }
+
+        public ContainerModifier getCurrentModifier() { return currentModifier; }
+        
+        public string[] getResourceNames()
         {
-            ContainerModifier mod = getModifier(currentModifier);
-            currentRawVolume = tankRawTotal * percentOfTankVolume;            
-            currentUsableVolume = (currentRawVolume - (currentRawVolume * tankageVolume)) * mod.volumeModifier;
-            MonoBehaviour.print("updated current volume: " + currentUsableVolume + " from raw volume: " + tankRawTotal);
-            updateTankVolumes();
+            int len = subContainerData.Length;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = subContainerData[i].name;
+            }
+            return names;
         }
 
-        public void updateTankParameters()
+        public void getResources(SSTUResourceList list)
         {
-            updateTankVolumes();
-            updateContainerMass();
-            updateContainerCost();
+            int len = subContainerData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                list.addResource(subContainerData[i].name, subContainerData[i].resourceUnits);
+            }
         }
 
-        /// <summary>
-        /// Reset this container to its default resource ratios from the default fuel type specified in its config
-        /// </summary>
-        public void resetTankResources()
+        public void setModifier(ContainerModifier mod)
         {
-            clearRatios();
-            initializeDefaults();
+            currentModifierName = mod.name;
+            currentModifier = mod;
+            internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
+            resourcesDirty = true;
+        }
+
+        public void setResourceRatio(string name, int newRatio)
+        {
+            internalGetVolumeData(name).setRatio(newRatio);
+            MonoBehaviour.print("Updated ratio for: " + name + " to: " + newRatio);
+            internalUpdateTotalRatio();
+            internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
+            resourcesDirty = true;
+        }
+
+        public void setContainerVolume(float partRawVolume)
+        {
+            currentRawVolume = partRawVolume * percentOfTankVolume;
+            internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
+            resourcesDirty = true;
+            MonoBehaviour.print("updated current volume: " + currentUsableVolume + " from raw volume: " + partRawVolume);
         }
 
         /// <summary>
@@ -183,10 +220,10 @@ namespace SSTUTools
         /// Intended to be used by the 'Next Fuel Type' buttons on the base part GUI
         /// </summary>
         /// <param name="preset"></param>
-        public void setPresetRatio(ContainerFuelPreset preset)
+        public void setFuelPreset(ContainerFuelPreset preset)
         {
             currentFuelPreset = preset.name;
-            clearRatios();
+            internalClearRatios();
             addPresetRatios(preset);
         }
 
@@ -197,113 +234,181 @@ namespace SSTUTools
         public void addPresetRatios(ContainerFuelPreset preset)
         {
             int len = preset.resourceRatios.Length;
-            ContainerVolumeData tank;
             ContainerResourceRatio ratio;
             for (int i = 0; i < len; i++)
             {
                 ratio = preset.resourceRatios[i];
-                tank = getVolumeData(ratio.resourceName);
-                tank.setRatio(tank.ratio + ratio.resourceRatio);       
+                internalGetVolumeData(ratio.resourceName).addRatio(ratio.resourceRatio);
             }
-            updateTankParameters();
+            internalUpdateTotalRatio();
+            internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
+            resourcesDirty = true;
         }
 
-        public void addResources(SSTUResourceList list)
+        private void internalUpdateMassAndCost()
         {
-            int len = tankData.Length;
+            MonoBehaviour.print("internalUpdateMassAndCost");
+            currentResourceMass = 0;
+            int len = subContainerData.Length;
             for (int i = 0; i < len; i++)
             {
-                list.addResource(tankData[i].name, tankData[i].units);
+                currentResourceMass += subContainerData[i].resourceMass;
             }
-        }
-
-        private void updateContainerCost()
-        {
-            float cost = 0;
-            int len = tankData.Length;
-            for (int i = 0; i < len; i++)
+                        
+            currentContainerMass = 0;
+            float tempMass;
+            if (currentModifier.useVolumeForMass)//should most notably be used for structural tank types; any resource-containing tank should use the max resource mass * mass fraction
             {
-                cost += tankData[i].getResourceCost();
-            }
-            ContainerModifier mod = getModifier(currentModifier);
-            cost += (costPerDryTon * mod.costModifier) * currentContainerMass;
-            currentContainerCost = cost;
-        }
-
-        private void updateContainerMass()
-        {
-            float mass = 0;
-            ContainerModifier mod = getModifier(currentModifier);
-            if (mod.useVolumeForMass)//should most notably be used for structural tank types; any resource-containing tank should use the max resource mass * mass fraction
-            {
-                mass = currentUsableVolume;
+                tempMass = currentUsableVolume;
             }
             else
             {
-                mass = getResourceMass();
+                tempMass = currentResourceMass;
             }
-            mass = mass * mod.dryMassModifier * tankageMass;
-            currentContainerMass = mass;
-        }
+            currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
 
-        private float getResourceMass()
-        {
-            float mass = 0;
-            int len = tankData.Length;
+            currentResourceCost = 0;
             for (int i = 0; i < len; i++)
             {
-                mass += tankData[i].getResourceMass();
+                currentResourceCost += subContainerData[i].resourceCost;
             }
-            return mass;
+            currentContainerCost = (costPerDryTon * currentModifier.costModifier) * currentResourceCost;
         }
 
-        private void updateTankVolumes()
+        private void internalUpdateVolumeUnits()
         {
-            float total = tankData.Sum(m => m.ratio);
-            if (total == 0)
+            MonoBehaviour.print("internalUpdateVolumeUnits!");
+            ContainerModifier mod = internalGetModifier(currentModifierName);
+            currentUsableVolume = (currentRawVolume - (currentRawVolume * tankageVolume)) * mod.volumeModifier;
+            MonoBehaviour.print("Usable volume: " + currentUsableVolume);
+            int total = currentTotalRatio;
+            MonoBehaviour.print("total ratio: " + currentTotalRatio);
+            int len = subContainerData.Length;
+            float vol=0;
+            for (int i = 0; i < len; i++)
             {
-                int len = tankData.Length;
-                for (int i = 0; i < len; i++)
+                if (total > 0)
                 {
-                    tankData[i].volume = 0;
-                    tankData[i].units = 0;
+                    vol = (float)subContainerData[i].unitRatio / (float)total;
+                    vol *= currentUsableVolume;                    
                 }
-            }
-            else
-            {
-                int len = tankData.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    tankData[i].volume = ((float)tankData[i].ratio / total) * currentUsableVolume;
-                    tankData[i].units = tankData[i].volume / tankData[i].def.volume;
-                }
+                subContainerData[i].setVolume(vol);
+                MonoBehaviour.print("setting volume for: " + subContainerData[i].name + "  to: " + vol);
             }
         }
 
-        private void initializeDefaults()
+        private void internalUpdateTotalRatio()
         {
+            currentTotalRatio = 0;
+            int len = subContainerData.Length;
+            for (int i = 0; i < len; i++) { currentTotalRatio += subContainerData[i].unitRatio; }
+            MonoBehaviour.print("internalUpdateTotalRatio :: "+currentTotalRatio);
+        }
+
+        /// <summary>
+        /// UNSAFE; MUST MANUALLY UPDATE AFTER CALLING THIS METHOD...
+        /// </summary>
+        private void internalClearRatios()
+        {
+            MonoBehaviour.print("internalClearRatios");
+            int len = subContainerData.Length;
+            for (int i = 0; i < len; i++) { subContainerData[i].setRatio(0); }
+        }
+
+        private void internalInitializeDefaults()
+        {
+            MonoBehaviour.print("internalInitializeDefaults");
             if (!string.IsNullOrEmpty(defaultFuelPreset))
             {
-                addPresetRatios(getPreset(defaultFuelPreset));
+                currentFuelPreset = defaultFuelPreset;
+                setFuelPreset(internalGetFuelPreset(currentFuelPreset));
             }
             else//use default resource
             {
-                Array.Find(tankData, m => m.name == defaultResource).ratio = 1;
-                updateTankParameters();
+                internalClearRatios();
+                currentFuelPreset = "custom";
+                internalGetVolumeData(defaultResource).setRatio(1);
+                internalUpdateTotalRatio();
+                internalUpdateVolumeUnits();
+                internalUpdateMassAndCost();
+            }
+            resourcesDirty = true;
+        }
+
+        private SubContainerDefinition internalGetVolumeData(string resourceName) { return subContainersByName[resourceName]; }
+
+        private ContainerFuelPreset internalGetFuelPreset(string name) { return Array.Find(fuelPresets, m => m.name == name); }
+
+        private ContainerModifier internalGetModifier(string name) { return Array.Find(modifiers, m => m.name == name); }
+
+    }
+
+    /// <summary>
+    /// Persistent data storage class for a single resource for a single container
+    /// </summary>
+    public class SubContainerDefinition
+    {
+        private readonly ContainerDefinition container;
+        public readonly string name;//resource name
+        private readonly PartResourceDefinition def;//resource definition
+        private int ratio;//dimensionless ratio value        
+        private float volume;//actual volume computed for this resource container from the total ratio
+
+        public SubContainerDefinition(ContainerDefinition container, String name)
+        {
+            this.container = container;
+            this.name = name;
+            if (name != "structural")
+            {
+                def = PartResourceLibrary.Instance.resourceDefinitions[name];
+                if (def == null) { throw new NullReferenceException("Resource definition was null for name: " + name); }
             }
         }
 
-        private void clearRatios()
+        public float resourceMass { get { return resourceUnits * unitMass; } }
+
+        public float resourceCost { get { return resourceUnits * unitCost; } }
+
+        public float resourceVolume { get { return volume; } }
+
+        public float resourceUnits { get { return volume / unitVolume; } }
+
+        public int unitRatio { get { return ratio; } }
+
+        public float unitVolume { get { return def == null ? 1 : def.volume; } }
+
+        public float unitMass { get { return def == null ? 0.001f : def.density; } }
+
+        public float unitCost { get { return def == null ? 100 : def.unitCost; } }
+
+        public void load(ConfigNode node)
         {
-            int len = tankData.Length;
-            for (int i = 0; i < len; i++) { tankData[i].ratio = 0; }
+            ratio = node.GetIntValue("ratio");
         }
 
-        private ContainerVolumeData getVolumeData(string resourceName) { return Array.Find(tankData, m => m.name == resourceName); }
+        public void save(ConfigNode node)
+        {
+            node.AddValue("ratio", ratio);
+        }
 
-        private ContainerFuelPreset getPreset(string name) { return Array.Find(fuelPresets, m => m.name == name); }
+        public void addRatio(int addRatio)
+        {
+            setRatio(ratio + addRatio);
+        }
 
-        private ContainerModifier getModifier(string name) { return Array.Find(modifiers, m => m.name == name); }
+        public void setVolume(float volume)
+        {
+            this.volume = volume;
+            MonoBehaviour.print("set container to volume: " + volume + " for resource: " + name);
+        }
+
+        public void setRatio(int ratio)
+        {
+            this.ratio = ratio;
+            if (ratio == 0) { volume = 0; }
+            MonoBehaviour.print("set container ratio to: " + ratio + " for resource: " + name);
+        }
 
     }
 
@@ -336,60 +441,6 @@ namespace SSTUTools
             boiloffModifier = node.GetFloatValue("boiloffModifier", boiloffModifier);
             boiloffECConsumption = node.GetFloatValue("boiloffECModifier", boiloffECConsumption);
             useVolumeForMass = node.GetBoolValue("useVolumeForMass", useVolumeForMass);
-        }
-    }
-    
-    /// <summary>
-    /// Persistent data storage class for a single resource for a single container
-    /// </summary>
-    public class ContainerVolumeData
-    {
-        public readonly string name;//resource name
-        public readonly PartResourceDefinition def;//resource definition
-        public int ratio;//dimensionless ratio value        
-        public float volume;//actual volume computed for this resource container from the total ratio
-        public float units;//units of resource for current volume
-
-        public ContainerVolumeData(String name)
-        {
-            this.name = name;
-            def = PartResourceLibrary.Instance.resourceDefinitions[name];
-            MonoBehaviour.print("loaded volume container for resource: " + name + " :: " + def);
-            if (def == null) { throw new NullReferenceException("Resource definition was null for name: " + name); }
-        }
-
-        public void load(ConfigNode node)
-        {
-            ratio = node.GetIntValue("ratio");
-        }
-
-        public void save(ConfigNode node)
-        {
-            node.AddValue("ratio", ratio);
-        }
-
-        public float getResourceCost()
-        {
-            if (units <= 0) { updateUnits(volume); }
-            return units * def.unitCost;
-        }
-
-        public float getResourceMass()
-        {
-            if (units <= 0) { updateUnits(volume); }
-            return units * def.density;
-        }
-
-        public void updateUnits(float volume)
-        {
-            float unitVolume = def.volume;
-            units = volume / unitVolume;
-        }
-
-        public void setRatio(int newRatio)
-        {
-            MonoBehaviour.print("updating ratio for: " + name + " to :" + newRatio);
-            ratio = newRatio;
         }
     }
 

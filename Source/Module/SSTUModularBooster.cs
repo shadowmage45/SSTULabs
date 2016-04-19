@@ -93,7 +93,7 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNozzleName;
         
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal Offset"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
 
@@ -205,6 +205,7 @@ namespace SSTUTools
             if (currentGimbalOffset != prevGimbal)
             {
                 updateGimbalOffsetFromEditor(currentGimbalOffset, true);
+                prevGimbal = currentGimbalOffset;
             }
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);

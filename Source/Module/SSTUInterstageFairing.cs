@@ -108,25 +108,25 @@ namespace SSTUTools
         [KSPField]
         public String uvMap = "NodeFairing";
 
-        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true)]
         public String currentTextureSet = String.Empty;
 
         /// <summary>
         /// Top diameter of the -fairing-
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Diameter"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Diam"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float topDiameter = 2.5f;
         
         /// <summary>
         /// Bottom diameter of the -model-; this is not necessarily the bottom diameter of the fairing
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Base Diameter"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Base Diam"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float bottomDiameter = 2.5f;
 
         //stored current height of the panels, used to recreate mesh on part reload, may be set in config to set the default starting height
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Total Height"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Tot. Height"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentHeight = 1.0f;
 
@@ -134,6 +134,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Taper Height"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentStraightHeight = 0f;
+
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true), UI_Toggle(enabledText ="Enabled", disabledText ="Disabled", suppressEditorShipModified = true)]
+        public bool jettisonPanels = false;
+
+        [KSPField(isPersistant =true)]
+        public bool panelsJettisoned = false;
 
         //are planels deployed and upper node decoupled?
         //toggled to true as soon as deploy action is activated
@@ -158,7 +164,7 @@ namespace SSTUTools
         [KSPField(guiName = "Fairing Mass", guiActiveEditor = true)]
         public float fairingMass;
 
-        [KSPField(guiName ="Editor Transparency", guiActiveEditor = true), UI_Toggle(enabledText ="On", disabledText ="Off", suppressEditorShipModified = true)]
+        [KSPField(isPersistant =true, guiName ="Editor Transparency", guiActiveEditor = true), UI_Toggle(enabledText ="On", disabledText ="Off", suppressEditorShipModified = true)]
         public bool editorTransparency = true;
 
         [KSPField(guiName = "Colliders", guiActiveEditor = true, isPersistant =true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
@@ -511,7 +517,7 @@ namespace SSTUTools
 
         private void setPanelRotations(float rotation)
         {
-            if (fairingBase != null)
+            if (fairingBase != null && !panelsJettisoned)
             {
                 fairingBase.setPanelRotations(rotation);
             }
@@ -519,7 +525,7 @@ namespace SSTUTools
 
         private void setPanelOpacity(float val)
         {
-            if (fairingBase != null) { fairingBase.setOpacity(val); }
+            if (fairingBase != null && !panelsJettisoned) { fairingBase.setOpacity(val); }
         }
 
         private void updateAnimation()
@@ -530,10 +536,18 @@ namespace SSTUTools
             if (currentRotation >= deployedRotation)
             {
                 currentRotation = deployedRotation;
+                setPanelRotations(deployedRotation);
                 animating = false;
                 updateShieldStatus();
+                if (jettisonPanels)
+                {
+                    jettisonFairingPanels();
+                }
             }
-            setPanelRotations(currentRotation);
+            else
+            {
+                setPanelRotations(currentRotation);
+            }
             updateDragCube();
         }
 
@@ -548,6 +562,12 @@ namespace SSTUTools
         private void enableEditorColliders(bool val)
         {
             fairingBase.enableEditorCollider(val);
+        }
+
+        private void jettisonFairingPanels()
+        {
+            panelsJettisoned = true;
+            fairingBase.jettisonPanels(part, 10, Vector3.forward, 0.1f);
         }
                 
         #endregion
@@ -579,22 +599,25 @@ namespace SSTUTools
         //create procedural panel sections for the current part configuration (radialSection count), with orientation set from base panel orientation
         private void createPanels()
         {
-            float modelFairingScale = defaultFairingDiameter / defaultModelDiameter;
-            float bottomRadius = bottomDiameter * modelFairingScale * 0.5f;
-            float topRadius = topDiameter * 0.5f;
-
-            fairingBase.clearProfile();
-            fairingBase.addRing(0, bottomRadius);
-            if (topRadius!=bottomRadius && currentStraightHeight < currentHeight)
+            if (!panelsJettisoned)
             {
-                fairingBase.addRing(currentStraightHeight, bottomRadius);
+                float modelFairingScale = defaultFairingDiameter / defaultModelDiameter;
+                float bottomRadius = bottomDiameter * modelFairingScale * 0.5f;
+                float topRadius = topDiameter * 0.5f;
+
+                fairingBase.clearProfile();
+                fairingBase.addRing(0, bottomRadius);
+                if (topRadius != bottomRadius && currentStraightHeight < currentHeight)
+                {
+                    fairingBase.addRing(currentStraightHeight, bottomRadius);
+                }
+                fairingBase.addRing(currentHeight, topDiameter * 0.5f);
+                fairingBase.generateColliders = this.generateColliders;
+                fairingBase.generateFairing();
+                fairingBase.setMaterial(fairingMaterial);
+                if (HighLogic.LoadedSceneIsEditor && editorTransparency) { setPanelOpacity(0.25f); }
+                else { setPanelOpacity(1.0f); }
             }
-            fairingBase.addRing(currentHeight, topDiameter * 0.5f);
-            fairingBase.generateColliders = this.generateColliders;
-            fairingBase.generateFairing();
-            fairingBase.setMaterial(fairingMaterial);
-            if (HighLogic.LoadedSceneIsEditor && editorTransparency) { setPanelOpacity(0.25f); }
-            else { setPanelOpacity(1.0f); }
         }
 
         private void recreateDragCubes()
@@ -771,8 +794,7 @@ namespace SSTUTools
             //this collider sits at the top of the fairing so that the payload properly snaps into position
             public GameObject editorCollider;
             public float editorColliderHeight = 0.1f;
-
-
+            
             public InterstageFairingContainer(GameObject root, int cylinderFaces, int numberOfPanels, float thickness) : base(root, cylinderFaces, numberOfPanels, thickness)
             {
 

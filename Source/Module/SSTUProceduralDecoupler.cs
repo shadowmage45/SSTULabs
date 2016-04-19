@@ -66,7 +66,7 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName = "Hollow Collider", guiActiveEditor = true), UI_Toggle(disabledText ="Disabled", enabledText ="Enabled")]
         public bool hollowCollider = false;
 
-        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true)]
         public String currentTextureSet = String.Empty;
 
         private float modifiedMass = 0;

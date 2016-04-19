@@ -104,7 +104,7 @@ namespace SSTUTools
         /// <summary>
         /// Used for adjusting the inter-engine spacing, this is a scale value that is applied to the config-specified engine spacing
         /// </summary>
-        [KSPField(guiName = "Engine Spacing", guiActive = false, guiActiveEditor = true),
+        [KSPField(guiName = "Spacing", guiActive = false, guiActiveEditor = true),
          //UI_FloatRange(minValue = -2.0f, maxValue = 2f, stepIncrement = 0.10f),
          UI_FloatEdit(sigFigs = 2, suppressEditorShipModified = true, minValue = -2, maxValue = 2, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.05f)]
         public float editorEngineSpacingAdjust = 0f;
@@ -112,7 +112,7 @@ namespace SSTUTools
         /// <summary>
         /// Determines the y-position of the engine model (and node position/fairing position).  Can be used to offset an engine inside of its included mount.
         /// </summary>
-        [KSPField(guiName = "Engine Height", guiActive = false, guiActiveEditor = true),
+        [KSPField(guiName = "Vert. Pos.", guiActive = false, guiActiveEditor = true),
          UI_FloatEdit(sigFigs =2, suppressEditorShipModified = true, minValue = -2, maxValue = 2, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.05f)]
         public float editorEngineHeightAdjust = 0f;
 
@@ -143,7 +143,7 @@ namespace SSTUTools
         /// <summary>
         /// Determines the current scale of the mount, persistent value.  Indirectly edited by user in the VAB
         /// </summary>
-        [KSPField(isPersistant = true, guiName = "Mount Diameter", guiActive = false, guiActiveEditor = true ),
+        [KSPField(isPersistant = true, guiName = "Mount Diam", guiActive = false, guiActiveEditor = true ),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true )]
         public float currentMountDiameter = 5;
 

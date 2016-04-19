@@ -33,6 +33,9 @@ namespace SSTUTools
         [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Tankage Volume")]
         public float tankageVolume;
 
+        [KSPField(isPersistant = true)]
+        public bool initializedResources = false;
+
         /// <summary>
         /// Persistent save data for containers
         /// </summary>
@@ -46,21 +49,20 @@ namespace SSTUTools
 
         //cached vars for GUI interaction
         private bool guiEnabled = false;
-        private bool needsResourceUpdate = false;
 
         [KSPEvent(guiName = "Next Fuel Type", guiActiveEditor = true)]
         public void nextFuelTypeEvent()
         {
             ContainerDefinition def = containers[0];
-            string current = def.currentFuelPreset;
+            string current = def.fuelPreset;
             ContainerFuelPreset preset = SSTUUtils.findNext(def.fuelPresets, m => m.name == current);            
             if (preset == null)//was using a custom ratio setup, reset it all
             {
-                def.setPresetRatio(def.fuelPresets[0]);
+                def.setFuelPreset(def.fuelPresets[0]);
             }
             else
             {
-                def.setPresetRatio(preset);
+                def.setFuelPreset(preset);
             }
             updateTankResources();
         }
@@ -92,6 +94,11 @@ namespace SSTUTools
             //disable next fuel event button if main container does not have more than one preset type available 
             BaseEvent nextFuelEvent = Events["nextFuelTypeEvent"];
             nextFuelEvent.active = containers[0].fuelPresets.Length > 1;
+
+            if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            {
+                updateTankResources();
+            }
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return -defaultMass + modifiedMass; }
@@ -156,29 +163,12 @@ namespace SSTUTools
         {
             MonoBehaviour.print("Preset added: " + fuelType.name);
             container.addPresetRatios(fuelType);
-            container.updateTankParameters();
-            needsResourceUpdate = true;
         }
 
         public void containerTypeUpdated(ContainerDefinition container, ContainerModifier newType)
         {
             MonoBehaviour.print("Modifier Updated: " + newType.name);
-            container.currentModifier = newType.name;
-            container.updateTankParameters();
-            needsResourceUpdate = true;            
-        }
-
-        public void containerRatioUpdated(ContainerDefinition container, ContainerVolumeData tank)
-        {
-            MonoBehaviour.print("Ratio updated: " + tank.ratio);
-            container.updateTankParameters();
-            needsResourceUpdate = true;
-        }
-        
-        public void containerReset(ContainerDefinition container)
-        {
-            container.resetTankResources();
-            needsResourceUpdate = true;
+            container.setModifier(newType);      
         }
         
         private void updateTankResources()
@@ -188,7 +178,7 @@ namespace SSTUTools
             int len = containers.Length;
             for (int i = 0; i < len; i++)
             {
-                containers[i].addResources(list);
+                containers[i].getResources(list);
             }
             list.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
             updateMassAndCost();
@@ -202,7 +192,7 @@ namespace SSTUTools
             int len = containers.Length;
             for (int i = 0; i < len; i++)
             {
-                containers[i].updateVolume(volume);
+                containers[i].setContainerVolume(volume);
             }
         }
         
@@ -219,9 +209,9 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 container = containers[i];
-                modifiedMass += container.currentMass;
-                modifiedCost += container.currentCost;
-                tankageVolume += (container.currentRawVolume - container.currentUsableVolume);
+                modifiedMass += container.containerMass;
+                modifiedCost += container.containerCost;
+                tankageVolume += (container.rawVolume - container.usableVolume);
             }
             tankageMass = modifiedMass;
             usableVolume = volume - tankageVolume;
@@ -232,9 +222,12 @@ namespace SSTUTools
             if (guiEnabled)
             {
                 VolumeContainerGUI.updateGUI();
-                if (needsResourceUpdate)
+                int len = containers.Length;
+                bool update = false;
+                for (int i = 0; i < len; i++) { if (containers[i].isDirty) { update = true; } }
+                if (update)
                 {
-                    needsResourceUpdate = false;
+                    for (int i = 0; i < len; i++) { containers[i].clearDirty(); }
                     updateTankResources();
                 }
             }
