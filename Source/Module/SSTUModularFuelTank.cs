@@ -28,10 +28,7 @@ namespace SSTUTools
 
         [KSPField]
         public float maxTankDiameter = 10f;
-
-        [KSPField]
-        public bool canChangeInFlight = false;
-        
+                
         [KSPField]
         public String techLimitSet = "Default";
 
@@ -44,14 +41,11 @@ namespace SSTUTools
         [KSPField]
         public String interstageNodeName = "interstage";
 
-        [KSPField(guiActiveEditor = true, guiName = "Tank Usable Vol. (m^3)")]
-        public float guiTankVolume = 0;
+        [KSPField]
+        public bool subtractMass = false;
 
-        [KSPField(guiActiveEditor = true, guiName = "Tank Dry Mass")]
-        public float guiDryMass = 0;
-
-        [KSPField(guiActiveEditor = true, guiName = "Tank Cost")]
-        public float guiTankCost = 0;
+        [KSPField]
+        public bool subtractCost = false;
 
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
         [KSPField(isPersistant = true)]
@@ -87,8 +81,9 @@ namespace SSTUTools
         public String currentMountTexture = String.Empty;
 
         /// <summary>
-        /// Used solely to track if resources have been initialized, as this should only happen once on first part creation (regardless of if it is created in flight or in the editor);
-        /// Unsure of any cleaner way to track a simple boolean value across the lifetime of a part, seems like the part-persistence data is probably it...
+        /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
+        /// checked and updated during OnStart, and should generally only run in the editor the first
+        /// time the part is ever initialized
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
@@ -120,9 +115,6 @@ namespace SSTUTools
 
         private MountModelData[] mountModules;
         private MountModelData currentMountModule;
-
-        private FuelTypeData[] fuelTypes;
-        private FuelTypeData currentFuelTypeData;
                 
         private String[] topNodeNames;
         private String[] bottomNodeNames;
@@ -135,18 +127,6 @@ namespace SSTUTools
         #endregion
 
         #region REGION - GUI Events/Interaction methods
-
-        [KSPEvent(guiName = "Jettison Contents", guiActive = false, guiActiveEditor = false, guiActiveUnfocused = false)]
-        public void jettisonContentsEvent()
-        {
-            emptyTankContents();
-        }
-
-        [KSPEvent(guiName = "Next Fuel Type", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextFuelEvent()
-        {
-            setFuelTypeFromEditor(SSTUUtils.findNext(fuelTypes, m => m == currentFuelTypeData, false), true);    
-        }
 
         [KSPEvent(guiName = "Next Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextTankTextureEvent()
@@ -240,27 +220,6 @@ namespace SSTUTools
                 this.updateUIFloatEditControl("currentTankVerticalScale", min, max, diff*0.5f, diff*0.25f, diff*0.05f, true, currentTankVerticalScale);
             }
             Fields["currentTankVerticalScale"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
-        }
-
-        private void setFuelTypeFromEditor(FuelTypeData newFuelType, bool updateSymmetry)
-        {
-            if (!canChangeFuelType()) { return; }
-            currentFuelTypeData = newFuelType;
-            currentFuelType = currentFuelTypeData.name;
-            updateTankStats();
-            updatePartResources();
-            if (updateSymmetry)
-            {
-                SSTUModularFuelTank tank = null;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    tank = p.GetComponent<SSTUModularFuelTank>();
-                    if (tank == null) { continue; }
-                    tank.setFuelTypeFromEditor(Array.Find(tank.fuelTypes, m => m.name == currentFuelType), false);
-                }
-                if (HighLogic.LoadedSceneIsEditor) { GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship); }
-            }
-            SSTUStockInterop.fireEditorUpdate();
         }
 
         private void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
@@ -435,22 +394,6 @@ namespace SSTUTools
             Fields["currentTankType"].uiControlEditor.onFieldChanged = tankTypeUpdated;
             Fields["currentNoseType"].uiControlEditor.onFieldChanged = noseTypeUpdated;
             Fields["currentMountType"].uiControlEditor.onFieldChanged = mountTypeUpdated;
-            if (canChangeInFlight)
-            {
-                Events["nextFuelEvent"].guiActive = true;
-                Events["jettisonContentsEvent"].active = Events["jettisonContentsEvent"].guiActive = true;
-            }
-            if (SSTUModInterop.isRFInstalled())
-            {
-                Events["nextFuelEvent"].active = false;
-                Fields["guiTankCost"].guiActiveEditor = false;
-                Fields["guiDryMass"].guiActiveEditor = false;
-                Fields["guiTankVolume"].guiActiveEditor = false;
-            }
-            if (fuelTypes.Length <= 1)
-            {
-                Events["nextFuelEvent"].guiActiveEditor = false;
-            }
             if (mainTankModules.Length <= 1)
             {
                 Fields["currentTankType"].guiActiveEditor = false;
@@ -481,6 +424,11 @@ namespace SSTUTools
                     updateFairing();
                 }
             }
+            if (!initializedResources && HighLogic.LoadedSceneIsEditor)
+            {
+                initializedResources = true;
+                updateContainerVolume();
+            }
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
@@ -501,13 +449,14 @@ namespace SSTUTools
         /// <returns></returns>
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            return -defaultCost + currentTankCost;
+            return subtractCost ? -defaultCost + currentTankCost : currentTankCost;
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            return -defaultMass + currentTankMass;
+            return subtractMass ? -defaultMass + currentTankMass : currentTankMass;
         }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
@@ -553,12 +502,6 @@ namespace SSTUTools
             restoreEditorFields();
             updateTankStats();
             updateAttachNodes(false);
-                        
-            if (!initializedResources && HighLogic.LoadedSceneIsEditor)
-            {
-                initializedResources = true;
-                updatePartResources();
-            }
         }
 
         /// <summary>
@@ -594,9 +537,7 @@ namespace SSTUTools
             }
             mountModules = mounts.ToArray();
             noseModules = noses.ToArray();
-            
-            fuelTypes = FuelTypeData.parseFuelTypeData(fuelNodes);
-                        
+                                    
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
             
@@ -622,16 +563,6 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: Could not locate mount type for: " + currentMountType + ". reverting to first available mount type.");
                 currentMountModule = mountModules[0];
                 currentMountType = currentMountModule.name;
-            }
-
-            currentFuelTypeData = Array.Find(fuelTypes, m => m.name == currentFuelType);
-            if (currentFuelTypeData == null)
-            {
-                MonoBehaviour.print("ERROR: Could not locate fuel type for: " + currentFuelType + ". reverting to first available fuel type.");
-                FuelTypeData d = fuelTypes[0];
-                currentFuelType = d.name;
-                currentFuelTypeData = d;
-                initializedResources = false;
             }
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture))
             {
@@ -689,19 +620,28 @@ namespace SSTUTools
             startY -= currentNoseModule.currentHeight;
 
             float offset = currentNoseModule.currentHeightScale * currentNoseModule.modelDefinition.verticalOffset;
-            if (currentNoseModule.modelDefinition.invertForTop) { offset = currentNoseModule.currentHeight-offset; }      
-            currentNoseModule.currentVerticalPosition = startY + offset;
+            if (currentNoseModule.modelDefinition.invertForTop)
+            {
+                currentNoseModule.currentVerticalPosition = startY - offset;
+            }
+            else
+            {
+                currentNoseModule.currentVerticalPosition = startY + offset;
+            }            
 
             startY -= currentMainTankModule.currentHeight * 0.5f;
             currentMainTankModule.currentVerticalPosition = startY;
 
             startY -= currentMainTankModule.currentHeight * 0.5f;
-            offset = currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;
-            if (!currentMountModule.modelDefinition.invertForBottom)
+            offset = currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;            
+            if (currentMountModule.modelDefinition.invertForBottom)
             {
-                offset = currentMountModule.currentHeight - offset;
+                currentMountModule.currentVerticalPosition = startY - offset;
             }
-            currentMountModule.currentVerticalPosition = startY - offset;
+            else
+            {
+                currentMountModule.currentVerticalPosition = startY + offset;
+            }
         }
 
         private void updateModels()
@@ -719,47 +659,9 @@ namespace SSTUTools
             {
                 SSTUModInterop.onPartFuelVolumeUpdate(part, currentTankVolume);
             }
-            else
-            {
-                currentTankVolume = currentFuelTypeData.getUsableVolume(currentTankVolume);
-                currentTankMass = currentFuelTypeData.getTankageMass(currentTankVolume);
-                currentTankCost = currentFuelTypeData.getDryCost(currentTankVolume) + currentFuelTypeData.getResourceCost(currentTankVolume);
-            }
+            currentTankMass = currentNoseModule.getModuleMass() + currentMainTankModule.getModuleMass() + currentMountModule.getModuleMass(); ;
+            currentTankCost = currentNoseModule.getModuleCost() + currentMainTankModule.getModuleCost() + currentMountModule.getModuleCost(); ;
             updateGuiState();
-        }
-
-        private bool canChangeFuelType()
-        {
-            if (SSTUModInterop.isRFInstalled()) { return false; }
-            if (HighLogic.LoadedSceneIsFlight)
-            {
-                if (!canChangeInFlight) { return false; }
-                foreach (PartResource res in part.Resources.list)
-                {
-                    if (res.amount > 0) { return false; }
-                }
-                return true;
-            }
-            return true;
-        }
-
-        private void emptyTankContents()
-        {
-            //TODO add in delayed timer, enforce button must be pressed twice in twenty seconds in order to trigger
-            foreach (PartResource res in part.Resources.list)
-            {
-                res.amount = 0;
-            }
-        }
-
-        private void updatePartResources()
-        {
-            if (SSTUModInterop.isRFInstalled())
-            {
-                return;
-            }
-            SSTUResourceList resourceList = currentFuelTypeData.getResourceList(guiTankVolume);
-            resourceList.setResourcesToPart(part, !HighLogic.LoadedSceneIsFlight);
         }
 
         private void updateEditorStats(bool userInput)
@@ -767,7 +669,7 @@ namespace SSTUTools
             updateModuleStats();
             updateModels();
             updateTankStats();
-            updatePartResources();
+            updateContainerVolume();
             updateTextureSet(false);
             updateAttachNodes(userInput);
             updateFairing();
@@ -789,11 +691,17 @@ namespace SSTUTools
             }
         }
 
+        private void updateContainerVolume()
+        {
+            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
+            if (container != null)
+            {
+                container.onVolumeUpdated(currentTankVolume * 1000f);
+            }
+        }
+
         private void updateGuiState()
         {
-            guiDryMass = currentTankMass;
-            guiTankCost = currentTankCost;
-            guiTankVolume = currentTankVolume;
             Events["nextTankTextureEvent"].guiActiveEditor = currentMainTankModule.modelDefinition.textureSets.Length>1;
             Events["nextNoseTextureEvent"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;

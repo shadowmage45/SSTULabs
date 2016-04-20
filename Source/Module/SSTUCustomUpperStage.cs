@@ -13,18 +13,6 @@ namespace SSTUTools
         /// </summary>
         [KSPField]
         public bool splitTank = true;
-        
-        /// <summary>
-        /// how much of the usable fuel volume is reserved for the reserve fuel type (for attitude control and fuel-cell use)
-        /// </summary>
-        [KSPField]
-        public float fuelReserveRatio = 0.025f;
-
-        /// <summary>
-        /// the type of fuel to use as the reserve fuel; may be any of the SSTUFuelTypes
-        /// </summary>
-        [KSPField]
-        public String reserveFuelType = "MP";
 
         /// <summary>
         /// How much is the 'height' incremented for every 'large' tank height step? - this value is further scaled based on the currently selected tank diameter
@@ -88,22 +76,10 @@ namespace SSTUTools
         public String defaultIntertank = String.Empty;
 
         /// <summary>
-        /// The default fuel type for a fresh part in the editor
-        /// </summary>
-        [KSPField]
-        public String defaultFuelType = String.Empty;
-
-        /// <summary>
         /// The thrust output of the RCS system at the default tank diameter; scaled using square-scaling methods to determine 
         /// </summary>
         [KSPField]
         public float defaultRcsThrust = 1;
-
-        /// <summary>
-        /// How much electric charge does the 'defaultDiameter' sized upper-stage hold?
-        /// </summary>
-        [KSPField]
-        public float defaultElectricCharge = 300;
 
         [KSPField]
         public int topFairingIndex = 0;
@@ -123,6 +99,12 @@ namespace SSTUTools
         [KSPField]
         public String techLimitSet = "Default";
 
+        [KSPField]
+        public bool subtractMass = false;
+
+        [KSPField]
+        public bool subtractCost = false;
+
         #endregion
 
         #region ----------------- REGION - GUI visible fields and fine tune adjustment contols - do not edit through config -----------------
@@ -132,13 +114,7 @@ namespace SSTUTools
         [KSPField(guiName = "Total Height", guiActive = false, guiActiveEditor = true)]
         public float guiTotalHeight;
 
-        [KSPField(guiName = "Total Volume", guiActive = false, guiActiveEditor = true)]
-        public float guiRawVolume;
-
-        [KSPField(guiName = "Usable Volume", guiActive = false, guiActiveEditor = true)]
-        public float guiFuelVolume;
-
-        [KSPField(guiName = "Dry Mass", guiActive = false, guiActiveEditor = true)]
+        [KSPField(guiName = "Tank Mass", guiActive = false, guiActiveEditor = true)]
         public float guiDryMass;
 
         [KSPField(guiName = "RCS Thrust", guiActive = false, guiActiveEditor = true)]
@@ -198,9 +174,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float currentRcsThrust = 0f;
 
-        [KSPField(isPersistant = true)]
-        public String currentFuelType = String.Empty;
-
         /// <summary>
         /// Used solely to track if resources have been initialized, as this should only happen once on first part creation (regardless of if it is created in flight or in the editor);
         /// Unsure of any cleaner way to track a simple boolean value across the lifetime of a part, seems like the part-persistence data is probably it...
@@ -229,10 +202,8 @@ namespace SSTUTools
 
         //cached values for updating of part volume and mass
         private float totalTankVolume = 0;
-        private float totalFuelVolume = 0;        
-        private float tankageMass = 0;
         private float moduleMass = 0;
-        private float tankCost = 0;
+        private float moduleCost = 0;
         private float rcsThrust = 0;
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
@@ -252,22 +223,11 @@ namespace SSTUTools
         private SingleModelData[] intertankModules;
         private SingleModelData currentIntertankModule;
         
-        private FuelTypeData[] fuelTypes;
-        private FuelTypeData currentFuelTypeData;
-        private FuelTypeData reserveFuelTypeData;
 
         private bool initialized = false;
         #endregion
 
         #region ----------------- REGION - GUI Interaction methods ----------------- 
-                
-        [KSPEvent(guiName = "Next Fuel Type", guiActive = false, guiActiveEditor = true, active = true)]
-        public void nextFuelTypeEvent()
-        {
-            FuelTypeData nextFuelType = SSTUUtils.findNext(fuelTypes, l => l == currentFuelTypeData, false);
-            updateFuelTypeFromEditor(nextFuelType, true);
-            SSTUStockInterop.fireEditorUpdate();
-        }
 
         [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextMountTextureEvent()
@@ -319,7 +279,7 @@ namespace SSTUTools
             updateModules(true);
             updateModels();
             updateTankStats();
-            updatePartResources();
+            updateContainerVolume();
             updateGuiState();
             if (updateSymmetry)
             {
@@ -340,7 +300,7 @@ namespace SSTUTools
             updateModules(true);
             updateModels();
             updateTankStats();
-            updatePartResources();
+            updateContainerVolume();
             updateGuiState();
             if (updateSymmetry)
             {
@@ -364,7 +324,7 @@ namespace SSTUTools
             updateModules(true);
             updateModels();
             updateFuelVolume();
-            updatePartResources();
+            updateContainerVolume();
             updateGuiState();
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
             currentMountModule.enableTextureSet(currentMountTexture);
@@ -390,33 +350,13 @@ namespace SSTUTools
             updateModules(true);
             updateModels();
             updateTankStats();
-            updatePartResources();
+            updateContainerVolume();
             updateGuiState();
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
                     p.GetComponent<SSTUCustomUpperStage>().updateIntertankModelFromEditor(newModel, false);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Updates the current fuel type from user input
-        /// </summary>
-        /// <param name="newFuelType"></param>
-        private void updateFuelTypeFromEditor(FuelTypeData newFuelType, bool updateSymmetry)
-        {
-            currentFuelTypeData = newFuelType;
-            currentFuelType = newFuelType.name;
-            updateTankStats();
-            updatePartResources();
-            updateGuiState();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUCustomUpperStage>().updateFuelTypeFromEditor(newFuelType, false);
                 }
             }
         }
@@ -495,6 +435,11 @@ namespace SSTUTools
                 initializedFairing = true;
                 updateFairing(true);
             }
+            if (!initializedResources && HighLogic.LoadedSceneIsEditor)
+            {
+                initializedResources = true;
+                updateContainerVolume();
+            }
             updateRCSThrust();
         }
 
@@ -505,12 +450,12 @@ namespace SSTUTools
         /// <returns></returns>
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            return -defaultCost + tankCost;
+            return subtractCost ? -defaultCost + moduleCost : moduleCost;
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            return -defaultMass + tankageMass;
+            return subtractMass ? -defaultMass + moduleMass : moduleMass;
         }
 
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
@@ -536,7 +481,6 @@ namespace SSTUTools
                 currentMount = defaultMount;
                 currentIntertank = defaultIntertank;
                 currentRcsThrust = defaultRcsThrust;
-                currentFuelType = defaultFuelType;
             }
             loadConfigData();
             TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
@@ -549,12 +493,6 @@ namespace SSTUTools
             buildSavedModel();
             updateModels();
             updateTankStats();
-            //determine if this is the first time the part-instance has ever been initialized; skip the prefab part (so, must be flight or editor).            
-            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
-            {
-                updatePartResources();
-                initializedResources = true;
-            }
             updateEditorFields();
             updateGuiState();
             updateTextureSet(false);
@@ -577,17 +515,6 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-
-            fuelTypes = FuelTypeData.parseFuelTypeData(node.GetNodes("FUELTYPE"));
-            currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
-            if (currentFuelTypeData == null)
-            {
-                MonoBehaviour.print("ERROR: Could not locate fuel type for: " + currentFuelType + ". reverting to default fuel type of: " + defaultFuelType);
-                currentFuelType = defaultFuelType;
-                currentFuelTypeData = Array.Find(fuelTypes, l => l.name == currentFuelType);
-                initializedResources = false;
-            }
-            reserveFuelTypeData = FuelTypes.INSTANCE.getFuelTypeData(reserveFuelType);
 
             //mandatory nodes, -all- tank types must have these
             ConfigNode tankUpperNode = node.GetNode("TANKUPPER");
@@ -915,7 +842,7 @@ namespace SSTUTools
 
             totalTankVolume += upperTopCapModule.getModuleVolume();
             totalTankVolume += upperModule.getModuleVolume();
-            totalFuelVolume += upperBottomCapModule.getModuleVolume();
+            totalTankVolume += upperBottomCapModule.getModuleVolume();
             if(splitTank)
             {
                 totalTankVolume += currentIntertankModule.getModuleVolume();
@@ -923,12 +850,6 @@ namespace SSTUTools
                 totalTankVolume += lowerBottomCapModule.getModuleVolume();
             }
             totalTankVolume += currentMountModule.getModuleVolume();
-            if (SSTUModInterop.isRFInstalled())
-            {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume);
-            }
-            //update usable fuel volume, tankage mass, dry mass, etc
-            totalFuelVolume = currentFuelTypeData.getUsableVolume(totalTankVolume);
         }
 
         /// <summary>
@@ -937,9 +858,7 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleMass()
         {
-            tankageMass = currentFuelTypeData.getTankageMass(totalFuelVolume);
-            moduleMass = 0;
-            moduleMass += upperTopCapModule.getModuleMass() + upperModule.getModuleMass() + upperBottomCapModule.getModuleMass() + currentMountModule.getModuleMass() + rcsModule.getModuleMass();
+            moduleMass = upperTopCapModule.getModuleMass() + upperModule.getModuleMass() + upperBottomCapModule.getModuleMass() + currentMountModule.getModuleMass() + rcsModule.getModuleMass();
             if (splitTank)
             {
                 moduleMass += currentIntertankModule.getModuleMass() + lowerModule.getModuleMass() + lowerBottomCapModule.getModuleMass();
@@ -951,18 +870,10 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleCost()
         {
-            float reserveFuelVolume = totalFuelVolume * fuelReserveRatio;
-            float fuelUsableVolume = totalFuelVolume - reserveFuelVolume;
-            tankCost = 0;
-            tankCost += currentFuelTypeData.getResourceCost(fuelUsableVolume);
-            tankCost += reserveFuelTypeData.getResourceCost(reserveFuelVolume);
-            tankCost += currentFuelTypeData.getDryCost(fuelUsableVolume);
-            tankCost += reserveFuelTypeData.getDryCost(reserveFuelVolume);
-
-            tankCost += upperTopCapModule.getModuleCost() + upperModule.getModuleCost() + upperBottomCapModule.getModuleCost() + currentMountModule.getModuleCost() + rcsModule.getModuleCost();
+            moduleCost = upperTopCapModule.getModuleCost() + upperModule.getModuleCost() + upperBottomCapModule.getModuleCost() + currentMountModule.getModuleCost() + rcsModule.getModuleCost();
             if (splitTank)
             {
-                tankCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost();
+                moduleCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost();
             }
         }
 
@@ -987,21 +898,8 @@ namespace SSTUTools
         /// </summary>
         private void updateGuiState()
         {
-            if (fuelTypes.Length <= 1)
-            {
-                Events["nextFuelTypeEvent"].active = false;
-            }
-            if (SSTUModInterop.isRFInstalled())
-            {
-                Fields["guiRawVolume"].guiActiveEditor = false;
-                Fields["guiFuelVolume"].guiActiveEditor = false;
-                Fields["guiDryMass"].guiActiveEditor = false;
-                Events["nextFuelTypeEvent"].active = false;
-            }
             Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
-            guiRawVolume = totalTankVolume;
-            guiFuelVolume = totalFuelVolume;
-            guiDryMass = tankageMass + moduleMass;
+            guiDryMass = moduleMass;
             guiTotalHeight = partTopY + Math.Abs(partBottomY);
             guiTankHeight = upperModule.currentHeight;
             guiRcsThrust = rcsThrust;
@@ -1014,22 +912,10 @@ namespace SSTUTools
         /// <summary>
         /// Updates the min/max quantities of resource in the part based on the current 'totalFuelVolume' field and currently set fuel type
         /// </summary>
-        private void updatePartResources()
+        private void updateContainerVolume()
         {
-            if (SSTUModInterop.isRFInstalled())
-            {
-                return;
-            }
-            float reserveFuelVolume = totalFuelVolume * fuelReserveRatio;
-            float fuelUsableVolume = totalFuelVolume - reserveFuelVolume;
-            float currentDiameterScale = currentTankDiameter / defaultTankDiameter;            
-            float currentHeightScale = (currentTankHeight*currentDiameterScale) / defaultTankHeight;
-            float energyReserve = defaultElectricCharge * currentDiameterScale * currentHeightScale;
-            SSTUResourceList resourceList = new SSTUResourceList();
-            currentFuelTypeData.addResources(fuelUsableVolume, resourceList);
-            reserveFuelTypeData.addResources(reserveFuelVolume, resourceList);
-            resourceList.addResource("ElectricCharge", energyReserve);
-            resourceList.setResourcesToPart(part, true);
+            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
+            if (container != null) { container.onVolumeUpdated(totalTankVolume*1000f); }
         }        
         #endregion
 

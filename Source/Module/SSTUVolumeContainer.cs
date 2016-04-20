@@ -27,12 +27,6 @@ namespace SSTUTools
         [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Tankage Mass")]
         public float tankageMass;
 
-        /// <summary>
-        /// Gui displayed unusable volume, tallied from containers
-        /// </summary>
-        [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Tankage Volume")]
-        public float tankageVolume;
-
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
@@ -97,7 +91,9 @@ namespace SSTUTools
 
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
+                initializedResources = true;
                 updateTankResources();
+                SSTUStockInterop.fireEditorUpdate();
             }
         }
 
@@ -111,10 +107,11 @@ namespace SSTUTools
             if (newVolume != volume)
             {
                 volume = newVolume;
-                MonoBehaviour.print("ON VOLUME UPDATED");
+                //MonoBehaviour.print("ON VOLUME UPDATED");
                 updateContainerVolumes();
                 updateMassAndCost();                
                 updateTankResources();
+                SSTUStockInterop.fireEditorUpdate();
             }
         }
 
@@ -130,50 +127,43 @@ namespace SSTUTools
             }
             if (!string.IsNullOrEmpty(persistentData))
             {
-                MonoBehaviour.print("Loading persistent container data from: " + persistentData);
-                node = SSTUConfigNodeUtils.parseConfigNode(persistentData);
-                containerNodes = node.GetNodes("CONTAINER");
+                string[] splits = persistentData.Split(':');
+                MonoBehaviour.print("Loading VC persistent container data from: " + persistentData);
                 len = containers.Length;
-                for (int i = 0; i < len && i < containerNodes.Length; i++)
+                for (int i = 0; i < len && i < splits.Length; i++)
                 {
-                    containers[i].load(containerNodes[i]);
+                    containers[i].loadPersistenData(splits[i]);
                 }
             }
         }
 
         private void updatePersistentData()
         {
-            ConfigNode node = new ConfigNode("PERSISTENTDATA");
             if (containers != null)
             {
+                persistentData = "";
                 int len = containers.Length;
-                ConfigNode saveData;
                 for (int i = 0; i < len; i++)
                 {
-                    saveData = new ConfigNode("CONTAINER");
-                    containers[i].save(saveData);
-                    node.AddNode(saveData);
+                    if (i > 0) { persistentData = persistentData + ":"; }
+                    persistentData = persistentData + containers[i].getPersistentData();
                 }
+                MonoBehaviour.print("UPDATED VC PERSISTENT DATA TO: " + persistentData);
             }
-            persistentData = node.ToString();
-            MonoBehaviour.print("UPDATED PERSISTENT DATA!! :: " + persistentData);
         }
 
         public void containerFuelTypeAdded(ContainerDefinition container, ContainerFuelPreset fuelType)
         {
-            MonoBehaviour.print("Preset added: " + fuelType.name);
             container.addPresetRatios(fuelType);
         }
 
         public void containerTypeUpdated(ContainerDefinition container, ContainerModifier newType)
         {
-            MonoBehaviour.print("Modifier Updated: " + newType.name);
             container.setModifier(newType);      
         }
         
         private void updateTankResources()
         {
-            MonoBehaviour.print("UPDATE TANK RESOURCES!!");
             SSTUResourceList list = new SSTUResourceList();
             int len = containers.Length;
             for (int i = 0; i < len; i++)
@@ -203,14 +193,14 @@ namespace SSTUTools
         {
             modifiedCost = 0;
             modifiedMass = 0;
-            tankageVolume = 0;
+            float tankageVolume = 0;
             ContainerDefinition container;
             int len = containers.Length;
             for (int i = 0; i < len; i++)
             {
                 container = containers[i];
                 modifiedMass += container.containerMass;
-                modifiedCost += container.containerCost;
+                modifiedCost += container.containerCost + container.resourceCost;
                 tankageVolume += (container.rawVolume - container.usableVolume);
             }
             tankageMass = modifiedMass;

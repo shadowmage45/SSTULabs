@@ -360,8 +360,11 @@ namespace SSTUTools
 
         private void updatePartResourceGui(Part part)
         {
-            UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
-            if (window != null) { window.displayDirty = true; }
+            if (UIPartActionController.Instance != null)
+            {
+                UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
+                if (window != null) { window.displayDirty = true; }
+            }
         }
     }
 
