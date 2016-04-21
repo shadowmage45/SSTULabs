@@ -16,7 +16,6 @@ namespace SSTUTools
         public readonly string[] availableResources;// user config specified resources
         public readonly string[] resourceSets;// user config specified resource sets
         public readonly string[] tankModifierNames;// user config specified tank mods
-        public readonly float percentOfTankVolume;// user config specified percent of total volume to use for this container
         public readonly float tankageVolume;// percent of volume lost to tankage
         public readonly float tankageMass;// percent of resource mass or volume to compute as dry mass
         public readonly float costPerDryTon;// default cost per dry ton for this tank; modified by the tank modifier
@@ -32,6 +31,7 @@ namespace SSTUTools
         private Dictionary<string, SubContainerDefinition> subContainersByName = new Dictionary<string, SubContainerDefinition>();
 
         private ContainerModifier cachedModifier;
+        private float percentOfTankVolume;
         private string currentFuelPreset;
         private float currentRawVolume;
         private float currentUsableVolume;
@@ -50,7 +50,7 @@ namespace SSTUTools
             availableResources = node.GetStringValues("resource");
             resourceSets = node.GetStringValues("resourceSet");
             tankModifierNames = node.GetStringValues("modifier");
-            percentOfTankVolume = node.GetFloatValue("percent", 1);
+            setContainerPercent(node.GetFloatValue("percent", 1));
             tankageVolume = node.GetFloatValue("tankageVolume");
             tankageMass = node.GetFloatValue("tankageMass");
             costPerDryTon = node.GetFloatValue("costPerDryTon", 200f);
@@ -60,7 +60,6 @@ namespace SSTUTools
 
             if (availableResources.Length == 0 && resourceSets.Length == 0) { resourceSets = new string[] { "generic" }; }//validate that there is some sort of resource reference; generic is a special type for all pumpable resources
             if (tankModifierNames == null || tankModifierNames.Length == 0) { tankModifierNames = VolumeContainerLoader.getAllModifierNames(); }//validate that there is at least one modifier type            
-            if (percentOfTankVolume > 1) { percentOfTankVolume *= 0.01f; }
             
             //load available container modifiers
             modifiers = VolumeContainerLoader.getModifiersByName(tankModifierNames);
@@ -113,16 +112,22 @@ namespace SSTUTools
         {
             string[] vals = data.Split(',');
             currentModifierName = vals[0];
+            currentFuelPreset = vals[1];
+            setContainerPercent(float.Parse(vals[2]));
             int len = subContainerData.Length;
-            for (int i = 0; i < len && i < vals.Length-1; i++)
+            int len2 = vals.Length;
+            for (int i = 0, k = 3; i < len && k < len2; i++, k++)
             {
-                subContainerData[i].setRatio(int.Parse(vals[i+1]));
+                subContainerData[i].setRatio(int.Parse(vals[k]));
             }
+            internalUpdateTotalRatio();
+            internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
         }
 
         public string getPersistentData()
         {
-            string data = currentModifierName;
+            string data = currentModifierName + "," + currentFuelPreset + ","+percentOfTankVolume;
             int len = subContainerData.Length;
             for (int i = 0; i < len; i++)
             {
@@ -138,6 +143,8 @@ namespace SSTUTools
         public float containerMass{ get { return currentContainerMass; } }
         
         public float containerCost{ get { return currentContainerCost; } }
+
+        public float containerPercent { get { return percentOfTankVolume; } }
 
         public float resourceMass { get { return currentResourceMass; } }
 
@@ -172,6 +179,7 @@ namespace SSTUTools
             }
         }
         
+        //TODO can this just return applicableResources?
         public string[] getResourceNames()
         {
             int len = subContainerData.Length;
@@ -218,29 +226,53 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Zeroes any current configuration and sets the tank up for the input fuel preset<para/>
-        /// Intended to be used by the 'Next Fuel Type' buttons on the base part GUI
+        /// UNSAFE - Must manually update container parameters for all containers after calling this method on any container.
+        /// </summary>
+        /// <param name="newPercent"></param>
+        internal void setContainerPercent(float newPercent)
+        {
+            if (newPercent > 1) { newPercent *= 0.01f; }
+            percentOfTankVolume = newPercent;
+        }
+
+        /// <summary>
+        /// Zeroes any current configuration and sets the tank up for the input fuel preset; must not be null<para/>
+        /// Intended to be used by the 'Next Fuel Type' buttons on the base part GUI (or other method to set a valid fuel type)
         /// </summary>
         /// <param name="preset"></param>
         public void setFuelPreset(ContainerFuelPreset preset)
         {
+            if (preset == null) { throw new NullReferenceException("Fuel preset was null when calling setFuelPreset"); }
             currentFuelPreset = preset.name;
             internalClearRatios();
-            addPresetRatios(preset);
+            internalAddPresetRatios(preset);
         }
 
         /// <summary>
-        /// -ADDS- the input preset to the current ratios for the tank without adjusting any other resource ratios
+        /// -ADDS- the input preset to the current ratios for the tank without adjusting any other resource ratios<para/>
+        /// this forces a 'custom' fuel preset type on the tank
         /// </summary>
         /// <param name="preset"></param>
         public void addPresetRatios(ContainerFuelPreset preset)
+        {
+            internalAddPresetRatios(preset);
+            currentFuelPreset = "custom";
+        }
+
+        public void subtractPresetRatios(ContainerFuelPreset preset)
+        {
+            internalAddPresetRatios(preset, true);
+            currentFuelPreset = "custom";
+        }
+
+        private void internalAddPresetRatios(ContainerFuelPreset preset, bool subtract=false)
         {
             int len = preset.resourceRatios.Length;
             ContainerResourceRatio ratio;
             for (int i = 0; i < len; i++)
             {
                 ratio = preset.resourceRatios[i];
-                internalGetVolumeData(ratio.resourceName).addRatio(ratio.resourceRatio);
+                internalGetVolumeData(ratio.resourceName).addRatio(subtract? -ratio.resourceRatio : ratio.resourceRatio);
             }
             internalUpdateTotalRatio();
             internalUpdateVolumeUnits();
@@ -401,6 +433,7 @@ namespace SSTUTools
 
         public void setRatio(int ratio)
         {
+            if (ratio < 0) { ratio = 0; }
             this.ratio = ratio;
             if (ratio == 0) { volume = 0; }
         }

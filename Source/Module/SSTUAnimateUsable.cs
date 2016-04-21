@@ -174,7 +174,7 @@ namespace SSTUTools
                 }
                 catch (Exception e)
                 {
-                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + deployActionGroup);
+                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + deployActionGroup + " :: " + e.Message);                    
                 }                                
             }
             if (retractActionGroup != "NONE")
@@ -186,7 +186,7 @@ namespace SSTUTools
                 }
                 catch (Exception e)
                 {
-                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + retractActionGroup);
+                    MonoBehaviour.print("ERROR PARSING ACTION GROUP FOR NAME: " + retractActionGroup + " :: " + e.Message);
                 }
             }
 

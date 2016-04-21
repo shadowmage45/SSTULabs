@@ -817,6 +817,7 @@ namespace SSTUTools
                     }
                 }
             }
+            updateOpacity();
         }
 
         private bool shouldSpawnFairingForNode(out AttachNode watchedNode, out Part triggerPart, out float fairingPos)

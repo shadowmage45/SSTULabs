@@ -282,7 +282,7 @@ namespace SSTUTools
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            return modifiedCost;
+            return -defaultCost + modifiedCost;
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
@@ -329,7 +329,6 @@ namespace SSTUTools
             setModelParameters();
             TextureData data = currentTextureSetData.textureDatas[0];
             model.setMaterial(SSTUUtils.loadMaterial(data.diffuseTextureName, data.normalTextureName));
-            model.setMeshColliderStatus(true, true);
             model.createModel();
             model.setParent(modelBase);
             updatePhysicalAttributes();

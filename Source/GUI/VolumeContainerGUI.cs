@@ -27,6 +27,7 @@ namespace SSTUTools
             }
             windowRect = new Rect(Screen.width - 900, 40, 800, 600);
             statWindowRect = new Rect(Screen.width - 900 - 250, 40, 250, 300);
+            containerIndex = 0;
             module = container;
             containers = modContainers;
             id = module.GetInstanceID();
@@ -177,7 +178,7 @@ namespace SSTUTools
 
         private static void addWindowFuelTypeControls(ContainerDefinition container)
         {
-            GUILayout.Label("Select an optional pre-filled fuel type:");
+            GUILayout.Label("Fuel Types -- Click to add ratio, CTRL click to set ratio, SHIFT click to subtract ratio");
             ContainerFuelPreset[] presets = container.fuelPresets;
             ContainerFuelPreset preset;
             GUILayout.BeginHorizontal();
@@ -191,11 +192,29 @@ namespace SSTUTools
                 }
                 if (GUILayout.Button(preset.name, GUILayout.Width(175)))
                 {
-                    container.addPresetRatios(presets[i]);
+                    if (ctrlPressed())//ctrl == set fuel type
+                    {                        
+                        container.setFuelPreset(presets[i]);
+                    }
+                    else if (shiftPressed())
+                    {
+                        container.subtractPresetRatios(presets[i]);
+                    }
+                    else
+                    {
+                        container.addPresetRatios(presets[i]);
+                    }
                 }
             }
             GUILayout.EndHorizontal();
         }
+
+        private static bool ctrlPressed()
+        {            
+            return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+        }
+
+        private static bool shiftPressed() { return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift); }
 
         private static void addWindowContainerRatioControls(ContainerDefinition container)
         {
@@ -204,10 +223,10 @@ namespace SSTUTools
             scrollPos = GUILayout.BeginScrollView(scrollPos);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Resource", GUILayout.Width(150));
-            GUILayout.Label("% of Tank", GUILayout.Width(100));
             GUILayout.Label("Unit Ratio", GUILayout.Width(100));
             GUILayout.Label("Units", GUILayout.Width(100));
             GUILayout.Label("Volume", GUILayout.Width(100));
+            GUILayout.Label("% of Tank", GUILayout.Width(100));
             GUILayout.EndHorizontal();
             int len = ratioData.Length;
             for (int i = 0; i < len; i++)
@@ -248,7 +267,6 @@ namespace SSTUTools
             }
             GUILayout.Label(resourceName, GUILayout.Width(150));//resource name
             float tankPercent = container.getResourceVolume(resourceName) / container.usableVolume;//. container.usableVolume > 0 ? currentVolumeRatio / totalVolumeRatio : 0;
-            GUILayout.HorizontalSlider(tankPercent, 0, 1, GUILayout.Width(100));
             string textVal = GUILayout.TextField(textRatio, GUILayout.Width(100));
             if (textVal != textRatio)
             {
@@ -264,6 +282,7 @@ namespace SSTUTools
             GUILayout.Label(tankUnits.ToString(), GUILayout.Width(100));
             float tankVolume = container.getResourceVolume(resourceName);
             GUILayout.Label(tankVolume.ToString(), GUILayout.Width(100));
+            GUILayout.Label(tankPercent.ToString(), GUILayout.Width(100));
         }
 
     }

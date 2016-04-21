@@ -80,6 +80,9 @@ namespace SSTUTools.Module
         private float prevHeight;
         private float prevDiameter;
 
+        private float modifiedCost;
+        private float modifiedMass;
+
         private Transform topMountTransform;
         private Transform bottomMountTransform;
         private Transform scalarTransform;
@@ -140,17 +143,11 @@ namespace SSTUTools.Module
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            float scale = getScale();
-            float modifiedMass = defaultMass * Mathf.Pow(scale, 3);
             return -defaultMass + modifiedMass;
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            float scale = getScale();
-            float modifiedCost = defaultCost * Mathf.Pow(scale, 3);
-            float currentVolume = resourceVolume * Mathf.Pow(getCurrentModelScale(), thrustScalePower);            
-            modifiedCost += fuelType.getResourceCost(currentVolume);
             return -defaultCost + modifiedCost;
         }
 
@@ -238,6 +235,7 @@ namespace SSTUTools.Module
         private void updateModelScales()
         {
             setModelScale(scalarTransform, getScale());
+            updateMassAndCost();
         }
 
         private float getScale()
@@ -264,7 +262,7 @@ namespace SSTUTools.Module
 
         private void updateEngineThrust()
         {
-            float currentScale = getCurrentModelScale();
+            float currentScale = getScale();
             float thrustScalar = Mathf.Pow(currentScale, thrustScalePower);
             float maxThrust = engineThrust * thrustScalar;
             guiEngineThrust = maxThrust;
@@ -280,7 +278,7 @@ namespace SSTUTools.Module
 
         private void updatePartResources()
         {
-            float resourceScalar = Mathf.Pow(getCurrentModelScale(), thrustScalePower);
+            float resourceScalar = Mathf.Pow(getScale(), thrustScalePower);
             float currentVolume = resourceVolume * resourceScalar;
             if (SSTUModInterop.isRFInstalled())
             {
@@ -292,10 +290,17 @@ namespace SSTUTools.Module
                 res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
             }
         }
-        
-        private float getCurrentModelScale()
+
+        private void updateMassAndCost()
         {
-            return diameter / modelDiameter;
+            float scale = getScale();
+            float defaultMass = part.partInfo==null? part.mass : part.prefabMass;
+            modifiedMass = defaultMass * Mathf.Pow(scale, 3);
+
+            float defaultCost = part.partInfo == null ? 100 : part.partInfo.cost;
+            float currentVolume = resourceVolume * Mathf.Pow(scale, thrustScalePower);
+            float modifiedCost = defaultCost * Mathf.Pow(scale, 3);
+            modifiedCost += fuelType.getResourceCost(currentVolume);    
         }
     }
 

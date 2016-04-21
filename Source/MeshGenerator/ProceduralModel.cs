@@ -11,59 +11,49 @@ namespace SSTUTools
 
         protected bool meshColliderEnabled = false;
         protected bool meshColliderConvex = false;
-
-        //DONE
+        
         protected virtual void generateModel(GameObject root)
         {
             throw new NotImplementedException("Cannot call generateModel() on base ProceduralModel; must utilize sublcasses for implementation!");
         }
-
-        //DONE
+        
         public void setParent(Transform tr)
         {
             root.transform.NestToParent(tr);
         }
-
-        //DONE
+        
         public void createModel()
         {
             root = new GameObject(rootName);
             generateModel(root);
             updateModelMaterial();
-            updateColliders();
         }
-
-        //DONE
+        
         public void recreateModel()
         {
             destroyModel();
             generateModel(root);
             updateModelMaterial();
-            updateColliders();
         }
-
-        //DONE
+        
         public void destroyModel()
         {
             SSTUUtils.destroyChildren(root.transform);
         }
-
-        //DONE
+        
         public void setMaterial(Material mat)
         {
             currentMaterial = mat;
             updateModelMaterial();
         }
-
-        //DONE
+        
         public void setMainTexture(String texName)
         {
             if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set diffuse texture: "+texName); }
             currentMaterial.mainTexture = GameDatabase.Instance.GetTexture(texName, false);
             updateModelMaterial();
         }
-
-        //DONE
+        
         public void setNormalTexture(String texName)
         {
             if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set normal texture: " + texName); }
@@ -77,30 +67,12 @@ namespace SSTUTools
             }
             updateModelMaterial();
         }
-
-        //DONE
-        public void setMeshColliderStatus(bool enable, bool convex)
-        {
-            meshColliderEnabled = enable;
-            meshColliderConvex = convex;
-            updateColliders();
-        }
-
-        //DONE
+        
         protected void updateModelMaterial()
         {
             if (root != null)
             {
                 SSTUUtils.setMaterialRecursive(root.transform, currentMaterial);
-            }
-        }
-
-        //DONE
-        protected void updateColliders()
-        {
-            if (root != null)
-            {
-                SSTUUtils.addMeshCollidersRecursive(root.transform, meshColliderEnabled, meshColliderConvex);
             }
         }
     }
