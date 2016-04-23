@@ -21,6 +21,9 @@ namespace SSTUTools
         [KSPField]
         public float engineSpacing = 3f;
         
+        /// <summary>
+        /// The mounting diameter of the engine; this is the diameter of the area that the gimbals and fuel-lines occupy and determines the minimum size of available mounts.
+        /// </summary>
         [KSPField]
         public float engineMountDiameter = 3f;
 
@@ -211,9 +214,13 @@ namespace SSTUTools
 
         public void onDiameterUpdated(BaseField field, object obj)
         {
-            updateMountSizeFromEditor(currentMountDiameter, true);
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
+            if (prevMountDiameter != currentMountDiameter)
+            {
+                prevMountDiameter = currentMountDiameter;
+                updateMountSizeFromEditor(currentMountDiameter, true);
+                SSTUStockInterop.fireEditorUpdate();
+                SSTUModInterop.onPartGeometryUpdate(part, true);
+            }
         }
 
         public void onMountUpdated(BaseField field, object obj)
@@ -232,20 +239,28 @@ namespace SSTUTools
 
         public void onSpacingUpdated(BaseField field, object obj)
         {
-            updateEngineSpacingFromEditor(editorEngineSpacingAdjust, true);
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
+            if (editorEngineSpacingAdjust != prevEngineSpacingAdjust)
+            {
+                prevEngineSpacingAdjust = editorEngineSpacingAdjust;
+                updateEngineSpacingFromEditor(editorEngineSpacingAdjust, true);
+                SSTUStockInterop.fireEditorUpdate();
+                SSTUModInterop.onPartGeometryUpdate(part, true);
+            }
         }
 
         public void onHeightUpdated(BaseField field, object obj)
         {
-            updateEngineOffsetFromEditor(editorEngineHeightAdjust, true);
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
+            if (editorEngineHeightAdjust != prevEngineHeightAdjust)
+            {
+                prevEngineHeightAdjust = editorEngineHeightAdjust;
+                updateEngineOffsetFromEditor(editorEngineHeightAdjust, true);
+                SSTUStockInterop.fireEditorUpdate();
+                SSTUModInterop.onPartGeometryUpdate(part, true);
+            }
         }
 
         private void updateEngineSpacingFromEditor(float newSpacing, bool updateSymmetry)
-        {            
+        {
             currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineSpacing, currentMountData) + newSpacing;
             positionMountModels();
             positionEngineModels();
@@ -263,7 +278,7 @@ namespace SSTUTools
         {
             if (newSize < currentMountData.minDiameter) { newSize = currentMountData.minDiameter; }
             if (newSize > currentMountData.maxDiameter) { newSize = currentMountData.maxDiameter; }
-            if (newSize != currentMountDiameter) { currentMountDiameter = newSize; }
+            currentMountDiameter = newSize;
             positionMountModels();
             positionEngineModels();
             updateNodePositions(true);
@@ -277,7 +292,7 @@ namespace SSTUTools
                 foreach (Part p in part.symmetryCounterparts)
                 {
                     p.GetComponent<SSTUModularEngineCluster>().updateMountSizeFromEditor(newSize, false);
-                }                
+                }
             }
         }
 
@@ -540,7 +555,6 @@ namespace SSTUTools
                     }
                     else
                     {
-                        //MonoBehaviour.print("storing customized config for layout: " + name + " for part: " + part);
                         layoutConfigNodes.Add(name, localLayoutNode);
                     }
                 }
@@ -553,8 +567,7 @@ namespace SSTUTools
             {
                 localLayoutNode = null;
                 layoutConfigNodes.TryGetValue(key, out localLayoutNode);
-                //MonoBehaviour.print("Loading layout : " + key + " for engine: " + part+" with custom data of: "+localLayoutNode);
-                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineSpacing*engineScale, engineMountDiameter*engineScale, upperStageMounts, lowerStageMounts);
+                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineSpacing*engineScale, engineMountDiameter * engineScale, upperStageMounts, lowerStageMounts);
                 index++;
             }
             //sort usable layout list by the # of positions in the layout, 1..2..3..x..99

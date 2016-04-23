@@ -12,26 +12,30 @@ namespace SSTUTools
     /// </summary>
     public class ContainerDefinition
     {
+        //Config fields - loaded from config node; arrays are loaded as key=value pairs
         public readonly string name = "Main";// config specified tank name; used to display the name and for ease of MM node patching
-        public readonly string[] availableResources;// user config specified resources
-        public readonly string[] resourceSets;// user config specified resource sets
-        public readonly string[] tankModifierNames;// user config specified tank mods
+        public readonly string[] availableResources;// user config specified resources; resource=XXX
+        public readonly string[] resourceSets;// user config specified resource sets; resourceSet=XXX
+        public readonly string[] tankModifierNames;// user config specified tank mods; modifer=XXX
         public readonly float tankageVolume;// percent of volume lost to tankage
         public readonly float tankageMass;// percent of resource mass or volume to compute as dry mass
         public readonly float costPerDryTon;// default cost per dry ton for this tank; modified by the tank modifier
+        public readonly float massPerEmptyCubicMeter;// how much does this tank weigh per m^3 when it is empty or for unused volume (not yet supported)
         public readonly string defaultFuelPreset;// user config specified default fuel preset
-        public readonly string defaultResources;
+        public readonly string defaultResources;//CSV resource,ratio,resource,ratio...
         public readonly string defaultModifier;// the default tank modifier; set to first modifier if it is blank or invalid
 
+        //runtime accessible data
         public readonly string[] applicableResources;
         public readonly ContainerFuelPreset[] fuelPresets;
         public readonly ContainerModifier[] modifiers;
 
+        //private vars
         private SubContainerDefinition[] subContainerData;
         private Dictionary<string, SubContainerDefinition> subContainersByName = new Dictionary<string, SubContainerDefinition>();
 
         private ContainerModifier cachedModifier;
-        private float percentOfTankVolume;
+        private float percentOfTankVolume;//loaded from config, but private for better encapsulation
         private string currentFuelPreset;
         private float currentRawVolume;
         private float currentUsableVolume;
@@ -53,7 +57,8 @@ namespace SSTUTools
             setContainerPercent(node.GetFloatValue("percent", 1));
             tankageVolume = node.GetFloatValue("tankageVolume");
             tankageMass = node.GetFloatValue("tankageMass");
-            costPerDryTon = node.GetFloatValue("costPerDryTon", 200f);
+            costPerDryTon = node.GetFloatValue("dryCost", 700f);
+            massPerEmptyCubicMeter = node.GetFloatValue("emptyMass", 0.05f);
             defaultFuelPreset = node.GetStringValue("defaultFuelPreset");
             defaultResources = node.GetStringValue("defaultResources");
             defaultModifier = node.GetStringValue("defaultModifier", "standard");
@@ -284,29 +289,48 @@ namespace SSTUTools
         {
             currentResourceMass = 0;
             int len = subContainerData.Length;
+            float tempMass;
+            float zeroMassResourceMass = 0;//if that name doesn't make sense... well...
             for (int i = 0; i < len; i++)
             {
-                currentResourceMass += subContainerData[i].resourceMass;
+                tempMass = subContainerData[i].resourceMass;
+                if (tempMass == 0 && subContainerData[i].resourceVolume > 0)//zero mass resource; fake it for the purposes of
+                {                    
+                    zeroMassResourceMass += FuelTypes.INSTANCE.getZeroMassResourceMass(subContainerData[i].name) * subContainerData[i].resourceUnits;
+                }
+                currentResourceMass += tempMass;
             }
                         
             currentContainerMass = 0;
-            float tempMass;
             if (currentModifier.useVolumeForMass)//should most notably be used for structural tank types; any resource-containing tank should use the max resource mass * mass fraction
             {
                 tempMass = currentUsableVolume;
+                currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
+            }
+            else if (totalUnitRatio == 0)//empty tank, use config specified empty tank mass
+            {
+                currentContainerMass = (currentUsableVolume * 0.001f) * massPerEmptyCubicMeter * currentModifier.dryMassModifier;
             }
             else
             {
                 tempMass = currentResourceMass;
+                currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
             }
-            currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
 
             currentResourceCost = 0;
+            float tempCost;
             for (int i = 0; i < len; i++)
             {
-                currentResourceCost += subContainerData[i].resourceCost;
+                tempCost = subContainerData[i].resourceCost;
+                if (tempCost == 0 && subContainerData[i].resourceUnits > 0)
+                {
+                    tempCost = FuelTypes.INSTANCE.getZeroCostResourceCost(subContainerData[i].name) * subContainerData[i].resourceUnits;
+                }
+                currentResourceCost += tempCost;
             }
             currentContainerCost = costPerDryTon * currentModifier.costModifier * currentContainerMass;
+
+            currentContainerMass += zeroMassResourceMass;
         }
 
         private void internalUpdateVolumeUnits()
@@ -396,30 +420,45 @@ namespace SSTUTools
         {
             this.container = container;
             this.name = name;
-            if (name != "structural")
-            {
-                def = PartResourceLibrary.Instance.resourceDefinitions[name];
-                if (def == null) { throw new NullReferenceException("Resource definition was null for name: " + name); }
-            }
+            def = PartResourceLibrary.Instance.resourceDefinitions[name];
+            if (def == null) { throw new NullReferenceException("Resource definition was null for name: " + name); }
         }
 
         public float resourceMass { get { return resourceUnits * unitMass; } }
 
         public float resourceCost { get { return resourceUnits * unitCost; } }
 
+        /// <summary>
+        /// Current cached usable volume occupied by this resource
+        /// </summary>
         public float resourceVolume { get { return volume; } }
 
+        /// <summary>
+        /// Current number of units (volume/unitVolume) this subcontainer can hold
+        /// </summary>
         public float resourceUnits { get { return volume / unitVolume; } }
 
+        /// <summary>
+        /// Current user or config specified unit ratio for this resource
+        /// </summary>
         public int unitRatio { get { return ratio; } }
 
+        /// <summary>
+        /// Volume weighted ratio for this resource
+        /// </summary>
         public float volumeRatio {get { return (float)ratio * unitVolume; }}
 
-        public float unitVolume { get { return def == null ? 1 : FuelTypes.INSTANCE.getResourceVolume(name); } }
+        /// <summary>
+        /// Volume per-unit for this resource
+        /// </summary>
+        public float unitVolume { get { return FuelTypes.INSTANCE.getResourceVolume(name, def); } }
 
-        public float unitMass { get { return def == null ? 0.001f : def.density; } }
+        /// <summary>
+        /// Mass per-unit for this resource
+        /// </summary>
+        public float unitMass { get { return def.density; } }
 
-        public float unitCost { get { return def == null ? 100 : def.unitCost; } }
+        public float unitCost { get { return def.unitCost; } }
         
         public void addRatio(int addRatio)
         {

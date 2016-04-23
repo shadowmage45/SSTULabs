@@ -131,7 +131,6 @@ namespace SSTUTools
             base.OnLoad(node);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//for prefab part...
-            updateTexture(currentTextureSet);
             updateEditorFields();
         }
 
@@ -200,6 +199,7 @@ namespace SSTUTools
                     TextureData data = set.textureDatas[0];//TODO cleanup this hack
                     mpf.TextureURL = data.diffuseTextureName;
                     Texture t = SSTUUtils.findTexture(data.diffuseTextureName, false);
+                    SSTUUtils.setMainTextureRecursive(mpf.transform, t);
                     mpf.FairingMaterial.mainTexture = t;
                     foreach (var f in mpf.Panels)
                     {
@@ -211,7 +211,6 @@ namespace SSTUTools
 
         private TextureSet getCurrentTextureSet()
         {
-            if (textureSets == null) { return null; }
             return Array.Find(textureSets, m => m.setName == currentTextureSet);
         }
     }

@@ -29,10 +29,16 @@ namespace SSTUTools
         public bool enableContainerEdit = true;
 
         /// <summary>
-        /// Which container is the 'base' container that the fuel-type slider will adjust fuel types for?
+        /// Determines which container the fuel-type slider will adjust fuel types for
         /// </summary>
         [KSPField]
         public int baseContainerIndex = 0;
+
+        [KSPField]
+        public bool subtractMass = true;
+
+        [KSPField]
+        public bool subtractCost = true;
 
         /// <summary>
         /// Gui displayed usable volume, tallied from containers
@@ -46,6 +52,9 @@ namespace SSTUTools
         [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Tankage Mass", guiUnits = "t")]
         public float tankageMass;
 
+        /// <summary>
+        /// Gui displayed fuel type selection; taken from the 'base container'
+        /// </summary>
         [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = true, guiName = "FuelType"),
          UI_ChooseOption(suppressEditorShipModified = true, display =new string[]{"custom"}, options = new string[] { "custom"})]
         public string guiFuelType = "custom";
@@ -140,11 +149,11 @@ namespace SSTUTools
             }
         }
 
-        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return -defaultMass + modifiedMass; }
-        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) { return -defaultCost + modifiedCost; }
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return subtractMass ? -defaultMass + modifiedMass : modifiedMass; }
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) { return subtractCost ? -defaultCost + modifiedCost : modifiedCost; }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
-        
+
         private void loadConfigData()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
@@ -158,7 +167,6 @@ namespace SSTUTools
             if (!string.IsNullOrEmpty(persistentData))
             {
                 string[] splits = persistentData.Split(':');
-                MonoBehaviour.print("Loading VC persistent container data from: " + persistentData);
                 len = containers.Length;
                 for (int i = 0; i < len && i < splits.Length; i++)
                 {
@@ -179,7 +187,6 @@ namespace SSTUTools
                     if (i > 0) { persistentData = persistentData + ":"; }
                     persistentData = persistentData + containers[i].getPersistentData();
                 }
-                MonoBehaviour.print("UPDATED VC PERSISTENT DATA TO: " + persistentData);
             }
         }
 
@@ -188,10 +195,18 @@ namespace SSTUTools
             if (newVolume != volume)
             {
                 volume = newVolume;
-                updateContainerVolumes();
-                updateMassAndCost();
-                updateTankResources();
-                updatePersistentData();
+                if (SSTUModInterop.isRFInstalled() || SSTUModInterop.isMFTInstalled())
+                {
+                    SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 0.001f);//re-convert from l to m^3                    
+                }
+                else
+                {
+                    updateContainerVolumes();
+                    updateMassAndCost();
+                    updateTankResources();
+                    updateFuelSelections();
+                    updatePersistentData();
+                }
                 SSTUStockInterop.fireEditorUpdate();
             }
         }
@@ -214,6 +229,7 @@ namespace SSTUTools
             updateContainerVolumes();
             updateMassAndCost();
             updateTankResources();
+            updateFuelSelections();
             updatePersistentData();
             SSTUStockInterop.fireEditorUpdate();
         }
@@ -233,7 +249,7 @@ namespace SSTUTools
 
         private void updateFuelSelections()
         {
-            ContainerDefinition container = getBaseContainer();
+            ContainerDefinition container = getBaseContainer();            
             string currentType = container.fuelPreset;
             guiFuelType = prevFuelType = currentType;
             string[] presetNames;
@@ -249,6 +265,7 @@ namespace SSTUTools
                 for (int i = 0; i < presetNames.Length; i++) { presetNames[i] = container.fuelPresets[i].name; }
             }
             this.updateUIChooseOptionControl("guiFuelType", presetNames, presetNames, true, currentType);
+            Fields["guiFuelType"].guiActiveEditor = container.rawVolume > 0;
         }
         
         private void updateTankResources()
@@ -308,6 +325,7 @@ namespace SSTUTools
                 {
                     for (int i = 0; i < len; i++) { containers[i].clearDirty(); }
                     updateTankResources();
+                    updatePersistentData();
                 }
             }
         }

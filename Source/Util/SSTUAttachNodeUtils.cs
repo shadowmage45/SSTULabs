@@ -74,8 +74,9 @@ namespace SSTUTools
         /// <param name="part"></param>
         /// <param name="node"></param>
         public static void destroyAttachNode(Part part, AttachNode node)
-        {
+        {            
             if (node == null) { return; }
+            if (node.attachedPart != null) { MonoBehaviour.print("ERROR: Deleting attach node: " + node.id + " with attached part: " + node.attachedPart); }
             part.attachNodes.Remove(node);
             node.owner = null;
             if (node.icon != null)

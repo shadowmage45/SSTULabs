@@ -299,7 +299,7 @@ namespace SSTUTools.Module
 
             float defaultCost = part.partInfo == null ? 100 : part.partInfo.cost;
             float currentVolume = resourceVolume * Mathf.Pow(scale, thrustScalePower);
-            float modifiedCost = defaultCost * Mathf.Pow(scale, 3);
+            modifiedCost = defaultCost * Mathf.Pow(scale, 3);
             modifiedCost += fuelType.getResourceCost(currentVolume);    
         }
     }

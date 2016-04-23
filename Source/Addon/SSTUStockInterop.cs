@@ -82,6 +82,7 @@ namespace SSTUTools
                 if (partConfigNodes.ContainsKey(name)) { continue; }
                 partConfigNodes.Add(name, node);
             }
+            FuelTypes.INSTANCE.reloadData();
             SSTUModelData.reloadData();
             VolumeContainerLoader.loadConfigs();
         }
@@ -132,7 +133,7 @@ namespace SSTUTools
         {
             String name = p.name;
             if (partConfigNodes.ContainsKey(name)){return partConfigNodes[name];}            
-            MonoBehaviour.print("ERROR: Could not locate part config from cached database for part: "+name);
+            MonoBehaviour.print("MINOR ERROR: Could not locate part config from cached database for part: "+name+" (This may be recoverable)");
             if (p.partInfo != null && p.partInfo.partConfig != null) { return p.partInfo.partConfig; }
             MonoBehaviour.print("MAJOR ERROR: Could not locate part config from part.partInfo.partConfig for part: " + name);
             if (p.partInfo != null) { return PartLoader.Instance.GetDatabaseConfig(p); }
@@ -142,7 +143,6 @@ namespace SSTUTools
         
         public static void updateEngineThrust(ModuleEngines engine, float minThrust, float maxThrust)
         {
-            //MonoBehaviour.print("updating engine thrust: " + minThrust + "::" + maxThrust);
             engine.minThrust = minThrust;
             engine.maxThrust = maxThrust;
             ConfigNode updateNode = new ConfigNode("MODULE");

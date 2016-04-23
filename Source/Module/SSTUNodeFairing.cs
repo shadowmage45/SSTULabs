@@ -152,10 +152,16 @@ namespace SSTUTools
         public bool fairingJettisoned = false;
         
         /// <summary>
-        /// If fairing has been 'force' disabled by user or external plugin interaction - overrides all other enabled/disabled settings
+        /// If fairing has been currently enabled/disabled by user
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool fairingEnabled = true;
+
+        /// <summary>
+        /// If fairing has been 'force' enabled/disabled by external plugin (MEC).  This completely removes GUI interaction and forces permanent disabled status unless re-enabled by external plugin
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public bool fairingForceDisabled = false;
 
         /// <summary>
         /// Persistent tracking of if the fairing has removed its 'jettision mass' from the parent part (and added it to its attached part, if a node-attached fairing)
@@ -198,6 +204,8 @@ namespace SSTUTools
         private TextureSet[] textureSets;
         
         private Part prevAttachedPart = null;
+
+        private bool needsStatusUpdate = false;
         
         private bool needsRebuilt = false;
 
@@ -264,7 +272,6 @@ namespace SSTUTools
             {
                 if (fd.generateColliders != generateColliders)
                 {
-                    MonoBehaviour.print("Rebuilding fairing for collider status change");
                     fd.generateColliders = this.generateColliders;
                     needsRebuilt = true;
                 }
@@ -273,7 +280,6 @@ namespace SSTUTools
 
         public void transparencyUpdated(BaseField field, object obj)
         {
-            MonoBehaviour.print("Updating fairing transparency");
             updateOpacity();
         }
 
@@ -359,37 +365,30 @@ namespace SSTUTools
 
         public void onVesselModified(Vessel v)
         {
-            if (HighLogic.LoadedSceneIsEditor) { return; }
-            updateFairingStatus();
+            if (!HighLogic.LoadedSceneIsFlight) { return; }
+            needsStatusUpdate = true;
         }
 
         public void onEditorVesselModified(ShipConstruct ship)
-        {         
-            updateFairingStatus();
-            updateOpacity();
+        {
+            if (!HighLogic.LoadedSceneIsEditor) { return; }
+            needsStatusUpdate = true;
         }
 
         private void initialize()
         {
-            //remove any stock transforms for engine-fairing overrides
             if (rendersToRemove != null && rendersToRemove.Length > 0)
             {
                 SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(rendersToRemove));
             }
-            //load FairingData instances from config values (persistent data nodes also merged in)
             loadFairingData(SSTUStockInterop.getPartModuleConfig(part, this));
-            //set up the increment values for the gui controls
-            //initialize gui controls to the current fairing values
             if (externalUpdateData != null)
             {
                 updateFromExternalData(externalUpdateData);
-                externalUpdateData = null;
             }
-            updateEditorFields(false);
-            //construct fairing from loaded data
-            buildFairing();
-            //update the visible and attachment status for the fairing
-            updateFairingStatus();            
+            updateEditorFields(false);//update cached editor gui field values for diameter, sections, etc.
+            buildFairing();//construct fairing from cached/persistent/default data
+            needsStatusUpdate = true;
             if (textureSets != null)
             {
                 if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
@@ -425,7 +424,11 @@ namespace SSTUTools
             if (externalUpdateData != null)
             {
                 updateFromExternalData(externalUpdateData);
-                externalUpdateData = null;
+            }
+            if (needsStatusUpdate)
+            {
+                needsStatusUpdate = false;
+                updateFairingStatus();
             }
             if (needsRebuilt)
             {
@@ -492,9 +495,15 @@ namespace SSTUTools
             }
             if (eData.hasEnable)
             {
-                enableFairing(eData.enable);
+                fairingForceDisabled = !eData.enable;
+            }
+            else
+            {
+                fairingForceDisabled = false;//default to NOT force disabled
             }
             updateEditorFields(true);
+            needsGuiUpdate = true;
+            externalUpdateData = null;
         }
 
         #endregion
@@ -603,22 +612,22 @@ namespace SSTUTools
         {
             bool topAdjustEnabled = enableTopDiameterControls && canAdjustTop;
             bool bottomAdjustEnabled = enableBottomDiameterControls && canAdjustBottom;
-            if (!currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
+            if (fairingForceDisabled || !currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
             {
                 topAdjustEnabled = bottomAdjustEnabled = false;
             }
             Fields["guiTopDiameter"].guiActiveEditor = topAdjustEnabled;
             Fields["guiBottomDiameter"].guiActiveEditor = bottomAdjustEnabled;
-            Fields["numOfSections"].guiActiveEditor = currentlyEnabled;
-            Events["nextTextureEvent"].active = currentlyEnabled && textureSets != null && textureSets.Length > 1;
+            Fields["numOfSections"].guiActiveEditor = currentlyEnabled && canAdjustSections;
+            Events["nextTextureEvent"].active =  currentlyEnabled && textureSets != null && textureSets.Length > 1;
             Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
 
             bool enableButtonActive = false;
             if (HighLogic.LoadedSceneIsEditor)
             {
-                enableButtonActive = (currentlyEnabled && canDisableInEditor) || canSpawnFairing();
+                enableButtonActive = !fairingForceDisabled && ( (currentlyEnabled && canDisableInEditor) || canSpawnFairing() );
             }
-            else
+            else//flight scene....
             {
                 enableButtonActive = currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
             }
@@ -644,8 +653,13 @@ namespace SSTUTools
         /// Blanket method to update the attached/visible status of the fairing based on its fairing type, current jettisoned status, and if a part is present on the fairings watched node (if any/applicable)
         /// </summary>
         private void updateFairingStatus()
-        {            
-            if (!fairingEnabled || fairingJettisoned)
+        {
+            if (fairingForceDisabled)
+            {
+                currentlyEnabled = false;
+                enableFairingRender(false);
+            }
+            else if (!fairingEnabled || fairingJettisoned)
             {
                 currentlyEnabled = false;
                 if (!renderingJettisonedFairing)
@@ -666,7 +680,8 @@ namespace SSTUTools
                 }
             }
             updateShieldingStatus();
-            updateGuiState();
+            updateOpacity();
+            needsGuiUpdate = true;
         }
 
         private void updateStatusForNode()
@@ -748,7 +763,7 @@ namespace SSTUTools
         private void enableFairing(bool enable)
         {
             fairingEnabled = enable;
-            updateFairingStatus();
+            needsStatusUpdate = true;
         }
         
         private void enableFairingRender(bool val)
@@ -889,7 +904,6 @@ namespace SSTUTools
             SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
             if (shield != null)
             {
-                MonoBehaviour.print("SSTUNodeFairing updating shielding status for module: " + shield + " :: enabled: " + currentlyEnabled);
                 if (currentlyEnabled)
                 {
                     string name = fairingName + "" + part.Modules.IndexOf(this);

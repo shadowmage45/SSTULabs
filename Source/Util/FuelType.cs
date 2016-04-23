@@ -11,15 +11,27 @@ namespace SSTUTools
 
         private bool loadedDefs = false;
 
-        private Dictionary<String, FuelType> fuelTypes = new Dictionary<String, FuelType>();
+        private Dictionary<string, FuelType> fuelTypes = new Dictionary<string, FuelType>();
 
-        private Dictionary<String, float> resourceVolumes = new Dictionary<String, float>();
+        private Dictionary<string, float> resourceVolumes = new Dictionary<string, float>();
+
+        private Dictionary<string, float> zeroMassResourceMasses = new Dictionary<string, float>();
+
+        private Dictionary<string, float> zeroCostResourceCosts = new Dictionary<string, float>();
+
+        public void reloadData()
+        {
+            loadedDefs = false;
+            loadDefs();
+        }
 
         private void loadDefs()
         {
             if (loadedDefs) { return; }
             fuelTypes.Clear();
             resourceVolumes.Clear();
+            zeroMassResourceMasses.Clear();
+            zeroCostResourceCosts.Clear();
 
             ConfigNode[] configs = GameDatabase.Instance.GetConfigNodes("SSTU_RESOURCEVOLUME");
             foreach (ConfigNode node in configs)
@@ -27,6 +39,18 @@ namespace SSTUTools
                 resourceVolumes.Add(node.GetStringValue("name"), node.GetFloatValue("volume"));
             }
 
+            configs = GameDatabase.Instance.GetConfigNodes("SSTU_ZEROMASSRESOURCE");
+            foreach (ConfigNode node in configs)
+            {
+                zeroMassResourceMasses.Add(node.GetStringValue("name"), node.GetFloatValue("mass"));
+            }
+
+            configs = GameDatabase.Instance.GetConfigNodes("SSTU_ZEROCOSTRESOURCE");
+            foreach (ConfigNode node in configs)
+            {
+                zeroCostResourceCosts.Add(node.GetStringValue("name"), node.GetFloatValue("cost"));
+            }
+            
             configs = GameDatabase.Instance.GetConfigNodes("SSTU_FUELTYPE");
             FuelType fuelType;
             foreach (ConfigNode node in configs)
@@ -71,13 +95,34 @@ namespace SSTUTools
 
         public float getResourceVolume(String name)
         {
+            PartResourceDefinition def = PartResourceLibrary.Instance.GetDefinition(name);
+            return getResourceVolume(name, def);
+        }
+
+        public float getResourceVolume(String name, PartResourceDefinition def)
+        {
             float val = 0;
             if (!resourceVolumes.TryGetValue(name, out val))
             {
+                if (def != null) { return def.volume; }
                 return 5f;
             }
             return val;
         }
+
+        public float getZeroMassResourceMass(string name)
+        {
+            float val = 0;
+            if (!zeroMassResourceMasses.TryGetValue(name, out val)) { return 0; }
+            return val;
+        }
+
+        public float getZeroCostResourceCost(string name)
+        {
+            float val = 0;
+            if (!zeroCostResourceCosts.TryGetValue(name, out val)) { return 0; }
+            return val;
+        }        
     }
             
     public class FuelTypeData
