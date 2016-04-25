@@ -286,14 +286,27 @@ namespace SSTUTools
             val += baseVolume;
             return val;
         }
-
-        //TODO
+        
         /// <summary>
         /// Update the cached mass and cost for the -models- that are currently enabled; resources and tankage are handled by VolumeContainer
         /// </summary>
         private void updateMassAndCost()
         {
-            //TODO
+            int len = modelGroups.Length;
+            ModelSwitchGroup group;
+            ModelSwitchData model;
+            modifiedMass = 0;
+            modifiedCost = 0;
+            for (int i = 0; i < len; i++)
+            {
+                group = modelGroups[i];
+                model = group.enabledModel;
+                if (model != null)
+                {
+                    modifiedCost += model.cost;
+                    modifiedMass += model.mass;
+                }
+            }
         }
         
         private void updateAttachNodes(bool userInput)
@@ -382,11 +395,11 @@ namespace SSTUTools
             this.group.add(this);
         }
 
-        public float volume { get { return modelDefinition.volume * 1000f; } }//adjust from model definition m^3 to resource definition liters
+        public float volume { get { return Mathf.Pow(scale, 3) * modelDefinition.volume * 1000f; } }//adjust from model definition m^3 to resource definition liters
 
-        public float mass { get { return modelDefinition.mass; } }
+        public float mass { get { return Mathf.Pow(scale, 3) * modelDefinition.mass; } }
 
-        public float cost { get { return modelDefinition.cost; } }
+        public float cost { get { return Mathf.Pow(scale, 3) * modelDefinition.cost; } }
 
         internal void loadPersistentData(string val) { enabled = int.Parse(val) == 1; }
 

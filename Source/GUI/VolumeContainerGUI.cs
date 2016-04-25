@@ -9,14 +9,14 @@ namespace SSTUTools
     public class VolumeContainerGUI
     {
         private static Vector2 scrollPos;
-        private static Rect windowRect;
+        private static Rect windowRect = new Rect(Screen.width - 900, 40, 800, 600);
         private static int id = 10000;
         private static int containerIndex = 0;
         private static SSTUVolumeContainer module;
         private static ContainerDefinition[] containers;
         private static VolumeRatioEntry[][] resourceEntries;
 
-        private static Rect statWindowRect;
+        private static Rect statWindowRect = new Rect(Screen.width - 900 - 250, 40, 250, 300);
         private static int statId;
         
         public static void openGUI(SSTUVolumeContainer container, ContainerDefinition[] modContainers)
@@ -24,25 +24,38 @@ namespace SSTUTools
             if (module != null)
             {
                 closeGUI();
+                return;
             }
-            windowRect = new Rect(Screen.width - 900, 40, 800, 600);
-            statWindowRect = new Rect(Screen.width - 900 - 250, 40, 250, 300);
             containerIndex = 0;
             module = container;
-            containers = modContainers;
+            int len = modContainers.Length;
+            List<ContainerDefinition> availContainers = new List<ContainerDefinition>();
+            for (int i = 0; i < len; i++)
+            {
+                if (modContainers[i].guiAvailable && modContainers[i].containerPercent > 0)
+                {
+                    availContainers.Add(modContainers[i]);
+                }
+            }
+            containers = availContainers.ToArray();
             id = module.GetInstanceID();
             statId = id + 1;
-            int len = modContainers.Length;
+            len = containers.Length;
+            if (len <= 0)
+            {
+                closeGUI();
+                return;
+            }
             resourceEntries = new VolumeRatioEntry[len][];
             string[] names;
             for (int i = 0; i < len; i++)
             {
-                names = modContainers[i].getResourceNames();
+                names = containers[i].getResourceNames();
                 int len2 = names.Length;
                 resourceEntries[i] = new VolumeRatioEntry[len2];
                 for (int k = 0; k < len2; k++)
                 {
-                    resourceEntries[i][k] = new VolumeRatioEntry(modContainers[i], names[k], modContainers[i].getResourceUnitRatio(names[k]));
+                    resourceEntries[i][k] = new VolumeRatioEntry(containers[i], names[k], containers[i].getResourceUnitRatio(names[k]));
                 }
             }
         }
@@ -57,8 +70,17 @@ namespace SSTUTools
 
         public static void updateGUI()
         {
-            windowRect = GUI.Window(id, windowRect, addContainerWindow, "SSTUVolumeContainer");
-            statWindowRect = GUI.Window(statId, statWindowRect, addStatWindow, "Stats For This Container");
+            try
+            {
+                windowRect = GUI.Window(id, windowRect, addContainerWindow, "SSTUVolumeContainer");
+                statWindowRect = GUI.Window(statId, statWindowRect, addStatWindow, "Stats For This Container");
+            }
+            catch (Exception e)
+            {
+                MonoBehaviour.print("Caught exception while rendering VolumeContainer GUI");
+                MonoBehaviour.print(e.Message);
+                MonoBehaviour.print(System.Environment.StackTrace);
+            }
         }
 
         private static void addStatWindow(int id)
@@ -69,6 +91,7 @@ namespace SSTUTools
             float md = containers[containerIndex].containerMass;
             float mp = containers[containerIndex].resourceMass;
             float mt = md + mp;
+            float mpt = module.part.mass;
             float cd = containers[containerIndex].containerCost;
             float cp = containers[containerIndex].resourceCost;
             float ct = cd + cp;
@@ -105,6 +128,11 @@ namespace SSTUTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+            GUILayout.Label("Part Mass:", GUILayout.Width(100));
+            GUILayout.Label(mpt.ToString());
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
             GUILayout.Label("Dry Cost:", GUILayout.Width(100));
             GUILayout.Label(cd.ToString());
             GUILayout.EndHorizontal();
@@ -127,7 +155,7 @@ namespace SSTUTools
         {
             GUILayout.BeginVertical();
             string mainLabel = "Current: " + containers[containerIndex].name + " :: " + containers[containerIndex].usableVolume + " / " + containers[containerIndex].rawVolume + "l";
-            if (containers.Length > 0)
+            if (containers.Length > 1)
             {
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Prev Container", GUILayout.Width(200)) && containerIndex > 0) { containerIndex--; }
@@ -219,14 +247,16 @@ namespace SSTUTools
         private static void addWindowContainerRatioControls(ContainerDefinition container)
         {
             GUILayout.Label("Adjust ratio through input box to change resource ratios");
-            VolumeRatioEntry[] ratioData = resourceEntries[containerIndex];                        
+            VolumeRatioEntry[] ratioData = resourceEntries[containerIndex];                
             scrollPos = GUILayout.BeginScrollView(scrollPos);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Resource", GUILayout.Width(150));
             GUILayout.Label("Unit Ratio", GUILayout.Width(100));
             GUILayout.Label("Units", GUILayout.Width(100));
             GUILayout.Label("Volume", GUILayout.Width(100));
-            GUILayout.Label("% of Tank", GUILayout.Width(100));
+            GUILayout.Label("Mass", GUILayout.Width(90));
+            GUILayout.Label("Cost", GUILayout.Width(90));
+            GUILayout.Label("% of Tank", GUILayout.Width(90));
             GUILayout.EndHorizontal();
             int len = ratioData.Length;
             for (int i = 0; i < len; i++)
@@ -238,14 +268,34 @@ namespace SSTUTools
             GUILayout.EndScrollView();
         }
 
+        public static void updateGuiData()
+        {
+            int len = resourceEntries.Length;
+            for (int i = 0; i < len; i++)
+            {
+                VolumeRatioEntry[] ratioData = resourceEntries[i];
+                int len2 = ratioData.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    ratioData[k].updateCachedValues();
+                }
+            }
+        }
+
     }
 
     public class VolumeRatioEntry
     {
         ContainerDefinition container;
         public readonly string resourceName;
-        int prevRatio;
-        string textRatio;
+        private int prevRatio;
+        private string textRatio;
+
+        private float units;
+        private float volume;
+        private float resourceMass;
+        private float cost;
+        private float percent;
 
         public VolumeRatioEntry(ContainerDefinition container, string resourceName, int startRatio)
         {
@@ -253,10 +303,12 @@ namespace SSTUTools
             this.resourceName = resourceName;
             this.prevRatio = startRatio;
             this.textRatio = prevRatio.ToString();
+            updateCachedValues();
         }
 
-        public void draw()
+        public bool draw()
         {
+            bool update = false;
             int currentUnitRatio = container.getResourceUnitRatio(resourceName);
             float currentVolumeRatio = container.getResourceVolumeRatio(resourceName);
             float totalVolumeRatio = container.totalVolumeRatio;
@@ -264,9 +316,9 @@ namespace SSTUTools
             {
                 prevRatio = currentUnitRatio;
                 textRatio = prevRatio.ToString();
+                update = true;
             }
-            GUILayout.Label(resourceName, GUILayout.Width(150));//resource name
-            float tankPercent = container.getResourceVolume(resourceName) / container.usableVolume;//. container.usableVolume > 0 ? currentVolumeRatio / totalVolumeRatio : 0;
+            GUILayout.Label(resourceName, GUILayout.Width(150));
             string textVal = GUILayout.TextField(textRatio, GUILayout.Width(100));
             if (textVal != textRatio)
             {
@@ -276,13 +328,25 @@ namespace SSTUTools
                 {
                     prevRatio = parsedTextVal;
                     container.setResourceRatio(resourceName, parsedTextVal);
+                    update = true;
                 }
             }
-            float tankUnits = container.getResourceUnits(resourceName);
-            GUILayout.Label(tankUnits.ToString(), GUILayout.Width(100));
-            float tankVolume = container.getResourceVolume(resourceName);
-            GUILayout.Label(tankVolume.ToString(), GUILayout.Width(100));
-            GUILayout.Label(tankPercent.ToString(), GUILayout.Width(100));
+            
+            GUILayout.Label(units.ToString(), GUILayout.Width(100));
+            GUILayout.Label(volume.ToString(), GUILayout.Width(100));            
+            GUILayout.Label(resourceMass.ToString(), GUILayout.Width(90));            
+            GUILayout.Label(cost.ToString(), GUILayout.Width(90));            
+            GUILayout.Label(percent.ToString(), GUILayout.Width(90));
+            return update;
+        }
+
+        public void updateCachedValues()
+        {
+            units = container.getResourceUnits(resourceName);
+            volume = container.getResourceVolume(resourceName);
+            resourceMass = container.getResourceMass(resourceName);
+            cost = container.getResourceCost(resourceName);
+            percent = container.getResourceVolume(resourceName) / container.usableVolume;
         }
 
     }

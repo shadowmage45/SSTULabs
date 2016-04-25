@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
@@ -32,11 +30,11 @@ namespace SSTUTools
             toggleNode();
         }
 
-        [KSPEvent(guiName = "Invert Node", guiActiveEditor = false)]
-        public void invertNodeEvent()
-        {
-            //TODO
-        }
+        //[KSPEvent(guiName = "Invert Node", guiActiveEditor = false)]
+        //public void invertNodeEvent()
+        //{
+        //    //TODO
+        //}
 
         public override void OnStart(PartModule.StartState state)
         {

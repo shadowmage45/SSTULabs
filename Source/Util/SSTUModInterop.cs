@@ -9,9 +9,11 @@ namespace SSTUTools
         private static bool checkedFar = false;
         private static bool checkedRF = false;
         private static bool checkedMFT = false;
+        private static bool checkedKIS = false;
         private static bool installedFAR = false;
         private static bool installedRF = false;
         private static bool installedMFT = false;
+        private static bool installedKIS = false;
 
         public static void onEngineConfigChange(Part part, String config, float scale)
         {
@@ -96,6 +98,32 @@ namespace SSTUTools
             mi2.Invoke(pm, new System.Object[] { });
         }
 
+        public static void onPartKISVolumeUpdated(Part part, float liters)
+        {
+            if (!isKISInstalled())
+            {
+                MonoBehaviour.print("KIS is not installed, cannot update KIS volume..");
+                return;
+            }
+            string typeName = "KIS.ModuleKISInventory,KIS";
+            Type kisModuleType = Type.GetType(typeName);
+            if (kisModuleType == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate KIS module for name: "+typeName);
+            }
+            PartModule pm = (PartModule)part.GetComponent(kisModuleType);
+            if(pm == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate KIS module on part for type: "+part+" :: "+kisModuleType);
+                return;
+            }
+            FieldInfo fi = kisModuleType.GetField("maxVolume");
+            fi.SetValue(pm, liters);
+            MonoBehaviour.print("Set KIS volume for part: " + part + " to: " + liters);
+            BaseEvent inventoryEvent = pm.Events["ShowInventory"];
+            inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
+        }
+
         public static bool isFARInstalled()
         {
             if (!checkedFar)
@@ -124,6 +152,16 @@ namespace SSTUTools
                 installedMFT = isAssemblyLoaded("modularFuelTanks");               
             }
             return installedMFT;
+        }
+
+        public static bool isKISInstalled()
+        {
+            if (!checkedKIS)
+            {
+                checkedKIS = true;
+                installedKIS = isAssemblyLoaded("KIS");
+            }
+            return installedKIS;
         }
 
         private static bool isAssemblyLoaded(String name)

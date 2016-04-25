@@ -66,10 +66,7 @@ namespace SSTUTools
 
         [KSPField]
         public float diameterForThrustScaling = -1;
-
-        [KSPField]
-        public bool useRF = false;
-
+        
         [KSPField]
         public String techLimitSet = "Default";
 
@@ -117,12 +114,6 @@ namespace SSTUTools
         [KSPField(guiName = "Height", guiActiveEditor = true)]
         public float guiHeight = 0f;
 
-        [KSPField(guiName = "Dry Mass", guiActiveEditor = true)]
-        public float guiDryMass = 0f;
-
-        [KSPField(guiName = "Propellant Mass", guiActiveEditor = true)]
-        public float guiPropellantMass;
-
         [KSPField(guiName = "Thrust", guiActiveEditor = true)]
         public float guiThrust = 0f;
 
@@ -141,8 +132,6 @@ namespace SSTUTools
         private string prevBody;
         private string prevNozzle;
                 
-        private FuelTypeData fuelTypeData;
-
         private MountModelData[] noseModules;
         private SRBNozzleData[] nozzleModules;
         private SRBModelData[] mainModules;
@@ -242,7 +231,7 @@ namespace SSTUTools
             currentDiameter = newDiameter;
             updateModelScaleAndPosition();
             updateEffectsScale();
-            updatePartResources();
+            updateContainerVolume();
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
@@ -281,7 +270,7 @@ namespace SSTUTools
             currentMainModule.enableTextureSet(currentMainTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
-            updatePartResources();
+            updateContainerVolume();
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
@@ -319,7 +308,7 @@ namespace SSTUTools
             currentNoseModule.enableTextureSet(currentNoseTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
-            updatePartResources();
+            updateContainerVolume();
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
@@ -360,7 +349,7 @@ namespace SSTUTools
             currentNozzleModule.enableTextureSet(currentNozzleTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
-            updatePartResources();
+            updateContainerVolume();
             updatePartMass();
             updatePartCost();
             updateAttachnodes(true);
@@ -491,18 +480,23 @@ namespace SSTUTools
             updateGimbalOffset();
             updateThrustOutput();
             updateGui();
+            if (!initializedResources && HighLogic.LoadedSceneIsEditor)
+            {
+                initializedResources = true;
+                updateContainerVolume();
+            }
         }
 
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            return -defaultCost + modifiedCost;
+            return modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            return -defaultMass + modifiedMass;
+            return modifiedMass;
         }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
@@ -528,11 +522,6 @@ namespace SSTUTools
             updateGimbalOffset();
             updatePartCost();
             updatePartMass();
-            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
-            {
-                initializedResources = true;
-                updatePartResources();
-            }
             updateGui();
             updateTextureSets();
             SSTUModInterop.onPartGeometryUpdate(part, true);
@@ -576,11 +565,7 @@ namespace SSTUTools
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
-
-            //load singular fuel type data from config node;
-            //using a node so that it may have the custom fields defined for mass fraction/etc on a per-part basis
-            fuelTypeData = new FuelTypeData(node.GetNode("FUELTYPE"));
-
+            
             //load all main tank model datas
             mainModules = SRBModelData.parseSRBModels(node.GetNodes("MAINMODEL"));
             currentMainModule = Array.Find(mainModules, m => m.name == currentMainName);
@@ -690,19 +675,12 @@ namespace SSTUTools
         {
             float scale = diameterForThrustScaling == -1 ? currentMainModule.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
             scale = Mathf.Pow(scale, thrustScalePower);
-            if (useRF && !String.IsNullOrEmpty(currentMainModule.engineConfig))//use ModuleEngineConfigs
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine != null)
             {
-                SSTUModInterop.onEngineConfigChange(part, currentMainModule.engineConfig, scale);
-            }
-            else
-            {
-                ModuleEngines engine = part.GetComponent<ModuleEngines>();
-                if (engine != null)
-                {
-                    float minThrust = scale * currentMainModule.minThrust;
-                    float maxThrust = scale * currentMainModule.maxThrust;
-                    SSTUStockInterop.updateEngineThrust(engine, minThrust, maxThrust);
-                }
+                float minThrust = scale * currentMainModule.minThrust;
+                float maxThrust = scale * currentMainModule.maxThrust;
+                SSTUStockInterop.updateEngineThrust(engine, minThrust, maxThrust);
             }
         }
 
@@ -881,13 +859,11 @@ namespace SSTUTools
         /// <summary>
         /// Update the volume of resources that are available in the part, based on the currently selected models and scales
         /// </summary>
-        private void updatePartResources()
+        private void updateContainerVolume()
         {
-            if (useRF) { return; }
-            float currentVolume = currentMainModule.getModuleVolume();
-            currentVolume = fuelTypeData.getUsableVolume(currentVolume);
-            SSTUResourceList res = fuelTypeData.getResourceList(currentVolume);
-            res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
+            if (container == null) { return; }
+            container.onVolumeUpdated(currentMainModule.getModuleVolume()*1000f);//m^3 -> l conversion factor
         }
 
         /// <summary>
@@ -895,24 +871,12 @@ namespace SSTUTools
         /// </summary>
         private void updatePartMass()
         {
-            float volume = currentMainModule.getModuleVolume();
-            if (useRF)
-            {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, volume);
-                return;
-            }
-            float usableVolume = fuelTypeData.getUsableVolume(volume);
-            float dryMass = fuelTypeData.getTankageMass(usableVolume);
-            modifiedMass = dryMass + currentNozzleModule.getModuleMass() + currentNoseModule.getModuleMass();
+            modifiedMass = currentMainModule.getModuleMass() + currentNozzleModule.getModuleMass() + currentNoseModule.getModuleMass();
         }
 
         private void updatePartCost()
         {
-            float volume = currentMainModule.getModuleVolume();
-            float usableVolume = fuelTypeData.getUsableVolume(volume);
-            float dryMassCost = fuelTypeData.getDryCost(usableVolume);
-            float resourceCost = fuelTypeData.getResourceCost(usableVolume);
-            modifiedCost = dryMassCost + resourceCost + currentMainModule.getModuleCost() + currentNoseModule.getModuleCost() + currentNozzleModule.getModuleCost();
+            modifiedCost = currentMainModule.getModuleCost() + currentNoseModule.getModuleCost() + currentNozzleModule.getModuleCost();
         }
 
         /// <summary>
@@ -921,33 +885,23 @@ namespace SSTUTools
         private void updateGui()
         {
             guiHeight = currentMainModule.currentHeight;
-            if (useRF)
+
+            float propMass = 0f;
+
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine != null)
             {
-                Fields["guiDryMass"].guiActiveEditor = false;
-                Fields["guiPropellantMass"].guiActiveEditor = false;
-                Fields["guiThrust"].guiActiveEditor = false;
-                Fields["guiBurnTime"].guiActiveEditor = false;
+                float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
+                guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
+                float isp = 220f;
+                float g = 9.81f;
+                float flowRate = guiThrust / (g * isp);
+                guiBurnTime = (propMass / flowRate);
             }
             else
             {
-                guiDryMass = modifiedMass;
-                guiPropellantMass = fuelTypeData.getResourceMass(fuelTypeData.getUsableVolume(currentMainModule.getModuleVolume()));
-
-                ModuleEngines engine = part.GetComponent<ModuleEngines>();
-                if (engine != null)
-                {
-                    float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                    guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
-                    float isp = 220f;
-                    float g = 9.81f;
-                    float flowRate = guiThrust / (g * isp);
-                    guiBurnTime = (guiPropellantMass / flowRate);
-                }
-                else
-                {
-                    guiThrust = 0;
-                    guiBurnTime = 0;
-                }
+                guiThrust = 0;
+                guiBurnTime = 0;
             }
             Events["nextNoseTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextNozzleTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;

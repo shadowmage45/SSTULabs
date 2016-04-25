@@ -70,6 +70,9 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public string persistentData = string.Empty;
+
+        [KSPField]
+        public double lastBoiloffUpdate = 0d;
         
         //private cached vars for... things....
         private ContainerDefinition[] containers;
@@ -131,6 +134,7 @@ namespace SSTUTools
             updateMassAndCost();//update cached part mass and cost values
             updatePersistentData();//update persistent data in case tank was just initialized
             updateFuelSelections();//update the selections for the 'FuelType' UI slider, this adds or removes the 'custom' option as needed
+            updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
 
             //disable next fuel event button if main container does not have more than one preset type available 
             BaseField fuelSelection = Fields["guiFuelType"];
@@ -139,7 +143,7 @@ namespace SSTUTools
             MonoBehaviour.print("fuel selections current value: " + guiFuelType);
 
             BaseEvent editContainerEvent = Events["openGUIEvent"];
-            editContainerEvent.active = enableContainerEdit;            
+            editContainerEvent.active = enableContainerEdit;
 
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
@@ -147,6 +151,11 @@ namespace SSTUTools
                 updateTankResources();
                 SSTUStockInterop.fireEditorUpdate();//update cost
             }
+        }
+
+        public void Start()
+        {
+            updateKISVolume();
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return subtractMass ? -defaultMass + modifiedMass : modifiedMass; }
@@ -188,6 +197,7 @@ namespace SSTUTools
                     persistentData = persistentData + containers[i].getPersistentData();
                 }
             }
+            MonoBehaviour.print("Updated VC Persistent data to:\n     " + persistentData);
         }
 
         public void onVolumeUpdated(float newVolume)
@@ -234,6 +244,12 @@ namespace SSTUTools
             SSTUStockInterop.fireEditorUpdate();
         }
 
+        public void containerFuelTypeSet(ContainerDefinition container, ContainerFuelPreset fuelType)
+        {
+
+            updateFuelSelections();
+        }
+
         public void containerFuelTypeAdded(ContainerDefinition container, ContainerFuelPreset fuelType)
         {
             container.addPresetRatios(fuelType);
@@ -242,11 +258,56 @@ namespace SSTUTools
 
         public void containerTypeUpdated(ContainerDefinition container, ContainerModifier newType)
         {
-            container.setModifier(newType);      
+            container.setModifier(newType);
+            updatePartStats();
+        }
+
+        public ContainerDefinition highestVolumeContainer(string resourceName)
+        {
+            ContainerDefinition high = null;
+            ContainerDefinition def;
+            float highVal=-1, val;
+            int len = containers.Length;
+            for (int i = 0; i < len; i++)
+            {
+                def = containers[i];
+                if (def.contains(resourceName))
+                {
+                    val = def.getResourceVolume(resourceName);
+                    if (highVal < 0 || val > highVal)
+                    {
+                        high = def;
+                        highVal = val;
+                    }
+                }
+            }
+            return high;
         }
 
         private ContainerDefinition getBaseContainer() { return containers[baseContainerIndex]; }
 
+        private void updateKISVolume()
+        {
+            PartResource kisResource = part.Resources["SSTUKISStorage"];
+            float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
+            SSTUModInterop.onPartKISVolumeUpdated(part, volume);
+        }
+        
+        /// <summary>
+        /// Update part impact tolerance and max temp stats based on first containers modifier values and part prefab values
+        /// </summary>
+        private void updatePartStats()
+        {
+            if (part.partInfo == null || part.partInfo.partPrefab == null) { return; }
+            ContainerModifier mod = containers[0].currentModifier;
+            part.crashTolerance = part.partInfo.partPrefab.crashTolerance * mod.impactModifier;
+            part.maxTemp = part.partInfo.partPrefab.maxTemp * mod.heatModifier;
+            part.skinMaxTemp = part.partInfo.partPrefab.skinMaxTemp * mod.heatModifier;
+        }
+
+        /// <summary>
+        /// Update the available GUI fuel type selection values for the current container setup
+        /// </summary>
         private void updateFuelSelections()
         {
             ContainerDefinition container = getBaseContainer();            
@@ -265,9 +326,12 @@ namespace SSTUTools
                 for (int i = 0; i < presetNames.Length; i++) { presetNames[i] = container.fuelPresets[i].name; }
             }
             this.updateUIChooseOptionControl("guiFuelType", presetNames, presetNames, true, currentType);
-            Fields["guiFuelType"].guiActiveEditor = container.rawVolume > 0;
+            Fields["guiFuelType"].guiActiveEditor = enableFuelTypeChange && container.rawVolume > 0;
         }
         
+        /// <summary>
+        /// Update the resources for the part from the resources in the currently configured containers
+        /// </summary>
         private void updateTankResources()
         {
             SSTUResourceList list = new SSTUResourceList();
@@ -278,6 +342,7 @@ namespace SSTUTools
             }
             list.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
             updateMassAndCost();
+            updateKISVolume();
         }
 
         /// <summary>
@@ -326,6 +391,7 @@ namespace SSTUTools
                     for (int i = 0; i < len; i++) { containers[i].clearDirty(); }
                     updateTankResources();
                     updatePersistentData();
+                    VolumeContainerGUI.updateGuiData();
                 }
             }
         }

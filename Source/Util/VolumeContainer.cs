@@ -24,6 +24,9 @@ namespace SSTUTools
         public readonly string defaultFuelPreset;// user config specified default fuel preset
         public readonly string defaultResources;//CSV resource,ratio,resource,ratio...
         public readonly string defaultModifier;// the default tank modifier; set to first modifier if it is blank or invalid
+        public readonly bool ecHasMass = true;
+        public readonly bool ecHasCost = true;
+        public readonly bool guiAvailable = true;
 
         //runtime accessible data
         public readonly string[] applicableResources;
@@ -33,9 +36,10 @@ namespace SSTUTools
         //private vars
         private SubContainerDefinition[] subContainerData;
         private Dictionary<string, SubContainerDefinition> subContainersByName = new Dictionary<string, SubContainerDefinition>();
-
+        
+        //cached values
         private ContainerModifier cachedModifier;
-        private float percentOfTankVolume;//loaded from config, but private for better encapsulation
+        private float percentOfTankVolume;//default value loaded from config, but var is private for better encapsulation
         private string currentFuelPreset;
         private float currentRawVolume;
         private float currentUsableVolume;
@@ -62,6 +66,9 @@ namespace SSTUTools
             defaultFuelPreset = node.GetStringValue("defaultFuelPreset");
             defaultResources = node.GetStringValue("defaultResources");
             defaultModifier = node.GetStringValue("defaultModifier", "standard");
+            ecHasMass = node.GetBoolValue("ecHasMass", ecHasMass);
+            ecHasCost = node.GetBoolValue("ecHasCost", ecHasCost);
+            guiAvailable = node.GetBoolValue("guiAvailable", guiAvailable);
 
             if (availableResources.Length == 0 && resourceSets.Length == 0) { resourceSets = new string[] { "generic" }; }//validate that there is some sort of resource reference; generic is a special type for all pumpable resources
             if (tankModifierNames == null || tankModifierNames.Length == 0) { tankModifierNames = VolumeContainerLoader.getAllModifierNames(); }//validate that there is at least one modifier type            
@@ -121,9 +128,27 @@ namespace SSTUTools
             setContainerPercent(float.Parse(vals[2]));
             int len = subContainerData.Length;
             int len2 = vals.Length;
-            for (int i = 0, k = 3; i < len && k < len2; i++, k++)
+            int testVal;
+            if (int.TryParse(vals[3], out testVal))//test if the first value is a name or a number...//TODO remove this code after a few releases
             {
-                subContainerData[i].setRatio(int.Parse(vals[k]));
+                for (int i = 0, k = 3; i < len && k < len2; i++, k++)
+                {
+                    subContainerData[i].setRatio(int.Parse(vals[k]));
+                }
+            }
+            else
+            {
+                string name;
+                int ratio;
+                for (int i = 3; i < len2; i+=2)
+                {
+                    name = vals[i];
+                    ratio = int.Parse(vals[i + 1]);
+                    if (subContainersByName.ContainsKey(name))
+                    {
+                        subContainersByName[name].setRatio(ratio);
+                    }
+                }
             }
             internalUpdateTotalRatio();
             internalUpdateVolumeUnits();
@@ -136,7 +161,10 @@ namespace SSTUTools
             int len = subContainerData.Length;
             for (int i = 0; i < len; i++)
             {
-                data = data + "," + subContainerData[i].unitRatio;
+                if (subContainerData[i].unitRatio > 0)
+                {
+                    data = data + "," + subContainerData[i].name + "," + subContainerData[i].unitRatio;
+                }
             }
             return data;
         }
@@ -163,6 +191,10 @@ namespace SSTUTools
 
         public float getResourceUnits(string name) { return internalGetVolumeData(name).resourceUnits; }
 
+        public float getResourceMass(string name) { return internalGetVolumeData(name).resourceMass; }
+
+        public float getResourceCost(string name) { return internalGetVolumeData(name).resourceCost; }
+
         public float rawVolume { get { return currentRawVolume; } }
 
         public float usableVolume { get { return currentUsableVolume; } }
@@ -172,6 +204,8 @@ namespace SSTUTools
         public int Length { get { return subContainerData.Length; } }
 
         public bool isDirty { get { return resourcesDirty; } }
+
+        public bool contains(string name) { return subContainersByName.ContainsKey(name); }
 
         public void clearDirty() { resourcesDirty = false; }
 
@@ -183,7 +217,7 @@ namespace SSTUTools
                 return cachedModifier;
             }
         }
-        
+                
         //TODO can this just return applicableResources?
         public string[] getResourceNames()
         {
@@ -294,7 +328,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 tempMass = subContainerData[i].resourceMass;
-                if (tempMass == 0 && subContainerData[i].resourceVolume > 0)//zero mass resource; fake it for the purposes of
+                if (tempMass == 0 && ecHasMass && subContainerData[i].resourceUnits > 0)//zero mass resource; fake it for the purposes of
                 {                    
                     zeroMassResourceMass += FuelTypes.INSTANCE.getZeroMassResourceMass(subContainerData[i].name) * subContainerData[i].resourceUnits;
                 }
@@ -304,14 +338,14 @@ namespace SSTUTools
             currentContainerMass = 0;
             if (currentModifier.useVolumeForMass)//should most notably be used for structural tank types; any resource-containing tank should use the max resource mass * mass fraction
             {
-                tempMass = currentUsableVolume;
+                tempMass = currentRawVolume * 0.001f;//based on volume in m^3
                 currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
             }
             else if (totalUnitRatio == 0)//empty tank, use config specified empty tank mass
             {
                 currentContainerMass = (currentUsableVolume * 0.001f) * massPerEmptyCubicMeter * currentModifier.dryMassModifier;
             }
-            else
+            else//standard mass-fraction based calculation
             {
                 tempMass = currentResourceMass;
                 currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
@@ -319,23 +353,27 @@ namespace SSTUTools
 
             currentResourceCost = 0;
             float tempCost;
+            float zeroCostResourceCosts = 0;
             for (int i = 0; i < len; i++)
             {
                 tempCost = subContainerData[i].resourceCost;
-                if (tempCost == 0 && subContainerData[i].resourceUnits > 0)
+                if (tempCost == 0 && ecHasCost && subContainerData[i].resourceUnits > 0)
                 {
-                    tempCost = FuelTypes.INSTANCE.getZeroCostResourceCost(subContainerData[i].name) * subContainerData[i].resourceUnits;
+                    zeroCostResourceCosts += FuelTypes.INSTANCE.getZeroCostResourceCost(subContainerData[i].name) * subContainerData[i].resourceUnits;
                 }
                 currentResourceCost += tempCost;
             }
             currentContainerCost = costPerDryTon * currentModifier.costModifier * currentContainerMass;
+            currentContainerCost += zeroCostResourceCosts;
 
             currentContainerMass += zeroMassResourceMass;
         }
 
         private void internalUpdateVolumeUnits()
         {
-            currentUsableVolume = (currentRawVolume - (currentRawVolume * tankageVolume)) * currentModifier.volumeModifier;
+            currentUsableVolume = currentRawVolume - (currentRawVolume * tankageVolume * currentModifier.tankageVolumeModifier);
+            currentUsableVolume *= currentModifier.volumeModifier;//basically used only for structural type to zero out avaialble volume
+            if (currentUsableVolume > rawVolume) { currentUsableVolume = rawVolume; }
             float total = currentTotalVolumeRatio;
             int len = subContainerData.Length;
             float vol;
@@ -486,27 +524,39 @@ namespace SSTUTools
         public readonly string name;
         public readonly string title;
         public readonly string description;
-        public readonly float volumeModifier = 0.85f;//applied before any resource volumes are calculated
-        public readonly float dryMassModifier = 0.15f;//applied after dry mass for tank is tallied from resource mass fraction values
+        public readonly float volumeModifier = 1f;
+        public readonly float tankageVolumeModifier = 1f;//applied before any resource volumes are calculated
+        public readonly float dryMassModifier = 1f;//applied after dry mass for tank is tallied from resource mass fraction values
         public readonly float costModifier = 1f;
         public readonly float impactModifier = 1f;
         public readonly float heatModifier = 1f;
-        public readonly float boiloffModifier = 1f;//in case of a 'semi' insulated container type this may be any value from 0-1
-        public readonly float boiloffECConsumption = 1f;//modifier to the amount of EC needed to prevent boiloff
-        public readonly bool useVolumeForMass = false;//special flag for structural tank type, to denote that dry mass is derived from raw volume rather than resource mass
+        public readonly bool useVolumeForMass = false;//special flag for structural tank type, to denote that dry mass is derived from raw volume rather than resource mass        
+        public readonly float boiloffModifier = 1f;
+        public readonly float activeInsulationPercent = 0f;
+        public readonly float activeECCost = 0f;
+        public readonly float activeInsulationPrevention = 1f;
+        public readonly float inactiveInsulationPrevention = 0f;
+        public readonly float passiveInsulationPrevention = 0f;
+
         public ContainerModifier(ConfigNode node)
         {
             name = node.GetStringValue("name");
             title = node.GetStringValue("title");
             description = node.GetStringValue("description");
             volumeModifier = node.GetFloatValue("volumeModifier", volumeModifier);
+            tankageVolumeModifier = node.GetFloatValue("tankageModifier", tankageVolumeModifier);
             dryMassModifier = node.GetFloatValue("massModifier", dryMassModifier);
             costModifier = node.GetFloatValue("costModifier", costModifier);
             impactModifier = node.GetFloatValue("impactModifier", impactModifier);
             heatModifier = node.GetFloatValue("heatModifier", heatModifier);
-            boiloffModifier = node.GetFloatValue("boiloffModifier", boiloffModifier);
-            boiloffECConsumption = node.GetFloatValue("boiloffECModifier", boiloffECConsumption);
             useVolumeForMass = node.GetBoolValue("useVolumeForMass", useVolumeForMass);
+
+            boiloffModifier = node.GetFloatValue("boiloffModifier", boiloffModifier);
+            activeInsulationPercent = node.GetFloatValue("activeInsulationPercent", activeInsulationPercent);
+            activeInsulationPrevention = node.GetFloatValue("activeInsulationPrevention", activeInsulationPrevention);
+            inactiveInsulationPrevention = node.GetFloatValue("inactiveInsulationPrevention", inactiveInsulationPrevention);
+            passiveInsulationPrevention = node.GetFloatValue("passiveInsulationPrevention", passiveInsulationPrevention);
+            activeECCost = node.GetFloatValue("activeECCost", activeECCost);
         }
     }
 
@@ -644,4 +694,5 @@ namespace SSTUTools
         public static ContainerFuelPreset getPreset(String name) { return Array.Find(containerPresets, m => m.name == name); }
 
     }
+
 }

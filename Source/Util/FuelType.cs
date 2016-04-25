@@ -19,6 +19,8 @@ namespace SSTUTools
 
         private Dictionary<string, float> zeroCostResourceCosts = new Dictionary<string, float>();
 
+        private Dictionary<string, BoiloffData> boiloffResourceValues = new Dictionary<string, BoiloffData>();
+
         public void reloadData()
         {
             loadedDefs = false;
@@ -32,6 +34,7 @@ namespace SSTUTools
             resourceVolumes.Clear();
             zeroMassResourceMasses.Clear();
             zeroCostResourceCosts.Clear();
+            boiloffResourceValues.Clear();
 
             ConfigNode[] configs = GameDatabase.Instance.GetConfigNodes("SSTU_RESOURCEVOLUME");
             foreach (ConfigNode node in configs)
@@ -49,6 +52,16 @@ namespace SSTUTools
             foreach (ConfigNode node in configs)
             {
                 zeroCostResourceCosts.Add(node.GetStringValue("name"), node.GetFloatValue("cost"));
+            }
+
+            configs = GameDatabase.Instance.GetConfigNodes("SSTU_RESOURCEBOILOFF");
+            foreach (ConfigNode node in configs)
+            {
+                string name = node.GetStringValue("name");
+                float val = node.GetFloatValue("value");
+                float cost = node.GetFloatValue("cost");
+                MonoBehaviour.print("Loading boiloff data for resource: " + name + " : " + val + " : " + cost);
+                boiloffResourceValues.Add(name, new BoiloffData(name, val, cost));
             }
             
             configs = GameDatabase.Instance.GetConfigNodes("SSTU_FUELTYPE");
@@ -122,7 +135,40 @@ namespace SSTUTools
             float val = 0;
             if (!zeroCostResourceCosts.TryGetValue(name, out val)) { return 0; }
             return val;
-        }        
+        }
+
+        public BoiloffData getResourceBoiloffValue(string name)
+        {
+            BoiloffData val = null;
+            if (!boiloffResourceValues.TryGetValue(name, out val)) { return null; }
+            return val;
+        }
+
+        public BoiloffData[] getResourceBoiloffData(string[] resources)
+        {
+            List<BoiloffData> data = new List<BoiloffData>();
+            BoiloffData d;
+            int len = resources.Length;
+            for (int i = 0; i < len; i++)
+            {
+                d = getResourceBoiloffValue(resources[i]);
+                if (d != null) { data.Add(d); }
+            }
+            return data.ToArray();
+        }
+    }
+
+    public class BoiloffData
+    {
+        public readonly string name;
+        public readonly float value;
+        public readonly float cost;
+        public BoiloffData(string name, float value, float cost)
+        {
+            this.name = name;
+            this.value = value;
+            this.cost = cost;
+        }
     }
             
     public class FuelTypeData
