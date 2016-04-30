@@ -912,7 +912,7 @@ namespace SSTUTools
                     newValue = originalValues[k] / (float)positions;
                     totalValue += newValue;
                     output.AddValue("trf" + rawIndex, newValue);
-                    MonoBehaviour.print("original thrust for transform: " + rawIndex + " : " + originalValues[i]+" ::adjusted percentag: "+newValue);
+                    MonoBehaviour.print("original thrust for transform: " + rawIndex + " : " + originalValues[k]+" ::adjusted percentag: "+newValue);
                 }
             }
             MonoBehaviour.print("Split thrust total: " + totalValue + " (Should == 1)");

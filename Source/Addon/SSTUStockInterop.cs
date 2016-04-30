@@ -32,7 +32,7 @@ namespace SSTUTools
 
         public static void addDragUpdatePart(Part part)
         {            
-            if(part!=null && !dragCubeUpdateParts.Contains(part))
+            if(part!=null && HighLogic.LoadedSceneIsFlight && !dragCubeUpdateParts.Contains(part))
             {
                 dragCubeUpdateParts.Add(part); 
             }          

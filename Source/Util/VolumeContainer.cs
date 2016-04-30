@@ -122,11 +122,17 @@ namespace SSTUTools
 
         public void loadPersistenData(string data)
         {
+            int len = subContainerData.Length;
+            //zero out any ratios set from default tank values
+            for (int i = 0; i < len; i++)
+            {
+                subContainerData[i].setRatio(0);
+            }
             string[] vals = data.Split(',');
             currentModifierName = vals[0];
             currentFuelPreset = vals[1];
             setContainerPercent(float.Parse(vals[2]));
-            int len = subContainerData.Length;
+            len = subContainerData.Length;
             int len2 = vals.Length;
             int testVal;
             if (int.TryParse(vals[3], out testVal))//test if the first value is a name or a number...//TODO remove this code after a few releases
@@ -235,7 +241,10 @@ namespace SSTUTools
             int len = subContainerData.Length;
             for (int i = 0; i < len; i++)
             {
-                list.addResource(subContainerData[i].name, subContainerData[i].resourceUnits);
+                if (subContainerData[i].unitRatio > 0)
+                {
+                    list.addResource(subContainerData[i].name, subContainerData[i].resourceUnits);
+                }
             }
         }
 

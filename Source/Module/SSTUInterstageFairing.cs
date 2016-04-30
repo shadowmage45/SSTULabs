@@ -696,6 +696,11 @@ namespace SSTUTools
 
             rebuildFairing(false);//will create fairing using default / previously saved fairing configuration
             restoreEditorFields();
+            setPanelRotations(currentRotation);
+            if (panelsJettisoned)
+            {
+                fairingBase.destroyExistingPanels();   
+            }
             updateGuiState();
         }
 
@@ -817,6 +822,11 @@ namespace SSTUTools
                     mc.convex = true;
                     mc.enabled = true;
                 }
+            }
+
+            public void destroyExistingPanels()
+            {
+                SSTUUtils.destroyChildren(rootObject.transform);
             }
         }
     }

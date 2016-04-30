@@ -38,8 +38,10 @@ namespace SSTUTools
         /// </summary>
         [KSPField]
         public float fairingDiameter = 5f;
-
-
+        
+        /// <summary>
+        /// The max fairing diameter at the default base diameter; this setting gets scaled according to the fairing base size
+        /// </summary>
         [KSPField]
         public float defaultMaxDiameter = 5f;
 
@@ -199,11 +201,12 @@ namespace SSTUTools
                     TextureData data = set.textureDatas[0];//TODO cleanup this hack
                     mpf.TextureURL = data.diffuseTextureName;
                     Texture t = SSTUUtils.findTexture(data.diffuseTextureName, false);
-                    SSTUUtils.setMainTextureRecursive(mpf.transform, t);
+                    
                     mpf.FairingMaterial.mainTexture = t;
                     foreach (var f in mpf.Panels)
                     {
                         f.mat.mainTexture = t;
+                        SSTUUtils.setMainTextureRecursive(f.go.transform, t);                        
                     }
                 }
             }
