@@ -102,8 +102,8 @@ namespace SSTUTools
         private string prevMount;
 
         private float currentTankVolume;
-        private float currentTankMass;
-        private float currentTankCost;
+        private float currentTankMass=-1;
+        private float currentTankCost=-1;
         
         private float techLimitMaxDiameter;
         
@@ -449,11 +449,13 @@ namespace SSTUTools
         /// <returns></returns>
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
+            if (currentTankCost < 0) { return 0; }
             return subtractCost ? -defaultCost + currentTankCost : currentTankCost;
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
+            if (currentTankMass < 0) { return 0; }
             return subtractMass ? -defaultMass + currentTankMass : currentTankMass;
         }
 

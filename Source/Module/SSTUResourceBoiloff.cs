@@ -99,6 +99,11 @@ namespace SSTUTools
                 }
             }
             boiloffData = list.ToArray();
+            if (boiloffData.Length == 0)
+            {
+                Fields["guiVolumeLoss"].guiActive = false;
+                Fields["guiECCost"].guiActive = false;
+            }
         }
         
         private void updateStatsFromContainer()
@@ -182,7 +187,7 @@ namespace SSTUTools
         
         public void processBoiloff(Part part, double seconds)
         {            
-            double hours = (double)seconds / 3600d;//convert from delta-seconds into delta-hours...
+            double hours = seconds / 3600d;//convert from delta-seconds into delta-hours...
             double resourceVolume = resource.amount * unitVolume;
             double totalLoss = data.value * resourceVolume * hours * boiloffModifier;
             double activePrevention = totalLoss * activeInsulationPrevention * activeInsulationPercent;
@@ -201,7 +206,7 @@ namespace SSTUTools
                 }
             }
             double passivePrevention = totalLoss * passiveInsulationPrevention * (1.0 - activeInsulationPercent);
-            double totalPrevention = activePrevention + inactivePrevention + passivePrevention;
+            double totalPrevention = activePrevention + inactivePrevention + passivePrevention;            
             double actualLoss = totalLoss - totalPrevention;
             if (actualLoss > 0.000005)
             {

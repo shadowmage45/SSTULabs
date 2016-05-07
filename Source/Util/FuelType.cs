@@ -117,8 +117,7 @@ namespace SSTUTools
             float val = 0;
             if (!resourceVolumes.TryGetValue(name, out val))
             {
-                if (def != null) { return def.volume; }
-                return 5f;
+                val = def == null ? 5.0f : def.volume;
             }
             return val;
         }

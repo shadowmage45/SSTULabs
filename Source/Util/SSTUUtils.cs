@@ -270,6 +270,23 @@ namespace SSTUTools
             return str;
         }
 
+        public static String printFloatCurve(FloatCurve curve)
+        {
+            string str = "";
+            if (curve != null)
+            {
+                int len = curve.Curve.length;
+                Keyframe key;
+                for (int i = 0; i < len; i++)
+                {
+                    if (i > 0) { str = str + "\n"; }
+                    key = curve.Curve.keys[i];
+                    str = str + key.time + "," + key.value + "," + key.inTangent + "," + key.outTangent;
+                }
+            }
+            return str;
+        }
+
         public static void destroyChildren(Transform tr)
         {
             if (tr == null || tr.childCount<=0) { return; }

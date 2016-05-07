@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier
     {
         #region REGION - KSP Config Variables
 
@@ -107,6 +107,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
+        [KSPField(isPersistant = true)]
+        public string thrustCurveData;
+
+        [KSPField(isPersistant = true)]
+        public string presetCurveName;
+
         #endregion ENDREGION - Persistent variables
 
         #region REGION - GUI Display Variables
@@ -142,8 +148,14 @@ namespace SSTUTools
         
         private float techLimitMaxDiameter;
 
-        private float modifiedCost;
-        private float modifiedMass;
+        private float modifiedCost = -1;
+        private float modifiedMass = -1;
+
+        private FloatCurve thrustCurveCache;
+
+        private ModuleEnginesFX engineModule;
+
+        private bool guiOpen = false;
 
         #endregion ENDREGION - Private working variables
 
@@ -198,6 +210,26 @@ namespace SSTUTools
             }
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
+        }
+
+        [KSPEvent(guiName = "Adjust Thrust Curve", guiActiveEditor = true, guiActive = false)]
+        public void editThrustCurveEvent()
+        {
+            guiOpen = true;
+            EditorLogic editor = EditorLogic.fetch;
+            if (editor != null) { editor.Lock(true, true, true, "SSTUThrustCurveEditorLock"); }
+            ThrustCurveEditorGUI.openGUI(this, thrustCurveCache);
+        }
+
+        public void closeGui(FloatCurve editorCurve, string preset)
+        {         
+            guiOpen = false;
+            EditorLogic editor = EditorLogic.fetch;
+            if (editor != null) { editor.Unlock("SSTUThrustCurveEditorLock"); }
+            thrustCurveCache = editorCurve;
+            presetCurveName = preset;
+            updateThrustOutput();
+            updateCurvePersistentData();
         }
 
         [KSPEvent(guiName = "Next Nose Texture", guiActiveEditor = true, guiActive = false)]
@@ -467,6 +499,7 @@ namespace SSTUTools
             {
                 Fields["currentMainName"].guiActiveEditor = false;
             }
+            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
         public override void OnLoad(ConfigNode node)
@@ -474,9 +507,20 @@ namespace SSTUTools
             base.OnLoad(node);
             initialize();
         }
-        
-        public void Start()
+
+        public override void OnSave(ConfigNode node)
         {
+            base.OnSave(node);
+            updateCurvePersistentData();
+        }
+
+        public void OnDestroy()
+        {
+            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
+        }
+
+        public void Start()
+        {            
             updateGimbalOffset();
             updateThrustOutput();
             updateGui();
@@ -490,16 +534,32 @@ namespace SSTUTools
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
+            if (modifiedCost < 0) { return 0; }
             return modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
+            if (modifiedMass < 0) { return 0; }
             return modifiedMass;
         }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public void onEditorShipModified(ShipConstruct ship)
+        {
+            updateEngineGuiStats();
+        }
+
+        public void OnGUI()
+        {
+            if (guiOpen)
+            {
+                ThrustCurveEditorGUI.updateGUI();
+            }
+        }
 
         #endregion ENDREGION - Standard KSP Overrides
 
@@ -627,6 +687,38 @@ namespace SSTUTools
             currentMainModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
             //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
+
+            //if had custom thrust curve data, reload it now (else it will default to whatever is on the engine)
+            if (!string.IsNullOrEmpty(thrustCurveData))
+            {
+                thrustCurveCache = new FloatCurve();
+                string[] keySplits = thrustCurveData.Split(':');
+                string[] valSplits;
+                int len = keySplits.Length;
+                float key, value, inTan, outTan;
+                for (int i = 0; i < len; i++)
+                {
+                    valSplits = keySplits[i].Split(',');                    
+                    key = float.Parse(valSplits[0]);
+                    value = float.Parse(valSplits[1]);
+                    inTan = float.Parse(valSplits[2]);
+                    outTan = float.Parse(valSplits[3]);
+                    thrustCurveCache.Add(key, value, inTan, outTan);
+                }
+            }
+            if (!string.IsNullOrEmpty(presetCurveName))
+            {
+                ConfigNode[] presetNodes = GameDatabase.Instance.GetConfigNodes("SSTU_THRUSTCURVE");
+                int len = presetNodes.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (presetNodes[i].GetStringValue("name") == presetCurveName)
+                    {
+                        thrustCurveCache = presetNodes[i].GetFloatCurve("curve");
+                        break;
+                    }
+                }
+            }
         }        
 
         /// <summary>
@@ -675,12 +767,31 @@ namespace SSTUTools
         {
             float scale = diameterForThrustScaling == -1 ? currentMainModule.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
             scale = Mathf.Pow(scale, thrustScalePower);
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine != null)
+            if (engineModule == null) { engineModule = part.GetComponent<ModuleEnginesFX>(); }
+            if (engineModule != null)
             {
                 float minThrust = scale * currentMainModule.minThrust;
                 float maxThrust = scale * currentMainModule.maxThrust;
-                SSTUStockInterop.updateEngineThrust(engine, minThrust, maxThrust);
+                if (thrustCurveCache == null) { thrustCurveCache = engineModule.thrustCurve; }
+                SSTUStockInterop.updateEngineThrust(engineModule, minThrust, maxThrust);
+                engineModule.thrustCurve = thrustCurveCache;
+                engineModule.useThrustCurve = thrustCurveCache.Curve.length > 1;
+                updateEngineGuiStats();
+            }
+        }
+
+        private void updateEngineGuiStats()
+        {
+            if (engineModule != null)
+            {
+                string prop = engineModule.propellants[0].name;
+                PartResource res = part.Resources[prop];
+                double propMass = res.info.density * res.amount;
+                guiThrust = engineModule.maxThrust * engineModule.thrustPercentage * 0.01f;
+                float isp = 220f;
+                float g = 9.81f;
+                float flowRate = guiThrust / (g * isp);
+                guiBurnTime = (float)(propMass / flowRate);
             }
         }
 
@@ -713,6 +824,27 @@ namespace SSTUTools
             else
             {
                 MonoBehaviour.print("Could not update gimbal, no module found");
+            }
+        }
+
+        /// <summary>
+        /// Update the persistent representation of the custom thrust curve for this engine
+        /// and store it as a string so it will be serialized into the part/craft persistence file
+        /// </summary>
+        private void updateCurvePersistentData()
+        {
+            if (thrustCurveCache != null && string.IsNullOrEmpty(presetCurveName))
+            {
+                string data = "";
+                int len = thrustCurveCache.Curve.length;
+                Keyframe key;
+                for (int i = 0; i < len; i++)
+                {
+                    key = thrustCurveCache.Curve.keys[i];
+                    if (i > 0) { data = data + ":"; }
+                    data = data + key.time + "," + key.value + "," + key.inTangent + "," + key.outTangent;
+                }
+                thrustCurveData = data;
             }
         }
 
@@ -878,31 +1010,13 @@ namespace SSTUTools
         {
             modifiedCost = currentMainModule.getModuleCost() + currentNoseModule.getModuleCost() + currentNozzleModule.getModuleCost();
         }
-
+        
         /// <summary>
         /// Updates GUI fields for diameter/height/etc
         /// </summary>
         private void updateGui()
         {
-            guiHeight = currentMainModule.currentHeight;
-
-            float propMass = 0f;
-
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine != null)
-            {
-                float maxThrust = Mathf.Pow(currentMainModule.currentDiameterScale, thrustScalePower) * currentMainModule.maxThrust;
-                guiThrust = maxThrust * engine.thrustPercentage * 0.01f;
-                float isp = 220f;
-                float g = 9.81f;
-                float flowRate = guiThrust / (g * isp);
-                guiBurnTime = (propMass / flowRate);
-            }
-            else
-            {
-                guiThrust = 0;
-                guiBurnTime = 0;
-            }
+            guiHeight = currentMainModule.currentHeight;            
             Events["nextNoseTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextNozzleTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
             Events["nextMainTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;

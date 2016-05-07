@@ -73,7 +73,6 @@ namespace SSTUTools
                     MonoBehaviour.print("ERROR: Set to use ModularFuelTanks, and ModularFuelTanks is installed, but no ModularFuelTanks-ModuleFuelTank PartModule found.");
                     return;
                 }
-                mfTank = true;
             }
             else
             {
@@ -88,14 +87,40 @@ namespace SSTUTools
             }
             MethodInfo mi = moduleFuelTank.GetMethod("ChangeTotalVolume");
             double volumeLiters = cubicMeters * 1000f;
-            if (mfTank)
-            {
-                volumeLiters *= 0.2f;//convert liters into stock units....
-            }
             mi.Invoke(pm, new System.Object[] { volumeLiters, false });
             String message = "SSTU - Set RF/MFT total tank volume to: " + volumeLiters + (mfTank? " Units": " Liters for part: "+part.name);
             MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
             mi2.Invoke(pm, new System.Object[] { });
+        }
+
+        public static PartModule getModuleFuelTanks(Part part)
+        {
+            Type moduleFuelTank = null;
+            if (isRFInstalled())
+            {
+                moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,RealFuels");
+                if (moduleFuelTank == null)
+                {
+                    MonoBehaviour.print("ERROR: Set to use RealFuels, and RealFuels is installed, but no RealFuels-ModuleFuelTank PartModule found.");
+                    return null;
+                }
+            }
+            else if (isMFTInstalled())
+            {
+                moduleFuelTank = Type.GetType("RealFuels.Tanks.ModuleFuelTanks,modularFuelTanks");
+                if (moduleFuelTank == null)
+                {
+                    MonoBehaviour.print("ERROR: Set to use ModularFuelTanks, and ModularFuelTanks is installed, but no ModularFuelTanks-ModuleFuelTank PartModule found.");
+                    return null;
+                }
+            }
+            PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
+            return pm;
+        }
+
+        public static bool hasModuleFuelTanks(Part part)
+        {
+            return getModuleFuelTanks(part) != null;
         }
 
         public static void onPartKISVolumeUpdated(Part part, float liters)
@@ -114,12 +139,14 @@ namespace SSTUTools
             PartModule pm = (PartModule)part.GetComponent(kisModuleType);
             if(pm == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate KIS module on part for type: "+part+" :: "+kisModuleType);
+                if (liters != 0)
+                {
+                    MonoBehaviour.print("ERROR: Could not locate KIS module on part for type: " + part + " :: " + kisModuleType);
+                }
                 return;
             }
             FieldInfo fi = kisModuleType.GetField("maxVolume");
             fi.SetValue(pm, liters);
-            MonoBehaviour.print("Set KIS volume for part: " + part + " to: " + liters);
             BaseEvent inventoryEvent = pm.Events["ShowInventory"];
             inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
         }

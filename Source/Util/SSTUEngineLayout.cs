@@ -72,7 +72,10 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 layout = new SSTUEngineLayout(nodes[i]);
-                layouts.Add(layout.name, layout);
+                if (!layouts.ContainsKey(layout.name))
+                {
+                    layouts.Add(layout.name, layout);
+                }
             }
             return layouts;
         }

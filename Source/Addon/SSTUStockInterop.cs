@@ -132,12 +132,11 @@ namespace SSTUTools
         public static ConfigNode getPartConfig(Part p)
         {
             String name = p.name;
-            // TODO scrub retarded vessel names off of part names so that it can be found in the basic cache
-            // WTF is the part renamed for anyway, and why isn't that data stored in the vessel proper?
-            //if (name.IndexOf('(') > 0)
-            //{
-            //    name = name.Substring(0, name.IndexOf('(')).Trim();
-            //}
+            if (name.IndexOf('(') > 0)
+            {
+                string sName = name.Substring(0, name.IndexOf('(')).Trim();
+                if (partConfigNodes.ContainsKey(sName)) { name = sName; }
+            }
             if (partConfigNodes.ContainsKey(name)){return partConfigNodes[name];}            
             MonoBehaviour.print("MINOR ERROR: Could not locate part config from cached database for part: "+name+" (This may be recoverable)");
             if (p.partInfo != null && p.partInfo.partConfig != null) { return p.partInfo.partConfig; }

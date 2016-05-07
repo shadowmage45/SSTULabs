@@ -1,4 +1,6 @@
 using System;
+using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
@@ -59,17 +61,43 @@ namespace SSTUTools
             return GetBoolValue(node, name, false);
         }
 
-        public static float[] GetFloatValues(this ConfigNode node, String name)
+        public static float[] GetFloatValues(this ConfigNode node, String name, float[] defaults)
         {
             String baseVal = node.GetStringValue(name);
             if (!String.IsNullOrEmpty(baseVal))
-            {                
+            {
                 String[] split = baseVal.Split(new char[] { ',' });
                 float[] vals = new float[split.Length];
                 for (int i = 0; i < split.Length; i++) { vals[i] = SSTUUtils.safeParseFloat(split[i]); }
                 return vals;
             }
-            return new float[0];
+            return defaults;
+        }
+
+        public static float[] GetFloatValues(this ConfigNode node, String name)
+        {
+            return GetFloatValues(node, name, new float[] { });
+        }
+
+        public static float[] GetFloatValuesCSV(this ConfigNode node, String name)
+        {
+            return GetFloatValuesCSV(node, name, new float[] { });
+        }
+
+        public static float[] GetFloatValuesCSV(this ConfigNode node, String name, float[] defaults)
+        {
+            float[] values = defaults;
+            if (node.HasValue(name))
+            {
+                string strVal = node.GetStringValue(name);
+                string[] splits = strVal.Split(',');
+                values = new float[splits.Length];
+                for (int i = 0; i < splits.Length; i++)
+                {
+                    values[i] = float.Parse(splits[i]);
+                }
+            }
+            return values;
         }
 
         public static float GetFloatValue(this ConfigNode node, String name, float defaultValue)
@@ -177,7 +205,7 @@ namespace SSTUTools
                 float a, b, c, d;
                 for (int i = 0; i < len; i++)
                 {
-                    splitValue = values[i].Split(new char[] { ' ' });
+                    splitValue = Regex.Replace(values[i], @"\s+", " ").Split(' ');
                     if (splitValue.Length > 2)
                     {
                         a = SSTUUtils.safeParseFloat(splitValue[0]);

@@ -94,12 +94,6 @@ namespace SSTUTools
         [KSPField]
         public String engineTransformName = "SSTEngineClusterEngines";
 
-        /// <summary>
-        /// If true, the engine cluster module will update the part mass based on the number of engines in the layout and the 'engineMass' specified in its config, otherwise it will leave it unaltered.
-        /// </summary>
-        [KSPField]
-        public bool modifyMass = true;
-
         #endregion ENDREGION - Standard KSPField variables
 
         #region REGION - KSP Editor Adjust Fields (Float Sliders) and KSP GUI Fields (visible data)
@@ -187,8 +181,8 @@ namespace SSTUTools
         private float fairingTopY = 0;
         private float fairingBottomY = 0;
         
-        private float modifiedCost = 0;
-        private float modifiedMass = 1f;
+        private float modifiedCost = -1f;
+        private float modifiedMass = -1f;
         
         #endregion ENDREGION - Private working variables
 
@@ -448,14 +442,19 @@ namespace SSTUTools
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            if (!modifyMass) { return 0; }
+            if (currentEngineLayout != null && currentMountData != null)
+            {
+                modifiedCost = defaultCost * (float)currentEngineLayout.getLayoutData().positions.Count;
+                modifiedCost += Mathf.Pow(getCurrentMountScale(), 3.0f) * currentMountData.modelDefinition.cost;
+            }
+            else { return 0f; }
             return -defaultCost + modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            if (!modifyMass) { return 0; }
+            if (modifiedMass < 0) { return 0; }
             return -defaultMass + modifiedMass;
         }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
@@ -671,8 +670,8 @@ namespace SSTUTools
             SSTUEnginePosition position;
             int length = layout.positions.Count;
 
-            float rotateEngines = currentMountData.rotateEngines;
-
+            
+            float engineRotation;
             Transform[] models = part.transform.FindRecursive(engineTransformName).FindChildren(engineModelName);
             for (int i = 0; i < length; i++)
             {
@@ -681,7 +680,8 @@ namespace SSTUTools
                 posX = position.scaledX(currentEngineSpacing);
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
-                rot += rotateEngines;
+                engineRotation = currentEngineLayout.getEngineRotation(currentMountData, i);
+                rot += engineRotation;
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
             }
@@ -709,13 +709,8 @@ namespace SSTUTools
         #region REGION - Update Methods
                 
         private void updatePartCostAndMass()
-        {
+        {            
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
-            float engineCost = 100;
-            if (part.partInfo != null) { engineCost = part.partInfo.cost; }
-            modifiedCost = engineCost * (float)layout.positions.Count;                        
-            modifiedCost += Mathf.Pow(getCurrentMountScale(), 3.0f) * currentMountData.modelDefinition.cost;
-
             modifiedMass = part.prefabMass * (float)layout.positions.Count;
             modifiedMass += currentMountData.modelDefinition.mass * Mathf.Pow(getCurrentMountScale(), 3.0f);
         }
@@ -826,7 +821,6 @@ namespace SSTUTools
         /// </summary>
         private void reInitEngineModule()
         {
-            MonoBehaviour.print("SSTUModularEngineCluster -- updating external modules (gimbal, engines, constraints, animations, engineConfigs)");
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;
             ConfigNode partConfig = SSTUStockInterop.getPartConfig(part);
@@ -895,7 +889,6 @@ namespace SSTUTools
         private ConfigNode getSplitThrustNode(ConfigNode original, int positions)
         {
             int numOfTransforms = original.values.Count;
-            MonoBehaviour.print("Updating split thrust for " + numOfTransforms + " base transform count");
             ConfigNode output = new ConfigNode("transformMultipliers");
             float[] originalValues = new float[numOfTransforms];
             float newValue;
@@ -912,10 +905,8 @@ namespace SSTUTools
                     newValue = originalValues[k] / (float)positions;
                     totalValue += newValue;
                     output.AddValue("trf" + rawIndex, newValue);
-                    MonoBehaviour.print("original thrust for transform: " + rawIndex + " : " + originalValues[k]+" ::adjusted percentag: "+newValue);
                 }
             }
-            MonoBehaviour.print("Split thrust total: " + totalValue + " (Should == 1)");
             return output;
         }
 
@@ -948,6 +939,7 @@ namespace SSTUTools
         public readonly String layoutName;
         public readonly String defaultMount;
         public readonly float engineSpacingOverride = -1f;
+        public readonly float[] engineRotationOverride = new float[] { };
 
         //base layout for positional data
         private readonly SSTUEngineLayout layoutData;
@@ -957,8 +949,8 @@ namespace SSTUTools
 
         public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float moduleEngineSpacing, float moduleMountSize, bool upperMounts, bool lowerMounts)
         {
-            layoutName = layoutData.name;
             this.layoutData = layoutData;
+            layoutName = layoutData.name;
 
             defaultMount = lowerMounts? layoutData.defaultLowerStageMount : layoutData.defaultUpperStageMount;
             engineSpacingOverride = moduleEngineSpacing;
@@ -986,6 +978,7 @@ namespace SSTUTools
                 //override data from the config node
                 defaultMount = node.GetStringValue("defaultMount", defaultMount);
                 engineSpacingOverride = node.GetFloatValue("engineSpacing", engineSpacingOverride);
+                engineRotationOverride = node.GetFloatValuesCSV("rotateEngines", engineRotationOverride);
                 ConfigNode[] mountNodes = node.GetNodes("MOUNT");
                 len = mountNodes.Length;
                 for (int i = 0; i < len; i++)
@@ -999,28 +992,26 @@ namespace SSTUTools
                     }
                     else
                     {
+                        if (!globalMountOptions.ContainsKey(name))
+                        {
+                            customMounts.Add(mountNode);
+                        }
                         localMountNodes.Add(name, mountNode);
-                    }
-                    if (!globalMountOptions.ContainsKey(name))
-                    {
-                        customMounts.Add(mountNode);
                     }
                 }
             }
-
-            
+                        
             List<EngineClusterLayoutMountData> mountDataTemp = new List<EngineClusterLayoutMountData>();            
             foreach(String key in globalMountOptions.Keys)
             {
-                if (localMountNodes.ContainsKey(key))
+                if (localMountNodes.ContainsKey(key))//was specified in the config and was not a simple removal; merge values into global node...
                 {
-                    mountNode = localMountNodes[key];
-                    //MonoBehaviour.print("Loading manual-sized mount: " + key + " for layout: " + layoutName + "\n" + mountNode);
+                    //mountNode = localMountNodes[key];
+                    mountNode = mergeNodes(getAutoSizeNode(globalMountOptions[key], moduleEngineSpacing, moduleMountSize, 0.625f), localMountNodes[key]);
                 }
                 else
                 {
                     mountNode = getAutoSizeNode(globalMountOptions[key], moduleEngineSpacing, moduleMountSize, 0.625f);
-                    //MonoBehaviour.print("Loading auto-sized mount: " + key + " for layout: " + layoutName + "\n" + mountNode);
                 }
                 mountDataTemp.Add(new EngineClusterLayoutMountData(mountNode));
             }
@@ -1062,6 +1053,44 @@ namespace SSTUTools
             return node;
         }
 
+        private ConfigNode mergeNodes(ConfigNode global, ConfigNode local)
+        {
+            ConfigNode output = new ConfigNode("MOUNT");
+            global.CopyTo(output);
+            if (local.HasValue("canAdjustSize"))
+            {
+                output.RemoveValues("canAdjustSize");
+                output.AddValue("canAdjustSize", local.GetBoolValue("canAdjustSize"));
+            }
+            if (local.HasValue("size"))
+            {
+                output.RemoveValues("size");
+                output.AddValue("size", local.GetFloatValue("size"));
+            }
+            if (local.HasValue("minSize"))
+            {
+                output.RemoveValues("minSize");
+                output.AddValue("minSize", local.GetFloatValue("minSize"));
+            }
+            if (local.HasValue("maxSize"))
+            {
+                output.RemoveValues("maxSize");
+                output.AddValue("maxSize", local.GetFloatValue("maxSize"));
+            }
+            if (local.HasValue("engineSpacing"))
+            {
+                output.RemoveValues("engineSpacing");
+                output.AddValue("engineSpacing", local.GetFloatValue("engineSpacing"));
+            }
+            if (local.HasValue("rotateEngines"))
+            {
+                output.RemoveValues("rotateEngines");
+                output.AddValue("rotateEngines", local.GetStringValue("rotateEngines"));
+            }
+
+            return output;
+        }
+
         public float getEngineSpacing(float defaultSpacing, EngineClusterLayoutMountData mount)
         {
             if (mount.engineSpacing != -1)
@@ -1069,6 +1098,18 @@ namespace SSTUTools
                 return mount.engineSpacing;
             }
             return  engineSpacingOverride == -1 ? defaultSpacing : engineSpacingOverride;
+        }
+
+        public float getEngineRotation(EngineClusterLayoutMountData mount, int positionIndex)
+        {
+            float[] vals = mount.rotateEngines.Length > 0 ? mount.rotateEngines : engineRotationOverride;
+            float val = 0;
+            if (vals.Length > 0)
+            {
+                if (vals.Length == 1) { val = vals[0]; }
+                else { val = vals[positionIndex]; }
+            }
+            return val;
         }
 
         public bool isValidMount(String mountName)
@@ -1094,8 +1135,8 @@ namespace SSTUTools
         public readonly float initialDiameter = 1.25f;
         public readonly float minDiameter;
         public readonly float maxDiameter;
-        public readonly float rotateEngines = 0;
         public readonly float engineSpacing = -1;
+        public readonly float[] rotateEngines;
         
         public EngineClusterLayoutMountData(ConfigNode node) : base(node)
         {
@@ -1103,7 +1144,7 @@ namespace SSTUTools
             initialDiameter = node.GetFloatValue("size", initialDiameter);
             minDiameter = node.GetFloatValue("minSize", initialDiameter);
             maxDiameter = node.GetFloatValue("maxSize", initialDiameter);
-            rotateEngines = node.GetFloatValue("rotateEngines");
+            rotateEngines = node.GetFloatValuesCSV("rotateEngines", new float[] {});
             engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
             if (String.IsNullOrEmpty(modelDefinition.modelName)) { canAdjustSize = false; }
         }

@@ -76,11 +76,10 @@ namespace SSTUTools
         
         //private cached vars for... things....
         private ContainerDefinition[] containers;
-        private float modifiedMass;
-        private float modifiedCost;
+        private float modifiedMass = -1;
+        private float modifiedCost = -1;
+        private bool useRF = false;
         private string prevFuelType;
-
-        //TODO force-disable this as cleanup? or... i guess the gui will just cease to be called when the part is destroyed; but should still clean up the cached vars in the gui-handler...
         private bool guiEnabled = false;
 
         public void onFuelTypeUpdated(BaseField field, object obj)
@@ -145,7 +144,16 @@ namespace SSTUTools
             BaseEvent editContainerEvent = Events["openGUIEvent"];
             editContainerEvent.active = enableContainerEdit;
 
-            if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            useRF = (SSTUModInterop.isRFInstalled() || SSTUModInterop.isMFTInstalled() )&& SSTUModInterop.hasModuleFuelTanks(part);
+            if (useRF)
+            {
+                subtractCost = subtractMass = false;
+                editContainerEvent.guiActiveEditor = false;
+                fuelSelection.guiActiveEditor = false;
+                Fields["usableVolume"].guiActiveEditor = false;
+                Fields["tankageMass"].guiActiveEditor = false;                
+            }            
+            else if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 initializedResources = true;
                 updateTankResources();
@@ -156,10 +164,21 @@ namespace SSTUTools
         public void Start()
         {
             updateKISVolume();
+            if (useRF) { onVolumeUpdated(volume); }
         }
 
-        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return subtractMass ? -defaultMass + modifiedMass : modifiedMass; }
-        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) { return subtractCost ? -defaultCost + modifiedCost : modifiedCost; }
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
+        {
+            if (modifiedMass < 0) { return 0; }
+            return subtractMass ? -defaultMass + modifiedMass : modifiedMass;
+        }
+
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
+        {
+            if (modifiedCost < 0) { return 0; }
+            return subtractCost ? -defaultCost + modifiedCost : modifiedCost;
+        }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
@@ -197,7 +216,6 @@ namespace SSTUTools
                     persistentData = persistentData + containers[i].getPersistentData();
                 }
             }
-            MonoBehaviour.print("Updated VC Persistent data to:\n     " + persistentData);
         }
 
         public void onVolumeUpdated(float newVolume)
@@ -205,7 +223,7 @@ namespace SSTUTools
             if (newVolume != volume)
             {
                 volume = newVolume;
-                if (SSTUModInterop.isRFInstalled() || SSTUModInterop.isMFTInstalled())
+                if (useRF)
                 {
                     SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 0.001f);//re-convert from l to m^3                    
                 }
@@ -216,8 +234,8 @@ namespace SSTUTools
                     updateTankResources();
                     updateFuelSelections();
                     updatePersistentData();
+                    SSTUStockInterop.fireEditorUpdate();
                 }
-                SSTUStockInterop.fireEditorUpdate();
             }
         }
 
@@ -288,6 +306,7 @@ namespace SSTUTools
 
         private void updateKISVolume()
         {
+            if (useRF) { return; }
             PartResource kisResource = part.Resources["SSTUKISStorage"];
             float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
             SSTUModInterop.onPartKISVolumeUpdated(part, volume);
@@ -334,6 +353,11 @@ namespace SSTUTools
         /// </summary>
         private void updateTankResources()
         {
+            if (useRF)
+            {
+
+                return;
+            }
             SSTUResourceList list = new SSTUResourceList();
             int len = containers.Length;
             for (int i = 0; i < len; i++)
@@ -362,6 +386,11 @@ namespace SSTUTools
         /// </summary>
         private void updateMassAndCost()
         {
+            if (useRF)
+            {
+                modifiedMass = 0;
+                modifiedCost = 0;
+            }
             modifiedCost = 0;
             modifiedMass = 0;
             float tankageVolume = 0;

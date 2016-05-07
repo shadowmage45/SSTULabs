@@ -1,0 +1,36 @@
+{
+    "NAME":"SSTU",
+    "URL":"http://forum.kerbalspaceprogram.com/index.php?/topic/117090-sstulabs-low-part-count-solutions-orbiter-landers-lifters-dev-thread-01-30-16/",
+    "DOWNLOAD":"https://github.com/shadowmage45/SSTULabs/releases",
+    "GITHUB":
+    {
+        "USERNAME":"shadowmage45",
+        "REPOSITORY":"SSTULabs",
+        "ALLOW_PRE_RELEASE":true,
+    },
+    "VERSION":
+    {
+        "MAJOR":0,
+        "MINOR":4,
+        "PATCH":31,
+        "BUILD":108
+    },
+    "KSP_VERSION":
+    {
+        "MAJOR":1,
+        "MINOR":1,
+        "PATCH":2
+    },
+    "KSP_VERSION_MIN":
+    {
+        "MAJOR":1,
+        "MINOR":1,
+        "PATCH":0
+    },
+    "KSP_VERSION_MAX":
+    {
+        "MAJOR":1,
+        "MINOR":1,
+        "PATCH":99
+    }
+} 

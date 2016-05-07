@@ -17,6 +17,8 @@ namespace SSTUTools
         {
             flagEnabled = !flagEnabled;
             updateFlagTransform();
+            int index = part.Modules.IndexOf(this);
+            foreach (Part p in part.symmetryCounterparts) { ((SSTUFlagDecal)p.Modules[index]).toggleFlagEvent(); }
         }
 
         public override void OnStart(StartState state)
