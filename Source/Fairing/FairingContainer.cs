@@ -100,7 +100,10 @@ namespace SSTUTools
         public void setOpacity(float value)
         {
             opacity = value;
-            SSTUUtils.setOpacityRecursive(rootObject.transform, value);
+            if (rootObject != null)
+            {
+                SSTUUtils.setOpacityRecursive(rootObject.transform, value);
+            }
         }
 
         public void jettisonPanels(Part part, float force, Vector3 jettisonDirection, float perPanelMass)

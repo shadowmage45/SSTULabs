@@ -86,7 +86,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (HighLogic.LoadedSceneIsEditor && !initializedResources)
+            if ((HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight) && !initializedResources)
             {
                 initializedResources = true;
                 updateContainerVolume();

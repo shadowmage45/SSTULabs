@@ -770,6 +770,27 @@ namespace SSTUTools
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }            
             bool enable = !currentMountData.modelDefinition.fairingDisabled;
+            AttachNode node = part.findAttachNode("top");
+            // this was an attempt to fix fairing interaction between tanks and engines;
+            // unfortunately it results in the engine fairing being permanently disabled
+            // whenever it is mounted below a tank regardless of the tanks current fairing
+            // status; rendering the fairings completely unusable for the engines even when
+            // they are using a mount that should have fairings enabled.
+            //if (node != null && node.attachedPart != null)
+            //{
+            //    Part p = node.attachedPart;
+            //    SSTUNodeFairing[] fs = p.GetComponents<SSTUNodeFairing>();
+            //    int len = fs.Length;
+            //    for (int i = 0; i < len; i++)
+            //    {
+            //        //TODO find lowest node and check for that rather than static bottom reference ?
+            //        if (fs[i].nodeName == "bottom" && fs[i].snapToSecondNode)//if it watches bottom node and is set to snap to second node; i.e. it would shroud this engine, so disable the engines' own shroud.
+            //        {
+            //            enable = false;
+            //            break;
+            //        }
+            //    }
+            //}
             fairing.canDisableInEditor = enable;
             FairingUpdateData data = new FairingUpdateData();
             data.setTopY(fairingTopY);

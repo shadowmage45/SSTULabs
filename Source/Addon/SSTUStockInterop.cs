@@ -53,10 +53,10 @@ namespace SSTUTools
                 {
                     p = dragCubeUpdateParts[i];
                     if (p == null) { continue; }
-                    MonoBehaviour.print("Updating procedural drag cube for: " + p);
                     updatePartDragCube(p);
+                    if(p.collider== null) { seatFirstCollider(p); }
                 }
-                dragCubeUpdateParts.Clear();               
+                dragCubeUpdateParts.Clear();
             }
         }
 
@@ -85,6 +85,19 @@ namespace SSTUTools
             FuelTypes.INSTANCE.reloadData();
             SSTUModelData.reloadData();
             VolumeContainerLoader.loadConfigs();
+        }
+
+        private static void seatFirstCollider(Part part)
+        {
+            Collider[] colliders = part.gameObject.GetComponentsInChildren<Collider>();
+            int len = colliders.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (colliders[i].isTrigger) { continue; }
+                if (colliders[i].GetType() == typeof(WheelCollider)) { continue; }
+                part.collider = colliders[i];
+                break;
+            }
         }
 
         private static void updatePartDragCube(Part part)
