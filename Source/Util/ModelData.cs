@@ -463,7 +463,10 @@ namespace SSTUTools
         }
         
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
-        {            
+        {
+            MonoBehaviour.print("Model updating attach nodes; names length: " + nodeNames.Length);
+            for (int i = 0; i < nodeNames.Length;i++) { MonoBehaviour.print("node name: " + nodeNames[i]); }
+            if (nodeNames.Length == 1 && nodeNames[0] == "NONE") { MonoBehaviour.print("Early exit from node update due to name==NONE"); return; }            
             Vector3 basePos = new Vector3(0, currentVerticalPosition, 0);
             AttachNode node = null;
             AttachNodeBaseData data;

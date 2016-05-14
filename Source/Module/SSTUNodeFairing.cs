@@ -13,8 +13,11 @@ namespace SSTUTools
         #region REGION - Standard KSP Config Fields
         
         [KSPField]
-        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-DIFF";
-                
+        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-White-DIFF";
+
+        [KSPField]
+        public String normalTextureName = "SSTU/Assets/SC-GEN-Fairing-White-NRM";
+
         /// <summary>
         /// CSV List of transforms to remove from the model, to be used to override stock engine fairing configuration
         /// </summary>
@@ -458,6 +461,7 @@ namespace SSTUTools
 
         private void updateFromExternalData(FairingUpdateData eData)
         {
+            if (fairingParts == null) { MonoBehaviour.print("Fairing parts are null for external update"); }
             foreach (SSTUNodeFairingData data in fairingParts)
             {                
                 if (eData.hasTopY && data.canAdjustTop)
@@ -599,10 +603,11 @@ namespace SSTUTools
                     if (d != null)
                     {
                         diffuseTextureName = d.diffuseTextureName;
+                        normalTextureName = d.normalTextureName;
                     }
                 }
             }
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, String.Empty, "KSP/Specular");
+            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName, "KSP/Bumped Specular");
         }
 
         /// <summary>
@@ -820,7 +825,12 @@ namespace SSTUTools
                     TextureData d = t.textureDatas[0];
                     if (d != null)
                     {
-                        fairingMaterial.mainTexture = SSTUUtils.findTexture(d.diffuseTextureName, false);
+                        diffuseTextureName = d.diffuseTextureName;
+                        normalTextureName = d.normalTextureName;
+                        Texture diffuseTex = SSTUUtils.findTexture(diffuseTextureName, false);
+                        Texture normalTex = String.IsNullOrEmpty(normalTextureName) ? null : SSTUUtils.findTexture(normalTextureName, true);
+                        fairingMaterial.mainTexture = diffuseTex;
+                        fairingMaterial.SetTexture("_BumpMap", normalTex);                        
                         foreach (SSTUNodeFairingData f in fairingParts)
                         {
                             f.setMaterial(fairingMaterial);

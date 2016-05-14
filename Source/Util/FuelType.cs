@@ -450,7 +450,7 @@ namespace SSTUTools
 
         private void updatePartResourceGui(Part part)
         {
-            if (UIPartActionController.Instance != null)
+            if (UIPartActionController.Instance != null && UIPartActionController.Instance.resourcesShown.Count > 0)
             {
                 UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
                 if (window != null) { window.displayDirty = true; }

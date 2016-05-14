@@ -12,7 +12,7 @@ namespace SSTUTools
         private static Rect windowRect = new Rect(Screen.width - 900, 40, 800, 600);
         private static int id = 10000;
         private static int containerIndex = 0;
-        private static SSTUVolumeContainer module;
+        public static SSTUVolumeContainer module;
         private static ContainerDefinition[] containers;
         private static VolumeRatioEntry[][] resourceEntries;
 
@@ -20,12 +20,7 @@ namespace SSTUTools
         private static int statId;
         
         public static void openGUI(SSTUVolumeContainer container, ContainerDefinition[] modContainers)
-        {            
-            if (module != null)
-            {
-                closeGUI();
-                return;
-            }
+        {
             containerIndex = 0;
             module = container;
             int len = modContainers.Length;

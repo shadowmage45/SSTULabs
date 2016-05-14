@@ -43,7 +43,7 @@ namespace SSTUTools
 
         private float modifiedMass;
         private float modifiedCost;
-        private string[] controlledNodes;
+        private string[] controlledNodes=new string[] { };
         private ModelSwitchData[] modelData;
         private ModelSwitchGroup[] modelGroups;
         private Dictionary<string, ModelSwitchGroup> groupsByName = new Dictionary<string, ModelSwitchGroup>();
@@ -116,7 +116,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 if (i > 0) { saveData = saveData + ":"; }
-                saveData = saveData + modelGroups[i].save();
+                saveData = saveData + modelGroups[i].getPersistentData();
             }
             persistentConfigData = saveData;
         }
@@ -127,7 +127,10 @@ namespace SSTUTools
         private void initialize()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
-            controlledNodes = node.GetStringValues("controlledNode");
+            if (node.HasValue("controlledNode"))
+            {
+                controlledNodes = node.GetStringValues("controlledNode");
+            }
             //load model groups, initializing a default 'Main' group if none are defined
             ConfigNode[] groupNodes = node.GetNodes("GROUP");
             int len = groupNodes.Length;
@@ -181,24 +184,26 @@ namespace SSTUTools
             len = modelGroups.Length;
             for (int i = 0; i < len; i++)
             {
-                if (String.IsNullOrEmpty(modelGroups[i].parentGroup))
-                {
-                    modelGroups[i].initializeRoot();
-                }
+                modelGroups[i].initializeRoot();
             }
-
-            //initialize gui selection field to the first available group
-            guiGroupSelection = Array.Find(modelGroups, m => m.isAvailable()).name;
-            //update ui option arrays for the given group and its current model
-            updateGui();
-            //setup ui callbacks for group/model changed
-            Fields["guiGroupSelection"].uiControlEditor.onFieldChanged = onGroupUpdated;
-            Fields["guiModelSelection"].uiControlEditor.onFieldChanged = onModelUpdated;
+            
             //update persistent data to the currently setup state; this updates the persistent data for a freshly-initialized part
             updatePersistentData();
+
+            //mass, attach node, and drag cube updating
             updateMassAndCost();
             updateAttachNodes(false);
             updateDragCube();
+
+            //initialize gui selection field to the first available group
+            guiGroupSelection = Array.Find(modelGroups, m => m.isAvailable()).name;
+
+            //update ui option arrays for the given group and its current model
+            updateGui();
+
+            //setup ui callbacks for group/model changed
+            Fields["guiGroupSelection"].uiControlEditor.onFieldChanged = onGroupUpdated;
+            Fields["guiModelSelection"].uiControlEditor.onFieldChanged = onModelUpdated;
         }
         
         /// <summary>
@@ -311,13 +316,17 @@ namespace SSTUTools
         
         private void updateAttachNodes(bool userInput)
         {
+            MonoBehaviour.print("controlled nodes!: " + controlledNodes+" : "+ SSTUUtils.printArray(controlledNodes,","));
+            
             int len = modelGroups.Length;
             List<string> enabledNodeNames = new List<string>();
             AttachNode attachNode;
             ModelSwitchGroup group;
             ModelSwitchData model;
+            MonoBehaviour.print("1");
             for (int i = 0; i < len; i++)
             {
+                MonoBehaviour.print("2");
                 group = modelGroups[i];
                 model = group.enabledModel;
                 if (!controlledNodes.Contains(group.parentNode)) { continue; }//not a node that we should touch...
@@ -338,11 +347,13 @@ namespace SSTUTools
                     SSTUAttachNodeUtils.updateAttachNodePosition(part, attachNode, pos, rotation, userInput);
                 }
             }
+            MonoBehaviour.print("3");
             List<AttachNode> attachNodes = new List<AttachNode>();
             attachNodes.AddRange(part.attachNodes);
             len = attachNodes.Count;
             for (int i = 0; i < len; i++)
             {
+                MonoBehaviour.print("4");
                 attachNode = attachNodes[i];
                 if (!controlledNodes.Contains(attachNode.id)) { continue; }//not a node that we should touch...
                 if (attachNode.attachedPart==null && !enabledNodeNames.Contains(attachNode.id))
@@ -484,7 +495,7 @@ namespace SSTUTools
         public readonly string name;
         public readonly string defaultModel;
         public readonly string parentGroup;
-        public readonly string parentNode;
+        public readonly string parentNode = string.Empty;
 
         public readonly SSTUModelSwitch owner;
         public readonly ModelNode[] modelNodes;
@@ -503,9 +514,9 @@ namespace SSTUTools
         {
             this.owner = module;
             this.name = node.GetStringValue("name");
-            this.defaultModel = node.GetStringValue("defaultModel");
-            this.parentGroup = node.GetStringValue("parentGroup");
-            this.parentNode = node.GetStringValue("parentNode");
+            this.defaultModel = node.GetStringValue("defaultModel", string.Empty);
+            this.parentGroup = node.GetStringValue("parentGroup", string.Empty);
+            this.parentNode = node.GetStringValue("parentNode", string.Empty);
             string[] nodeNames = node.GetStringValues("node");
             int len = nodeNames.Length;
             modelNodes = new ModelNode[len];
@@ -530,10 +541,13 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// if has an enabled model, build model root GO; called after load() so that the data is current
+        /// To be called on all model groups.<para/>
+        /// If it is a root model group it will initialize itself and any children as needed.<para/>
+        /// Build model root GO, initialize model for current selection, and initialize any children that need it.
         /// </summary>
         internal void initializeRoot()
         {
+            if (!string.IsNullOrEmpty(parentGroup)) { return; }//early return if not a root group
             currentEnabledModel = modelData.Find(m => m.enabled);
             if (currentEnabledModel == null)//initialize default
             {
@@ -562,7 +576,7 @@ namespace SSTUTools
             }
         }
 
-        internal string save()
+        internal string getPersistentData()
         {
             string val = name;
             int len = modelData.Count;

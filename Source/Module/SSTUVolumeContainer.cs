@@ -427,6 +427,11 @@ namespace SSTUTools
 
         private void openGUI()
         {
+            if (VolumeContainerGUI.module != null)
+            {
+                VolumeContainerGUI.closeGUI();
+                return;
+            }//window already open, close it
             VolumeContainerGUI.openGUI(this, containers);
             guiEnabled = true;
             EditorLogic editor = EditorLogic.fetch;

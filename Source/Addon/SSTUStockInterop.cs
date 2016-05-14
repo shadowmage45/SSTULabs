@@ -22,12 +22,20 @@ namespace SSTUTools
             INSTANCE = this;
             //TODO investigate why it gets destroyed even when flagged for 'once' type setup
             //GameObject.DontDestroyOnLoad(this);
-            //MonoBehaviour.print("SSTUStockInterop Start"); 
+            //MonoBehaviour.print("SSTUStockInterop Start");
+            //GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(onGameLoad));
         }
 
         public void OnDestroy()
         {
             //MonoBehaviour.print("SSTUStockInterop Destroy");
+            //GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(onGameLoad));
+        }
+
+        public void onGameLoad(ConfigNode node)
+        {
+            MonoBehaviour.print("onGameLoad!");
+            //SSTUHeatShieldUpgradeScript.needsUpdate = true;
         }
 
         public static void addDragUpdatePart(Part part)
@@ -71,7 +79,7 @@ namespace SSTUTools
         
         public void ModuleManagerPostLoad()
         {
-            MonoBehaviour.print("SSTU Creating Part Config cache.");
+            MonoBehaviour.print("SSTU -- Creating Part Config cache.");
             partConfigNodes.Clear();
             ConfigNode[] partNodes = GameDatabase.Instance.GetConfigNodes("PART");
             String name;
@@ -82,9 +90,11 @@ namespace SSTUTools
                 if (partConfigNodes.ContainsKey(name)) { continue; }
                 partConfigNodes.Add(name, node);
             }
+            MonoBehaviour.print("SSTU -- Reloading config databases (fuel types, model data, etc...)");
             FuelTypes.INSTANCE.reloadData();
             SSTUModelData.reloadData();
             VolumeContainerLoader.loadConfigs();
+            SSTUDatabase.reloadDatabase();
         }
 
         private static void seatFirstCollider(Part part)
