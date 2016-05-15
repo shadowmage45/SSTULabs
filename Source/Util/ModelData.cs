@@ -374,6 +374,13 @@ namespace SSTUTools
             }
         }
 
+        public string getDefaultTextureSet()
+        {
+            if (isValidTextureSet(modelDefinition.defaultTextureSet)) { return modelDefinition.defaultTextureSet; }
+            if (modelDefinition.textureSets.Length > 0) { return modelDefinition.textureSets[0].name; }
+            return "default";
+        }
+
         public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
         {
             setupModel(part, parent, orientation, false);

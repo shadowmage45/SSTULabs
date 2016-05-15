@@ -301,7 +301,8 @@ namespace SSTUTools
                     SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
                 }
 
-                TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+                techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+                //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
                 if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
                 shieldTypeNames = SSTUDatabase.getHeatShieldNames();
 

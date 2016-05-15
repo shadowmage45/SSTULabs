@@ -32,7 +32,7 @@ namespace SSTUTools
             if (HighLogic.CurrentGame == null) { return true; }
             else if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX)
             {
-                if (ResearchAndDevelopment.Instance == null) { return true; }
+                if (ResearchAndDevelopment.Instance == null) { MonoBehaviour.print("ERROR: R&D instance is null, no tech data available"); return true; }
                 RDTech.State techState = ResearchAndDevelopment.GetTechnologyState(techName);
                 return techState == RDTech.State.Available;
             }

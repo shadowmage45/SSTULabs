@@ -5,13 +5,14 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    [KSPAddon(KSPAddon.Startup.Instantly|KSPAddon.Startup.EveryScene, false)]
+    [KSPAddon(KSPAddon.Startup.Instantly, true)]
     public class SSTUStockInterop : MonoBehaviour
     {
         private static Dictionary<String, ConfigNode> partConfigNodes = new Dictionary<string, ConfigNode>();
 
         private static List<Part> dragCubeUpdateParts = new List<Part>();
         private static List<Part> delayedUpdateDragCubeParts = new List<Part>();
+        private static Dictionary<string, float> techLimitCache = new Dictionary<string, float>();
 
         private static bool fireEditorEvent = false;
 
@@ -20,22 +21,34 @@ namespace SSTUTools
         public void Start()
         {
             INSTANCE = this;
-            //TODO investigate why it gets destroyed even when flagged for 'once' type setup
-            //GameObject.DontDestroyOnLoad(this);
-            //MonoBehaviour.print("SSTUStockInterop Start");
-            //GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(onGameLoad));
+            GameObject.DontDestroyOnLoad(this);
+            MonoBehaviour.print("SSTUStockInterop Start");
+            GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(onGameLoad));
+            GameEvents.onLevelWasLoadedGUIReady.Add(new EventData<GameScenes>.OnEvent(onSceneLoaded));
         }
 
         public void OnDestroy()
         {
-            //MonoBehaviour.print("SSTUStockInterop Destroy");
-            //GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(onGameLoad));
+            MonoBehaviour.print("SSTUStockInterop Destroy");
+            GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(onGameLoad));
+            GameEvents.onLevelWasLoadedGUIReady.Remove(new EventData<GameScenes>.OnEvent(onSceneLoaded));
+        }
+
+        public void onSceneLoaded(GameScenes scene)
+        {
+            if (scene == GameScenes.SPACECENTER || scene==GameScenes.EDITOR || scene == GameScenes.FLIGHT)
+            {
+                //MonoBehaviour.print("Onscene loaded: " + scene);
+                //MonoBehaviour.print("RD: " + ResearchAndDevelopment.Instance);
+                updateTechLimitCache();
+            }
         }
 
         public void onGameLoad(ConfigNode node)
         {
-            MonoBehaviour.print("onGameLoad!");
-            //SSTUHeatShieldUpgradeScript.needsUpdate = true;
+            //MonoBehaviour.print("onGameLoad!");
+            //MonoBehaviour.print("RD: " + ResearchAndDevelopment.Instance);
+            techLimitCache.Clear();
         }
 
         public static void addDragUpdatePart(Part part)
@@ -97,6 +110,47 @@ namespace SSTUTools
             SSTUDatabase.reloadDatabase();
         }
 
+        private static void updateTechLimitCache()
+        {
+            techLimitCache.Clear();
+            ConfigNode[] techLimitSets = GameDatabase.Instance.GetConfigNodes("TECHLIMITSET");
+            ConfigNode setNode;
+            ConfigNode[] techLimitNodes;
+            ConfigNode limitNode;
+            string setName;
+            string techName;
+            float techLimit;
+            float setTechLimit;
+            int len = techLimitSets.Length;
+            int len2;
+            bool researchGame = SSTUUtils.isResearchGame();
+            for (int i = 0; i < len; i++)
+            {
+                setNode = techLimitSets[i];
+                setName = setNode.GetStringValue("name");
+                if (techLimitCache.ContainsKey(setName)) { continue; }
+                setTechLimit = float.PositiveInfinity;
+                if (researchGame)
+                {
+                    setTechLimit = 0;
+                    techLimitNodes = setNode.GetNodes("TECHLIMIT");
+                    len2 = techLimitNodes.Length;
+                    for (int k = 0; k < len2; k++)
+                    {
+                        limitNode = techLimitNodes[k];
+                        techName = limitNode.GetStringValue("name");
+                        techLimit = limitNode.GetFloatValue("diameter");
+                        if (techLimit > setTechLimit && SSTUUtils.isTechUnlocked(techName))
+                        {
+                            setTechLimit = techLimit;
+                        }
+                    }
+                }
+                //MonoBehaviour.print("Loaded tech limit of: " + setName + " :: " + setTechLimit);
+                techLimitCache.Add(setName, setTechLimit);
+            }
+        }
+
         private static void seatFirstCollider(Part part)
         {
             Collider[] colliders = part.gameObject.GetComponentsInChildren<Collider>();
@@ -118,6 +172,15 @@ namespace SSTUTools
             part.DragCubes.ClearCubes();
             part.DragCubes.Cubes.Add(newDefaultCube);
             part.DragCubes.ResetCubeWeights();
+        }
+
+        public static float getTechLimit(string name)
+        {
+            float limit = float.PositiveInfinity;
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return limit; }//for prefab parts....            
+            if (!techLimitCache.TryGetValue(name, out limit)) { return float.PositiveInfinity; }//for uninitialized cache or invalid key, return max value
+            //MonoBehaviour.print("found tech limit for set name: " + name + " :: " + limit);
+            return limit;
         }
 
         public static ConfigNode getPartModuleConfig(PartModule module)

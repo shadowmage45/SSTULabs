@@ -156,17 +156,17 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String currentMountTexture = String.Empty;
 
-        //[KSPField(isPersistant = true)]
-        //public String currentCapTextureSet = String.Empty;
+        [KSPField(isPersistant = true)]
+        public String currentDomeTextureSet = String.Empty;
 
-        //[KSPField(isPersistant = true)]
-        //public String currentIntertankTextureSet = String.Empty;
+        [KSPField(isPersistant = true)]
+        public String currentUpperTextureSet = String.Empty;
 
-        //[KSPField(isPersistant = true)]
-        //public String currentUpperTankTextureSet = String.Empty;
+        [KSPField(isPersistant = true)]
+        public String currentIntertankTextureSet = String.Empty;
 
-        //[KSPField(isPersistant = true)]
-        //public String currentLowerTankTextureSet = String.Empty;
+        [KSPField(isPersistant = true)]
+        public String currentLowerTextureSet = String.Empty;
 
         /// <summary>
         /// The current RCS thrust; this value will be 'set' into the RCS module (if found/present)
@@ -211,23 +211,49 @@ namespace SSTUTools
 
         //Private-instance-local fields for tracking the current/loaded config; basically parsed from configNodeData when config is loaded
         //upper, rcs, and mount must be present for every part
-        private SingleModelData upperModule;
+        private SingleModelData upperDomeModule;
         private SingleModelData upperTopCapModule;
+        private SingleModelData upperModule;
         private SingleModelData upperBottomCapModule;
+        //lower and intertank need only be present for split-tank type parts
+        private SingleModelData[] intertankModules;
+        private SingleModelData currentIntertankModule;
+        private SingleModelData lowerTopCapModule;
+        private SingleModelData lowerModule;
+        private SingleModelData lowerBottomCapModule;        
+        //mount and RCS are present for every part
         private SSTUCustomUpperStageRCS rcsModule;
         private MountModelData[] mountModules;
         private MountModelData currentMountModule;
-        //lower and intertank need only be present for split-tank type parts
-        private SingleModelData lowerModule;
-        private SingleModelData lowerBottomCapModule;
-        private SingleModelData[] intertankModules;
-        private SingleModelData currentIntertankModule;
-        
 
         private bool initialized = false;
         #endregion
 
         #region ----------------- REGION - GUI Interaction methods ----------------- 
+        
+        [KSPEvent(guiName = "Next Tank Dome Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
+        public void nextTankDomeTextureEvent()
+        {
+            setTankDomeTextureFromEditor(upperTopCapModule.getNextTextureSetName(currentDomeTextureSet, false), true);
+        }
+
+        [KSPEvent(guiName = "Next Upper Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
+        public void nextUpperTankTextureEvent()
+        {
+            setTankUpperTextureFromEditor(upperModule.getNextTextureSetName(currentUpperTextureSet, false), true);
+        }
+
+        [KSPEvent(guiName = "Next Intertank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
+        public void nextInterankTextureEvent()
+        {
+            setIntertankTextureFromEditor(currentIntertankModule.getNextTextureSetName(currentIntertankTextureSet, false), true);
+        }
+
+        [KSPEvent(guiName = "Next Lower Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
+        public void nextLowerTankTextureEvent()
+        {
+            setTankLowerTextureFromEditor(lowerModule.getNextTextureSetName(currentLowerTextureSet, false), true);
+        }
 
         [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextMountTextureEvent()
@@ -326,7 +352,7 @@ namespace SSTUTools
             updateFuelVolume();
             updateContainerVolume();
             updateGuiState();
-            if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
+            if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
             currentMountModule.enableTextureSet(currentMountTexture);
             if (updateSymmetry)
             {
@@ -365,12 +391,67 @@ namespace SSTUTools
         {
             currentMountTexture = newSet;
             currentMountModule.enableTextureSet(newSet);
-
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
                 {
                     p.GetComponent<SSTUCustomUpperStage>().setMountTextureFromEditor(newSet, false);
+                }
+            }
+        }
+
+        private void setTankDomeTextureFromEditor(String newSet, bool updateSymmetry)
+        {
+            currentDomeTextureSet = newSet;
+            upperDomeModule.enableTextureSet(newSet);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setTankDomeTextureFromEditor(newSet, false);
+                }
+            }
+        }
+
+        private void setTankUpperTextureFromEditor(String newSet, bool updateSymmetry)
+        {
+            currentUpperTextureSet = newSet;
+            upperTopCapModule.enableTextureSet(newSet);
+            upperModule.enableTextureSet(newSet);
+            upperBottomCapModule.enableTextureSet(newSet);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setTankUpperTextureFromEditor(newSet, false);
+                }
+            }
+        }
+
+        private void setIntertankTextureFromEditor(String newSet, bool updateSymmetry)
+        {
+            currentIntertankTextureSet = newSet;
+            currentIntertankModule.enableTextureSet(newSet);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setIntertankTextureFromEditor(newSet, false);
+                }
+            }
+        }
+
+        private void setTankLowerTextureFromEditor(String newSet, bool updateSymmetry)
+        {
+            currentLowerTextureSet = newSet;
+            lowerTopCapModule.enableTextureSet(newSet);
+            lowerModule.enableTextureSet(newSet);
+            lowerBottomCapModule.enableTextureSet(newSet);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUCustomUpperStage>().setTankLowerTextureFromEditor(newSet, false);
                 }
             }
         }
@@ -415,6 +496,10 @@ namespace SSTUTools
             {
                 Fields["currentIntertank"].guiActiveEditor = false;
             }
+            Events["nextTankDomeTextureEvent"].guiActiveEditor = upperTopCapModule.modelDefinition.textureSets.Length > 1;
+            Events["nextUpperTankTextureEvent"].guiActiveEditor = upperModule.modelDefinition.textureSets.Length > 1;
+            Events["nextInterankTextureEvent"].guiActiveEditor = splitTank && currentIntertankModule.modelDefinition.textureSets.Length > 1;
+            Events["nextLowerTankTextureEvent"].guiActiveEditor = splitTank && lowerModule.modelDefinition.textureSets.Length > 1;
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
         }
@@ -483,12 +568,12 @@ namespace SSTUTools
                 currentRcsThrust = defaultRcsThrust;
             }
             loadConfigData();
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
             }
-
             updateModules(false);
             buildSavedModel();
             updateModels();
@@ -517,15 +602,17 @@ namespace SSTUTools
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
 
             //mandatory nodes, -all- tank types must have these
-            ConfigNode tankUpperNode = node.GetNode("TANKUPPER");
+            ConfigNode upperDomeNode = node.GetNode("TANKDOME");
             ConfigNode upperTopCapNode = node.GetNode("TANKUPPERTOPCAP");
+            ConfigNode tankUpperNode = node.GetNode("TANKUPPER");
             ConfigNode upperBottomCapNode = node.GetNode("TANKUPPERBOTTOMCAP");
 
             ConfigNode rcsNode = node.GetNode("RCS");
             ConfigNode[] mountNodes = node.GetNodes("MOUNT");
-            
-            upperModule = new SingleModelData(tankUpperNode);
+
+            upperDomeModule = new SingleModelData(upperDomeNode);
             upperTopCapModule = new SingleModelData(upperTopCapNode);
+            upperModule = new SingleModelData(tankUpperNode);            
             upperBottomCapModule = new SingleModelData(upperBottomCapNode);
             rcsModule = new SSTUCustomUpperStageRCS(rcsNode);
 
@@ -539,15 +626,16 @@ namespace SSTUTools
             currentMountModule = Array.Find(mountModules, l => l.name == currentMount);
             if (!currentMountModule.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountModule.getDefaultTextureSet();
             }
-
             if (splitTank)
             {
                 //fields that are only populated by split-tank type upper-stages
+                ConfigNode lowerTopCapNode = node.GetNode("TANKLOWERTOPCAP");
                 ConfigNode tankLowerNode = node.GetNode("TANKLOWER");
                 ConfigNode lowerBottomCapNode = node.GetNode("TANKLOWERBOTTOMCAP");
                 ConfigNode[] intertankNodes = node.GetNodes("INTERTANK");
+                lowerTopCapModule = new SingleModelData(lowerTopCapNode);
                 lowerModule = new SingleModelData(tankLowerNode);
                 lowerBottomCapModule = new SingleModelData(lowerBottomCapNode);
                 //load intertank configs
@@ -559,6 +647,10 @@ namespace SSTUTools
                 }
                 currentIntertankModule = Array.Find(intertankModules, l => l.name == currentIntertank);
             }
+            if (!upperDomeModule.isValidTextureSet(currentDomeTextureSet)) { currentDomeTextureSet = upperDomeModule.getDefaultTextureSet(); }
+            if (!upperModule.isValidTextureSet(currentUpperTextureSet)) { currentUpperTextureSet = upperModule.getDefaultTextureSet(); }
+            if (splitTank && !currentIntertankModule.isValidTextureSet(currentIntertankTextureSet)){ currentIntertankTextureSet = currentIntertankModule.getDefaultTextureSet(); }
+            if (splitTank && !lowerModule.isValidTextureSet(currentLowerTextureSet)) { currentLowerTextureSet = lowerModule.getDefaultTextureSet(); }
         }
 
         #endregion
@@ -571,9 +663,9 @@ namespace SSTUTools
         private void updateModuleScales()
         {
             float scale = currentTankDiameter / defaultTankDiameter;
-            
+            upperDomeModule.updateScaleForDiameter(currentTankDiameter);
             upperTopCapModule.updateScaleForDiameter(currentTankDiameter);
-            upperModule.updateScaleForHeightAndDiameter(currentTankHeight*scale, currentTankDiameter);
+            upperModule.updateScaleForHeightAndDiameter(currentTankHeight * scale, currentTankDiameter);
             upperBottomCapModule.updateScaleForDiameter(currentTankDiameter);
 
             float mountDiameterScale = currentTankDiameter;
@@ -583,6 +675,7 @@ namespace SSTUTools
                 float lowerDiameter = currentTankDiameter * 0.75f;
                 float lowerHeight = currentTankHeight * 0.75f;
                 mountDiameterScale = lowerDiameter;
+                lowerTopCapModule.updateScaleForDiameter(lowerDiameter);
                 lowerModule.updateScaleForHeightAndDiameter(lowerHeight, lowerDiameter);
                 lowerBottomCapModule.updateScaleForDiameter(lowerDiameter);
             }            
@@ -596,44 +689,64 @@ namespace SSTUTools
         private void updateModulePositions()
         {
             float totalHeight = 0;
+            totalHeight += upperDomeModule.currentHeight;
             totalHeight += upperTopCapModule.currentHeight;
             totalHeight += upperModule.currentHeight;
             totalHeight += upperBottomCapModule.currentHeight;
-
             if (splitTank)
             {
                 totalHeight += currentIntertankModule.currentHeight;
+                totalHeight += lowerTopCapModule.currentHeight;
                 totalHeight += lowerModule.currentHeight;
                 totalHeight += lowerBottomCapModule.currentHeight;
             }
             totalHeight += currentMountModule.currentHeight;
             
+            //start height = total height * 0.5
             float startY = totalHeight * 0.5f;
             partTopY = startY;
-                        
-            topFairingBottomY = partTopY - upperTopCapModule.currentHeight + (upperTopCapModule.modelDefinition.fairingTopOffset * upperTopCapModule.currentHeightScale);
-            partBottomY = -startY;           
+            partBottomY = -partTopY;
 
+            //next 'position' is the origin for the dome and start for the fairings
+            startY -= upperDomeModule.currentHeight;
+            topFairingBottomY = startY;
+            upperDomeModule.currentVerticalPosition = startY;
+
+            //next position is the origin for the upper-tank-top-cap portion of the model
             startY -= upperTopCapModule.currentHeight;
-            upperTopCapModule.currentVerticalPosition = startY;            
-            
+            upperTopCapModule.currentVerticalPosition = startY;
+
+            //next position is the origin for the upper-tank stretchable model; it uses a center-origin system, so position it using half of its height            
             startY -= upperModule.currentHeight * 0.5f;
             upperModule.currentVerticalPosition = startY;
-            startY -= upperModule.currentHeight * 0.5f;         
-            upperBottomCapModule.currentVerticalPosition = startY;
 
-            startY -= upperBottomCapModule.currentHeight;
+            //next position is the origin for the upper-tank-lower-cap
+            startY -= upperModule.currentHeight * 0.5f;//finish moving downward for the upper-tank-stretch segment
+            startY -= upperTopCapModule.currentHeight;
+            upperBottomCapModule.currentVerticalPosition = startY;
+            
+            //next position the split-tank elements if ST is enabled            
             if (splitTank)
             {
-                currentIntertankModule.currentVerticalPosition = startY;
+                //move downward for the intertank height
                 startY -= currentIntertankModule.currentHeight;
+                currentIntertankModule.currentVerticalPosition = startY;
+
+                //move downward for the lower tank top cap
+                startY -= lowerTopCapModule.currentHeight;
+                lowerTopCapModule.currentVerticalPosition = startY;
+
+                //move downward for half height of the lower stretch tank
                 startY -= lowerModule.currentHeight * 0.5f;
                 lowerModule.currentVerticalPosition = startY;
                 startY -= lowerModule.currentHeight * 0.5f;
-                lowerBottomCapModule.currentVerticalPosition = startY;
+
+                //move downward for the lower tank bottom cap 
                 startY -= lowerBottomCapModule.currentHeight;
+                lowerBottomCapModule.currentVerticalPosition = startY;                
             }
 
+            //and should already be positioned properly for the mount
             currentMountModule.currentVerticalPosition = startY;
             rcsModule.currentVerticalPosition = currentMountModule.currentVerticalPosition + (currentMountModule.modelDefinition.rcsVerticalPosition * currentMountModule.currentHeightScale);
             rcsModule.currentHorizontalPosition = currentMountModule.modelDefinition.rcsHorizontalPosition * currentMountModule.currentDiameterScale;
@@ -642,10 +755,7 @@ namespace SSTUTools
 
             if (splitTank)
             {
-                
-                bottomFairingTopY = currentIntertankModule.currentVerticalPosition;
-                float offset = currentIntertankModule.modelDefinition.fairingTopOffset * currentIntertankModule.currentHeightScale;                
-                bottomFairingTopY -= offset;
+                bottomFairingTopY = upperBottomCapModule.currentVerticalPosition;
             }
             else
             {
@@ -711,8 +821,7 @@ namespace SSTUTools
 
             AttachNode bottomNode = part.findAttachNode("bottom");
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
-
-
+            
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
                 Vector3 pos = new Vector3(0, bottomFairingTopY, 0);
@@ -728,6 +837,17 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
+            upperDomeModule.enableTextureSet(currentDomeTextureSet);
+            upperTopCapModule.enableTextureSet(currentUpperTextureSet);
+            upperModule.enableTextureSet(currentUpperTextureSet);
+            upperBottomCapModule.enableTextureSet(currentUpperTextureSet);
+            if (splitTank)
+            {
+                currentIntertankModule.enableTextureSet(currentIntertankTextureSet);
+                lowerTopCapModule.enableTextureSet(currentLowerTextureSet);
+                lowerModule.enableTextureSet(currentLowerTextureSet);
+                lowerBottomCapModule.enableTextureSet(currentLowerTextureSet);
+            }
             currentMountModule.enableTextureSet(currentMountTexture);
             if (updateSymmetry)
             {
@@ -749,6 +869,7 @@ namespace SSTUTools
         {
             Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
 
+            setupModel(upperDomeModule, modelBase, ModelOrientation.CENTRAL);
             setupModel(upperTopCapModule, modelBase, ModelOrientation.CENTRAL);
             setupModel(upperModule, modelBase, ModelOrientation.CENTRAL);
             setupModel(upperBottomCapModule, modelBase, ModelOrientation.CENTRAL);
@@ -760,8 +881,9 @@ namespace SSTUTools
                     SingleModelData dim = Array.Find<SingleModelData>(intertankModules, l => l.name == defaultIntertank);
                     dim.setupModel(part, modelBase, ModelOrientation.CENTRAL);
                     removeCurrentModel(dim);
-                }
+                }                
                 setupModel(currentIntertankModule, modelBase, ModelOrientation.CENTRAL);
+                setupModel(lowerTopCapModule, modelBase, ModelOrientation.CENTRAL);
                 setupModel(lowerModule, modelBase, ModelOrientation.CENTRAL);
                 setupModel(lowerBottomCapModule, modelBase, ModelOrientation.CENTRAL);
             }
@@ -800,6 +922,7 @@ namespace SSTUTools
         /// </summary>
         private void updateModels()
         {
+            upperDomeModule.updateModel();
             upperTopCapModule.updateModel();
             upperModule.updateModel();
             upperBottomCapModule.updateModel();
@@ -807,6 +930,7 @@ namespace SSTUTools
             if (splitTank)
             {
                 currentIntertankModule.updateModel();
+                lowerTopCapModule.updateModel();
                 lowerModule.updateModel();
                 lowerBottomCapModule.updateModel();
             }
@@ -839,13 +963,14 @@ namespace SSTUTools
         private void updateFuelVolume()
         {
             totalTankVolume = 0;
-
+            totalTankVolume += upperDomeModule.getModuleVolume();
             totalTankVolume += upperTopCapModule.getModuleVolume();
             totalTankVolume += upperModule.getModuleVolume();
             totalTankVolume += upperBottomCapModule.getModuleVolume();
             if(splitTank)
             {
                 totalTankVolume += currentIntertankModule.getModuleVolume();
+                totalTankVolume += lowerTopCapModule.getModuleVolume();
                 totalTankVolume += lowerModule.getModuleVolume();
                 totalTankVolume += lowerBottomCapModule.getModuleVolume();
             }
@@ -858,10 +983,10 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleMass()
         {
-            moduleMass = upperTopCapModule.getModuleMass() + upperModule.getModuleMass() + upperBottomCapModule.getModuleMass() + currentMountModule.getModuleMass() + rcsModule.getModuleMass();
+            moduleMass = upperTopCapModule.getModuleMass() + upperModule.getModuleMass() + upperBottomCapModule.getModuleMass() + currentMountModule.getModuleMass() + rcsModule.getModuleMass()+upperDomeModule.getModuleMass();
             if (splitTank)
             {
-                moduleMass += currentIntertankModule.getModuleMass() + lowerModule.getModuleMass() + lowerBottomCapModule.getModuleMass();
+                moduleMass += currentIntertankModule.getModuleMass() + lowerModule.getModuleMass() + lowerBottomCapModule.getModuleMass() + lowerTopCapModule.getModuleMass(); ;
             }
         }
                 
@@ -870,10 +995,10 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleCost()
         {
-            moduleCost = upperTopCapModule.getModuleCost() + upperModule.getModuleCost() + upperBottomCapModule.getModuleCost() + currentMountModule.getModuleCost() + rcsModule.getModuleCost();
+            moduleCost = upperTopCapModule.getModuleCost() + upperModule.getModuleCost() + upperBottomCapModule.getModuleCost() + currentMountModule.getModuleCost() + rcsModule.getModuleCost()+upperDomeModule.getModuleCost();
             if (splitTank)
             {
-                moduleCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost();
+                moduleCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost()+lowerTopCapModule.getModuleCost();
             }
         }
 
@@ -914,8 +1039,7 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
-            if (container != null) { container.onVolumeUpdated(totalTankVolume*1000f); }
+            SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume * 1000f);
         }        
         #endregion
 
@@ -989,4 +1113,5 @@ namespace SSTUTools
             }
         }
     }
+
 }

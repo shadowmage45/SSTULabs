@@ -158,6 +158,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool animating = false;
 
+        [KSPField(guiName = "Toggle Deployment", guiActiveEditor = true, isPersistant = true), UI_Toggle(enabledText = "Open", disabledText = "Closed", suppressEditorShipModified = true)]
+        public bool editorDeployed = false;
+
         [KSPField(guiName = "Fairing Cost", guiActiveEditor = true)]
         public float fairingCost;
 
@@ -232,6 +235,11 @@ namespace SSTUTools
         {
             TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
             setTextureFromEditor(next == null ? null : next.setName, true);
+        }
+
+        public void onEditorDeployUpdated(BaseField field, object obj)
+        {
+            setPanelRotations(currentRotation);
         }
         
         public void onCollidersUpdated(BaseField field, object obj)
@@ -400,6 +408,7 @@ namespace SSTUTools
             Fields["currentStraightHeight"].uiControlEditor.onFieldChanged = onStraightUpdated;
             Fields["editorTransparency"].uiControlEditor.onFieldChanged = onTransparencyUpdated;
             Fields["generateColliders"].uiControlEditor.onFieldChanged = onCollidersUpdated;
+            Fields["editorDeployed"].uiControlEditor.onFieldChanged = onEditorDeployUpdated;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -435,7 +444,7 @@ namespace SSTUTools
         //Unity updatey cycle override/hook
         public void FixedUpdate()
         {
-            if (animating)
+            if (HighLogic.LoadedSceneIsFlight && animating)
             {
                 updateAnimation();
             }
@@ -519,6 +528,7 @@ namespace SSTUTools
         {
             if (fairingBase != null && !panelsJettisoned)
             {
+                rotation = HighLogic.LoadedSceneIsEditor && editorDeployed ? deployedRotation : rotation;
                 fairingBase.setPanelRotations(rotation);
             }
         }
@@ -536,7 +546,7 @@ namespace SSTUTools
             if (currentRotation >= deployedRotation)
             {
                 currentRotation = deployedRotation;
-                setPanelRotations(deployedRotation);
+                setPanelRotations(currentRotation);
                 animating = false;
                 updateShieldStatus();
                 if (jettisonPanels)
@@ -586,12 +596,12 @@ namespace SSTUTools
             {
                 SSTUUtils.recursePrintComponents(part.gameObject, "");
             }
-            createPanels();
-            setPanelRotations(currentRotation);//set animation status to whatever is current            
+            createPanels();          
             updateFairingMassAndCost();
             updateNodePositions(userInput);
             updateShieldStatus();
             enableEditorColliders(HighLogic.LoadedSceneIsEditor);
+            setPanelRotations(currentRotation);
             SSTUModInterop.onPartGeometryUpdate(part, false);
             recreateDragCubes();
         }
@@ -677,7 +687,8 @@ namespace SSTUTools
 
             loadMaterial();
 
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (topDiameter > techLimitMaxDiameter)
             {
                 topDiameter = techLimitMaxDiameter;

@@ -472,7 +472,8 @@ namespace SSTUTools.Module
             TextureData data = currentTextureSetData.textureDatas[0];
             fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
 
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTopDiameter > techLimitMaxDiameter)
             {
                 currentTopDiameter = techLimitMaxDiameter;
@@ -593,13 +594,8 @@ namespace SSTUTools.Module
         {
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
             float volume = resourceVolume * scale * numberOfEngines;
-            if (SSTUModInterop.isRFInstalled())
-            {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, volume);
-            }
-            else
-            {
-                print("setting solid fuel quantity based on resource volume: " + volume);
+            if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
+            {                
                 SSTUResourceList resources = fuelType.getResourceList(volume);
                 resources.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
             }

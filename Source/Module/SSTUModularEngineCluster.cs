@@ -370,7 +370,7 @@ namespace SSTUTools
 
             if (!currentMountData.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountData.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountData.getDefaultTextureSet();
             }
             currentMountData.enableTextureSet(currentMountTexture);
             if (updateSymmetry)
@@ -484,7 +484,7 @@ namespace SSTUTools
             updateGuiState();
             if (!currentMountData.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountData.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountData.getDefaultTextureSet();
             }
             updateMountTexture();
         }
@@ -502,7 +502,7 @@ namespace SSTUTools
             updatePartCostAndMass();
             if (!currentMountData.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountData.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountData.getDefaultTextureSet();
             }
             updateMountTexture();
         }
@@ -699,7 +699,7 @@ namespace SSTUTools
         {
             if (!currentMountData.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountData.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountData.getDefaultTextureSet();
             }
             currentMountData.enableTextureSet(currentMountTexture);
         }

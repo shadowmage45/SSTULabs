@@ -164,7 +164,6 @@ namespace SSTUTools
         public void Start()
         {
             updateKISVolume();
-            if (useRF) { onVolumeUpdated(volume); }
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
@@ -223,22 +222,14 @@ namespace SSTUTools
             if (newVolume != volume)
             {
                 volume = newVolume;
-                if (useRF)
-                {
-                    SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 0.001f);//re-convert from l to m^3                    
-                }
-                else
-                {
-                    updateContainerVolumes();
-                    updateMassAndCost();
-                    updateTankResources();
-                    updateFuelSelections();
-                    updatePersistentData();
-                    SSTUStockInterop.fireEditorUpdate();
-                }
+                updateContainerVolumes();
+                updateMassAndCost();
+                updateTankResources();
+                updateFuelSelections();
+                updatePersistentData();
+                SSTUStockInterop.fireEditorUpdate();
             }
         }
-
         public int numberOfContainers { get { return containers.Length; } }
 
         public void setContainerPercents(float[] percents, float totalVolume)

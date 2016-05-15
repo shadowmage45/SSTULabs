@@ -114,7 +114,8 @@ namespace SSTUTools
             {
                 Events["nextTextureSet"].guiActiveEditor = false;
             }
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);                        
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter)
             {
                 currentDiameter = techLimitMaxDiameter;

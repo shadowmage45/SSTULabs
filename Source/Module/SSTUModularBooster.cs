@@ -297,7 +297,7 @@ namespace SSTUTools
             }
             if (!currentMainModule.isValidTextureSet(currentMainTexture))
             {
-                currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet;            
+                currentMainTexture = currentMainModule.getDefaultTextureSet();            
             }
             currentMainModule.enableTextureSet(currentMainTexture);
             updateModelScaleAndPosition();
@@ -335,7 +335,7 @@ namespace SSTUTools
             }
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
             {
-                currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet;
+                currentNoseTexture = currentNoseModule.getDefaultTextureSet();
             }
             currentNoseModule.enableTextureSet(currentNoseTexture);
             updateModelScaleAndPosition();
@@ -376,7 +376,7 @@ namespace SSTUTools
             }
             if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
             {
-                currentNozzleTexture = currentNozzleModule.modelDefinition.defaultTextureSet;
+                currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
             }
             currentNozzleModule.enableTextureSet(currentNozzleTexture);
             updateModelScaleAndPosition();
@@ -623,7 +623,8 @@ namespace SSTUTools
         private void loadConfigNodeData()
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
             
             //load all main tank model datas
@@ -636,7 +637,7 @@ namespace SSTUTools
             }
             if (!currentMainModule.isValidTextureSet(currentMainTexture))
             {
-                currentMainTexture = currentMainModule.modelDefinition.defaultTextureSet;
+                currentMainTexture = currentMainModule.getDefaultTextureSet();
             }
 
             //load nose modules from NOSE nodes
@@ -656,7 +657,7 @@ namespace SSTUTools
                 currentNoseModule = this.noseModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNoseName = currentNoseModule.name;
             }
-            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet; }
+            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
 
             //load nose modules from NOZZLE nodes
             ConfigNode[] nozzleNodes = node.GetNodes("NOZZLE");
@@ -675,7 +676,7 @@ namespace SSTUTools
                 currentNozzleModule = this.nozzleModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNozzleName = currentNozzleModule.name;
             }
-            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture)) { currentNozzleTexture = currentNozzleModule.modelDefinition.defaultTextureSet; }
+            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture)) { currentNozzleTexture = currentNozzleModule.getDefaultTextureSet(); }
             
             //reset existing gimbal/thrust transforms, remove them from the model hierarchy
             resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
@@ -993,9 +994,7 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
-            if (container == null) { return; }
-            container.onVolumeUpdated(currentMainModule.getModuleVolume()*1000f);//m^3 -> l conversion factor
+            SSTUModInterop.onPartFuelVolumeUpdate(part, currentMainModule.getModuleVolume() * 1000f);
         }
 
         /// <summary>

@@ -229,7 +229,7 @@ namespace SSTUTools
             currentNoseModule = newModule;
             newModule.setupModel(part, getNoseRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
-            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet; }
+            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
             currentNoseModule.enableTextureSet(currentNoseTexture);
             updateEditorStats(true);
             if (updateSymmetry)
@@ -250,7 +250,7 @@ namespace SSTUTools
             currentMainTankModule = newModule;
             currentMainTankModule.setupModel(part, getTankRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
-            if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.modelDefinition.defaultTextureSet; }
+            if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.getDefaultTextureSet(); }
             currentMainTankModule.enableTextureSet(currentTankTexture);
 
             updateUIScaleControls();
@@ -275,7 +275,7 @@ namespace SSTUTools
             currentMountModule = newModule;
             newModule.setupModel(part, getMountRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
-            if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet; }
+            if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
             currentMountModule.enableTextureSet(currentMountTexture);
 
             updateEditorStats(true);
@@ -492,7 +492,8 @@ namespace SSTUTools
             initialized = true;
             
             loadConfigData();
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
@@ -568,15 +569,15 @@ namespace SSTUTools
             }
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture))
             {
-                currentTankTexture = currentMainTankModule.modelDefinition.defaultTextureSet;
+                currentTankTexture = currentMainTankModule.getDefaultTextureSet();
             }
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
             {
-                currentNoseTexture = currentNoseModule.modelDefinition.defaultTextureSet;
+                currentNoseTexture = currentNoseModule.getDefaultTextureSet();
             }
             if (!currentMountModule.isValidTextureSet(currentMountTexture))
             {
-                currentMountTexture = currentMountModule.modelDefinition.defaultTextureSet;
+                currentMountTexture = currentMountModule.getDefaultTextureSet();
             }
         }
 
@@ -656,11 +657,7 @@ namespace SSTUTools
 
         private void updateTankStats()
         {
-            currentTankVolume = currentMainTankModule.getModuleVolume() + currentNoseModule.getModuleVolume() + currentMountModule.getModuleVolume();
-            if (SSTUModInterop.isRFInstalled())
-            {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, currentTankVolume);
-            }
+            currentTankVolume = currentMainTankModule.getModuleVolume() + currentNoseModule.getModuleVolume() + currentMountModule.getModuleVolume();            
             currentTankMass = currentNoseModule.getModuleMass() + currentMainTankModule.getModuleMass() + currentMountModule.getModuleMass(); ;
             currentTankCost = currentNoseModule.getModuleCost() + currentMainTankModule.getModuleCost() + currentMountModule.getModuleCost(); ;
             updateGuiState();
@@ -695,11 +692,7 @@ namespace SSTUTools
 
         private void updateContainerVolume()
         {
-            SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
-            if (container != null)
-            {
-                container.onVolumeUpdated(currentTankVolume * 1000f);
-            }
+            SSTUModInterop.onPartFuelVolumeUpdate(part, currentTankVolume * 1000f);
         }
 
         private void updateGuiState()

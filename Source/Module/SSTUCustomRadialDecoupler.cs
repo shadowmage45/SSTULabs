@@ -119,7 +119,8 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
+            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
+            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
             fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
@@ -280,11 +281,7 @@ namespace SSTUTools.Module
         {
             float resourceScalar = Mathf.Pow(getScale(), thrustScalePower);
             float currentVolume = resourceVolume * resourceScalar;
-            if (SSTUModInterop.isRFInstalled())
-            {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, currentVolume);
-            }
-            else
+            if (!SSTUModInterop.onPartFuelVolumeUpdate(part, currentVolume*1000))
             {
                 SSTUResourceList res = fuelType.getResourceList(currentVolume);
                 res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
