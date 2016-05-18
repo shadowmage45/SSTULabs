@@ -343,6 +343,7 @@ namespace SSTUTools
         {
             base.OnSave(node);            
             updatePersistentDataString();
+            node.SetValue("persistentDataString", persistentDataString, true);
         }
 
         public override void OnStart(StartState state)

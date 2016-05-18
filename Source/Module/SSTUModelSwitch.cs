@@ -8,6 +8,7 @@ namespace SSTUTools
 
     public class SSTUModelSwitch : PartModule, IPartMassModifier, IPartCostModifier
     {        
+
         /// <summary>
         /// Amount of persistent volume that is untouched by the ModelSwitch module; regardless of current part setup the volume will always be at least this amount (unless a model has negative volume?)
         /// </summary>
@@ -71,6 +72,7 @@ namespace SSTUTools
         {
             base.OnSave(node);
             updatePersistentData();
+            node.SetValue("persistentConfigData", persistentConfigData, true);//force saving of persistent data field, as apparently part saves fields before module.OnSave() is called
         }
 
         public override void OnLoad(ConfigNode node)
@@ -119,6 +121,7 @@ namespace SSTUTools
                 saveData = saveData + modelGroups[i].getPersistentData();
             }
             persistentConfigData = saveData;
+            MonoBehaviour.print("updated persistent data: " + persistentConfigData);
         }
 
         /// <summary>
@@ -315,18 +318,14 @@ namespace SSTUTools
         }
         
         private void updateAttachNodes(bool userInput)
-        {
-            MonoBehaviour.print("controlled nodes!: " + controlledNodes+" : "+ SSTUUtils.printArray(controlledNodes,","));
-            
+        {            
             int len = modelGroups.Length;
             List<string> enabledNodeNames = new List<string>();
             AttachNode attachNode;
             ModelSwitchGroup group;
             ModelSwitchData model;
-            MonoBehaviour.print("1");
             for (int i = 0; i < len; i++)
             {
-                MonoBehaviour.print("2");
                 group = modelGroups[i];
                 model = group.enabledModel;
                 if (!controlledNodes.Contains(group.parentNode)) { continue; }//not a node that we should touch...
@@ -347,13 +346,11 @@ namespace SSTUTools
                     SSTUAttachNodeUtils.updateAttachNodePosition(part, attachNode, pos, rotation, userInput);
                 }
             }
-            MonoBehaviour.print("3");
             List<AttachNode> attachNodes = new List<AttachNode>();
             attachNodes.AddRange(part.attachNodes);
             len = attachNodes.Count;
             for (int i = 0; i < len; i++)
             {
-                MonoBehaviour.print("4");
                 attachNode = attachNodes[i];
                 if (!controlledNodes.Contains(attachNode.id)) { continue; }//not a node that we should touch...
                 if (attachNode.attachedPart==null && !enabledNodeNames.Contains(attachNode.id))
@@ -417,14 +414,12 @@ namespace SSTUTools
         internal int getPersistentData() { return enabled ? 1 : 0; }
 
         internal void initialize()
-        {
-            MonoBehaviour.print("initializing model..." + name);
+        {            
             if (enabled) { group.enable(this); }
         }
 
         internal void enable()
         {
-            MonoBehaviour.print("Enabling model: " + name + " : " + modelName + " :: " + groupName);
             Transform tr = part.transform.FindRecursive(getBaseTransformName());
             if (tr == null)
             {
@@ -439,7 +434,7 @@ namespace SSTUTools
 
         internal void disable()
         {
-            MonoBehaviour.print("Disabling model: " + name + " : " + modelName + " :: " + groupName);
+            enabled = false;
             if (String.IsNullOrEmpty(modelDefinition.modelName)) { return; }//NOOP for null model
             Transform tr = part.transform.FindRecursive(getBaseTransformName());
             if (tr != null)
@@ -450,7 +445,6 @@ namespace SSTUTools
             {
                 MonoBehaviour.print("ERROR: Disable was called on an already disabled model: " + name + " for part: " + part);
             }
-            enabled = false;
         }
 
         private void setupModel()
@@ -608,7 +602,10 @@ namespace SSTUTools
             }
             foreach (ModelSwitchData d in this.modelData)
             {
-                if (d != data) { d.disable(); }
+                if (d != data)
+                {
+                    d.disable();
+                }
             }
             currentEnabledModel = data;
             currentEnabledModel.enable();
@@ -638,7 +635,6 @@ namespace SSTUTools
         /// </summary>
         internal void enableGroup()
         {
-            MonoBehaviour.print("Enabling model group: " + name);
             if (enabled) { return; }
             enabled = true;
             modelRoot = new GameObject("Root-" + name);
@@ -667,7 +663,6 @@ namespace SSTUTools
         /// </summary>
         internal void disableGroup()
         {
-            MonoBehaviour.print("Disabling group: "+name);
             int len = children.Count;
             for (int i = 0; i < len; i++)
             {

@@ -131,6 +131,17 @@ namespace SSTUTools
             return getModuleFuelTanks(part) != null;
         }
 
+        public static bool hasModuleEngineConfigs(Part part)
+        {
+            Type type = Type.GetType("RealFuels.ModuleEngineConfigs,RealFuels");
+            PartModule module = null;
+            if (type != null)
+            {
+                module = (PartModule)part.GetComponent(type);
+            }
+            return module != null;
+        }
+
         public static void onPartKISVolumeUpdated(Part part, float liters)
         {
             if (!isKISInstalled())
