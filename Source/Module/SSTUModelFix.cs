@@ -5,10 +5,10 @@ namespace SSTUTools
     class SSTUModelFix : PartModule
     {
         [KSPField]
-        public string model;
+        public string model = string.Empty;
 
         [KSPField]
-        public string parent;
+        public string parent = string.Empty;
 
         public override void OnLoad(ConfigNode node)
         {

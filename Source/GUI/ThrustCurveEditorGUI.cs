@@ -28,7 +28,7 @@ namespace SSTUTools
 
         private static Rect presetWindowRect = new Rect(Screen.width - 900 - presetWidth - margin, 40, presetWidth + margin, presetHeight + margin);
         private static bool presetWindowOpen = false;
-        private static Vector2 presetScrollPos;
+        //private static Vector2 presetScrollPos;
 
 
         public static void openGUI(SSTUModularBooster srbModule, FloatCurve inputCurve)

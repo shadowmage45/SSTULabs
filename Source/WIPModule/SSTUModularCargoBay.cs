@@ -15,7 +15,7 @@ namespace SSTUTools.WIPModule
         public string currentModelName;
 
         private bool initialized = false;
-        private SingleModelData[] modelDatas;
+        //private SingleModelData[] modelDatas;
 
         public override void OnLoad(ConfigNode node)
         {

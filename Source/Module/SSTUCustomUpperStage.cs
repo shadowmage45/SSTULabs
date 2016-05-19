@@ -234,7 +234,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Next Tank Dome Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
         public void nextTankDomeTextureEvent()
         {
-            setTankDomeTextureFromEditor(upperTopCapModule.getNextTextureSetName(currentDomeTextureSet, false), true);
+            setTankDomeTextureFromEditor(upperDomeModule.getNextTextureSetName(currentDomeTextureSet, false), true);
         }
 
         [KSPEvent(guiName = "Next Upper Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
@@ -373,6 +373,11 @@ namespace SSTUTools
             currentIntertankModule = Array.Find(intertankModules, m => m.name == newModel);
             currentIntertank = newModel;
             setupModel(currentIntertankModule, part.transform.FindRecursive("model").FindOrCreate(baseTransformName), ModelOrientation.CENTRAL);
+            if (!currentIntertankModule.isValidTextureSet(currentIntertankTextureSet))
+            {
+                currentIntertankTextureSet = currentIntertankModule.getDefaultTextureSet();
+            }
+            currentIntertankModule.enableTextureSet(currentIntertankTextureSet);
             updateModules(true);
             updateModels();
             updateTankStats();

@@ -8,8 +8,6 @@ namespace SSTUTools
 {
     public class SSTUDragCubeRenderer : PartModule
     {
-        private GameObject cubeGO;
-
         [KSPField(guiActive = true, guiActiveEditor = true, guiName = "DC Renders"), UI_Toggle(enabledText = "On", disabledText = "Off", suppressEditorShipModified = true)]
         public bool enableDragCubeRendering = false;
 

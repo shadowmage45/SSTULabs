@@ -113,10 +113,11 @@ namespace SSTUTools
         public double guiShieldTemp = 0;
         [KSPField(guiActive = true, guiName = "HS Eff")]
         public double guiShieldEff = 0;
-        [KSPField(guiActive = true, guiName = "Flux/area")]
-        public double fluxPerSquareMeter;
-        [KSPField(guiActive = true, guiName = "Flux/mass")]
-        public double fluxPerTMass;
+
+        //[KSPField(guiActive = true, guiName = "Flux/area")]
+        //public double fluxPerSquareMeter;
+        //[KSPField(guiActive = true, guiName = "Flux/mass")]
+        //public double fluxPerTMass;
 
         #endregion
 
@@ -383,17 +384,17 @@ namespace SSTUTools
             bool active = PhysicsGlobals.ThermalDataDisplay;
             Fields["guiShieldTemp"].guiActive = active;
             Fields["guiShieldFlux"].guiActive = active;
-            Fields["guiShieldUse"].guiActive = active;
+            Fields["guiShieldUse"].guiActive = active && !heatSoak;
             Fields["guiShieldEff"].guiActive = active;
-            Fields["fluxPerSquareMeter"].guiActive = active;
-            Fields["fluxPerTMass"].guiActive = active;
+            //Fields["fluxPerSquareMeter"].guiActive = active;
+            //Fields["fluxPerTMass"].guiActive = active;
         }
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
             double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta) * fluxMult * effectiveness;
-            fluxPerSquareMeter = part.thermalConvectionFlux / part.skinExposedArea;
-            fluxPerTMass = part.thermalConvectionFlux / (part.skinThermalMass * part.skinExposedAreaFrac);
+            //fluxPerSquareMeter = part.thermalConvectionFlux / part.skinExposedArea;
+            //fluxPerTMass = part.thermalConvectionFlux / (part.skinThermalMass * part.skinExposedAreaFrac);
             if (areaAdjusted)
             {
                 maxFluxRemoved *= part.skinExposedArea;
@@ -457,13 +458,21 @@ namespace SSTUTools
         private void updatePartCost()
         {
             float scale = standAlonePart? Mathf.Pow(mainModelData.currentDiameterScale, massScalePower) : 1;
-            PartResource res = part.Resources[resourceName];            
-            modifiedCost = ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
+            if (heatSoak)
+            {
+                modifiedCost = 0;
+            }
+            else
+            {
+                PartResource res = part.Resources[resourceName];
+                modifiedCost = ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
+            }            
             modifiedMass = scale * shieldMass * currentShieldTypeData.massMult;
         }
 
         private void updatePartResources()
         {
+            if (heatSoak) { return; }//dont touch resources on heat-soak type setups
             float scale = standAlonePart? Mathf.Pow(mainModelData.currentDiameterScale, resourceScalePower) : 1;
             float amount = baseResourceQuantity * scale * currentShieldTypeData.resourceMult;
             PartResource res = part.Resources[resourceName];

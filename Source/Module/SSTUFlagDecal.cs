@@ -15,10 +15,18 @@ namespace SSTUTools
         [KSPEvent(guiName = "Toggle Flag Visibility", guiActiveEditor = true)]
         public void toggleFlagEvent()
         {
+            onFlagToggled(true);
+        }
+
+        private void onFlagToggled(bool updateSymmetry)
+        {
             flagEnabled = !flagEnabled;
             updateFlagTransform();
-            int index = part.Modules.IndexOf(this);
-            foreach (Part p in part.symmetryCounterparts) { ((SSTUFlagDecal)p.Modules[index]).toggleFlagEvent(); }
+            if (updateSymmetry)
+            {
+                int index = part.Modules.IndexOf(this);
+                foreach (Part p in part.symmetryCounterparts) { ((SSTUFlagDecal)p.Modules[index]).onFlagToggled(false); }
+            }
         }
 
         public override void OnStart(StartState state)

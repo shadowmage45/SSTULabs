@@ -97,6 +97,9 @@ namespace SSTUTools
         [KSPField]
         public bool adjustMass = true;
 
+        [KSPField]
+        public bool adjustCost = true;
+
         #endregion ENDREGION - Standard KSPField variables
 
         #region REGION - KSP Editor Adjust Fields (Float Sliders) and KSP GUI Fields (visible data)
@@ -430,7 +433,6 @@ namespace SSTUTools
                 }
             }
             updateEditorFields();
-            adjustMass = !SSTUModInterop.hasModuleEngineConfigs(part);//disable mass adjustments if ModuleEngineConfigs is found; let it do all mass adjustment
         }
 
         /// <summary>
@@ -445,7 +447,8 @@ namespace SSTUTools
 
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
-        {            
+        {
+            if (!adjustCost) { return 0; }
             if (currentEngineLayout != null && currentMountData != null)
             {
                 modifiedCost = defaultCost * (float)currentEngineLayout.getLayoutData().positions.Count;
@@ -571,7 +574,7 @@ namespace SSTUTools
             {
                 localLayoutNode = null;
                 layoutConfigNodes.TryGetValue(key, out localLayoutNode);
-                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineScale, engineSpacing, engineMountDiameter, upperStageMounts, lowerStageMounts);
+                engineLayouts[index] = new EngineClusterLayoutData(allBaseLayouts[key], localLayoutNode, engineScale, engineSpacing, engineMountDiameter, diameterIncrement, upperStageMounts, lowerStageMounts);
                 index++;
             }
             //sort usable layout list by the # of positions in the layout, 1..2..3..x..99
@@ -679,8 +682,6 @@ namespace SSTUTools
             SSTUEnginePosition position;
             int length = layout.positions.Count;
 
-            MonoBehaviour.print("Engine spacing: " + currentEngineSpacing);
-            
             float engineRotation;
             Transform[] models = part.transform.FindRecursive(engineTransformName).FindChildren(engineModelName);
             for (int i = 0; i < length; i++)
@@ -985,7 +986,7 @@ namespace SSTUTools
         //available mounts for this layout
         public EngineClusterLayoutMountData[] mountData;
 
-        public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float engineScale, float moduleEngineSpacing, float moduleMountSize, bool upperMounts, bool lowerMounts)
+        public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float engineScale, float moduleEngineSpacing, float moduleMountSize, float increment, bool upperMounts, bool lowerMounts)
         {
             this.engineScale = engineScale;
             this.layoutData = layoutData;
@@ -1042,17 +1043,16 @@ namespace SSTUTools
 
             engineSpacing = engineSpacing * engineScale;//pre-scale the engine spacing by the engine scale value; needed for engine positioning and mount-size calculation
             moduleMountSize = moduleMountSize * engineScale;//pre-scale the mount size by the engine scale value; needed for mount-size calculation
-                        
             List<EngineClusterLayoutMountData> mountDataTemp = new List<EngineClusterLayoutMountData>();            
             foreach(String key in globalMountOptions.Keys)
             {
                 if (localMountNodes.ContainsKey(key))//was specified in the config and was not a simple removal; merge values into global node...
                 {
-                    mountNode = mergeNodes(getAutoSizeNode(globalMountOptions[key], moduleEngineSpacing, moduleMountSize, 0.625f), localMountNodes[key]);
+                    mountNode = mergeNodes(getAutoSizeNode(globalMountOptions[key], engineSpacing, moduleMountSize, increment), localMountNodes[key]);
                 }
                 else
                 {
-                    mountNode = getAutoSizeNode(globalMountOptions[key], moduleEngineSpacing, moduleMountSize, 0.625f);
+                    mountNode = getAutoSizeNode(globalMountOptions[key], engineSpacing, moduleMountSize, increment);
                 }
                 mountDataTemp.Add(new EngineClusterLayoutMountData(mountNode));
             }
@@ -1072,7 +1072,7 @@ namespace SSTUTools
         /// <param name="increment">mount diameter increment as specified in the engine module</param>
         /// <returns></returns>
         private ConfigNode getAutoSizeNode(SSTUEngineLayoutMountOption option, float engineSpacing, float engineMountSize, float increment)
-        {                        
+        {
             ModelDefinition mdf = SSTUModelData.getModelDefinition(option.mountName);
             float modelMountArea = mdf.configNode.GetFloatValue("mountingDiameter");//TODO clean up the need to cache the config node for a simple use
             float minSize = 2.5f, maxSize = 10f, size = 2.5f;
@@ -1091,7 +1091,7 @@ namespace SSTUTools
             float areaNeeded = (scaledEngineSpacing * layoutMultiplier) - diff;
             float neededRawPercent = (areaNeeded) / mountMountingSize;
             float rawMountSize = mountDiameter * neededRawPercent;
-            float wholeIncrements = Mathf.Ceil(rawMountSize / increment);            
+            float wholeIncrements = Mathf.Ceil(rawMountSize / increment);
             size = wholeIncrements * increment;//round the raw calculated size to the next-highest mount-size increment
             float minMaxBonus = (wholeIncrements > 1 ? (Mathf.Max(1, (int)wholeIncrements/4)) : 0)*increment;
             min = size - minMaxBonus;
@@ -1099,6 +1099,14 @@ namespace SSTUTools
             max = Mathf.Max(10, size + minMaxBonus);//minimum of 10m 'max' size
         }
 
+        /// <summary>
+        /// Merges global and local config nodes for an engine layout<para/>
+        /// Local node values have priority if they are present; any non-specified local values are defaulted
+        /// to the global value
+        /// </summary>
+        /// <param name="global"></param>
+        /// <param name="local"></param>
+        /// <returns></returns>
         private ConfigNode mergeNodes(ConfigNode global, ConfigNode local)
         {
             ConfigNode output = new ConfigNode("MOUNT");
