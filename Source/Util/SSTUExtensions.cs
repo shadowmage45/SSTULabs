@@ -323,6 +323,8 @@ namespace SSTUTools
 
         #endregion
 
+        #region PartModule extensionMethods
+
         public static void updateUIFloatEditControl(this PartModule module, string fieldName, float min, float max, float incLarge, float incSmall, float incSlide, bool forceUpdate, float forceVal)
         {
             UI_FloatEdit widget = null;
@@ -400,6 +402,8 @@ namespace SSTUTools
 
         public static void updateUIChooseOptionControl(this PartModule module, string fieldName, string[] options, string[] display, bool forceUpdate, string forceVal="")
         {
+            if (display.Length == 0 && options.Length > 0) { display = new string[] { "NONE" }; }
+            if (options.Length == 0) { options = new string[] { "NONE" }; }
             UI_ChooseOption widget = null;
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -525,7 +529,9 @@ namespace SSTUTools
             ctr.Setup(ctr.Window, module.part, module, HighLogic.LoadedSceneIsEditor ? UI_Scene.Editor : UI_Scene.Flight, widget, module.Fields[fieldName]);
             widget.onFieldChanged = t;
         }
-        
+
+        #endregion
+
         public static String Print(this FloatCurve curve)
         {
             String output = "";

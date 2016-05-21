@@ -66,7 +66,8 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName = "Hollow Collider", guiActiveEditor = true), UI_Toggle(disabledText ="Disabled", enabledText ="Enabled")]
         public bool hollowCollider = false;
 
-        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentTextureSet = String.Empty;
 
         private float modifiedMass = 0;
@@ -89,11 +90,12 @@ namespace SSTUTools
 
         #region KSP GUI Actions/Events
 
-        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        public void nextTextureEvent()
+        public void onTextureUpdated(BaseField field, object obj)
         {
-            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
-            setTextureFromEditor(next == null ? null : next.setName, true);
+            if ((string)obj != currentTextureSet)
+            {
+                setTextureFromEditor(currentTextureSet, true);
+            }
         }
         
         public void onHeightUpdated(BaseField field, object obj)
@@ -221,6 +223,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            //this preps the model that will be displayed for the prefab part / editor part icon
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
                 loadConfigData();
@@ -231,6 +234,7 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
+            //destroy the model after the prefab part/icon part has been created
             model.destroyModel();            
             model = null;
             return "This part has configurable diameter, height, thickness, and ejection force.";
@@ -248,11 +252,12 @@ namespace SSTUTools
             prepModel();
             Fields["ejectionForce"].guiName = "Ejection Force";
             Fields["ejectionForce"].guiActiveEditor = true;
-            Events["nextTextureEvent"].active = textureSetData.Length > 1;
             Fields["height"].uiControlEditor.onFieldChanged = onHeightUpdated;
             Fields["diameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["thickness"].uiControlEditor.onFieldChanged = onThicknessUpdated;
             Fields["hollowCollider"].uiControlEditor.onFieldChanged = onColliderUpdated;
+            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
         }
 
         private void loadConfigData()
@@ -272,9 +277,14 @@ namespace SSTUTools
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.setName;
             }
+            string[] textureSetNames = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureSetNames[i] = textureSetData[i].setName;
+            }
+            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
 
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (diameter > techLimitMaxDiameter)
             {
                 diameter = techLimitMaxDiameter;

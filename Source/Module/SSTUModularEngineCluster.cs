@@ -162,7 +162,8 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float currentEngineVerticalOffset = 0f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
         [KSPField(isPersistant = true)]
@@ -206,10 +207,12 @@ namespace SSTUTools
             }
         }
 
-        [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextMountTextureEvent()
+        public void onMountTextureUpdated(BaseField field, object obj)
         {
-            setMountTextureFromEditor(currentMountData.getNextTextureSetName(currentMountTexture, false), true);
+            if ((string)obj != currentMountTexture)
+            {
+                setMountTextureFromEditor(currentMountTexture, true);
+            }
         }
 
         public void onDiameterUpdated(BaseField field, object obj)
@@ -322,6 +325,7 @@ namespace SSTUTools
             updateEditorFields();
             updateMountSizeGuiControl(true, currentMountData.initialDiameter);
             updateMountOptionsGuiControl(true);
+            updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
             updateGuiState();
             updateFairing(true);
@@ -345,6 +349,7 @@ namespace SSTUTools
             updateEditorFields();
             updateMountOptionsGuiControl(forceGuiUpdate);
             updateMountSizeGuiControl(true);
+            updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
             updateGuiState();
             updateFairing(true);
@@ -404,6 +409,7 @@ namespace SSTUTools
             Fields["guiLayoutOption"].uiControlEditor.onFieldChanged = onLayoutUpdated;
             Fields["editorEngineHeightAdjust"].uiControlEditor.onFieldChanged = onHeightUpdated;
             Fields["editorEngineSpacingAdjust"].uiControlEditor.onFieldChanged = onSpacingUpdated;
+            Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
             editorEngineSpacingAdjust = currentEngineSpacing - currentEngineLayout.getEngineSpacing(engineScale, currentMountData);
         }
 
@@ -488,6 +494,7 @@ namespace SSTUTools
             updateLayoutOptionsGuiControl(false);
             updateMountSizeGuiControl(false);
             updateMountOptionsGuiControl(false);
+            updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
             updateGuiState();
             if (!currentMountData.isValidTextureSet(currentMountTexture))
@@ -757,6 +764,13 @@ namespace SSTUTools
             this.updateUIChooseOptionControl("guiMountOption", optionsArray, optionsArray, forceUpdate, currentMountName);
         }
 
+        private void updateMountTextureOptionsGuiControl()
+        {
+            string[] optionsArray = currentMountData.modelDefinition.getTextureSetNames();
+            this.updateUIChooseOptionControl("currentMountTexture", optionsArray, optionsArray, true, currentMountTexture);
+            Fields["currentMountTexture"].guiActiveEditor = currentMountData.modelDefinition.textureSets.Length > 1;
+        }
+
         private void updateLayoutOptionsGuiControl(bool forceUpdate)
         {
             string[] optionsArray = SSTUUtils.getNames(engineLayouts, m => m.layoutName);
@@ -770,7 +784,6 @@ namespace SSTUTools
         {
             Events["clearMountEvent"].active = currentEngineLayout.mountData.Length > 1;
             Fields["editorEngineSpacingAdjust"].guiActiveEditor = currentEngineLayout.getLayoutData().positions.Count > 1;
-            Events["nextMountTextureEvent"].active = currentMountData.modelDefinition.textureSets.Length > 1;
         }
         
         /// <summary>
@@ -1093,7 +1106,15 @@ namespace SSTUTools
             float rawMountSize = mountDiameter * neededRawPercent;
             float wholeIncrements = Mathf.Ceil(rawMountSize / increment);
             size = wholeIncrements * increment;//round the raw calculated size to the next-highest mount-size increment
-            float minMaxBonus = (wholeIncrements > 1 ? (Mathf.Max(1, (int)wholeIncrements/4)) : 0)*increment;
+            float minMaxBonus = 0;
+            if (wholeIncrements >= 3)//min = size - (size/4) - increment
+            {
+                minMaxBonus = (Mathf.Ceil((int)wholeIncrements / 4) + 1) * increment;
+            }
+            else if (wholeIncrements >= 2)//min = size-increment
+            {
+                minMaxBonus = increment;
+            }
             min = size - minMaxBonus;
             //TODO - better handling of max size specification; needs to be adjustable through config from somewhere
             max = Mathf.Max(10, size + minMaxBonus);//minimum of 10m 'max' size

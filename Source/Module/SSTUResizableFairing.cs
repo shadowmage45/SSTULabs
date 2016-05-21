@@ -61,22 +61,22 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter = 1.25f;
 
-        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = "Fairings-White";
-                
+
         private float prevDiameter;
         private float techLimitMaxDiameter;
-
         private ModuleProceduralFairing mpf = null;
-
         private TextureSet[] textureSets;
-        
-        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        public void nextTextureSet()
+
+        public void onTextureUpdated(BaseField field, object obj)
         {
-            TextureSet s = SSTUUtils.findNext(textureSets, m=>m.setName==currentTextureSet, false);
-            updateTexture(s.setName);
-            foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUResizableFairing>().updateTexture(s.setName); }
+            if ((string)obj != currentTextureSet)
+            {
+                updateTexture(currentTextureSet);
+                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUResizableFairing>().updateTexture(currentTextureSet); }
+            }
         }
 
         public void onDiameterUpdated(BaseField field, object obj)
@@ -110,12 +110,14 @@ namespace SSTUTools
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
-            if (textureSets.Length <= 1)
+            int len = textureSets.Length;
+            string[] textureSetNames = new string[len];
+            for (int i = 0; i < len; i++)
             {
-                Events["nextTextureSet"].guiActiveEditor = false;
+                textureSetNames[i] = textureSets[i].setName;
             }
+            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter)
             {
                 currentDiameter = techLimitMaxDiameter;
@@ -126,6 +128,8 @@ namespace SSTUTools
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
             Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            Fields["currentTextureSet"].guiActiveEditor = textureSets.Length > 1;
             updateEditorFields();
         }
 
@@ -196,7 +200,7 @@ namespace SSTUTools
             currentTextureSet = name;
             if (mpf != null)
             {
-                TextureSet set = getCurrentTextureSet();
+                TextureSet set = Array.Find(textureSets, m => m.setName == currentTextureSet);
                 if (set != null)
                 {
                     TextureData data = set.textureDatas[0];//TODO cleanup this hack
@@ -211,11 +215,6 @@ namespace SSTUTools
                     }
                 }
             }
-        }
-
-        private TextureSet getCurrentTextureSet()
-        {
-            return Array.Find(textureSets, m => m.setName == currentTextureSet);
         }
     }
 }

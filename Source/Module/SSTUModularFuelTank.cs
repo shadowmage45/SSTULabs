@@ -71,13 +71,16 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentTankVerticalScale = 1f;
 
-        [KSPField(isPersistant = true)]
-        public String currentTankTexture = String.Empty;
-
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNoseTexture = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentTankTexture = String.Empty;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
         /// <summary>
@@ -128,24 +131,6 @@ namespace SSTUTools
 
         #region REGION - GUI Events/Interaction methods
 
-        [KSPEvent(guiName = "Next Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextTankTextureEvent()
-        {
-            setTankTextureFromEditor(currentMainTankModule.getNextTextureSetName(currentTankTexture, false), true);
-        }
-
-        [KSPEvent(guiName = "Next Nose Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextNoseTextureEvent()
-        {
-            setNoseTextureFromEditor(currentNoseModule.getNextTextureSetName(currentNoseTexture, false), true);
-        }
-
-        [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextMountTextureEvent()
-        {
-            setMountTextureFromEditor(currentMountModule.getNextTextureSetName(currentMountTexture, false), true);
-        }
-
         public void tankDiameterUpdated(BaseField field, object obj)
         {
             if (prevTankDiameter != currentTankDiameter)
@@ -185,7 +170,31 @@ namespace SSTUTools
                 setMountModuleFromEditor(currentMountType, true);
             }
         }
-        
+
+        public void onNoseTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentNoseTexture)
+            {
+                setNoseTextureFromEditor(currentNoseTexture, true);
+            }
+        }
+
+        public void onTankTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentTankTexture)
+            {
+                setTankTextureFromEditor(currentTankTexture, true);
+            }
+        }
+
+        public void onMountTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentMountTexture)
+            {
+                setMountTextureFromEditor(currentMountTexture, true);
+            }
+        }
+
         private void updateAvailableVariants()
         {
             List<String> availNoseTypes = new List<string>();
@@ -231,6 +240,7 @@ namespace SSTUTools
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
             currentNoseModule.enableTextureSet(currentNoseTexture);
+            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateEditorStats(true);
             if (updateSymmetry)
             {
@@ -252,7 +262,7 @@ namespace SSTUTools
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.getDefaultTextureSet(); }
             currentMainTankModule.enableTextureSet(currentTankTexture);
-
+            currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
             updateUIScaleControls();
             updateEditorStats(true);
 
@@ -277,7 +287,7 @@ namespace SSTUTools
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
             currentMountModule.enableTextureSet(currentMountTexture);
-
+            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             updateEditorStats(true);
 
             if (updateSymmetry)
@@ -394,18 +404,15 @@ namespace SSTUTools
             Fields["currentTankType"].uiControlEditor.onFieldChanged = tankTypeUpdated;
             Fields["currentNoseType"].uiControlEditor.onFieldChanged = noseTypeUpdated;
             Fields["currentMountType"].uiControlEditor.onFieldChanged = mountTypeUpdated;
-            if (mainTankModules.Length <= 1)
-            {
-                Fields["currentTankType"].guiActiveEditor = false;
-            }
-            if (noseModules.Length <= 1)
-            {
-                Fields["currentNoseType"].guiActiveEditor = false;
-            }
-            if (mountModules.Length <= 1)
-            {
-                Fields["currentMountType"].guiActiveEditor = false;
-            }
+
+            Fields["currentNoseTexture"].uiControlEditor.onFieldChanged = onNoseTextureUpdated;
+            Fields["currentTankTexture"].uiControlEditor.onFieldChanged = onTankTextureUpdated;
+            Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
+
+            Fields["currentTankType"].guiActiveEditor = mainTankModules.Length > 1;
+            Fields["currentNoseType"].guiActiveEditor = noseModules.Length > 1;
+            Fields["currentMountType"].guiActiveEditor = mountModules.Length > 1;
+
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
             if (HighLogic.LoadedSceneIsEditor)
@@ -429,6 +436,7 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
+            updateGuiState();
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
@@ -493,7 +501,6 @@ namespace SSTUTools
             
             loadConfigData();
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
@@ -579,6 +586,9 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountModule.getDefaultTextureSet();
             }
+            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
+            currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
+            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
         }
 
         /// <summary>
@@ -697,9 +707,9 @@ namespace SSTUTools
 
         private void updateGuiState()
         {
-            Events["nextTankTextureEvent"].guiActiveEditor = currentMainTankModule.modelDefinition.textureSets.Length>1;
-            Events["nextNoseTextureEvent"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
-            Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentNoseTexture"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentTankTexture"].guiActiveEditor = currentMainTankModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentMountTexture"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
         }
 
         private void updateAttachNodes(bool userInput)

@@ -8,108 +8,78 @@ namespace SSTUTools
     public class FuelTypes
     {
         public static readonly FuelTypes INSTANCE = new FuelTypes();
-
-        private bool loadedDefs = false;
-
-        private Dictionary<string, FuelType> fuelTypes = new Dictionary<string, FuelType>();
-
         private Dictionary<string, float> resourceVolumes = new Dictionary<string, float>();
-
         private Dictionary<string, float> zeroMassResourceMasses = new Dictionary<string, float>();
-
         private Dictionary<string, float> zeroCostResourceCosts = new Dictionary<string, float>();
-
         private Dictionary<string, BoiloffData> boiloffResourceValues = new Dictionary<string, BoiloffData>();
 
-        public void reloadData()
+        public void loadConfigData()
         {
-            loadedDefs = false;
             loadDefs();
         }
 
         private void loadDefs()
         {
-            if (loadedDefs) { return; }
-            fuelTypes.Clear();
             resourceVolumes.Clear();
             zeroMassResourceMasses.Clear();
             zeroCostResourceCosts.Clear();
             boiloffResourceValues.Clear();
 
             ConfigNode[] configs = GameDatabase.Instance.GetConfigNodes("SSTU_RESOURCEVOLUME");
+            string name;
             foreach (ConfigNode node in configs)
             {
-                resourceVolumes.Add(node.GetStringValue("name"), node.GetFloatValue("volume"));
+                name = node.GetStringValue("name");
+                if (resourceVolumes.ContainsKey(name))
+                {
+                    MonoBehaviour.print("ERROR: Found duplicate resource volume definition for: " + name);
+                    continue;
+                }
+                resourceVolumes.Add(name, node.GetFloatValue("volume"));
             }
 
             configs = GameDatabase.Instance.GetConfigNodes("SSTU_ZEROMASSRESOURCE");
             foreach (ConfigNode node in configs)
             {
-                zeroMassResourceMasses.Add(node.GetStringValue("name"), node.GetFloatValue("mass"));
+                name = node.GetStringValue("name");
+                if (zeroMassResourceMasses.ContainsKey(name))
+                {
+                    MonoBehaviour.print("ERROR: Found duplicate zero mass resource mass definition for: " + name);
+                    continue;
+                }
+                zeroMassResourceMasses.Add(name, node.GetFloatValue("mass"));
             }
 
             configs = GameDatabase.Instance.GetConfigNodes("SSTU_ZEROCOSTRESOURCE");
             foreach (ConfigNode node in configs)
             {
-                zeroCostResourceCosts.Add(node.GetStringValue("name"), node.GetFloatValue("cost"));
+                name = node.GetStringValue("name");
+                if (zeroCostResourceCosts.ContainsKey(name))
+                {
+                    MonoBehaviour.print("ERROR: Found duplicate zero volume resource volume definition for: " + name);
+                    continue;
+                }
+                zeroCostResourceCosts.Add(name, node.GetFloatValue("cost"));
             }
 
             configs = GameDatabase.Instance.GetConfigNodes("SSTU_RESOURCEBOILOFF");
             foreach (ConfigNode node in configs)
             {
-                string name = node.GetStringValue("name");
+                name = node.GetStringValue("name");
                 float val = node.GetFloatValue("value");
                 float cost = node.GetFloatValue("cost");
-                MonoBehaviour.print("Loading boiloff data for resource: " + name + " : " + val + " : " + cost);
+                if (boiloffResourceValues.ContainsKey(name))
+                {
+                    MonoBehaviour.print("ERROR: Found duplicate resource boiloff definition for: " + name);
+                    continue;
+                }
                 boiloffResourceValues.Add(name, new BoiloffData(name, val, cost));
             }
-            
-            configs = GameDatabase.Instance.GetConfigNodes("SSTU_FUELTYPE");
-            FuelType fuelType;
-            foreach (ConfigNode node in configs)
-            {
-                fuelType = new FuelType(node);
-                if (fuelType.isValid)//kind of hacky, but workable method to determine if the fuel type was missing any resources
-                {
-                    fuelTypes.Add(fuelType.name, fuelType);
-                }
-            }
-
-            loadedDefs = true;
-        }
-
-        public FuelType getFuelType(String type)
-        {
-            loadDefs();
-            FuelType t = null;
-            fuelTypes.TryGetValue(type, out t);
-            return t;
-        }
-
-        public FuelType[] getFuelTypes()
-        {
-            loadDefs();
-            FuelType[] types = new FuelType[fuelTypes.Count];            
-            int i = 0;
-            foreach (FuelType t in fuelTypes.Values)
-            {
-                types[i] = t;
-                i++;
-            }
-            Array.Sort(types, delegate (FuelType x, FuelType y) { return String.Compare(x.name,y.name); });
-            return types;
-        }
-
-        public FuelTypeData getFuelTypeData(String type)
-        {
-            loadDefs();
-            return new FuelTypeData(getFuelType(type));
         }
 
         public float getResourceVolume(String name)
         {
-            PartResourceDefinition def = PartResourceLibrary.Instance.GetDefinition(name);
-            return getResourceVolume(name, def);
+            return getResourceVolume(name, PartResourceLibrary.Instance.GetDefinition(name));
         }
 
         public float getResourceVolume(String name, PartResourceDefinition def)
@@ -169,251 +139,159 @@ namespace SSTUTools
             this.cost = cost;
         }
     }
-            
-    public class FuelTypeData
-    {
-        public readonly FuelType fuelType;
-        public readonly String name;
-        private float tankageVolumeLoss;
-        private float tankageMassFraction;
-        private float costPerDryTon;
-
-        public FuelTypeData(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            fuelType = FuelTypes.INSTANCE.getFuelType(name);
-            if (fuelType == null) { throw new NullReferenceException("Fuel type was null for fuel name: " + name); }
-            tankageVolumeLoss = node.GetFloatValue("tankageVolumeLoss", fuelType.tankageVolumeLoss);
-            tankageMassFraction = node.GetFloatValue("tankageMassFraction", fuelType.tankageMassFactor);
-            costPerDryTon = node.GetFloatValue("costPerDryTon", fuelType.costPerDryTon);
-        }
-
-        public FuelTypeData(FuelType type)
-        {
-            fuelType = type;
-            name = type.name;
-            tankageMassFraction = type.tankageMassFactor;
-            tankageVolumeLoss = type.tankageVolumeLoss;
-            costPerDryTon = type.costPerDryTon;
-        }
-
-        public float getTankageVolumeLoss() { return tankageVolumeLoss; }
-
-        public float getTankageMassFraction() { return tankageMassFraction; }
-
-        public float getDryCost(float usableVolume) { return getTankageMass(usableVolume) * costPerDryTon; }
-
-        public float getResourceCost(float usableVolume) { return fuelType.getResourceCost(usableVolume); }
-
-        public float getUsableVolume(float rawVolume) { return rawVolume * (1.0f - tankageVolumeLoss); }
-
-        public float getResourceMass(float usableVolume)
-        {
-            return fuelType.tonsPerCubicMeter * usableVolume;
-        }
-
-        public float getTankageMass(float usableVolume)
-        {            
-            return usableVolume * fuelType.tonsPerCubicMeter * tankageMassFraction;
-        }
-
-        public SSTUResourceList addResources(float volume, SSTUResourceList list)
-        {
-            fuelType.addResources(volume, list);
-            return list;
-        }
-
-        public SSTUResourceList getResourceList(float volume)
-        {
-            return fuelType.getResourceList(volume);
-        }
-
-        public static FuelTypeData[] parseFuelTypeData(ConfigNode[] nodes)
-        {
-            int len = nodes.Length;
-            FuelTypeData[] array = new FuelTypeData[len];
-            for (int i = 0; i < len; i++)
-            {
-                array[i] = new FuelTypeData(nodes[i]);
-            }
-            return array;
-        }
-
-        public static FuelTypeData createFuelTypeData(String typeName)
-        {
-            return new FuelTypeData(FuelTypes.INSTANCE.getFuelType(typeName));
-        }
-    }
-
-    public class FuelType
-    {
-        public readonly List<SSTUFuelEntry> fuelEntries = new List<SSTUFuelEntry>();
-        public readonly String name;
-        public readonly float tankageVolumeLoss;
-        public readonly float tankageMassFactor;
-        public readonly float costPerDryTon;
-        public readonly float tonsPerCubicMeter;
-        public readonly float litersPerUnit;
-        public readonly float costPerUnit;
-        public readonly float unitsPerCubicMeter;
-        public bool isValid = true;
-        
-        public FuelType(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            tankageVolumeLoss = node.GetFloatValue("tankageVolumeLoss", 0.15f);
-            tankageMassFactor = node.GetFloatValue("tankageMassFactor", 0.15f);
-            costPerDryTon = node.GetFloatValue("costPerDryTon");
-            ConfigNode[] fuelConfigs = node.GetNodes("RESOURCE");
-            if (fuelConfigs == null || fuelConfigs.Length == 0)
-            {
-                litersPerUnit = 1;
-                tonsPerCubicMeter = tankageMassFactor;
-                costPerUnit = costPerDryTon * 0.001f;
-                unitsPerCubicMeter = 1000f;// 1 liter fake units
-            }
-            else
-            {
-                SSTUFuelEntry e = null;
-                PartResourceDefinition def;
-                float massPerUnit = 0;
-                foreach (ConfigNode n in fuelConfigs)
-                {
-                    e = new SSTUFuelEntry(n);
-                    fuelEntries.Add(e);
-                    litersPerUnit += FuelTypes.INSTANCE.getResourceVolume(e.resourceName) * e.ratio;
-                    def = PartResourceLibrary.Instance.GetDefinition(e.resourceName);
-                    if (def == null)
-                    {
-                        MonoBehaviour.print("Could not locate resource definition for: " + e.resourceName + " :: Fuel type: " + name + " will be unavailable.");
-                        isValid = false;
-                        return;
-                    }
-                    costPerUnit += def.unitCost * e.ratio;
-                    massPerUnit += def.density * e.ratio;
-                }
-                unitsPerCubicMeter = 1000f / litersPerUnit;
-                tonsPerCubicMeter = massPerUnit * unitsPerCubicMeter;
-            }
-        }
-
-        public string[] getResourceTypes()
-        {
-            int len = fuelEntries.Count;
-            string[] names = new string[len];
-            for (int i = 0; i < len; i++) { names[i] = fuelEntries[i].resourceName; }
-            return names;
-        }
-
-        public List<SSTUFuelEntry> getFuelEntries()
-        {
-            return fuelEntries;
-        }
-
-        public override string ToString()
-        {
-            return string.Format("[SSTUFuelType: " + name + "]");
-        }
-
-        public SSTUResourceList getResourceList(float volume)
-        {
-            SSTUResourceList resourceList = new SSTUResourceList();
-            return addResources(volume, resourceList);
-        }
-
-        public SSTUResourceList addResources(float volume, SSTUResourceList list)
-        {
-            int rawFuelUnits = (int)(volume * unitsPerCubicMeter);
-            int units;
-            foreach (SSTUFuelEntry entry in fuelEntries)
-            {
-                units = entry.ratio * rawFuelUnits;
-                list.addResource(entry.resourceName, units);
-            }
-            return list;
-        }
-
-        public float getResourceCost(float cubicMeters)
-        {
-            return costPerUnit * cubicMeters * unitsPerCubicMeter;
-        }
-    }
-
-    public class SSTUFuelEntry
-    {
-        public readonly String resourceName;
-        public readonly int ratio;
-        public SSTUFuelEntry(ConfigNode node)
-        {
-            resourceName = node.GetStringValue("resource");
-            ratio = node.GetIntValue("ratio", 1);
-        }
-    }
 
     /// <summary>
     /// Will be the base class for manipulating resources in a part, including cross-module manipulation.
     /// </summary>
     public class SSTUResourceList
     {
-        private Dictionary<String, float> resourceMax = new Dictionary<string, float>();
+        private Dictionary<string, ResourceListEntry> resourceList = new Dictionary<string, ResourceListEntry>();
 
-        public void addResourceByVolume(String name, float volume)
+        /// <summary>
+        /// Add a resource, by volume, setting/adjusting fill and max units by the volume specified
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="cubicMetersTotalFilled"></param>
+        public void addResourceByVolume(String name, float cubicMetersTotalFilled)
+        {
+            addResourceByVolume(name, cubicMetersTotalFilled, cubicMetersTotalFilled);
+        }
+
+        /// <summary>
+        /// Add a resource, by volume, setting/adjusting fill and max units by the volumes specified
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="cubicMetersFilled"></param>
+        /// <param name="totalCubicMeters"></param>
+        public void addResourceByVolume(string name, float cubicMetersFilled, float totalCubicMeters)
         {
             float litersPerUnit = FuelTypes.INSTANCE.getResourceVolume(name);
-            addResource(name, (volume * 1000) / litersPerUnit);
+            float unitsFilled = (cubicMetersFilled * 1000) / litersPerUnit;
+            float unitsMax = (totalCubicMeters * 1000) / litersPerUnit;
+            addResource(name, unitsFilled, unitsMax);
         }
-        
-        public void addResource(String name, float quantity)
+
+        /// <summary>
+        /// Add a resource, by units, setting/adjusting fill and max units by the units specified
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="fillMaxUnits"></param>
+        public void addResource(String name, float fillMaxUnits)
         {
-            if (resourceMax.ContainsKey(name))
+            addResource(name, fillMaxUnits, fillMaxUnits);
+        }
+
+        /// <summary>
+        /// Add a resource, by units, setting/adjusting fill and max units by the units specified
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="fillMaxUnits"></param>
+        public void addResource(string name, float fill, float max)
+        {
+            if (resourceList.ContainsKey(name))
             {
-                float val = resourceMax[name];
-                val += quantity;
-                resourceMax[name] = val;
+                ResourceListEntry entry = resourceList[name];
+                entry.max += max;
+                entry.fill += fill;
+                if (entry.fill > entry.max) { entry.fill = entry.max; }
             }
             else
             {
-                resourceMax.Add(name, quantity);
+                if (fill > max) { fill = max; }
+                ResourceListEntry entry = new ResourceListEntry(name, fill, max);
+                resourceList.Add(entry.name, entry);
             }
         }
 
-        public void removeResource(String name, float quantity)
-        {
-            if (resourceMax.ContainsKey(name))
-            {
-                float val = resourceMax[name];
-                val -= quantity;
-                if (val <= 0)
-                {
-                    resourceMax.Remove(name);
-                }
-                else
-                {
-                    resourceMax[name] = val;
-                }
-            }
-        }
-
+        /// <summary>
+        /// Remove a resource from the list entirely
+        /// </summary>
+        /// <param name="name"></param>
         public void removeResource(String name)
         {
-            resourceMax.Remove(name);
+            resourceList.Remove(name);
         }
 
-        public void setResourcesToPart(Part part, bool fill)
+        /// <summary>
+        /// Remove a specified number of units from the resource maximum; if fill>max after this, fill will be set to max.  If max==0, resource will be removed from list entirely
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="removeFromMax"></param>
+        public void removeResource(String name, float removeFromMax)
+        {
+            removeResource(name, 0, removeFromMax);
+        }
+
+        /// <summary>
+        /// Remove a specified number of units from the resource fill and maximum values; if fill>max after this, fill will be set to max.  If max==0, resource will be removed from list entirely
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="removeFromMax"></param>
+        public void removeResource(String name, float removeFromFill, float removeFromMax)
+        {
+            if (resourceList.ContainsKey(name))
+            {
+                ResourceListEntry entry = resourceList[name];
+                entry.fill -= removeFromFill;
+                entry.max -= removeFromMax;
+                if (entry.fill > entry.max)
+                {
+                    entry.fill = entry.max;
+                }
+                if (entry.fill < 0)
+                {
+                    entry.fill = 0;
+                }
+                if (entry.max <= 0)
+                {
+                    removeResource(name);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Blindly set the quanity of a resource.  Adds new resource if not present, removes resource if present and max==0.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="fill"></param>
+        /// <param name="max"></param>
+        public void setResource(string name, float fill, float max)
+        {
+            if (max == 0) { removeResource(name); return; }
+            if (fill > max) { fill = max; }
+            if (resourceList.ContainsKey(name))
+            {
+                ResourceListEntry entry = resourceList[name];
+                entry.fill = fill;
+                entry.max = max;
+            }
+            else
+            {
+                ResourceListEntry entry = new ResourceListEntry(name, fill, max);
+                resourceList.Add(entry.name, entry);
+            }
+        }
+
+        /// <summary>
+        /// Actually set the resources from this list to the input part; if the current part resources match this list exactly they will be updated in-place,
+        /// else all resources from the part will be cleared and the new list of resources added.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="fill"></param>
+        public void setResourcesToPart(Part part)
         {
             int len = part.Resources.Count;
-            float amt;
-            if (len == resourceMax.Count)//potentially the same resources exist as we are trying to setup
+            if (len == resourceList.Count)//potentially the same resources exist as we are trying to setup
             {
                 bool foundAll = true;                         
-                foreach (String name in resourceMax.Keys)
+                foreach (String name in resourceList.Keys)
                 {
+                    ResourceListEntry entry = resourceList[name];
                     if (part.Resources.Contains(name))//go ahead and set them as found; if not all are found we'll delete them anyway...
-                    {
-                        amt = resourceMax[name];
+                    {                        
                         PartResource pr = part.Resources[name];
-                        pr.maxAmount = amt;
-                        pr.amount = fill ? amt : 0;
+                        pr.maxAmount = entry.max;
+                        pr.amount = entry.fill;
                     }
                     else
                     {
@@ -423,8 +301,7 @@ namespace SSTUTools
                 }
                 if (foundAll)
                 {
-                    updatePartResourceGui(part);
-                    //TODO update min/max for existing resources
+                    SSTUModInterop.updatePartResourceDisplay(part);
                     return;
                 }
             }
@@ -436,25 +313,29 @@ namespace SSTUTools
                 GameObject.Destroy(resources[i]);
             }            
             ConfigNode resourceNode;
-            foreach (String name in resourceMax.Keys)
+            foreach (String name in resourceList.Keys)
             {
-                amt = resourceMax[name];
+                ResourceListEntry entry = resourceList[name];
                 resourceNode = new ConfigNode("RESOURCE");
                 resourceNode.AddValue("name", name);
-                resourceNode.AddValue("maxAmount", amt);
-                resourceNode.AddValue("amount", fill ? amt : 0);
+                resourceNode.AddValue("maxAmount", entry.max);
+                resourceNode.AddValue("amount", entry.fill);
                 part.AddResource(resourceNode);
             }
-            updatePartResourceGui(part);
+            SSTUModInterop.updatePartResourceDisplay(part);
         }
+    }
 
-        private void updatePartResourceGui(Part part)
+    public class ResourceListEntry
+    {
+        public readonly string name;
+        public float fill;
+        public float max;
+        public ResourceListEntry(string name, float fill, float max)
         {
-            if (UIPartActionController.Instance != null && UIPartActionController.Instance.resourcesShown.Count > 0)
-            {
-                UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
-                if (window != null) { window.displayDirty = true; }
-            }
+            this.name = name;
+            this.fill = fill;
+            this.max = max;
         }
     }
 

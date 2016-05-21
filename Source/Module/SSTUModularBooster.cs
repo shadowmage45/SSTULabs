@@ -78,10 +78,6 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMainName;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
-         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
-        public float currentDiameter;
-
         [KSPField(isPersistant = true, guiActiveEditor =true, guiName ="Nose"),
          UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentNoseName;
@@ -89,18 +85,25 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nozzle"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNozzleName;
-        
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float currentDiameter;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
 
-        [KSPField(isPersistant = true)]
-        public String currentMainTexture;
-
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNoseTexture;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Texture"),
+         UI_ChooseOption(suppressEditorShipModified =true)]
+        public String currentMainTexture;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nozzle Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNozzleTexture;
 
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
@@ -212,6 +215,30 @@ namespace SSTUTools
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
+        public void onNoseTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentNoseTexture)
+            {
+                updateNoseTextureFromEditor(currentNoseTexture, true);
+            }
+        }
+
+        public void onMainTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentMainTexture)
+            {
+                updateMainTextureFromEditor(currentMainTexture, true);
+            }
+        }
+
+        public void onNozzleTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentNozzleTexture)
+            {
+                updateNozzleTextureFromEditor(currentNozzleTexture, true);
+            }
+        }
+
         [KSPEvent(guiName = "Adjust Thrust Curve", guiActiveEditor = true, guiActive = false)]
         public void editThrustCurveEvent()
         {
@@ -231,28 +258,7 @@ namespace SSTUTools
             updateThrustOutput();
             updateCurvePersistentData();
         }
-
-        [KSPEvent(guiName = "Next Nose Texture", guiActiveEditor = true, guiActive = false)]
-        public void nextNoseTextureEvent()
-        {
-            String nextTex = currentNoseModule.getNextTextureSetName(currentNoseTexture, false);
-            updateNoseTextureFromEditor(nextTex, true);
-        }
-
-        [KSPEvent(guiName = "Next Main Texture", guiActiveEditor = true, guiActive = false)]
-        public void nextMainTextureEvent()
-        {
-            String nextTex = currentMainModule.getNextTextureSetName(currentMainTexture, false);
-            updateMainTextureFromEditor(nextTex, true);
-        }
-
-        [KSPEvent(guiName = "Next Nozzle Texture", guiActiveEditor = true, guiActive = false)]
-        public void nextNozzleTextureEvent()
-        {
-            String nextTex = currentNozzleModule.getNextTextureSetName(currentNozzleTexture, false);
-            updateNozzleTextureFromEditor(nextTex, true);
-        }
-
+        
         /// <summary>
         /// Updates the current model scales from user input in the editor
         /// </summary>
@@ -300,6 +306,7 @@ namespace SSTUTools
                 currentMainTexture = currentMainModule.getDefaultTextureSet();            
             }
             currentMainModule.enableTextureSet(currentMainTexture);
+            currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateContainerVolume();
@@ -338,6 +345,7 @@ namespace SSTUTools
                 currentNoseTexture = currentNoseModule.getDefaultTextureSet();
             }
             currentNoseModule.enableTextureSet(currentNoseTexture);
+            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateContainerVolume();
@@ -379,6 +387,7 @@ namespace SSTUTools
                 currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
             }
             currentNozzleModule.enableTextureSet(currentNozzleTexture);
+            currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateContainerVolume();
@@ -472,33 +481,39 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
-            Fields["currentGimbalOffset"].uiControlEditor.onFieldChanged = onGimbalUpdated;
-            Fields["currentNoseName"].uiControlEditor.onFieldChanged = onNoseUpdated;
-            Fields["currentMainName"].uiControlEditor.onFieldChanged = onBodyUpdated;
-            Fields["currentNozzleName"].uiControlEditor.onFieldChanged = onNozzleUpdated;
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
+            if (currentDiameter > max) { currentDiameter = max; }
             this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
             this.updateUIFloatEditControl("currentGimbalOffset", -currentNozzleModule.gimbalAdjustmentRange, currentNozzleModule.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
+
+            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
+            currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
+            currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
+
             string[] names = SSTUUtils.getNames(noseModules, m => m.name);
             this.updateUIChooseOptionControl("currentNoseName", names, names, true, currentNoseName);
             names = SSTUUtils.getNames(mainModules, m => m.name);
             this.updateUIChooseOptionControl("currentMainName", names, names, true, currentMainName);
             names = SSTUUtils.getNames(nozzleModules, m => m.name);
             this.updateUIChooseOptionControl("currentNozzleName", names, names, true, currentNozzleName);
+
+            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields["currentGimbalOffset"].uiControlEditor.onFieldChanged = onGimbalUpdated;
+            Fields["currentNoseName"].uiControlEditor.onFieldChanged = onNoseUpdated;
+            Fields["currentMainName"].uiControlEditor.onFieldChanged = onBodyUpdated;
+            Fields["currentNozzleName"].uiControlEditor.onFieldChanged = onNozzleUpdated;
+
+            Fields["currentNoseName"].guiActiveEditor = noseModules.Length>1;
+            Fields["currentNozzleName"].guiActiveEditor = nozzleModules.Length > 1;
+            Fields["currentMainName"].guiActiveEditor = mainModules.Length > 1;
+            Fields["currentGimbalOffset"].guiActiveEditor = currentNozzleModule.gimbalAdjustmentRange > 0;
+            Fields["currentDiameter"].guiActiveEditor = maxDiameter > minDiameter;
+
+            Fields["currentNoseTexture"].uiControlEditor.onFieldChanged = onNoseTextureUpdated;
+            Fields["currentMainTexture"].uiControlEditor.onFieldChanged = onMainTextureUpdated;
+            Fields["currentNozzleTexture"].uiControlEditor.onFieldChanged = onNozzleTextureUpdated;
+
             SSTUModInterop.onPartGeometryUpdate(part, true);
-            if (noseModules.Length <= 1)
-            {
-                Fields["currentNoseName"].guiActiveEditor = false;
-            }
-            if (nozzleModules.Length <= 1)
-            {
-                Fields["currentNozzleName"].guiActiveEditor = false;
-            }
-            if (mainModules.Length <= 1)
-            {
-                Fields["currentMainName"].guiActiveEditor = false;
-            }
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -624,7 +639,6 @@ namespace SSTUTools
         {
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
             
             //load all main tank model datas
@@ -657,7 +671,10 @@ namespace SSTUTools
                 currentNoseModule = this.noseModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNoseName = currentNoseModule.name;
             }
-            if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
+            if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
+            {
+                currentNoseTexture = currentNoseModule.getDefaultTextureSet();
+            }
 
             //load nose modules from NOZZLE nodes
             ConfigNode[] nozzleNodes = node.GetNodes("NOZZLE");
@@ -676,7 +693,10 @@ namespace SSTUTools
                 currentNozzleModule = this.nozzleModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
                 currentNozzleName = currentNozzleModule.name;
             }
-            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture)) { currentNozzleTexture = currentNozzleModule.getDefaultTextureSet(); }
+            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
+            {
+                currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
+            }
             
             //reset existing gimbal/thrust transforms, remove them from the model hierarchy
             resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
@@ -1015,10 +1035,10 @@ namespace SSTUTools
         /// </summary>
         private void updateGui()
         {
-            guiHeight = currentMainModule.currentHeight;            
-            Events["nextNoseTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
-            Events["nextNozzleTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
-            Events["nextMainTextureEvent"].active = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            guiHeight = currentMainModule.currentHeight;
+            Fields["currentNoseTexture"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentMainTexture"].guiActiveEditor = currentMainModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentNozzleTexture"].guiActiveEditor = currentNozzleModule.modelDefinition.textureSets.Length > 1;
         }
 
         private void updateTextureSets()

@@ -97,6 +97,9 @@ namespace SSTUTools.Module
 
         [KSPField]
         public bool shieldsParts = true;
+
+        [KSPField]
+        public string fuelPreset = "Solid";
                 
         [KSPField(isPersistant =true, guiName = "Transparency", guiActiveEditor = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool editorTransparency = true;
@@ -138,7 +141,8 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true, guiName = "Auto Decouple", guiActive =true, guiActiveEditor =true)]
         public bool autoDecouple = false;
 
-        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
         
         private float remainingDelay;
@@ -158,7 +162,7 @@ namespace SSTUTools.Module
         private InterstageDecouplerModel fairingBase;
         private InterstageDecouplerEngine[] engineModels;
 
-        private FuelTypeData fuelType;
+        private ContainerFuelPreset fuelType;
         
         private float techLimitMaxDiameter;
 
@@ -190,6 +194,14 @@ namespace SSTUTools.Module
         {
             TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
             setTextureFromEditor(next == null ? null : next.setName, true);
+        }
+
+        public void onTextureUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentTextureSet)
+            {
+                setTextureFromEditor(currentTextureSet, true);
+            }
         }
         
         public void onTopDiameterUpdated(BaseField field, object obj)
@@ -380,7 +392,6 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             initialize();
-            Events["nextTextureEvent"].guiActiveEditor = textureSetData.Length>1;
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("currentTopDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
             this.updateUIFloatEditControl("currentBottomDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
@@ -392,6 +403,8 @@ namespace SSTUTools.Module
             Fields["currentTaperHeight"].uiControlEditor.onFieldChanged = onStraightUpdated;
             Fields["editorTransparency"].uiControlEditor.onFieldChanged = onTransparencyUpdated;
             Fields["generateColliders"].uiControlEditor.onFieldChanged = onCollidersUpdated;
+            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -468,12 +481,18 @@ namespace SSTUTools.Module
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.setName;
             }
+            int len = textureSetData.Length;
+            string[] textureSetNames = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureSetNames[i] = textureSetData[i].setName;
+            }
+            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
 
             TextureData data = currentTextureSetData.textureDatas[0];
             fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
 
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTopDiameter > techLimitMaxDiameter)
             {
                 currentTopDiameter = techLimitMaxDiameter;
@@ -483,7 +502,7 @@ namespace SSTUTools.Module
                 currentBottomDiameter = techLimitMaxDiameter;
             }
 
-            fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
+            fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 
             Transform modelBase = part.transform.FindRecursive("model");
             setupEngineModels(modelBase);
@@ -595,9 +614,10 @@ namespace SSTUTools.Module
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
             float volume = resourceVolume * scale * numberOfEngines;
             if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
-            {                
-                SSTUResourceList resources = fuelType.getResourceList(volume);
-                resources.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+            {
+                SSTUResourceList resources = new SSTUResourceList();
+                fuelType.addResources(resources, volume);
+                resources.setResourcesToPart(part);
             }
         }
 

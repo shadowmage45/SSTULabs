@@ -56,7 +56,6 @@ namespace SSTUTools
         {
             if (part == this.part)
             {
-                MonoBehaviour.print("Updating part flag from on flag changed PartMessage");
                 updateFlagTransform();
             }
         }

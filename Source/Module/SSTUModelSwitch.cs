@@ -121,7 +121,6 @@ namespace SSTUTools
                 saveData = saveData + modelGroups[i].getPersistentData();
             }
             persistentConfigData = saveData;
-            MonoBehaviour.print("updated persistent data: " + persistentConfigData);
         }
 
         /// <summary>
@@ -242,8 +241,13 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
+            //SSTUModInterop.onPartFuelVolumeUpdate
             SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
-            if (container == null) { return; }//TODO spew error msg
+            if (container == null)
+            {
+                SSTUModInterop.onPartFuelVolumeUpdate(part, calcTotalVolume() * 1000f);
+                return;
+            }
             int len = container.numberOfContainers;
             float[] percents = new float[len];
             float total = calcTotalVolume();
@@ -332,10 +336,8 @@ namespace SSTUTools
                 if (model == null || model.suppressNode) { continue; }
                 enabledNodeNames.Add(group.parentNode);                
                 Vector3 pos = group.getModelRootTransform().position;
-                MonoBehaviour.print("model root position: " + pos);
                 pos = part.transform.InverseTransformPoint(pos);
                 Vector3 rotation = group.getModelRootTransform().up;
-                MonoBehaviour.print("updating attach node position for node name: " + group.parentNode+" partLocalPos: "+pos);
                 attachNode = part.findAttachNode(group.parentNode);
                 if (attachNode == null)
                 {
@@ -355,7 +357,6 @@ namespace SSTUTools
                 if (!controlledNodes.Contains(attachNode.id)) { continue; }//not a node that we should touch...
                 if (attachNode.attachedPart==null && !enabledNodeNames.Contains(attachNode.id))
                 {
-                    MonoBehaviour.print("destroying attach node for name: " + attachNode.id);
                     SSTUAttachNodeUtils.destroyAttachNode(part, attachNode);
                 }
             }

@@ -150,7 +150,6 @@ namespace SSTUTools
         private void initialize()
         {
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
             if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }            
             if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }            

@@ -108,7 +108,8 @@ namespace SSTUTools
         [KSPField]
         public String uvMap = "NodeFairing";
 
-        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true)]
+        [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
 
         /// <summary>
@@ -230,11 +231,12 @@ namespace SSTUTools
             onDecoupleEvent();
         }
 
-        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        public void nextTextureEvent()
+        public void onTextureUpdated(BaseField field, object obj)
         {
-            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
-            setTextureFromEditor(next == null ? null : next.setName, true);
+            if ((string)obj != currentTextureSet)
+            {
+                setTextureFromEditor(currentTextureSet, true);
+            }
         }
 
         public void onEditorDeployUpdated(BaseField field, object obj)
@@ -396,7 +398,6 @@ namespace SSTUTools
         {
             base.OnStart(state);            
             initialize();
-            Events["nextTextureEvent"].guiActiveEditor = textureSetData.Length > 1;
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("topDiameter", minDiameter, max, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, topDiameter);
             this.updateUIFloatEditControl("bottomDiameter", minDiameter, max, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, bottomDiameter);
@@ -409,6 +410,8 @@ namespace SSTUTools
             Fields["editorTransparency"].uiControlEditor.onFieldChanged = onTransparencyUpdated;
             Fields["generateColliders"].uiControlEditor.onFieldChanged = onCollidersUpdated;
             Fields["editorDeployed"].uiControlEditor.onFieldChanged = onEditorDeployUpdated;
+            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -682,13 +685,20 @@ namespace SSTUTools
                 currentTextureSet = currentTextureSetData.setName;
             }
 
+            int len = textureSetData.Length;
+            string[] textureSetNames = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureSetNames[i] = textureSetData[i].setName;
+            }
+            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
+
             TextureData data = currentTextureSetData.textureDatas[0];
             fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
 
             loadMaterial();
 
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (topDiameter > techLimitMaxDiameter)
             {
                 topDiameter = techLimitMaxDiameter;
@@ -781,8 +791,7 @@ namespace SSTUTools
         
         private void updateShieldStatus()
         {
-            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
-            MonoBehaviour.print("SSTUInterstageFairing updating shielding status for module: " + shield + " :: enabled: " + !deployed);
+            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();            
             if (shield != null)
             {
                 string name = "InterstageFairingShield" + "" + part.Modules.IndexOf(this);

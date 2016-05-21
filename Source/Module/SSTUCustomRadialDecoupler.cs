@@ -76,6 +76,9 @@ namespace SSTUTools.Module
         
         [KSPField]
         public String techLimitSet = "Default";
+
+        [KSPField]
+        public string fuelPreset = "Solid";
                 
         private float prevHeight;
         private float prevDiameter;
@@ -87,7 +90,7 @@ namespace SSTUTools.Module
         private Transform bottomMountTransform;
         private Transform scalarTransform;
         
-        private FuelTypeData fuelType;
+        private ContainerFuelPreset fuelType;
 
         // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
         private float techLimitMaxDiameter;
@@ -120,9 +123,8 @@ namespace SSTUTools.Module
             base.OnStart(state);
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
-            fuelType = new FuelTypeData(node.GetNode("FUELTYPE"));
+            fuelType = VolumeContainerLoader.getPreset(fuelPreset);
             float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, height);
             this.updateUIFloatEditControl("diameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
@@ -283,8 +285,9 @@ namespace SSTUTools.Module
             float currentVolume = resourceVolume * resourceScalar;
             if (!SSTUModInterop.onPartFuelVolumeUpdate(part, currentVolume*1000))
             {
-                SSTUResourceList res = fuelType.getResourceList(currentVolume);
-                res.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+                SSTUResourceList list = new SSTUResourceList();
+                fuelType.addResources(list, currentVolume);
+                list.setResourcesToPart(part);
             }
         }
 

@@ -153,9 +153,17 @@ namespace SSTUTools
             if (containers.Length > 1)
             {
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Prev Container", GUILayout.Width(200)) && containerIndex > 0) { containerIndex--; }
+                if (GUILayout.Button("Prev Container", GUILayout.Width(200)))
+                {
+                    containerIndex--;
+                    if (containerIndex < 0) { containerIndex = containers.Length - 1; }
+                }
                 GUILayout.Label(mainLabel);
-                if (GUILayout.Button("Next Container", GUILayout.Width(200)) && containerIndex < containers.Length - 1) { containerIndex++; }
+                if (GUILayout.Button("Next Container", GUILayout.Width(200)))
+                {
+                    containerIndex++;
+                    if (containerIndex >= containers.Length) { containerIndex = 0; }
+                }
                 GUILayout.EndHorizontal();
             }
             else
@@ -247,11 +255,12 @@ namespace SSTUTools
             GUILayout.BeginHorizontal();
             GUILayout.Label("Resource", GUILayout.Width(150));
             GUILayout.Label("Unit Ratio", GUILayout.Width(100));
-            GUILayout.Label("Units", GUILayout.Width(100));
-            GUILayout.Label("Volume", GUILayout.Width(100));
-            GUILayout.Label("Mass", GUILayout.Width(90));
-            GUILayout.Label("Cost", GUILayout.Width(90));
-            GUILayout.Label("% of Tank", GUILayout.Width(90));
+            GUILayout.Label("Units", GUILayout.Width(80));
+            GUILayout.Label("Volume", GUILayout.Width(80));
+            GUILayout.Label("Mass", GUILayout.Width(80));
+            GUILayout.Label("Cost", GUILayout.Width(80));
+            GUILayout.Label("% of Tank", GUILayout.Width(80));
+            GUILayout.Label("Fill %", GUILayout.Width(80));
             GUILayout.EndHorizontal();
             int len = ratioData.Length;
             for (int i = 0; i < len; i++)
@@ -291,6 +300,7 @@ namespace SSTUTools
         private float resourceMass;
         private float cost;
         private float percent;
+        private float fillPercent;
 
         public VolumeRatioEntry(ContainerDefinition container, string resourceName, int startRatio)
         {
@@ -298,6 +308,7 @@ namespace SSTUTools
             this.resourceName = resourceName;
             this.prevRatio = startRatio;
             this.textRatio = prevRatio.ToString();
+            this.fillPercent = container.getResourceFillPercent(resourceName);
             updateCachedValues();
         }
 
@@ -327,11 +338,18 @@ namespace SSTUTools
                 }
             }
             
-            GUILayout.Label(units.ToString(), GUILayout.Width(100));
-            GUILayout.Label(volume.ToString(), GUILayout.Width(100));            
-            GUILayout.Label(resourceMass.ToString(), GUILayout.Width(90));            
-            GUILayout.Label(cost.ToString(), GUILayout.Width(90));            
-            GUILayout.Label(percent.ToString(), GUILayout.Width(90));
+            GUILayout.Label(units.ToString(), GUILayout.Width(80));
+            GUILayout.Label(volume.ToString(), GUILayout.Width(80));            
+            GUILayout.Label(resourceMass.ToString(), GUILayout.Width(80));            
+            GUILayout.Label(cost.ToString(), GUILayout.Width(80));            
+            GUILayout.Label(percent.ToString(), GUILayout.Width(80));
+            float val = GUILayout.HorizontalSlider(fillPercent, 0, 1, GUILayout.Width(80));
+            if (val != fillPercent)
+            {
+                fillPercent = val;
+                container.setResourceFillPercent(resourceName, fillPercent);
+                update = true;
+            }
             return update;
         }
 
@@ -342,6 +360,7 @@ namespace SSTUTools
             resourceMass = container.getResourceMass(resourceName);
             cost = container.getResourceCost(resourceName);
             percent = container.getResourceVolume(resourceName) / container.usableVolume;
+            fillPercent = container.getResourceFillPercent(resourceName);
         }
 
     }

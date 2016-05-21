@@ -35,7 +35,7 @@ namespace SSTUTools
             return data;
         }
 
-        public static void reloadData()
+        public static void loadConfigData()
         {
             defsLoaded = false;
             baseModelData.Clear();
@@ -134,6 +134,17 @@ namespace SSTUTools
             if (ResearchAndDevelopment.Instance == null) { return true; }
             if (HighLogic.CurrentGame.Mode != Game.Modes.CAREER && HighLogic.CurrentGame.Mode != Game.Modes.SCIENCE_SANDBOX) { return true; }
             return SSTUUtils.isTechUnlocked(techLimit);
+        }
+
+        public string[] getTextureSetNames()
+        {
+            int len = textureSets.Length;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = textureSets[i].name;
+            }
+            return names;
         }
 
         public float getScaledHeight(float vertScale)
@@ -296,6 +307,12 @@ namespace SSTUTools
         public bool isAvailable()
         {
             return modelDefinition.isAvailable();
+        }
+
+        public virtual void updateTextureUIControl(PartModule module, string fieldName, string currentTexture)
+        {
+            string[] names = modelDefinition.getTextureSetNames();
+            module.updateUIChooseOptionControl(fieldName, names, names, true, currentTexture);
         }
 
         public virtual void setupModel(Part part, Transform parent, ModelOrientation orientation)

@@ -201,6 +201,8 @@ namespace SSTUTools
 
         public float getResourceCost(string name) { return internalGetVolumeData(name).resourceCost; }
 
+        public float getResourceFillPercent(string name) { return internalGetVolumeData(name).fillPercentage; }
+
         public float rawVolume { get { return currentRawVolume; } }
 
         public float usableVolume { get { return currentUsableVolume; } }
@@ -239,11 +241,15 @@ namespace SSTUTools
         public void getResources(SSTUResourceList list)
         {
             int len = subContainerData.Length;
+            float unitsMax;
+            float unitsFill;
             for (int i = 0; i < len; i++)
             {
                 if (subContainerData[i].unitRatio > 0)
                 {
-                    list.addResource(subContainerData[i].name, subContainerData[i].resourceUnits);
+                    unitsMax = subContainerData[i].resourceUnits;
+                    unitsFill = unitsMax * subContainerData[i].fillPercentage;
+                    list.addResource(subContainerData[i].name, unitsFill, unitsMax);
                 }
             }
         }
@@ -261,6 +267,13 @@ namespace SSTUTools
             internalGetVolumeData(name).setRatio(newRatio);
             internalUpdateTotalRatio();
             internalUpdateVolumeUnits();
+            internalUpdateMassAndCost();
+            resourcesDirty = true;
+        }
+
+        public void setResourceFillPercent(string name, float newPercent)
+        {
+            internalGetVolumeData(name).setFillPercent(newPercent);
             internalUpdateMassAndCost();
             resourcesDirty = true;
         }
@@ -370,7 +383,7 @@ namespace SSTUTools
                 {
                     zeroCostResourceCosts += FuelTypes.INSTANCE.getZeroCostResourceCost(subContainerData[i].name) * subContainerData[i].resourceUnits;
                 }
-                currentResourceCost += tempCost;
+                currentResourceCost += tempCost * subContainerData[i].fillPercentage;
             }
             currentContainerCost = costPerDryTon * currentModifier.costModifier * currentContainerMass;
             currentContainerCost += zeroCostResourceCosts;
@@ -430,12 +443,22 @@ namespace SSTUTools
             {
                 internalClearRatios();
                 currentFuelPreset = "custom";
-                string[] splitResources = defaultResources.Split(',');
-                if (splitResources.Length == 1) { splitResources = new string[] { splitResources[0], "1" }; }
+                string[] splitResources = defaultResources.Split(';');
+                string[] resourceValues;
                 int len = splitResources.Length;
-                for (int i = 0; i < len; i+=2)
+                string name;
+                int ratio;
+                float percent;
+                for (int i = 0; i < len; i++)
                 {
-                    internalGetVolumeData(splitResources[i]).setRatio(int.Parse(splitResources[i+1]));
+                    resourceValues = splitResources[i].Split(',');
+                    name = resourceValues[0];
+                    if (resourceValues.Length >= 2) { ratio = int.Parse(resourceValues[1]); }
+                    else { ratio = 1; }
+                    if (resourceValues.Length >= 3) { percent = float.Parse(resourceValues[2]); }
+                    else { percent = 1; }
+                    internalGetVolumeData(name).setRatio(ratio);
+                    internalGetVolumeData(name).setFillPercent(percent);
                 }
                 internalUpdateTotalRatio();
                 internalUpdateVolumeUnits();
@@ -462,6 +485,7 @@ namespace SSTUTools
         private readonly PartResourceDefinition def;//resource definition
         private int ratio;//dimensionless ratio value        
         private float volume;//actual volume computed for this resource container from the total ratio
+        private float fillPercent = 1f;//the amount of the resource compared to max to fill the part with
 
         public SubContainerDefinition(ContainerDefinition container, String name)
         {
@@ -474,6 +498,8 @@ namespace SSTUTools
         public float resourceMass { get { return resourceUnits * unitMass; } }
 
         public float resourceCost { get { return resourceUnits * unitCost; } }
+
+        public float fillPercentage { get { return fillPercent; } }
 
         /// <summary>
         /// Current cached usable volume occupied by this resource
@@ -522,6 +548,11 @@ namespace SSTUTools
             if (ratio < 0) { ratio = 0; }
             this.ratio = ratio;
             if (ratio == 0) { volume = 0; }
+        }
+
+        public void setFillPercent(float percent)
+        {
+            this.fillPercent = percent;
         }
     }
 
@@ -592,6 +623,7 @@ namespace SSTUTools
     public class ContainerFuelPreset
     {
         public readonly string name;
+        public readonly float totalVolumeRatio;
         public readonly ContainerResourceRatio[] resourceRatios;
         public ContainerFuelPreset(ConfigNode node)
         {
@@ -599,9 +631,12 @@ namespace SSTUTools
             ConfigNode[] ratioNodes = node.GetNodes("RESOURCE");
             int len = ratioNodes.Length;
             resourceRatios = new ContainerResourceRatio[len];
+            ContainerResourceRatio ratio;
             for (int i = 0; i < len; i++)
             {
-                resourceRatios[i] = new ContainerResourceRatio(ratioNodes[i]);
+                ratio = new ContainerResourceRatio(ratioNodes[i]);
+                resourceRatios[i] = ratio;
+                totalVolumeRatio += ratio.resourceRatio * ratio.resourceVolume;
             }
         }
 
@@ -627,6 +662,45 @@ namespace SSTUTools
             }
             return valid;
         }
+
+        public void addResources(SSTUResourceList list, float cubicMeters)
+        {
+            float resourceVolumeRatio;
+            float resourcePercent;
+            float resourceVolume;
+            int len = resourceRatios.Length;
+            ContainerResourceRatio ratio;
+            for (int i = 0; i < len; i++)
+            {
+                ratio = resourceRatios[i];
+                resourceVolumeRatio = ratio.resourceRatio * ratio.resourceVolume;
+                resourcePercent = resourceVolumeRatio / totalVolumeRatio;
+                resourceVolume = cubicMeters * resourcePercent;
+                list.addResourceByVolume(ratio.resourceName, resourceVolume);
+            }
+        }
+
+        public float getResourceCost(float cubicMeters)
+        {
+            float resourceVolumeRatio;
+            float resourcePercent;
+            float resourceVolume;
+            float resourceUnits;
+            float totalCost = 0f;
+            int len = resourceRatios.Length;
+            ContainerResourceRatio ratio;
+            for (int i = 0; i < len; i++)
+            {
+                ratio = resourceRatios[i];
+                resourceVolumeRatio = ratio.resourceRatio * ratio.resourceVolume;
+                resourcePercent = resourceVolumeRatio / totalVolumeRatio;
+                resourceVolume = cubicMeters * resourcePercent;
+                PartResourceDefinition def = PartResourceLibrary.Instance.GetDefinition(ratio.resourceName);
+                resourceUnits = (resourceVolume * 1000f) / def.volume;
+                totalCost += def.unitCost * resourceUnits;
+            }
+            return totalCost;
+        }
     }
 
     /// <summary>
@@ -636,10 +710,12 @@ namespace SSTUTools
     {
         public readonly string resourceName;
         public readonly int resourceRatio;
+        public readonly float resourceVolume;
         public ContainerResourceRatio(ConfigNode node)
         {
             resourceName = node.GetStringValue("resource");
             resourceRatio = node.GetIntValue("ratio", 1);
+            resourceVolume = FuelTypes.INSTANCE.getResourceVolume(resourceName);
         }
     }
 
@@ -652,7 +728,7 @@ namespace SSTUTools
         private static ContainerResourceSet[] containerDefs;
         private static ContainerFuelPreset[] containerPresets;
 
-        public static void loadConfigs()
+        public static void loadConfigData()
         {
             ConfigNode[] typeNodes = GameDatabase.Instance.GetConfigNodes("SSTU_CONTAINERTYPE");
             int len = typeNodes.Length;

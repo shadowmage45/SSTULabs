@@ -104,10 +104,10 @@ namespace SSTUTools
                 partConfigNodes.Add(name, node);
             }
             MonoBehaviour.print("SSTU -- Reloading config databases (fuel types, model data, etc...)");
-            FuelTypes.INSTANCE.reloadData();
-            SSTUModelData.reloadData();
-            VolumeContainerLoader.loadConfigs();
-            SSTUDatabase.reloadDatabase();
+            FuelTypes.INSTANCE.loadConfigData();
+            VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
+            SSTUModelData.loadConfigData();
+            SSTUDatabase.loadConfigData();
         }
 
         private static void updateTechLimitCache()

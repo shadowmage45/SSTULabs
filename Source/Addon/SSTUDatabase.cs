@@ -8,7 +8,7 @@ namespace SSTUTools
     public static class SSTUDatabase
     {
 
-        public static void reloadDatabase()
+        public static void loadConfigData()
         {
             loadHeatShieldTypes();
         }

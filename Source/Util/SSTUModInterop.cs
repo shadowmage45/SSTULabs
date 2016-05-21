@@ -225,10 +225,19 @@ namespace SSTUTools
 
         public static void updatePartResourceDisplay(Part part)
         {
-            if (UIPartActionController.Instance.resourcesShown.Count > 0)
+            if (HighLogic.LoadedSceneIsEditor && EditorLogic.fetch == null) { return; }
+            if (HighLogic.LoadedSceneIsFlight && FlightDriver.fetch == null) { return; }
+            try
             {
-                UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
-                if (window != null) { window.displayDirty = true; }
+                if (UIPartActionController.Instance != null)
+                {
+                    UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
+                    if (window != null) { window.displayDirty = true; }
+                }
+            }
+            catch (Exception e)
+            {
+                MonoBehaviour.print("SSTU caught exception while updating part resource display: " + e.Message);
             }
         }
                 

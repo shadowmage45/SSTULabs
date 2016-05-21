@@ -140,33 +140,38 @@ namespace SSTUTools
         public float currentTankHeight = 0f;
 
         /// <summary>
-        /// The currently selected/enabled mount option.
-        /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor =true, guiName ="Mount"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
-        public String currentMount = String.Empty;
-
-        /// <summary>
         /// The currently selected/enabled intertank option (if any).
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor =true, guiName ="Intertank"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentIntertank = String.Empty;
 
-        [KSPField(isPersistant = true)]
-        public String currentMountTexture = String.Empty;
+        /// <summary>
+        /// The currently selected/enabled mount option.
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentMount = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Dome Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentDomeTextureSet = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Upper Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentUpperTextureSet = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Intertank Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentIntertankTextureSet = String.Empty;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Lower Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentLowerTextureSet = String.Empty;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentMountTexture = String.Empty;
 
         /// <summary>
         /// The current RCS thrust; this value will be 'set' into the RCS module (if found/present)
@@ -229,36 +234,46 @@ namespace SSTUTools
         private bool initialized = false;
         #endregion
 
-        #region ----------------- REGION - GUI Interaction methods ----------------- 
-        
-        [KSPEvent(guiName = "Next Tank Dome Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextTankDomeTextureEvent()
+        #region ----------------- REGION - GUI Interaction methods -----------------
+
+        public void onDomeTextureUpdated(BaseField field, object obj)
         {
-            setTankDomeTextureFromEditor(upperDomeModule.getNextTextureSetName(currentDomeTextureSet, false), true);
+            if ((string)obj != currentDomeTextureSet)
+            {
+                setTankDomeTextureFromEditor(currentDomeTextureSet, true);
+            }
         }
 
-        [KSPEvent(guiName = "Next Upper Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextUpperTankTextureEvent()
+        public void onUpperTextureUpdated(BaseField field, object obj)
         {
-            setTankUpperTextureFromEditor(upperModule.getNextTextureSetName(currentUpperTextureSet, false), true);
+            if ((string)obj != currentUpperTextureSet)
+            {
+                setTankUpperTextureFromEditor(currentUpperTextureSet, true);
+            }
         }
 
-        [KSPEvent(guiName = "Next Intertank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextInterankTextureEvent()
+        public void onIntertankTextureUpdated(BaseField field, object obj)
         {
-            setIntertankTextureFromEditor(currentIntertankModule.getNextTextureSetName(currentIntertankTextureSet, false), true);
+            if ((string)obj != currentIntertankTextureSet)
+            {
+                setIntertankTextureFromEditor(currentIntertankTextureSet, true);
+            }
         }
 
-        [KSPEvent(guiName = "Next Lower Tank Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextLowerTankTextureEvent()
+        public void onLowerTextureUpdated(BaseField field, object obj)
         {
-            setTankLowerTextureFromEditor(lowerModule.getNextTextureSetName(currentLowerTextureSet, false), true);
+            if ((string)obj != currentLowerTextureSet)
+            {
+                setTankLowerTextureFromEditor(currentLowerTextureSet, true);
+            }
         }
 
-        [KSPEvent(guiName = "Next Mount Texture", guiActive = false, guiActiveEditor = true, guiActiveUnfocused = false)]
-        public void nextMountTextureEvent()
+        public void onMountTextureUpdated(BaseField field, object obj)
         {
-            setMountTextureFromEditor(currentMountModule.getNextTextureSetName(currentMountTexture, false), true);
+            if ((string)obj != currentMountTexture)
+            {
+                setMountTextureFromEditor(currentMountTexture, true);
+            }
         }
 
         public void onDiameterUpdated(BaseField field, object obj)
@@ -354,6 +369,7 @@ namespace SSTUTools
             updateGuiState();
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
             currentMountModule.enableTextureSet(currentMountTexture);
+            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -378,6 +394,7 @@ namespace SSTUTools
                 currentIntertankTextureSet = currentIntertankModule.getDefaultTextureSet();
             }
             currentIntertankModule.enableTextureSet(currentIntertankTextureSet);
+            currentIntertankModule.updateTextureUIControl(this, "currentIntertankTextureSet", currentIntertankTextureSet);
             updateModules(true);
             updateModels();
             updateTankStats();
@@ -483,10 +500,6 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            Fields["currentTankDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
-            Fields["currentTankHeight"].uiControlEditor.onFieldChanged = onHeightUpdated;            
-            Fields["currentMount"].uiControlEditor.onFieldChanged = onMountUpdated;
-            Fields["currentIntertank"].uiControlEditor.onFieldChanged = onIntertankUpdated;
             float max = techLimitMaxDiameter < maxTankDiameter ? techLimitMaxDiameter : maxTankDiameter;
             this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, max, tankDiameterIncrement*2, tankDiameterIncrement, tankDiameterIncrement*0.05f, true, currentTankDiameter);
             this.updateUIFloatEditControl("currentTankHeight", minTankHeight, maxTankHeight, tankHeightIncrement*2f, tankHeightIncrement, tankHeightIncrement*0.05f, true, currentTankHeight);
@@ -501,10 +514,27 @@ namespace SSTUTools
             {
                 Fields["currentIntertank"].guiActiveEditor = false;
             }
-            Events["nextTankDomeTextureEvent"].guiActiveEditor = upperTopCapModule.modelDefinition.textureSets.Length > 1;
-            Events["nextUpperTankTextureEvent"].guiActiveEditor = upperModule.modelDefinition.textureSets.Length > 1;
-            Events["nextInterankTextureEvent"].guiActiveEditor = splitTank && currentIntertankModule.modelDefinition.textureSets.Length > 1;
-            Events["nextLowerTankTextureEvent"].guiActiveEditor = splitTank && lowerModule.modelDefinition.textureSets.Length > 1;
+
+            upperDomeModule.updateTextureUIControl(this, "currentDomeTextureSet", currentDomeTextureSet);
+            upperModule.updateTextureUIControl(this, "currentUpperTextureSet", currentUpperTextureSet);
+            if (splitTank)
+            {
+                currentIntertankModule.updateTextureUIControl(this, "currentIntertankTextureSet", currentIntertankTextureSet);
+                lowerModule.updateTextureUIControl(this, "currentLowerTextureSet", currentLowerTextureSet);
+            }
+            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
+
+            Fields["currentTankDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields["currentTankHeight"].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields["currentMount"].uiControlEditor.onFieldChanged = onMountUpdated;
+            Fields["currentIntertank"].uiControlEditor.onFieldChanged = onIntertankUpdated;
+
+            Fields["currentDomeTextureSet"].uiControlEditor.onFieldChanged = onDomeTextureUpdated;
+            Fields["currentUpperTextureSet"].uiControlEditor.onFieldChanged = onUpperTextureUpdated;
+            Fields["currentIntertankTextureSet"].uiControlEditor.onFieldChanged = onIntertankTextureUpdated;
+            Fields["currentLowerTextureSet"].uiControlEditor.onFieldChanged = onLowerTextureUpdated;
+            Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
+
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
         }
@@ -531,6 +561,7 @@ namespace SSTUTools
                 updateContainerVolume();
             }
             updateRCSThrust();
+            updateGuiState();
         }
 
         /// <summary>
@@ -574,7 +605,6 @@ namespace SSTUTools
             }
             loadConfigData();
             techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
             if (currentTankDiameter > techLimitMaxDiameter)
             {
                 currentTankDiameter = techLimitMaxDiameter;
@@ -1028,7 +1058,11 @@ namespace SSTUTools
         /// </summary>
         private void updateGuiState()
         {
-            Events["nextMountTextureEvent"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentDomeTextureSet"].guiActiveEditor = upperDomeModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentUpperTextureSet"].guiActiveEditor = upperModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentIntertankTextureSet"].guiActiveEditor = splitTank && currentIntertankModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentLowerTextureSet"].guiActiveEditor = splitTank && lowerModule.modelDefinition.textureSets.Length > 1;
+            Fields["currentMountTexture"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
             guiDryMass = moduleMass;
             guiTotalHeight = partTopY + Math.Abs(partBottomY);
             guiTankHeight = upperModule.currentHeight;

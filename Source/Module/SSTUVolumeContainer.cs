@@ -78,7 +78,6 @@ namespace SSTUTools
         private ContainerDefinition[] containers;
         private float modifiedMass = -1;
         private float modifiedCost = -1;
-        private bool useRF = false;
         private string prevFuelType;
         private bool guiEnabled = false;
 
@@ -144,16 +143,7 @@ namespace SSTUTools
             BaseEvent editContainerEvent = Events["openGUIEvent"];
             editContainerEvent.active = enableContainerEdit;
 
-            useRF = (SSTUModInterop.isRFInstalled() || SSTUModInterop.isMFTInstalled() )&& SSTUModInterop.hasModuleFuelTanks(part);
-            if (useRF)
-            {
-                subtractCost = subtractMass = false;
-                editContainerEvent.guiActiveEditor = false;
-                fuelSelection.guiActiveEditor = false;
-                Fields["usableVolume"].guiActiveEditor = false;
-                Fields["tankageMass"].guiActiveEditor = false;                
-            }            
-            else if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 initializedResources = true;
                 updateTankResources();
@@ -297,7 +287,6 @@ namespace SSTUTools
 
         private void updateKISVolume()
         {
-            if (useRF) { return; }
             PartResource kisResource = part.Resources["SSTUKISStorage"];
             float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
             SSTUModInterop.onPartKISVolumeUpdated(part, volume);
@@ -344,18 +333,13 @@ namespace SSTUTools
         /// </summary>
         private void updateTankResources()
         {
-            if (useRF)
-            {
-
-                return;
-            }
             SSTUResourceList list = new SSTUResourceList();
             int len = containers.Length;
             for (int i = 0; i < len; i++)
             {
                 containers[i].getResources(list);
             }
-            list.setResourcesToPart(part, HighLogic.LoadedSceneIsEditor);
+            list.setResourcesToPart(part);
             updateMassAndCost();
             updateKISVolume();
         }
@@ -377,11 +361,6 @@ namespace SSTUTools
         /// </summary>
         private void updateMassAndCost()
         {
-            if (useRF)
-            {
-                modifiedMass = 0;
-                modifiedCost = 0;
-            }
             modifiedCost = 0;
             modifiedMass = 0;
             float tankageVolume = 0;
@@ -422,7 +401,8 @@ namespace SSTUTools
             {
                 VolumeContainerGUI.closeGUI();
                 return;
-            }//window already open, close it
+            }
+
             VolumeContainerGUI.openGUI(this, containers);
             guiEnabled = true;
             EditorLogic editor = EditorLogic.fetch;

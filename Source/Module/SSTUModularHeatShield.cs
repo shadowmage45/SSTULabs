@@ -303,7 +303,6 @@ namespace SSTUTools
                 }
 
                 techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-                //TechLimit.updateTechLimits(techLimitSet, out techLimitMaxDiameter);
                 if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
                 shieldTypeNames = SSTUDatabase.getHeatShieldNames();
 
@@ -484,11 +483,7 @@ namespace SSTUTools
             {
                 res.amount = res.maxAmount = amount;
             }
-            if (UIPartActionController.Instance != null && UIPartActionController.Instance.resourcesShown.Count>0)
-            {
-                UIPartActionWindow window = UIPartActionController.Instance.GetItem(part);
-                if (window != null) { window.displayDirty = true; }
-            }
+            SSTUModInterop.updatePartResourceDisplay(part);
         }
 
         private void updateAttachNodes(bool userInput)
