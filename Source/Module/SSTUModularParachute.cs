@@ -552,7 +552,6 @@ namespace SSTUTools
         
         private void setChuteState(ChuteState newState)
         {
-            print("setting to chute state: " + newState);
             chuteState = newState;
             this.chutePersistence = chuteState.ToString();
             
@@ -1002,12 +1001,10 @@ namespace SSTUTools
             if (modelTransform == null)
             {
                 baseModel = SSTUUtils.cloneModel(modelName);
-                MonoBehaviour.print("cloning new parachute model...");
             }
             else
             {
                 baseModel = modelTransform.gameObject;
-                MonoBehaviour.print("re-using existing model...");
             }
             baseModel.transform.NestToParent(parachutePivot.transform);
             if (!String.IsNullOrEmpty(texture))

@@ -181,7 +181,7 @@ namespace SSTUTools
             String value = node.GetValue(name);
             if (value == null)
             {
-                MonoBehaviour.print("No value for name: " + name + " found in config node: " + node);
+                MonoBehaviour.print("ERROR: No value for name: " + name + " found in config node: " + node);
                 return Vector3.zero;
             }
             String[] vals = value.Split(',');
@@ -540,6 +540,16 @@ namespace SSTUTools
                 output = output + "\n" + f.time + " " + f.value + " " + f.inTangent + " " + f.outTangent;
             }
             return output;
+        }
+
+        public static void logDebug(this MonoBehaviour module, String message)
+        {
+            MonoBehaviour.print("SSTU-DEBUG: " + message);
+        }
+
+        public static void logError(this MonoBehaviour module, String message)
+        {
+            MonoBehaviour.print("SSTU-ERROR: " + message);
         }
     }
 }

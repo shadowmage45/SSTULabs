@@ -176,9 +176,6 @@ namespace SSTUTools
         {
             if (editor && editorActiveType == ActiveType.NO_CHANGE) { return; }
             else if (!editor && flightActiveType == ActiveType.NO_CHANGE) { return; }
-
-            MonoBehaviour.print("updating field for name: "+fieldName+" for fieldType: "+fieldType);
-
             ActiveType type = editor ? editorActiveType : flightActiveType;
             bool enable = type == ActiveType.ACTIVE;
 

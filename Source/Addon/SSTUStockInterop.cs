@@ -38,16 +38,12 @@ namespace SSTUTools
         {
             if (scene == GameScenes.SPACECENTER || scene==GameScenes.EDITOR || scene == GameScenes.FLIGHT)
             {
-                //MonoBehaviour.print("Onscene loaded: " + scene);
-                //MonoBehaviour.print("RD: " + ResearchAndDevelopment.Instance);
                 updateTechLimitCache();
             }
         }
 
         public void onGameLoad(ConfigNode node)
         {
-            //MonoBehaviour.print("onGameLoad!");
-            //MonoBehaviour.print("RD: " + ResearchAndDevelopment.Instance);
             techLimitCache.Clear();
         }
 
@@ -92,7 +88,7 @@ namespace SSTUTools
         
         public void ModuleManagerPostLoad()
         {
-            MonoBehaviour.print("SSTU -- Creating Part Config cache.");
+            MonoBehaviour.print("Creating Part Config cache.");
             partConfigNodes.Clear();
             ConfigNode[] partNodes = GameDatabase.Instance.GetConfigNodes("PART");
             String name;
@@ -103,7 +99,7 @@ namespace SSTUTools
                 if (partConfigNodes.ContainsKey(name)) { continue; }
                 partConfigNodes.Add(name, node);
             }
-            MonoBehaviour.print("SSTU -- Reloading config databases (fuel types, model data, etc...)");
+            MonoBehaviour.print("Reloading config databases (fuel types, model data, etc...)");
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
             SSTUModelData.loadConfigData();
@@ -146,7 +142,6 @@ namespace SSTUTools
                         }
                     }
                 }
-                //MonoBehaviour.print("Loaded tech limit of: " + setName + " :: " + setTechLimit);
                 techLimitCache.Add(setName, setTechLimit);
             }
         }
@@ -179,7 +174,6 @@ namespace SSTUTools
             float limit = float.PositiveInfinity;
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return limit; }//for prefab parts....            
             if (!techLimitCache.TryGetValue(name, out limit)) { return float.PositiveInfinity; }//for uninitialized cache or invalid key, return max value
-            //MonoBehaviour.print("found tech limit for set name: " + name + " :: " + limit);
             return limit;
         }
 
@@ -205,13 +199,13 @@ namespace SSTUTools
             int index = p.Modules.IndexOf(m);
             if (index >= moduleNodes.Length)
             {
-                MonoBehaviour.print("Module index was out of range: " + index + " : " + moduleNodes.Length);
+                MonoBehaviour.print("ERROR: Module index was out of range: " + index + " : " + moduleNodes.Length);
                 return null;
             }
             String type = m.GetType().Name;
             ConfigNode moduleNode = moduleNodes[index];
             if (moduleNode.GetStringValue("name") == type){ return moduleNode; }
-            MonoBehaviour.print("Could not find matching index for module: " + type + " :: " + m + " returning first module by name.");
+            MonoBehaviour.print("ERROR: Could not find matching index for module: " + type + " :: " + m + " returning first module by name.");
             return getPartModuleConfig(p, type);
         }
 
@@ -226,7 +220,7 @@ namespace SSTUTools
             if (partConfigNodes.ContainsKey(name)){return partConfigNodes[name];}            
             MonoBehaviour.print("MINOR ERROR: Could not locate part config from cached database for part: "+name+" (This may be recoverable)");
             if (p.partInfo != null && p.partInfo.partConfig != null) { return p.partInfo.partConfig; }
-            MonoBehaviour.print("MAJOR ERROR: Could not locate part config from part.partInfo.partConfig for part: " + name);
+            MonoBehaviour.print("MAJOR ERROR: Could not locate part config from part.partInfo.partConfig for part: " + name + " (This may be recoverable)");
             if (p.partInfo != null) { return PartLoader.Instance.GetDatabaseConfig(p); }
             MonoBehaviour.print("SEVERE ERROR: Could not locate part config from PartLoader.Instance.GetDatabaseConfig() for part: " + name+"  Things are about to crash :)");
             return null;

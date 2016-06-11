@@ -125,6 +125,7 @@ namespace SSTUTools
 
         /// <summary>
         /// Return true if this part should be accessible due to tech-level limitations
+        /// UNUSED
         /// </summary>
         /// <returns></returns>
         public bool isAvailable()
@@ -146,16 +147,7 @@ namespace SSTUTools
             }
             return names;
         }
-
-        public float getScaledHeight(float vertScale)
-        {
-            return vertScale * height;
-        }
-
-        public float getScaledDiameter(float horizScale)
-        {
-            return horizScale * diameter;
-        }
+        
     }
 
     public class ModelTextureSet
@@ -309,6 +301,24 @@ namespace SSTUTools
             return modelDefinition.isAvailable();
         }
 
+        public SSTUAnimData[] getAnimationData(Transform transform)
+        {
+            SSTUAnimData[] data = null;
+            ConfigNode[] nodes = modelDefinition.configNode.GetNodes("ANIMATION");
+            int len = nodes.Length;
+            data = new SSTUAnimData[len];
+            for (int i = 0; i < len; i++)
+            {
+                data[i] = new SSTUAnimData(nodes[i], transform);
+            }
+            return data;
+        }
+
+        public bool hasAnimation()
+        {
+            return modelDefinition.configNode.HasNode("ANIMATION");
+        }
+
         public virtual void updateTextureUIControl(PartModule module, string fieldName, string currentTexture)
         {
             string[] names = modelDefinition.getTextureSetNames();
@@ -374,7 +384,7 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: No texture set data for set by name: " + setName + "  --  for model: " + name);
                 if (String.IsNullOrEmpty(modelDefinition.defaultTextureSet))
                 {
-                    MonoBehaviour.print("Default texture set was null or empty string, this is a configuration error. " +
+                    MonoBehaviour.print("ERROR: Default texture set was null or empty string, this is a configuration error. " +
                         "Please correct the model definition for model: " +
                         modelDefinition.name + " to add a proper default texture set definition.");
                 }
@@ -412,17 +422,11 @@ namespace SSTUTools
             }
             if (reUse)
             {
-                MonoBehaviour.print("attempting to re-use existing model: " + modelDefinition.modelName);
                 Transform tr = part.transform.FindModel(modelDefinition.modelName);
                 if (tr != null)
                 {
-                    MonoBehaviour.print("Found existing model for re-use: "+tr.name);
                     tr.name = modelDefinition.modelName;
                     tr.gameObject.name = modelDefinition.modelName;
-                }
-                else
-                {
-                    MonoBehaviour.print("Did not find existing model, will clone and add new model");
                 }
                 model = tr == null ? null : tr.gameObject;
             }
@@ -479,8 +483,8 @@ namespace SSTUTools
     /// Includes utility methods to update attach node positions based on an input length/vertical offset.
     /// </summary>
     public class MountModelData : SingleModelData
-    {    
-        
+    {
+           
         public MountModelData(ConfigNode node) : base(node)
         {            
 
@@ -488,9 +492,7 @@ namespace SSTUTools
         
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
         {
-            MonoBehaviour.print("Model updating attach nodes; names length: " + nodeNames.Length);
-            for (int i = 0; i < nodeNames.Length;i++) { MonoBehaviour.print("node name: " + nodeNames[i]); }
-            if (nodeNames.Length == 1 && nodeNames[0] == "NONE") { MonoBehaviour.print("Early exit from node update due to name==NONE"); return; }            
+            if (nodeNames.Length == 1 && nodeNames[0] == "NONE") { return; }            
             Vector3 basePos = new Vector3(0, currentVerticalPosition, 0);
             AttachNode node = null;
             AttachNodeBaseData data;

@@ -61,7 +61,6 @@ namespace SSTUTools
 
         public GameObject[] generateColliders()
         {
-            MonoBehaviour.print("Generating hollow convex colliders for faces: " + faces);
             GameObject[] colliders = new GameObject[faces];
             
             float anglePerFace = 360f / (float)faces;
@@ -326,7 +325,6 @@ namespace SSTUTools
             float anglePerFace = 360f / (float)faces;
             int localFaces = (int)Math.Round(totalAngle / anglePerFace);
             localFaces /= facesPerCollider;
-            MonoBehaviour.print("local faces: " + localFaces);
             GameObject[] colliders = new GameObject[localFaces];
             float localStart, localEnd, startY, height, topRadius, bottomRadius, thickness;
             Mesh colliderMesh;

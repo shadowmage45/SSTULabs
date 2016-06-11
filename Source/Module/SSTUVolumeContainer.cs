@@ -138,7 +138,6 @@ namespace SSTUTools
             BaseField fuelSelection = Fields["guiFuelType"];
             fuelSelection.guiActiveEditor = enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
-            MonoBehaviour.print("fuel selections current value: " + guiFuelType);
 
             BaseEvent editContainerEvent = Events["openGUIEvent"];
             editContainerEvent.active = enableContainerEdit;
@@ -219,7 +218,9 @@ namespace SSTUTools
                 updatePersistentData();
                 SSTUStockInterop.fireEditorUpdate();
             }
+            Events["openGUIEvent"].guiActiveEditor = volume > 0;
         }
+
         public int numberOfContainers { get { return containers.Length; } }
 
         public void setContainerPercents(float[] percents, float totalVolume)
@@ -245,7 +246,6 @@ namespace SSTUTools
 
         public void containerFuelTypeSet(ContainerDefinition container, ContainerFuelPreset fuelType)
         {
-
             updateFuelSelections();
         }
 
@@ -289,7 +289,7 @@ namespace SSTUTools
         {
             PartResource kisResource = part.Resources["SSTUKISStorage"];
             float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
-            SSTUModInterop.onPartKISVolumeUpdated(part, volume);
+            SSTUModInterop.onPartKISInventoryVolumeChanged(part, volume);
         }
         
         /// <summary>

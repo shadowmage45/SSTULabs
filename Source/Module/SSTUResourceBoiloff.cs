@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
@@ -36,7 +33,13 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public double lastUpdateTime = -1;
 
+        [KSPField(isPersistant = true)]
+        public float lastEffective = 1f;
+
         private BoiloffResourceData[] boiloffData;
+
+        //defaults to true, only runs once and is then set to false
+        private bool unfocusedCatchup = true;
 
         //NOOP?
         public override void OnLoad(ConfigNode node)
@@ -75,15 +78,29 @@ namespace SSTUTools
 
             guiVolumeLoss = 0;
             guiECCost = 0;
+            float percentEff = lastEffective;
             if (delta > 0)
             {
+                float val = 1.0f;
                 for (int i = 0; i < len; i++)
                 {
-                    boiloffData[i].processBoiloff(part, delta);
+                    val = boiloffData[i].processBoiloff(part, delta, unfocusedCatchup ? lastEffective : -1);
+                    if (val < percentEff) { percentEff = val; }
                     guiVolumeLoss += boiloffData[i].volumeLost;
                     guiECCost += boiloffData[i].ecCost;
                 }
             }
+            unfocusedCatchup = false;
+            if (percentEff == 1 || lastEffective==0)
+            {
+                //give the below integration a good starting point, and fix the issue of it never actually hitting 1 (or zero) from integration
+                lastEffective = percentEff;
+            }
+            else
+            {
+                //cheap and quick - integrate/average, it will asyptotically aproach the actual value
+                lastEffective += (percentEff - lastEffective) * 0.50f;
+            }            
         }
         
         private void initialize()
@@ -185,33 +202,44 @@ namespace SSTUTools
             passiveInsulationPrevention = mod.passiveInsulationPrevention;
         }
         
-        public void processBoiloff(Part part, double seconds)
+        public float processBoiloff(Part part, double seconds, float fixedEffectiveness = -1)
         {            
             double hours = seconds / 3600d;//convert from delta-seconds into delta-hours...
             double resourceVolume = resource.amount * unitVolume;
             double totalLoss = data.value * resourceVolume * hours * boiloffModifier;
+
             double activePrevention = totalLoss * activeInsulationPrevention * activeInsulationPercent;
             double inactivePrevention = 0f;
             double activePreventionCost = activePrevention * activeECCost * data.cost;
-            if (activePreventionCost > 0.000005)
+            double activePercent = 1.0f;
+            if (fixedEffectiveness >= 0)
+            {
+                activePercent = fixedEffectiveness;
+                inactivePrevention = activePrevention - (activePercent * activePrevention);
+                inactivePrevention *= totalLoss * inactiveInsulationPrevention;
+                activePrevention = activePrevention * activePercent;
+                activePreventionCost = activePercent * activePreventionCost;//only used XXX for this tick, though likely won't display long enough on the GUI to matter...
+            }
+            else if (activePreventionCost > 0.000005)
             {
                 double activeECUsed = part.RequestResource("ElectricCharge", activePreventionCost);
                 if (activeECUsed < activePreventionCost)
                 {
-                    double activePercent = activeECUsed / activePreventionCost;
+                    activePercent = activeECUsed / activePreventionCost;
                     inactivePrevention = activePrevention - (activePercent * activePrevention);
                     inactivePrevention *= totalLoss * inactiveInsulationPrevention;
                     activePrevention = activePrevention * activePercent;
                     activePreventionCost = activePercent * activePreventionCost;//only used XXX for this tick, though likely won't display long enough on the GUI to matter...
                 }
             }
+
             double passivePrevention = totalLoss * passiveInsulationPrevention * (1.0 - activeInsulationPercent);
             double totalPrevention = activePrevention + inactivePrevention + passivePrevention;            
             double actualLoss = totalLoss - totalPrevention;
             if (actualLoss > 0.000005)
             {
                 bool flowState = resource.flowState;
-                resource.flowState = true;//hack to enable using the resource even when disabled
+                resource.flowState = true;//hack to enable using the resource even when disabled; you can't stop boiloff just by clicking the no-flow button on the UI
                 part.RequestResource(data.name, actualLoss / unitVolume, ResourceFlowMode.NO_FLOW);//no flow to only take resources from this part
                 resource.flowState = flowState;//re-hack to set resource enabled val back to previous
             }
@@ -225,6 +253,7 @@ namespace SSTUTools
             //MonoBehaviour.print("passPrev : " + passivePrevention);
             //MonoBehaviour.print("actLoss  : " + volumeLost);
             //MonoBehaviour.print("ecCost   : " + ecCost);
+            return (float)activePercent;
         }
 
     }

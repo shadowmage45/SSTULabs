@@ -17,7 +17,7 @@ namespace SSTUTools
             {
                 Transform modelT = part.transform.FindModel(model);
                 Transform parentT = part.transform.FindRecursive(parent);
-                MonoBehaviour.print("setting model " + modelT + " parent from: " + modelT.parent + " to: " + parentT);
+                //MonoBehaviour.print("setting model " + modelT + " parent from: " + modelT.parent + " to: " + parentT);
                 modelT.parent = parentT;
             }
         }
@@ -26,7 +26,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             
-            SSTUUtils.recursePrintComponents(part.gameObject, "");
+            //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
     }
 }

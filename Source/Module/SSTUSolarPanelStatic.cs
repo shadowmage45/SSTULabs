@@ -142,7 +142,7 @@ namespace SSTUTools
                 suncatcherTransform = part.FindModelTransform(suncatcherName);
                 if (suncatcherTransform == null)
                 {
-                    print("null transform found for names.. " + suncatcherName);
+                    print("ERROR: null transform found for names.. " + suncatcherName);
                     continue;
                 }
                 panelData.Add(suncatcherTransform);

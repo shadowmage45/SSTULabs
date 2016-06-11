@@ -9,7 +9,7 @@ namespace SSTUTools
         {
             maxDiameter = float.PositiveInfinity;
             if (!SSTUUtils.isResearchGame()) { MonoBehaviour.print("Not a research game, exiting tech limit checks"); return; }
-            if (HighLogic.CurrentGame == null) {MonoBehaviour.print("current game is null, exiting tech limit checks"); return; }
+            if (HighLogic.CurrentGame == null) {MonoBehaviour.print("Current game is null, exiting tech limit checks"); return; }
             maxDiameter = 0;
             ConfigNode[] setNodes = GameDatabase.Instance.GetConfigNodes("TECHLIMITSET");
             int len = setNodes.Length;
@@ -24,16 +24,10 @@ namespace SSTUTools
                     for (int k = 0; k < setLen; k++)
                     {
                         techName = limitNodes[k].GetStringValue("name");
-                        MonoBehaviour.print("examining tech node: " + techName);
                         if (SSTUUtils.isTechUnlocked(limitNodes[k].GetStringValue("name")))
                         {
-                            MonoBehaviour.print("tech is unlocked");
                             d = limitNodes[k].GetFloatValue("diameter");
                             if (d > maxDiameter) { maxDiameter = d; }
-                        }
-                        else
-                        {
-                            MonoBehaviour.print("tech is not unlocked");
                         }
                     }
                     break;

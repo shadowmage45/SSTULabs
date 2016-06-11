@@ -241,16 +241,16 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            //SSTUModInterop.onPartFuelVolumeUpdate
+            float liters = calcTotalVolume();
             SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
             if (container == null)
             {
-                SSTUModInterop.onPartFuelVolumeUpdate(part, calcTotalVolume() * 1000f);
+                SSTUModInterop.onPartFuelVolumeUpdate(part, liters);
                 return;
             }
             int len = container.numberOfContainers;
             float[] percents = new float[len];
-            float total = calcTotalVolume();
+            float total = liters;
             float val;
             for (int i = 0; i < len; i++)
             {
@@ -261,7 +261,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Calculates the total allocated volume for a specific container index
+        /// Calculates the total allocated volume for a specific container index.
+        /// This is calculated as -liters-
         /// </summary>
         /// <param name="containerIndex"></param>
         /// <returns></returns>
@@ -282,6 +283,7 @@ namespace SSTUTools
 
         /// <summary>
         /// Calculates the total allocated volume for ALL VolumeContianer sub-containers
+        /// This is calculated as -liters-
         /// </summary>
         /// <returns></returns>
         private float calcTotalVolume()
@@ -530,7 +532,10 @@ namespace SSTUTools
             if (!string.IsNullOrEmpty(parentGroup))
             {
                 parent = owner.findGroup(parentGroup);
-                if (parent == null) { MonoBehaviour.print("parent was null"); }
+                if (parent == null)
+                {
+                    MonoBehaviour.print("ERROR: Specified parent was null!");
+                }
                 parent.addChild(this);
             }
         }

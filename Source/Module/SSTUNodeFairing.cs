@@ -462,7 +462,7 @@ namespace SSTUTools
 
         private void updateFromExternalData(FairingUpdateData eData)
         {
-            if (fairingParts == null) { MonoBehaviour.print("Fairing parts are null for external update"); }
+            if (fairingParts == null) { MonoBehaviour.print("ERROR: Fairing parts are null for external update"); }
             foreach (SSTUNodeFairingData data in fairingParts)
             {                
                 if (eData.hasTopY && data.canAdjustTop)

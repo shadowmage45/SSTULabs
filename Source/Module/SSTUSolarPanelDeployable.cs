@@ -195,8 +195,7 @@ namespace SSTUTools
         {
             if (state == AnimState.STOPPED_END)
             {
-                setPanelState(SSTUPanelState.EXTENDED);
-                foreach (PanelData pd in panelData) { print(pd.pivotTransform.localRotation); }
+                setPanelState(SSTUPanelState.EXTENDED);                
             }
             else if (state == AnimState.STOPPED_START)
             {
@@ -452,7 +451,7 @@ namespace SSTUTools
 
             if (pivotNames.Length != suncatcherNames.Length)
             {
-                print("pivot and suncatcher names length not equal, error!");
+                print("ERROR: pivot and suncatcher names length not equal");
                 return;
             }
 
@@ -468,7 +467,7 @@ namespace SSTUTools
                 t2 = part.FindModelTransform(sn);
                 if (t1 == null || t2 == null)
                 {
-                    print("null transform found for solar panel pivot/suncather names names.. " + pn + " :: " + sn + " :: " + t1 + " ::" + t2);
+                    print("ERROR null transform found for solar panel pivot/suncather names names.. " + pn + " :: " + sn + " :: " + t1 + " ::" + t2);
                     continue;
                 }
                 pd = new PanelData();

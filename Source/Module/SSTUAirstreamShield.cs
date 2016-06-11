@@ -118,7 +118,7 @@ namespace SSTUTools
         {
             clearShieldedParts();
             findShieldedParts();
-            print("Updated shielding status, new shielded part count: " + partsShielded);
+            //print("SSTUAirstreamShield - Updated shielding status, new shielded part count: " + partsShielded);
         }
 
         private void clearShieldedParts()
@@ -149,12 +149,12 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 area = shieldedAreas[i];
-                if (area.useTopNode)
+                if (area.useTopNode)//TODO find the top-most node(s) by Y level
                 {
                     AttachNode node = part.findAttachNode("top");
                     if (node != null && node.attachedPart == null) { continue; }
                 }
-                if (area.useBottomNode)
+                if (area.useBottomNode)//TODO find the bottom-most node(s) by Y level
                 {
                     AttachNode node = part.findAttachNode("bottom");
                     if (node != null && node.attachedPart == null) { continue; }

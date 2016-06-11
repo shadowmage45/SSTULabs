@@ -160,7 +160,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("could not parse double value from: '" + val + "'\n" + e.Message);
+                MonoBehaviour.print("ERROR: could not parse double value from: '" + val + "'\n" + e.Message);
             }
             return returnVal;
         }
@@ -174,7 +174,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("could not parse bool value from : " + v+"\n" + e.Message);
+                MonoBehaviour.print("ERROR: could not parse bool value from : " + v+"\n" + e.Message);
             }
             return value;
         }
@@ -188,7 +188,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("could not parse float value from: '" + val + "'\n" + e.Message);
+                MonoBehaviour.print("ERROR: could not parse float value from: '" + val + "'\n" + e.Message);
             }
             return returnVal;
         }
@@ -202,7 +202,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("could not parse int value from: '" + val + "'\n" + e.Message);
+                MonoBehaviour.print("ERROR: could not parse int value from: '" + val + "'\n" + e.Message);
             }
             return returnVal;
         }
@@ -294,7 +294,6 @@ namespace SSTUTools
             foreach (Transform child in tr)
             {
                 if (child == null) { continue; }
-                MonoBehaviour.print("Destroying game object: " + child);
                 GameObject.Destroy(child.gameObject);
             }
         }
@@ -309,7 +308,6 @@ namespace SSTUTools
                 {
                     continue;
                 }
-                MonoBehaviour.print("Destroying game object (IMMEDIATE): " + child);
                 GameObject.DestroyImmediate(child.gameObject);
             }
         }
@@ -615,7 +613,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("Could not clone model by name: " + modelURL);
+                MonoBehaviour.print("ERROR: Could not clone model by name: " + modelURL+" no model exists for this URL.");
             }
             return clonedModel;
         }

@@ -11,8 +11,8 @@ namespace SSTUTools
         public static ConfigNode parseConfigNode(String input)
         {
             ConfigNode baseCfn = ConfigNode.Parse(input);
-            if (baseCfn == null) { MonoBehaviour.print("Base config node was null!!\n" + input); }
-            else if (baseCfn.nodes.Count <= 0) { MonoBehaviour.print("Base config node has no nodes!!\n" + input); }
+            if (baseCfn == null) { MonoBehaviour.print("ERROR: Base config node was null!!\n" + input); }
+            else if (baseCfn.nodes.Count <= 0) { MonoBehaviour.print("ERROR: Base config node has no nodes!!\n" + input); }
             return baseCfn.nodes[0];
         }
     }

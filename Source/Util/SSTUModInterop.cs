@@ -32,7 +32,7 @@ namespace SSTUTools
                 }
                 type.GetField("scale").SetValue(module, scale);
                 type.GetMethod("SetConfiguration").Invoke(module, new System.Object[] { config, true});
-                MonoBehaviour.print("Updated ModuleEngineConfigs configuration for part: " + part.name+ " for config name: "+config+" for scale: "+scale);
+                MonoBehaviour.print("SSTUModInterop: Updated ModuleEngineConfigs configuration for part: " + part.name+ " for config name: "+config+" for scale: "+scale);
             }
         }
 
@@ -54,6 +54,7 @@ namespace SSTUTools
 
         public static bool onPartFuelVolumeUpdate(Part part, float liters)
         {
+            updateKISPartVolume(part, liters);
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
             if (vc != null)
             {
@@ -81,7 +82,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("Config is for part: "+part+" is set to use RF/MFT, but neither RF nor MFT is installed, cannot update part volumes through them.  Please check your configs and/or patches for errors.");
+                MonoBehaviour.print("ERROR: Config is for part: "+part+" is set to use RF/MFT, but neither RF nor MFT is installed, cannot update part volumes through them.  Please check your configs and/or patches for errors.");
                 return false;
             }
             PartModule pm = (PartModule)part.GetComponent(moduleFuelTank);
@@ -96,7 +97,7 @@ namespace SSTUTools
             MethodInfo mi2 = moduleFuelTank.GetMethod("CalculateMass");
             mi2.Invoke(pm, new System.Object[] { });
             updatePartResourceDisplay(part);
-            String message = "SSTU - Set RF/MFT total tank volume to: " + volumeLiters + " Liters for part: " + part.name;
+            String message = "SSTUModInterop - Set RF/MFT total tank volume to: " + volumeLiters + " Liters for part: " + part.name;
             MonoBehaviour.print(message);
             return true;
         }
@@ -142,11 +143,10 @@ namespace SSTUTools
             return module != null;
         }
 
-        public static void onPartKISVolumeUpdated(Part part, float liters)
+        public static void onPartKISInventoryVolumeChanged(Part part, float liters)
         {
             if (!isKISInstalled())
             {
-                MonoBehaviour.print("KIS is not installed, cannot update KIS volume..");
                 return;
             }
             string typeName = "KIS.ModuleKISInventory,KIS";
@@ -168,6 +168,25 @@ namespace SSTUTools
             fi.SetValue(pm, liters);
             BaseEvent inventoryEvent = pm.Events["ShowInventory"];
             inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
+        }
+
+        public static void updateKISPartVolume(Part part, float volume)
+        {
+            if (true) { return; }//NOOP doesn't work, even if the part has the kis module; KIS is hard-coded to use prefab for most functionality
+            if (!isKISInstalled()) { return; }
+            string typeName = "KIS.ModuleKISItem,KIS";
+            Type kisModuleType = Type.GetType(typeName);
+            if (kisModuleType == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate KIS Item module for name: " + typeName);
+                return;
+            }
+            PartModule pm = (PartModule)part.GetComponent(kisModuleType);
+            if (pm != null)
+            {
+                FieldInfo fi = kisModuleType.GetField("volumeOverride");
+                fi.SetValue(pm, volume);
+            }
         }
 
         public static bool isFARInstalled()
@@ -237,7 +256,7 @@ namespace SSTUTools
             }
             catch (Exception e)
             {
-                MonoBehaviour.print("SSTU caught exception while updating part resource display: " + e.Message);
+                MonoBehaviour.print("ERROR: Caught exception while updating part resource display: " + e.Message);
             }
         }
                 

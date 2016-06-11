@@ -1041,7 +1041,6 @@ namespace SSTUTools
                     if (mountNode.GetBoolValue("remove", false))
                     {
                         globalMountOptions.Remove(name);
-                        MonoBehaviour.print("Removing mount:" + name + " from layout: " + layoutName);
                     }
                     else
                     {

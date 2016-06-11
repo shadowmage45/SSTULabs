@@ -844,7 +844,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("Could not update gimbal, no module found");
+                MonoBehaviour.print("ERROR: Could not update gimbal, no module found");
             }
         }
 

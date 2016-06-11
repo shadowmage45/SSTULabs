@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine;
 
 namespace SSTUTools
@@ -110,14 +109,14 @@ namespace SSTUTools
         
         private float techLimitMaxDiameter;
         
-        private SingleModelData[] mainTankModules;
-        private SingleModelData currentMainTankModule;
+        protected SingleModelData[] mainTankModules;
+        protected SingleModelData currentMainTankModule;
 
-        private MountModelData[] noseModules;
-        private MountModelData currentNoseModule;
+        protected MountModelData[] noseModules;
+        protected MountModelData currentNoseModule;
 
-        private MountModelData[] mountModules;
-        private MountModelData currentMountModule;
+        protected MountModelData[] mountModules;
+        protected MountModelData currentMountModule;
                 
         private String[] topNodeNames;
         private String[] bottomNodeNames;
@@ -125,7 +124,7 @@ namespace SSTUTools
         private string[] noseVariants;
         private string[] mountVariants;
 
-        private bool initialized = false;
+        protected bool initialized = false;
 
         #endregion
 
@@ -231,7 +230,7 @@ namespace SSTUTools
             Fields["currentTankVerticalScale"].guiActiveEditor = currentMainTankModule.minVerticalScale != 1 || currentMainTankModule.maxVerticalScale != 1;
         }
 
-        private void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
+        protected virtual void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
         {
             MountModelData newModule = Array.Find(noseModules, m => m.name == newNoseType);
             currentNoseModule.destroyCurrentModel();
@@ -253,7 +252,7 @@ namespace SSTUTools
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        private void setMainTankModuleFromEditor(String newMainTank, bool updateSymmetry)
+        protected virtual void setMainTankModuleFromEditor(String newMainTank, bool updateSymmetry)
         {
             SingleModelData newModule = Array.Find(mainTankModules, m => m.name == newMainTank);
             currentMainTankModule.destroyCurrentModel();
@@ -278,7 +277,7 @@ namespace SSTUTools
 
         }
 
-        private void setMountModuleFromEditor(String newMountType, bool updateSymmetry)
+        protected virtual void setMountModuleFromEditor(String newMountType, bool updateSymmetry)
         {
             MountModelData newModule = Array.Find(mountModules, m => m.name == newMountType);
             currentMountModule.destroyCurrentModel();
@@ -487,6 +486,8 @@ namespace SSTUTools
         /// <param name="ship"></param>
         public void onEditorVesselModified(ShipConstruct ship)
         {
+            // really we only care about parts being attached to the nodes on the mount/nose
+            // but have to update available variants regardless of whatever caused the editor event callback
             updateAvailableVariants();
         }
 
@@ -494,7 +495,7 @@ namespace SSTUTools
 
         #region REGION - Initialization
 
-        private void initialize()
+        protected virtual void initialize()
         {
             if (initialized) { return; }
             initialized = true;
@@ -712,7 +713,7 @@ namespace SSTUTools
             Fields["currentMountTexture"].guiActiveEditor = currentMountModule.modelDefinition.textureSets.Length > 1;
         }
 
-        private void updateAttachNodes(bool userInput)
+        protected virtual void updateAttachNodes(bool userInput)
         {
             currentNoseModule.updateAttachNodes(part, topNodeNames, userInput, ModelOrientation.TOP);
             currentMountModule.updateAttachNodes(part, bottomNodeNames, userInput, ModelOrientation.BOTTOM);
@@ -738,7 +739,7 @@ namespace SSTUTools
             }
         }
 
-        private void updateFairing()
+        protected virtual void updateFairing()
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing==null) { return; }
@@ -750,7 +751,7 @@ namespace SSTUTools
             fairing.updateExternal(data);
         }
 
-        private Transform getTankRootTransform(bool recreate)
+        protected Transform getTankRootTransform(bool recreate)
         {
             Transform root = part.transform.FindRecursive(rootTransformName);
             if (recreate && root!=null)
@@ -766,7 +767,7 @@ namespace SSTUTools
             return root;
         }
 
-        private Transform getNoseRootTransform(bool recreate)
+        protected Transform getNoseRootTransform(bool recreate)
         {
             Transform root = part.transform.FindRecursive(rootNoseTransformName);
             if (recreate && root != null)
@@ -782,7 +783,7 @@ namespace SSTUTools
             return root;
         }
 
-        private Transform getMountRootTransform(bool recreate)
+        protected Transform getMountRootTransform(bool recreate)
         {
             Transform root = part.transform.FindRecursive(rootMountTransformName);
             if (recreate && root != null)
@@ -799,16 +800,7 @@ namespace SSTUTools
         }
 
         #endregion ENDREGION - Updating methods
-
-        private SingleModelData getNextTankLength(SingleModelData currentModule, bool iterateBackwards)
-        {
-            return SSTUUtils.findNext(mainTankModules, m => m == currentModule, iterateBackwards);
-        }
-
-        private MountModelData getNextCap(MountModelData[] mounts, MountModelData currentMount, String[] nodeNames, bool iterateBackwards)
-        {
-            return SSTUUtils.findNextEligible<MountModelData>(mounts, m => m == currentMount, l => l.canSwitchTo(part, nodeNames), iterateBackwards);            
-        }      
+   
     }    
 }
 
