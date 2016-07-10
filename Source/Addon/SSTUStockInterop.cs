@@ -13,6 +13,7 @@ namespace SSTUTools
         private static List<Part> dragCubeUpdateParts = new List<Part>();
         private static List<Part> delayedUpdateDragCubeParts = new List<Part>();
         private static Dictionary<string, float> techLimitCache = new Dictionary<string, float>();
+        private static bool needsTechUpdate = true;
 
         private static bool fireEditorEvent = false;
 
@@ -25,6 +26,7 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(onGameLoad));
             GameEvents.onLevelWasLoadedGUIReady.Add(new EventData<GameScenes>.OnEvent(onSceneLoaded));
+            GameEvents.OnTechnologyResearched.Add(new EventData<GameEvents.HostTargetAction<RDTech, RDTech.OperationResult>>.OnEvent(onTechResearched));
         }
 
         public void OnDestroy()
@@ -32,26 +34,35 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Destroy");
             GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(onGameLoad));
             GameEvents.onLevelWasLoadedGUIReady.Remove(new EventData<GameScenes>.OnEvent(onSceneLoaded));
+            GameEvents.OnTechnologyResearched.Remove(new EventData<GameEvents.HostTargetAction<RDTech, RDTech.OperationResult>>.OnEvent(onTechResearched));
         }
 
         public void onSceneLoaded(GameScenes scene)
         {
             if (scene == GameScenes.SPACECENTER || scene==GameScenes.EDITOR || scene == GameScenes.FLIGHT)
             {
-                updateTechLimitCache();
+                MonoBehaviour.print("SSTU Flagging for tech-limit cache rebuild from scene change.");
+                needsTechUpdate = true;
             }
         }
 
         public void onGameLoad(ConfigNode node)
         {
-            techLimitCache.Clear();
+            MonoBehaviour.print("SSTU Flagging for tech-limit cache rebuild from game loaded.");
+            needsTechUpdate = true;
+        }
+
+        public void onTechResearched(GameEvents.HostTargetAction<RDTech, RDTech.OperationResult> input)
+        {
+            MonoBehaviour.print("SSTU Flagging for tech-limit cache rebuild from tech researched.");
+            needsTechUpdate = true;
         }
 
         public static void addDragUpdatePart(Part part)
-        {            
-            if(part!=null && HighLogic.LoadedSceneIsFlight && !dragCubeUpdateParts.Contains(part))
+        {
+            if(part != null && HighLogic.LoadedSceneIsFlight && !dragCubeUpdateParts.Contains(part))
             {
-                dragCubeUpdateParts.Add(part); 
+                dragCubeUpdateParts.Add(part);
             }          
         }
 
@@ -65,7 +76,7 @@ namespace SSTUTools
             int len = dragCubeUpdateParts.Count;
             if (len>0 && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
-                Part p;                
+                Part p;
                 for (int i = 0; i < len; i++)
                 {
                     p = dragCubeUpdateParts[i];
@@ -84,6 +95,20 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
             fireEditorEvent = false;
+            if (needsTechUpdate)
+            {
+                //MonoBehaviour.print("SSTU Checking for R&D for tech-limit cache rebuild.");
+                if (ResearchAndDevelopment.Instance != null)
+                {
+                    MonoBehaviour.print("SSTU rebuilding tech-limit cache");
+                    updateTechLimitCache();
+                    needsTechUpdate = false;
+                }
+                else
+                {
+                    //MonoBehaviour.print("R&D was null, cannot yet rebuild cache!");
+                }
+            }
         }
         
         public void ModuleManagerPostLoad()
@@ -172,8 +197,15 @@ namespace SSTUTools
         public static float getTechLimit(string name)
         {
             float limit = float.PositiveInfinity;
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return limit; }//for prefab parts....            
-            if (!techLimitCache.TryGetValue(name, out limit)) { return float.PositiveInfinity; }//for uninitialized cache or invalid key, return max value
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)//for prefab parts....
+            {
+                return limit;
+            }
+            if (!techLimitCache.TryGetValue(name, out limit)) //for uninitialized cache or invalid key, return max value
+            {
+                MonoBehaviour.print("ERROR: No R&D cache available for tech: " + name + "; returning infinite maximal bounds.");
+                return float.PositiveInfinity;
+            }
             return limit;
         }
 

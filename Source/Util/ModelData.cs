@@ -68,11 +68,12 @@ namespace SSTUTools
         public readonly float rcsHorizontalPosition = 0;
         public readonly float rcsVerticalRotation = 0;
         public readonly float rcsHorizontalRotation = 0;
+        public readonly SubModelData[] subModelData;
         public readonly AttachNodeBaseData[] attachNodeData;
         public readonly AttachNodeBaseData surfaceNode;
         public readonly String defaultTextureSet;
         public readonly ModelTextureSet[] textureSets;
-        
+
         public ModelDefinition(ConfigNode node)
         {
             configNode = node;
@@ -95,10 +96,18 @@ namespace SSTUTools
             rcsVerticalRotation = node.GetFloatValue("rcsVerticalRotation", rcsVerticalRotation);
             rcsHorizontalRotation = node.GetFloatValue("rcsHorizontalRotation", rcsHorizontalRotation);
 
+            ConfigNode[] subModelNodes = node.GetNodes("SUBMODEL");
+            int len = subModelNodes.Length;
+            subModelData = new SubModelData[len];
+            for (int i = 0; i < len; i++)
+            {
+                subModelData[i] = new SubModelData(subModelNodes[i]);
+            }
+
             defaultTextureSet = node.GetStringValue("defaultTextureSet");
 
             String[] attachNodeStrings = node.GetValues("node");
-            int len = attachNodeStrings.Length;
+            len = attachNodeStrings.Length;
             attachNodeData = new AttachNodeBaseData[len];
             for (int i = 0; i < len; i++)
             {
@@ -148,6 +157,49 @@ namespace SSTUTools
             return names;
         }
         
+    }
+
+    public class SubModelData
+    {
+        public readonly string modelURL;
+        public readonly string[] modelMeshes;
+        public readonly Vector3 rotation;
+        public readonly Vector3 position;
+        public SubModelData(ConfigNode node)
+        {
+            modelURL = node.GetStringValue("modelName");
+            modelMeshes = node.GetStringValues("transform");
+            position = node.GetVector3("position");
+            rotation = node.GetVector3("rotation");
+        }
+
+        public void setupSubmodel(GameObject modelRoot)
+        {
+            Transform[] trs = modelRoot.transform.GetAllChildren();
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (!isActiveMesh(trs[i].name))
+                {
+                    GameObject.DestroyImmediate(trs[i].gameObject);
+                }
+            }
+        }
+
+        private bool isActiveMesh(string transformName)
+        {
+            int len = modelMeshes.Length;
+            bool found = false;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelMeshes[i] == transformName)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
+        }
     }
 
     public class ModelTextureSet
@@ -415,36 +467,13 @@ namespace SSTUTools
 
         public void setupModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
         {
-            String modelName = modelDefinition.modelName;
-            if (String.IsNullOrEmpty(modelName))//no model to setup
+            if (modelDefinition.subModelData.Length <= 0)
             {
-                return;
-            }
-            if (reUse)
-            {
-                Transform tr = part.transform.FindModel(modelDefinition.modelName);
-                if (tr != null)
-                {
-                    tr.name = modelDefinition.modelName;
-                    tr.gameObject.name = modelDefinition.modelName;
-                }
-                model = tr == null ? null : tr.gameObject;
-            }
-            if (!String.IsNullOrEmpty(modelName) && model==null)
-            {
-                model = SSTUUtils.cloneModel(modelName);                
-            }
-            if (model != null)
-            {
-                model.transform.NestToParent(parent);
-                if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
-                {
-                    model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
-                }
+                constructSingleModel(part, parent, orientation, reUse);
             }
             else
             {
-                MonoBehaviour.print("ERROR: Could not locate model for name: " + modelName);
+                constructSubModels(part, parent, orientation, reUse);
             }
         }
 
@@ -474,6 +503,97 @@ namespace SSTUTools
                 datas[i] = new SingleModelData(modelNodes[i]);
             }
             return datas;
+        }
+
+        private void constructSingleModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        {
+            String modelName = modelDefinition.modelName;
+            if (String.IsNullOrEmpty(modelName))//no model to setup
+            {
+                return;
+            }
+            if (reUse)
+            {
+                Transform tr = part.transform.FindModel(modelDefinition.modelName);
+                if (tr != null)
+                {
+                    tr.name = modelDefinition.modelName;
+                    tr.gameObject.name = modelDefinition.modelName;
+                }
+                model = tr == null ? null : tr.gameObject;
+            }
+            if (!String.IsNullOrEmpty(modelName) && model == null)
+            {
+                model = SSTUUtils.cloneModel(modelName);
+            }
+            if (model != null)
+            {
+                model.transform.NestToParent(parent);
+                if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
+                {
+                    model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
+                }
+            }
+            else
+            {
+                MonoBehaviour.print("ERROR: Could not locate model for name: " + modelName);
+            }
+        }
+
+        private void constructSubModels(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        {        
+            String modelName = modelDefinition.modelName;
+            if (String.IsNullOrEmpty(modelName))//no model name given, log user-error for them to correct
+            {
+                MonoBehaviour.print("ERROR: Could not setup sub-models for ModelDefinition: " + modelDefinition.name + " as no modelName was specified to use as the root transform.");
+                MonoBehaviour.print("Please add a modelName to this model definition to enable sub-model creation.");
+                return;
+            }
+            //attempt to re-use the model if it is already present on the part
+            if (reUse)
+            {
+                Transform tr = part.transform.FindModel(modelDefinition.modelName);
+                if (tr != null)
+                {
+                    tr.name = modelDefinition.modelName;
+                    tr.gameObject.name = modelDefinition.modelName;
+                }
+                model = tr == null ? null : tr.gameObject;
+            }
+            //not re-used, recreate it entirely from the sub-model data
+            if (model == null)
+            {
+                //create a new GO at 0,0,0 with default orientation and the given model name
+                //this will be the 'parent' for sub-model creation
+                model = new GameObject(modelName);
+                
+                SubModelData[] smds = modelDefinition.subModelData;
+                SubModelData smd;
+                GameObject clonedModel;
+                int len = smds.Length;
+                //add sub-models to the base model transform
+                for (int i = 0; i < len; i++)
+                {
+                    smd = smds[i];
+                    clonedModel = SSTUUtils.cloneModel(smd.modelURL);
+                    if (clonedModel == null) { continue;}//TODO log error
+                    clonedModel.transform.NestToParent(model.transform);
+                    clonedModel.transform.localRotation = Quaternion.Euler(smd.rotation);
+                    clonedModel.transform.localPosition = smd.position;
+                    //de-activate any non-active sub-model transforms
+                    //iterate through all transforms for the model and deactivate(destroy?) any not on the active mesh list
+                    if (smd.modelMeshes.Length > 0)
+                    {
+                        smd.setupSubmodel(clonedModel);
+                    }                    
+                }
+            }
+            //regardless of if it was new or re-used, reset its position and orientation
+            model.transform.NestToParent(parent);
+            if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
+            {
+                model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
+            }
         }
     }
 

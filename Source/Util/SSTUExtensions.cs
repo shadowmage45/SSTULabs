@@ -312,6 +312,23 @@ namespace SSTUTools
             return newGO.transform;
         }
 
+        public static Transform[] GetAllChildren(this Transform transform)
+        {
+            List<Transform> trs = new List<Transform>();
+            recurseAddChildren(transform, trs);
+            return trs.ToArray();
+        }
+
+        private static void recurseAddChildren(Transform transform, List<Transform> trs)
+        {
+            int len = transform.childCount;
+            foreach (Transform child in transform)
+            {
+                trs.Add(child);
+                recurseAddChildren(child, trs);
+            }
+        }
+
         #endregion
 
         #region Vector3 extensionMethods
@@ -532,6 +549,8 @@ namespace SSTUTools
 
         #endregion
 
+        #region Generic extension and Utiltiy methods
+
         public static String Print(this FloatCurve curve)
         {
             String output = "";
@@ -551,6 +570,8 @@ namespace SSTUTools
         {
             MonoBehaviour.print("SSTU-ERROR: " + message);
         }
+
+        #endregion
     }
 }
 
