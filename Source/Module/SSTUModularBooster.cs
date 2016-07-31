@@ -141,11 +141,11 @@ namespace SSTUTools
         private string prevBody;
         private string prevNozzle;
                 
-        private MountModelData[] noseModules;
+        private SingleModelData[] noseModules;
         private SRBNozzleData[] nozzleModules;
         private SRBModelData[] mainModules;
 
-        private MountModelData currentNoseModule;
+        private SingleModelData currentNoseModule;
         private SRBNozzleData currentNozzleModule;
         private SRBModelData currentMainModule;
         
@@ -298,7 +298,7 @@ namespace SSTUTools
             {
                 currentMainModule.destroyCurrentModel();
                 currentMainModule = mod;
-                currentMainModule.setupModel(part, part.transform.FindRecursive(baseTransformName), ModelOrientation.CENTRAL);
+                currentMainModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.CENTRAL);
                 currentMainName = currentMainModule.name;
             }
             if (!currentMainModule.isValidTextureSet(currentMainTexture))
@@ -332,11 +332,11 @@ namespace SSTUTools
         /// <param name="updateSymmetry"></param>
         private void updateNoseFromEditor(String newNose, bool updateSymmetry)
         {
-            MountModelData mod = Array.Find(noseModules, m => m.name == newNose);
+            SingleModelData mod = Array.Find(noseModules, m => m.name == newNose);
             if (mod != null && mod != currentNoseModule)
             {
                 currentNoseModule.destroyCurrentModel();
-                mod.setupModel(part, part.transform.FindRecursive(baseTransformName), ModelOrientation.TOP);
+                mod.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.TOP);
                 currentNoseModule = mod;
                 currentNoseName = currentNoseModule.name;
             }
@@ -378,7 +378,7 @@ namespace SSTUTools
 
                 currentNozzleModule.destroyCurrentModel();
                 currentNozzleModule = mod;
-                currentNozzleModule.setupModel(part, part.transform.FindRecursive(baseTransformName), ModelOrientation.BOTTOM);
+                currentNozzleModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.BOTTOM);
                 currentNozzleName = currentNozzleModule.name;
                 currentGimbalOffset = 0;                
             }
@@ -658,11 +658,11 @@ namespace SSTUTools
             ConfigNode[] noseNodes = node.GetNodes("NOSE");
             ConfigNode noseNode;
             int length = noseNodes.Length;
-            List<MountModelData> noseModulesTemp = new List<MountModelData>();
+            List<SingleModelData> noseModulesTemp = new List<SingleModelData>();
             for (int i = 0; i < length; i++)
             {
                 noseNode = noseNodes[i];
-                noseModulesTemp.Add(new MountModelData(noseNode));
+                noseModulesTemp.Add(new SingleModelData(noseNode));
             }
             this.noseModules = noseModulesTemp.ToArray();
             currentNoseModule = Array.Find(this.noseModules, m => m.name == currentNoseName);
@@ -703,9 +703,9 @@ namespace SSTUTools
             Transform parentTransform = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
             //finally, clear any existing models from prefab, and initialize the currently configured models
             SSTUUtils.destroyChildren(parentTransform);
-            currentNoseModule.setupModel(part, parentTransform, ModelOrientation.TOP);
-            currentNozzleModule.setupModel(part, parentTransform, ModelOrientation.BOTTOM);
-            currentMainModule.setupModel(part, parentTransform, ModelOrientation.CENTRAL);
+            currentNoseModule.setupModel(parentTransform, ModelOrientation.TOP);
+            currentNozzleModule.setupModel(parentTransform, ModelOrientation.BOTTOM);
+            currentMainModule.setupModel(parentTransform, ModelOrientation.CENTRAL);
             //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
             currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
 
@@ -1081,7 +1081,7 @@ namespace SSTUTools
     /// <summary>
     /// Data for an srb nozzle, including gimbal adjustment data and ISP curve adjustment.
     /// </summary>
-    public class SRBNozzleData : MountModelData
+    public class SRBNozzleData : SingleModelData
     {        
         public readonly String thrustTransformName;
         public readonly String gimbalTransformName;

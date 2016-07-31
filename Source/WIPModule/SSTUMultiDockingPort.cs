@@ -1,26 +1,40 @@
-using System;
+using UnityEngine;
+
 namespace SSTUTools
 {
-    public class SSTUMultiDockingPort : ModuleDockingNode
+    public class SSTUMultiDockingPort : PartModule
     {
         [KSPField]
-        public string portName = "Port 0";
+        public string portName = "Port 1";
 
-        public override void OnStart(StartState st)
+        [KSPField]
+        public int dockingModuleIndex = 0;
+
+        public void Start()
         {
-            base.OnStart(st);
-            //rename events to use specified name from config
-            Events["Undock"].guiName = "Undock " + portName;
-            Events["UndockSameVessel"].guiName = "Undock" + portName;
-            Events["Decouple"].guiName = "Decouple " + portName;
+            ModuleDockingNode[] dockModules = part.GetComponents<ModuleDockingNode>();
+            if (dockingModuleIndex >= dockModules.Length)
+            {
+                MonoBehaviour.print("ERROR: Could not locate docking port by index: " + dockingModuleIndex + " only found: " + dockModules.Length + " docking modules on part.  Please check your part configuration for errors.");
+                return;
+            }
+            ModuleDockingNode dockModule = dockModules[dockingModuleIndex];
+            updateDockingModuleFieldNames(dockModule, portName);
+        }
 
-            Events["SetAsTarget"].guiName = "Set " + portName + " as Target";
-            Events["MakeReferenceTransform"].guiName = "Control from " + portName;
+        public static void updateDockingModuleFieldNames(ModuleDockingNode dockModule, string portName)
+        {
+            dockModule.Events["Undock"].guiName = "Undock " + portName;
+            dockModule.Events["UndockSameVessel"].guiName = "Undock" + portName;
+            dockModule.Events["Decouple"].guiName = "Decouple " + portName;
 
-            Events["DisableXFeed"].guiName = "Disable " + portName + " Crossfeed";
-            Events["EnableXFeed"].guiName = "Enable " + portName + " Crossfeed";
+            dockModule.Events["SetAsTarget"].guiName = "Set " + portName + " as Target";
+            dockModule.Events["MakeReferenceTransform"].guiName = "Control from " + portName;
 
-            Actions["DecoupleAction"].guiName = "Decouple " + portName;
+            dockModule.Events["DisableXFeed"].guiName = "Disable " + portName + " Crossfeed";
+            dockModule.Events["EnableXFeed"].guiName = "Enable " + portName + " Crossfeed";
+
+            dockModule.Actions["DecoupleAction"].guiName = "Decouple " + portName;
         }
     }
 }

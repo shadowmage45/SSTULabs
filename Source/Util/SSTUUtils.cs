@@ -323,17 +323,17 @@ namespace SSTUTools
 
         public static void recursePrintComponents(GameObject go, String prefix)
         {
-            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " :: " +go.activeInHierarchy);
             int childCount = go.transform.childCount;
             Component[] comps = go.GetComponents<Component>();
+            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " inHierarchy: " +go.activeInHierarchy+" children: "+childCount+" components: "+comps.Length + " position: "+go.transform.position+" scale: "+go.transform.localScale);
             foreach (Component comp in comps)
             {
-                MonoBehaviour.print("Found Component : " + prefix + "* " + comp.GetType());
+                MonoBehaviour.print("Found Component : " + prefix + "* " + comp);
             }
-
-            for (int i = 0; i < childCount; i++)
+            Transform t = go.transform;
+            foreach (Transform child in t)
             {
-                recursePrintComponents(go.transform.GetChild(i).gameObject, prefix + "  ");
+                recursePrintComponents(child.gameObject, prefix + "  ");
             }
         }
 

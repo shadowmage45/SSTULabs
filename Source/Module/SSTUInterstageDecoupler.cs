@@ -100,7 +100,7 @@ namespace SSTUTools.Module
 
         [KSPField]
         public string fuelPreset = "Solid";
-                
+
         [KSPField(isPersistant =true, guiName = "Transparency", guiActiveEditor = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool editorTransparency = true;
 
@@ -239,7 +239,7 @@ namespace SSTUTools.Module
                 setTaperHeightFromEditor(currentTaperHeight, true);
             }
         }
-        
+
         public void onTransparencyUpdated(BaseField field, object obj)
         {
             fairingBase.setOpacity(editorTransparency ? 0.25f : 1);

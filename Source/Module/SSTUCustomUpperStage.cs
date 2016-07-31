@@ -228,8 +228,8 @@ namespace SSTUTools
         private SingleModelData lowerBottomCapModule;        
         //mount and RCS are present for every part
         private SSTUCustomUpperStageRCS rcsModule;
-        private MountModelData[] mountModules;
-        private MountModelData currentMountModule;
+        private SingleModelData[] mountModules;
+        private SingleModelData currentMountModule;
 
         private bool initialized = false;
         #endregion
@@ -653,10 +653,10 @@ namespace SSTUTools
 
             //load mount configs
             int len = mountNodes.Length;
-            mountModules = new MountModelData[len];
+            mountModules = new SingleModelData[len];
             for (int i = 0; i < len; i++)
             {
-                mountModules[i] = new MountModelData(mountNodes[i]);
+                mountModules[i] = new SingleModelData(mountNodes[i]);
             }
             currentMountModule = Array.Find(mountModules, l => l.name == currentMount);
             if (!currentMountModule.isValidTextureSet(currentMountTexture))
@@ -914,7 +914,7 @@ namespace SSTUTools
                 if (currentIntertankModule.name != defaultIntertank)
                 {
                     SingleModelData dim = Array.Find<SingleModelData>(intertankModules, l => l.name == defaultIntertank);
-                    dim.setupModel(part, modelBase, ModelOrientation.CENTRAL);
+                    dim.setupModel(modelBase, ModelOrientation.CENTRAL);
                     removeCurrentModel(dim);
                 }                
                 setupModel(currentIntertankModule, modelBase, ModelOrientation.CENTRAL);
@@ -924,8 +924,8 @@ namespace SSTUTools
             }
             if (currentMountModule.name != defaultMount)
             {
-                MountModelData dmm = Array.Find<MountModelData>(mountModules, l => l.name == defaultMount);
-                dmm.setupModel(part, modelBase, ModelOrientation.BOTTOM);
+                SingleModelData dmm = Array.Find<SingleModelData>(mountModules, l => l.name == defaultMount);
+                dmm.setupModel(modelBase, ModelOrientation.BOTTOM);
                 removeCurrentModel(dmm);
             }
 
@@ -940,7 +940,7 @@ namespace SSTUTools
         /// <returns></returns>
         private void setupModel(ModelData model, Transform parent, ModelOrientation orientation)
         {
-            model.setupModel(part, parent, orientation);
+            model.setupModel(parent, orientation);
         }
 
         /// <summary>
@@ -1104,10 +1104,10 @@ namespace SSTUTools
             modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
         }
         
-        public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
+        public override void setupModel(Transform parent, ModelOrientation orientation)
         {
             models = new GameObject[4];
-            Transform[] trs = part.transform.FindChildren(modelDefinition.modelName);
+            Transform[] trs = parent.FindChildren(modelDefinition.modelName);
             if (trs != null && trs.Length>0)
             {
                 for (int i = 0; i < 4; i++)

@@ -1,6 +1,4 @@
 using System;
-using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace SSTUTools
@@ -8,7 +6,9 @@ namespace SSTUTools
 
     //Multi-panel solar panel module, each with own suncatcher and pivot and occlusion checks
     //Animation code based from stock, Near-Future, and Firespitter code
-    //Solar panel code based from stock code
+    //Solar panel code based from Near-Future code originally, but has been vastly changed since the original implementation
+    //solar pivots rotate around localY, to make localZ face the sun
+    //e.g. y+ should point towards origin, z+ should point towards the panel solar input direction
     public class SSTUSolarPanelDeployable : PartModule
     {
         //panel state enum, each represents a discrete state
@@ -21,11 +21,16 @@ namespace SSTUTools
             BROKEN,
         }
 
-        private class PanelData
+        private class PivotData
         {
             public Transform pivotTransform;
-            public Transform rayCastTransform;
             public Quaternion defaultOrientation;
+        }
+
+        private class SuncatcherData
+        {
+            public Transform suncatcherTransform;
+            float energyGeneration;
         }
 
         //config field, should contain CSV of transform names for ray cast checks
@@ -35,6 +40,9 @@ namespace SSTUTools
         //config field, should contain CSV of pivot names for panels
         [KSPField]
         public String pivotTransforms = String.Empty;
+
+        [KSPField]
+        public String secondaryPivotTransforms = String.Empty;
 
         [KSPField]
         public String windBreakTransformName = String.Empty;
@@ -74,9 +82,6 @@ namespace SSTUTools
         [KSPField(guiName = "S.P.", guiActive = true)]
         public String guiStatus = String.Empty;
 
-        //list of panel data (pivot and ray transform, and cached angles/etc needed for each)
-        private List<PanelData> panelData = new List<PanelData>();
-
         //current state of this solar panel module
         private SSTUPanelState panelState = SSTUPanelState.RETRACTED;
 
@@ -88,6 +93,10 @@ namespace SSTUTools
         private Transform sunTransform;
 
         private Transform windBreakTransform;
+
+        private PivotData[] pivotData;
+        private PivotData[] secondaryPivotData;
+        private SuncatcherData[] suncatcherData;
 
         private SSTUAnimateControlled animationController;
 
@@ -191,6 +200,11 @@ namespace SSTUTools
             updateGuiData();
         }
 
+        public void reInitialize()
+        {
+            OnStart(StartState.Flying);
+        }
+
         public void onAnimationStatusChanged(AnimState state)
         {
             if (state == AnimState.STOPPED_END)
@@ -262,9 +276,9 @@ namespace SSTUTools
             if (percent > 1) { percent = 1; }
             if (percent < 0) { percent = 0; }
 
-            foreach (PanelData data in panelData)
+            foreach (PivotData data in pivotData)
             {
-                data.pivotTransform.localRotation = Quaternion.Lerp(data.pivotTransform.localRotation, data.defaultOrientation, percent);
+                data.pivotTransform.localRotation = Quaternion.Lerp(data.pivotTransform.localRotation, data.defaultOrientation, percent);               
             }
 
             retractLerp -= fixedTick;
@@ -283,10 +297,20 @@ namespace SSTUTools
             occluderName = String.Empty;
             CelestialBody sun = FlightGlobals.Bodies[0];
             sunTransform = sun.transform;
-            foreach (PanelData pd in panelData)
+            int len = pivotData.Length;
+            for (int i = 0; i < len; i++)
             {
-                updatePanelRotation(pd);
-                updatePanelPower(pd);
+                updatePivotRotation(pivotData[i]);
+            }
+            len = secondaryPivotData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                updatePivotRotation(secondaryPivotData[i]);
+            }
+            len = suncatcherData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                updatePanelPower(suncatcherData[i]);
             }
             if (energyFlow > 0)
             {
@@ -294,33 +318,27 @@ namespace SSTUTools
             }
         }
         
-        private void updatePanelRotation(PanelData pd)
+        private void updatePivotRotation(PivotData pd)
         {
             if (vessel.solarFlux > 0)
             {
                 //vector from pivot to sun
                 Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
-
                 //finding angle to turn towards based on direction of vector on a single axis
                 float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));// * 57.29578f;
-
                 //lerp towards destination rotation by trackingSpeed amount		
                 Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
                 pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
             }
-            else
-            {
-
-            }
         }
 
-        private void updatePanelPower(PanelData pd)
+        private void updatePanelPower(SuncatcherData pd)
         {
-            if (!isOccludedByPart(pd.rayCastTransform))
+            if (!isOccludedByPart(pd.suncatcherTransform))
             {
-                Vector3 normalized = (sunTransform.position - pd.rayCastTransform.position).normalized;
+                Vector3 normalized = (sunTransform.position - pd.suncatcherTransform.position).normalized;
 
-                float sunAOA = Mathf.Clamp(Vector3.Dot(pd.rayCastTransform.forward, normalized), 0f, 1f);
+                float sunAOA = Mathf.Clamp(Vector3.Dot(pd.suncatcherTransform.forward, normalized), 0f, 1f);
                 float distMult = (float)(vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
 
                 if (distMult == 0 && FlightGlobals.currentMainBody != null)//vessel.solarFlux == 0, so occluded by a planetary body
@@ -398,9 +416,15 @@ namespace SSTUTools
                         
         private void setPanelsToDefaultOrientation()
         {
-            foreach (PanelData panel in panelData)
+            int len = pivotData.Length;
+            for (int i = 0; i < len; i++)
             {
-                panel.pivotTransform.localRotation = panel.defaultOrientation;
+                pivotData[i].pivotTransform.localRotation = pivotData[i].defaultOrientation;
+            }
+            len = secondaryPivotData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                secondaryPivotData[i].pivotTransform.localRotation = secondaryPivotData[i].defaultOrientation;
             }
         }
 
@@ -429,54 +453,86 @@ namespace SSTUTools
 
         private void breakPanels()
         {
-            foreach (PanelData pd in panelData)
+            int len = pivotData.Length;
+            for (int i = 0; i < len; i++)
             {
-                SSTUUtils.enableRenderRecursive(pd.pivotTransform, false);
+                SSTUUtils.enableRenderRecursive(pivotData[i].pivotTransform, false);
             }
         }
 
         private void repairPanels()
         {
-            foreach (PanelData pd in panelData)
+            int len = pivotData.Length;
+            for (int i = 0; i < len; i++)
             {
-                SSTUUtils.enableRenderRecursive(pd.pivotTransform, true);
+                SSTUUtils.enableRenderRecursive(pivotData[i].pivotTransform, true);
             }
         }
         
         private void findTransforms()
         {
-            panelData.Clear();
-            String[] suncatcherNames = rayTransforms.Split(',');
-            String[] pivotNames = pivotTransforms.Split(',');
+            String[] suncatcherNames = SSTUUtils.parseCSV(rayTransforms);
+            String[] pivotNames = SSTUUtils.parseCSV(pivotTransforms);
+            String[] secPivotNames = SSTUUtils.parseCSV(secondaryPivotTransforms);
 
-            if (pivotNames.Length != suncatcherNames.Length)
-            {
-                print("ERROR: pivot and suncatcher names length not equal");
-                return;
-            }
+            PivotData pd;
+            SuncatcherData sd;
+            int len2;
+            Transform[] trs;
+            String name;
 
-            PanelData pd;
-            String pn, sn;
-            Transform t1, t2;
-            int length = pivotNames.Length;//lists -should- be the same size, or there will be problems
-            for (int i = 0; i < length; i++)
+            List<PivotData> tempPivotData = new List<PivotData>();
+            int len = pivotNames.Length;
+            for (int i = 0; i < len; i++)
             {
-                pn = pivotNames[i].Trim();
-                sn = suncatcherNames[i].Trim();
-                t1 = part.FindModelTransform(pn);
-                t2 = part.FindModelTransform(sn);
-                if (t1 == null || t2 == null)
+                name = pivotNames[i];
+                trs = part.transform.FindChildren(name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
                 {
-                    print("ERROR null transform found for solar panel pivot/suncather names names.. " + pn + " :: " + sn + " :: " + t1 + " ::" + t2);
-                    continue;
+                    pd = new PivotData();
+                    pd.pivotTransform = trs[k];
+                    pd.defaultOrientation = pd.pivotTransform.localRotation;
+                    tempPivotData.Add(pd);
                 }
-                pd = new PanelData();
-                pd.pivotTransform = t1;
-                pd.rayCastTransform = t2;
-                pd.defaultOrientation = pd.pivotTransform.localRotation;
-                panelData.Add(pd);
             }
+            pivotData = tempPivotData.ToArray();
+            tempPivotData.Clear();
 
+            len = secPivotNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                name = secPivotNames[i];
+                trs = part.transform.FindChildren(name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    pd = new PivotData();
+                    pd.pivotTransform = trs[k];
+                    pd.defaultOrientation = pd.pivotTransform.localRotation;
+                    tempPivotData.Add(pd);
+                }
+            }
+            secondaryPivotData = tempPivotData.ToArray();
+            tempPivotData.Clear();
+
+            List<SuncatcherData> tempSunData = new List<SuncatcherData>();
+            len = suncatcherNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                name = suncatcherNames[i];
+                trs = part.transform.FindChildren(name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    sd = new SuncatcherData();
+                    sd.suncatcherTransform = trs[k];
+                    tempSunData.Add(sd);
+                }
+            }
+            suncatcherData = tempSunData.ToArray();
+
+            Transform t1;
             if (windBreakTransformName != null && windBreakTransformName.Length > 0)
             {
                 t1 = part.FindModelTransform(windBreakTransformName);
@@ -485,17 +541,23 @@ namespace SSTUTools
                     windBreakTransform = t1;
                 }
             }
-            if (windBreakTransform == null && panelData.Count > 0)
+            if (windBreakTransform == null && pivotData.Length > 0)
             {
-                windBreakTransform = panelData[0].pivotTransform;
+                windBreakTransform = pivotData[0].pivotTransform;
             }//else it will use default vessel transform
         }
 
         private void setupDefaultRotations()
         {
-            foreach (PanelData data in panelData)
+            int len = pivotData.Length;
+            for (int i = 0; i < len; i++)
             {
-                data.defaultOrientation = data.pivotTransform.localRotation;
+                pivotData[i].defaultOrientation = pivotData[i].pivotTransform.localRotation;
+            }
+            len = secondaryPivotData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                secondaryPivotData[i].defaultOrientation = secondaryPivotData[i].pivotTransform.localRotation;
             }
         }
         

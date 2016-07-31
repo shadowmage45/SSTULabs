@@ -2,7 +2,7 @@ using UnityEngine;
 using System;
 namespace SSTUTools
 {
-    public class SSTUProceduralDecoupler : ModuleDecouple, IPartCostModifier, IPartMassModifier
+    public class SSTUProceduralDecoupler : PartModule, IPartCostModifier, IPartMassModifier
     {
         #region fields
                 
@@ -250,8 +250,6 @@ namespace SSTUTools
             this.updateUIFloatEditControl("thickness", minThickness, maxThickness, thicknessIncrement*2f, thicknessIncrement, thicknessIncrement*0.05f, true, thickness);
             updateEditorFields();
             prepModel();
-            Fields["ejectionForce"].guiName = "Ejection Force";
-            Fields["ejectionForce"].guiActiveEditor = true;
             Fields["height"].uiControlEditor.onFieldChanged = onHeightUpdated;
             Fields["diameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["thickness"].uiControlEditor.onFieldChanged = onThicknessUpdated;
@@ -300,8 +298,14 @@ namespace SSTUTools
         {
             return -defaultMass + modifiedMass;
         }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public void Start()
+        {
+            updateDecouplerForce();
+        }
 
         #endregion
 
@@ -397,7 +401,13 @@ namespace SSTUTools
     
         private void updateDecouplerForce()
         {
-            ejectionForce = forcePerKg * (modifiedMass * 1000f);
+            ModuleDecouple dc = part.GetComponent<ModuleDecouple>();
+            if (dc != null)
+            {
+                dc.ejectionForce = forcePerKg * (modifiedMass * 1000f);
+                dc.Fields["ejectionForce"].guiName = "Ejection Force";
+                dc.Fields["ejectionForce"].guiActiveEditor = true;
+            }
         }
 
         #endregion

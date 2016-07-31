@@ -90,7 +90,7 @@ namespace SSTUTools
             invertForBottom = node.GetBoolValue("invertForBottom", invertForBottom);
 
             fairingDisabled = node.GetBoolValue("fairingDisabled", fairingDisabled);
-            fairingTopOffset = node.GetFloatValue("fairingTopOffset");
+            fairingTopOffset = node.GetFloatValue("fairingTopOffset", fairingTopOffset);
             rcsVerticalPosition = node.GetFloatValue("rcsVerticalPosition", rcsVerticalPosition);
             rcsHorizontalPosition = node.GetFloatValue("rcsHorizontalPosition", rcsHorizontalPosition);
             rcsVerticalRotation = node.GetFloatValue("rcsVerticalRotation", rcsVerticalRotation);
@@ -163,14 +163,18 @@ namespace SSTUTools
     {
         public readonly string modelURL;
         public readonly string[] modelMeshes;
+        public readonly string parent;
         public readonly Vector3 rotation;
         public readonly Vector3 position;
+        public readonly Vector3 scale;
         public SubModelData(ConfigNode node)
         {
             modelURL = node.GetStringValue("modelName");
             modelMeshes = node.GetStringValues("transform");
-            position = node.GetVector3("position");
-            rotation = node.GetVector3("rotation");
+            parent = node.GetStringValue("parent", string.Empty);
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
         }
 
         public void setupSubmodel(GameObject modelRoot)
@@ -277,12 +281,15 @@ namespace SSTUTools
     {
         public ModelDefinition modelDefinition;
         public readonly String name;
+        public readonly float baseScale = 1f;
 
         public float volume;
+        public float mass;
+        public float cost;
         public float minVerticalScale;
         public float maxVerticalScale;
-        public float currentDiameterScale;
-        public float currentHeightScale;
+        public float currentDiameterScale = 1f;
+        public float currentHeightScale = 1f;
         public float currentDiameter;
         public float currentHeight;
         public float currentVerticalPosition;
@@ -295,16 +302,29 @@ namespace SSTUTools
             {
                 MonoBehaviour.print("ERROR: Could not locate model data for name: " + name);
             }
+            currentDiameter = modelDefinition.diameter;
+            currentHeight = modelDefinition.height;
             volume = node.GetFloatValue("volume", modelDefinition.volume);
+            mass = node.GetFloatValue("mass", modelDefinition.mass);
+            cost = node.GetFloatValue("cost", modelDefinition.cost);
             minVerticalScale = node.GetFloatValue("minVerticalScale", 1f);
             maxVerticalScale = node.GetFloatValue("maxVerticalScale", 1f);
+            baseScale = node.GetFloatValue("scale",  baseScale);
         }
 
-        public String getNextTextureSetName(String currentSetName, bool iterateBackwards)
+        public ModelData(String name)
         {
-            ModelTextureSet set = SSTUUtils.findNext(modelDefinition.textureSets, m => m.name == currentSetName, iterateBackwards);
-            String newSetName = set==null ? "none" : set.name;
-            return newSetName;
+            this.name = name;
+            modelDefinition = SSTUModelData.getModelDefinition(name);
+            if (modelDefinition == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate model definition data for name: " + name);
+            }
+            currentDiameter = modelDefinition.diameter;
+            currentHeight = modelDefinition.height;
+            volume = modelDefinition.volume;
+            mass = modelDefinition.mass;
+            cost = modelDefinition.cost;
         }
 
         public bool isValidTextureSet(String val)
@@ -371,13 +391,20 @@ namespace SSTUTools
             return modelDefinition.configNode.HasNode("ANIMATION");
         }
 
+        /// <summary>
+        /// Updates the input texture-control text field with the texture-set names for this model.  Disables field if no texture sets found, enables field if more than one texture set is available.
+        /// </summary>
+        /// <param name="module"></param>
+        /// <param name="fieldName"></param>
+        /// <param name="currentTexture"></param>
         public virtual void updateTextureUIControl(PartModule module, string fieldName, string currentTexture)
         {
             string[] names = modelDefinition.getTextureSetNames();
             module.updateUIChooseOptionControl(fieldName, names, names, true, currentTexture);
+            module.Fields[fieldName].guiActiveEditor = names.Length > 1;
         }
 
-        public virtual void setupModel(Part part, Transform parent, ModelOrientation orientation)
+        public virtual void setupModel(Transform parent, ModelOrientation orientation)
         {
             throw new NotImplementedException();
         }
@@ -394,17 +421,46 @@ namespace SSTUTools
 
         public virtual float getModuleVolume()
         {            
-            return currentDiameterScale * currentDiameterScale * currentHeightScale * volume;
+            return currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * volume;
         }
 
         public virtual float getModuleMass()
         {
-            return modelDefinition.mass * currentDiameterScale * currentDiameterScale * currentHeightScale;
+            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale;
         }
 
         public virtual float getModuleCost()
         {
-            return modelDefinition.cost * currentDiameterScale * currentDiameterScale * currentHeightScale;
+            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale;
+        }
+
+        public float getVerticalOffset()
+        {
+            return currentHeightScale * baseScale * modelDefinition.verticalOffset;
+        }
+
+        /// <summary>
+        /// Updates the internal position reference for the input position
+        /// Includes offsetting for the models offset; the input position should be the desired location
+        /// of the bottom of the model.
+        /// </summary>
+        /// <param name="positionOfBottomOfModel"></param>
+        public void setPosition(float positionOfBottomOfModel, ModelOrientation orientation = ModelOrientation.TOP)
+        {
+            float offset = getVerticalOffset();
+            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            currentVerticalPosition = positionOfBottomOfModel + offset;
+        }
+
+        public static string[] getModelNames(ModelData[] data)
+        {
+            int len = data.Length;
+            string[] vals = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                vals[i] = data[i].name;
+            }
+            return vals;
         }
     }
     
@@ -413,11 +469,15 @@ namespace SSTUTools
     /// </summary>
     public class SingleModelData : ModelData
     {
+
         public GameObject model;
 
         public SingleModelData(ConfigNode node) : base(node)
         {
+        }
 
+        public SingleModelData(String name) : base(name)
+        {
         }
 
         /// <summary>
@@ -460,20 +520,20 @@ namespace SSTUTools
             return "default";
         }
 
-        public override void setupModel(Part part, Transform parent, ModelOrientation orientation)
+        public override void setupModel(Transform parent, ModelOrientation orientation)
         {
-            setupModel(part, parent, orientation, false);
+            setupModel(parent, orientation, false);
         }
 
-        public void setupModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        public void setupModel(Transform parent, ModelOrientation orientation, bool reUse)
         {
             if (modelDefinition.subModelData.Length <= 0)
             {
-                constructSingleModel(part, parent, orientation, reUse);
+                constructSingleModel(parent, orientation, reUse);
             }
             else
             {
-                constructSubModels(part, parent, orientation, reUse);
+                constructSubModels(parent, orientation, reUse);
             }
         }
 
@@ -481,7 +541,7 @@ namespace SSTUTools
         {
             if (model != null)
             {
-                model.transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
+                model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
             }
         }
@@ -493,19 +553,8 @@ namespace SSTUTools
             GameObject.Destroy(model);
             model = null;
         }
-
-        public static SingleModelData[] parseModels(ConfigNode[] modelNodes)
-        {
-            int len = modelNodes.Length;
-            SingleModelData[] datas = new SingleModelData[len];
-            for (int i = 0; i < len; i++)
-            {
-                datas[i] = new SingleModelData(modelNodes[i]);
-            }
-            return datas;
-        }
-
-        private void constructSingleModel(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        
+        private void constructSingleModel(Transform parent, ModelOrientation orientation, bool reUse)
         {
             String modelName = modelDefinition.modelName;
             if (String.IsNullOrEmpty(modelName))//no model to setup
@@ -514,7 +563,7 @@ namespace SSTUTools
             }
             if (reUse)
             {
-                Transform tr = part.transform.FindModel(modelDefinition.modelName);
+                Transform tr = parent.transform.FindModel(modelDefinition.modelName);
                 if (tr != null)
                 {
                     tr.name = modelDefinition.modelName;
@@ -540,7 +589,7 @@ namespace SSTUTools
             }
         }
 
-        private void constructSubModels(Part part, Transform parent, ModelOrientation orientation, bool reUse)
+        private void constructSubModels(Transform parent, ModelOrientation orientation, bool reUse)
         {        
             String modelName = modelDefinition.modelName;
             if (String.IsNullOrEmpty(modelName))//no model name given, log user-error for them to correct
@@ -552,7 +601,7 @@ namespace SSTUTools
             //attempt to re-use the model if it is already present on the part
             if (reUse)
             {
-                Transform tr = part.transform.FindModel(modelDefinition.modelName);
+                Transform tr = parent.transform.FindModel(modelDefinition.modelName);
                 if (tr != null)
                 {
                     tr.name = modelDefinition.modelName;
@@ -570,6 +619,7 @@ namespace SSTUTools
                 SubModelData[] smds = modelDefinition.subModelData;
                 SubModelData smd;
                 GameObject clonedModel;
+                Transform localParent;
                 int len = smds.Length;
                 //add sub-models to the base model transform
                 for (int i = 0; i < len; i++)
@@ -580,6 +630,15 @@ namespace SSTUTools
                     clonedModel.transform.NestToParent(model.transform);
                     clonedModel.transform.localRotation = Quaternion.Euler(smd.rotation);
                     clonedModel.transform.localPosition = smd.position;
+                    clonedModel.transform.localScale = smd.scale;
+                    if (!string.IsNullOrEmpty(smd.parent))
+                    {
+                        localParent = model.transform.FindRecursive(smd.parent);
+                        if (localParent != null)
+                        {
+                            clonedModel.transform.parent = localParent;
+                        }
+                    }
                     //de-activate any non-active sub-model transforms
                     //iterate through all transforms for the model and deactivate(destroy?) any not on the active mesh list
                     if (smd.modelMeshes.Length > 0)
@@ -595,24 +654,18 @@ namespace SSTUTools
                 model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
             }
         }
-    }
 
-    /// <summary>
-    /// Live data class for an engine/tank mount model, includes reference to the engine-mount definition.
-    /// Should be used by anything that needs support for multiple attach nodes and/or RCS positioning.
-    /// Includes utility methods to update attach node positions based on an input length/vertical offset.
-    /// </summary>
-    public class MountModelData : SingleModelData
-    {
-           
-        public MountModelData(ConfigNode node) : base(node)
-        {            
-
-        }
-        
+        /// <summary>
+        /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
+        /// Any 'extra' attach nodes from the part will be disabled.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="nodeNames"></param>
+        /// <param name="userInput"></param>
+        /// <param name="orientation"></param>
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
         {
-            if (nodeNames.Length == 1 && nodeNames[0] == "NONE") { return; }            
+            if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0]=="none")) { return; }
             Vector3 basePos = new Vector3(0, currentVerticalPosition, 0);
             AttachNode node = null;
             AttachNodeBaseData data;
@@ -662,7 +715,8 @@ namespace SSTUTools
 
         /// <summary>
         /// Determine if the number of parts attached to the part will prevent this mount from being applied;
-        /// if any node that has a part attached would be deleted, return false
+        /// if any node that has a part attached would be deleted, return false.  To be used for GUI validation
+        /// to determine what modules are valid 'swap' selections for the current part setup.
         /// </summary>
         /// <param name="part"></param>
         /// <param name="nodeNames"></param>
@@ -680,5 +734,78 @@ namespace SSTUTools
             }
             return true;//and if all node checks go okay, return true by default...
         }
+
+        public override string ToString()
+        {
+            return "SINGLEMODEL: " + name;
+        }
+
+        /// <summary>
+        /// Parse an array of models given an array of ConfigNodes for those models.  Simple utility / convenience method for part initialization.
+        /// </summary>
+        /// <param name="modelNodes"></param>
+        /// <returns></returns>
+        public static SingleModelData[] parseModels(ConfigNode[] modelNodes, bool insertDefault = false)
+        {
+            int len = modelNodes.Length;
+            SingleModelData[] datas;
+
+            if (len == 0 && insertDefault)
+            {
+                datas = new SingleModelData[1];
+                datas[0] = new SingleModelData("Mount-None");
+                return datas;
+            }
+
+            datas = new SingleModelData[len];
+            for (int i = 0; i < len; i++)
+            {
+                datas[i] = new SingleModelData(modelNodes[i]);
+            }
+            return datas;
+        }
+
+        /// <summary>
+        /// Find the given ModelData from the input array for the input name.  If not found, returns null.
+        /// </summary>
+        /// <param name="models"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static SingleModelData findModel(SingleModelData[] models, string name)
+        {
+            SingleModelData model = null;
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i].name == name)
+                {
+                    model = models[i];
+                    break;
+                }
+            }
+            return model;
+        }
+
+        /// <summary>
+        /// Returns an array of valid selectable models given the current part attach-node setup (if parts are attached to enabled nodes)
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="models"></param>
+        /// <param name="nodeNames"></param>
+        /// <returns></returns>
+        public static string[] getValidSelectionNames(Part part, SingleModelData[] models, string[] nodeNames)
+        {
+            List<String> names = new List<String>();
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i].canSwitchTo(part, nodeNames))
+                {
+                    names.Add(models[i].name);
+                }
+            }
+            return names.ToArray();
+        }
+
     }
 }

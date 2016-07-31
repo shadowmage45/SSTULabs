@@ -243,7 +243,7 @@ namespace SSTUTools
         {
             setPanelRotations(currentRotation);
         }
-        
+
         public void onCollidersUpdated(BaseField field, object obj)
         {
             if (fairingBase.generateColliders != this.generateColliders)
@@ -595,10 +595,6 @@ namespace SSTUTools
                 float scale = getCurrentScale();
                 model.transform.localScale = new Vector3(scale, scale, scale);
             }
-            else
-            {
-                SSTUUtils.recursePrintComponents(part.gameObject, "");
-            }
             createPanels();          
             updateFairingMassAndCost();
             updateNodePositions(userInput);
@@ -720,7 +716,7 @@ namespace SSTUTools
             setPanelRotations(currentRotation);
             if (panelsJettisoned)
             {
-                fairingBase.destroyExistingPanels();   
+                fairingBase.destroyExistingPanels();
             }
             updateGuiState();
         }
@@ -791,7 +787,7 @@ namespace SSTUTools
         
         private void updateShieldStatus()
         {
-            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();            
+            SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
             if (shield != null)
             {
                 string name = "InterstageFairingShield" + "" + part.Modules.IndexOf(this);

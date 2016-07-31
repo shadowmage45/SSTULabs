@@ -173,7 +173,7 @@ namespace SSTUTools
 
         #region REGION - Private working variables
 
-        private List<MountModelData> mountModelData = new List<MountModelData>();
+        private List<SingleModelData> mountModelData = new List<SingleModelData>();
         private EngineClusterLayoutMountData currentMountData = null;
         private EngineClusterLayoutData[] engineLayouts;     
         private EngineClusterLayoutData currentEngineLayout = null;
@@ -458,7 +458,7 @@ namespace SSTUTools
             if (currentEngineLayout != null && currentMountData != null)
             {
                 modifiedCost = defaultCost * (float)currentEngineLayout.getLayoutData().positions.Count;
-                modifiedCost += Mathf.Pow(getCurrentMountScale(), 3.0f) * currentMountData.modelDefinition.cost;
+                modifiedCost += currentMountData.getModuleCost();
             }
             else { return 0f; }
             return -defaultCost + modifiedCost;
@@ -620,7 +620,7 @@ namespace SSTUTools
             mountBaseTransform = newMountBaseGO.transform;
             mountBaseTransform.NestToParent(modelBase);
                         
-            currentMountData.setupModel(part, mountBaseTransform, ModelOrientation.BOTTOM);
+            currentMountData.setupModel(mountBaseTransform, ModelOrientation.BOTTOM);
         }
 
         /// <summary>
@@ -730,7 +730,7 @@ namespace SSTUTools
         {            
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
             modifiedMass = part.prefabMass * (float)layout.positions.Count;
-            modifiedMass += currentMountData.modelDefinition.mass * Mathf.Pow(getCurrentMountScale(), 3.0f);
+            modifiedMass += currentMountData.getModuleMass();
         }
 
         /// <summary>

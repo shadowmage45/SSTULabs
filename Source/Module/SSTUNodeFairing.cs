@@ -171,7 +171,7 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool removedMass = false;
-        
+
         //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
         /// <summary>
         /// Persistent data from fairing parts; stores their current top/bottom positions and radius data

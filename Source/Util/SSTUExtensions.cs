@@ -159,6 +159,20 @@ namespace SSTUTools
         {
             return GetIntValue(node, name, 0);
         }
+
+        public static int[] GetIntValues(this ConfigNode node, string name, int[] defaultValues = null)
+        {
+            int[] values = defaultValues;
+            string[] stringValues = node.GetValues(name);
+            if (stringValues == null || stringValues.Length == 0) { return values; }
+            int len = stringValues.Length;
+            values = new int[len];
+            for (int i = 0; i < len; i++)
+            {
+                values[i] = SSTUUtils.safeParseInt(stringValues[i]);
+            }
+            return values;
+        }
         
         public static Vector3 GetVector3(this ConfigNode node, String name, Vector3 defaultValue)
         {

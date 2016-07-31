@@ -112,11 +112,11 @@ namespace SSTUTools
         protected SingleModelData[] mainTankModules;
         protected SingleModelData currentMainTankModule;
 
-        protected MountModelData[] noseModules;
-        protected MountModelData currentNoseModule;
+        protected SingleModelData[] noseModules;
+        protected SingleModelData currentNoseModule;
 
-        protected MountModelData[] mountModules;
-        protected MountModelData currentMountModule;
+        protected SingleModelData[] mountModules;
+        protected SingleModelData currentMountModule;
                 
         private String[] topNodeNames;
         private String[] bottomNodeNames;
@@ -232,10 +232,10 @@ namespace SSTUTools
 
         protected virtual void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
         {
-            MountModelData newModule = Array.Find(noseModules, m => m.name == newNoseType);
+            SingleModelData newModule = Array.Find(noseModules, m => m.name == newNoseType);
             currentNoseModule.destroyCurrentModel();
             currentNoseModule = newModule;
-            newModule.setupModel(part, getNoseRootTransform(false), ModelOrientation.TOP);
+            newModule.setupModel(getNoseRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
             currentNoseModule.enableTextureSet(currentNoseTexture);
@@ -257,7 +257,7 @@ namespace SSTUTools
             SingleModelData newModule = Array.Find(mainTankModules, m => m.name == newMainTank);
             currentMainTankModule.destroyCurrentModel();
             currentMainTankModule = newModule;
-            currentMainTankModule.setupModel(part, getTankRootTransform(false), ModelOrientation.CENTRAL);
+            currentMainTankModule.setupModel(getTankRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.getDefaultTextureSet(); }
             currentMainTankModule.enableTextureSet(currentTankTexture);
@@ -279,10 +279,10 @@ namespace SSTUTools
 
         protected virtual void setMountModuleFromEditor(String newMountType, bool updateSymmetry)
         {
-            MountModelData newModule = Array.Find(mountModules, m => m.name == newMountType);
+            SingleModelData newModule = Array.Find(mountModules, m => m.name == newMountType);
             currentMountModule.destroyCurrentModel();
             currentMountModule = newModule;
-            newModule.setupModel(part, getMountRootTransform(false), ModelOrientation.BOTTOM);
+            newModule.setupModel(getMountRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
             currentMountModule.enableTextureSet(currentMountTexture);
@@ -523,27 +523,26 @@ namespace SSTUTools
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] tankNodes = node.GetNodes("TANK");
             ConfigNode[] mountNodes = node.GetNodes("CAP");
-            ConfigNode[] fuelNodes = node.GetNodes("FUELTYPE");
             ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
                         
             mainTankModules = SingleModelData.parseModels(tankNodes);
 
             int len = mountNodes.Length;
             ConfigNode mountNode;
-            List<MountModelData> noses = new List<MountModelData>();
-            List<MountModelData> mounts = new List<MountModelData>();
+            List<SingleModelData> noses = new List<SingleModelData>();
+            List<SingleModelData> mounts = new List<SingleModelData>();
             for (int i = 0; i < len; i++)
             {
                 mountNode = mountNodes[i];
                 if (mountNode.GetBoolValue("useForNose", true))
                 {
                     mountNode.SetValue("nose", "true");
-                    noses.Add(new MountModelData(mountNode));
+                    noses.Add(new SingleModelData(mountNode));
                 }
                 if (mountNode.GetBoolValue("useForMount", true))
                 {
                     mountNode.SetValue("nose", "false");
-                    mounts.Add(new MountModelData(mountNode));
+                    mounts.Add(new SingleModelData(mountNode));
                 }
             }
             mountModules = mounts.ToArray();
@@ -609,9 +608,9 @@ namespace SSTUTools
         /// </summary>
         private void restoreModels()
         {
-            currentMainTankModule.setupModel(part, getTankRootTransform(true), ModelOrientation.CENTRAL);
-            currentNoseModule.setupModel(part, getNoseRootTransform(true), ModelOrientation.TOP);
-            currentMountModule.setupModel(part, getMountRootTransform(true), ModelOrientation.BOTTOM);
+            currentMainTankModule.setupModel(getTankRootTransform(true), ModelOrientation.CENTRAL);
+            currentNoseModule.setupModel(getNoseRootTransform(true), ModelOrientation.TOP);
+            currentMountModule.setupModel(getMountRootTransform(true), ModelOrientation.BOTTOM);
         }
 
         #endregion ENDREGION - Initialization

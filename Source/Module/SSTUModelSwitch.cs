@@ -78,12 +78,13 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            initialize();
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            initialize();
+            if (modelData == null) { initialize(); }            
         }
 
         public void Start()
@@ -330,25 +331,77 @@ namespace SSTUTools
             AttachNode attachNode;
             ModelSwitchGroup group;
             ModelSwitchData model;
+            Transform groupTransform;
             for (int i = 0; i < len; i++)
             {
+                //updated node handling routing
                 group = modelGroups[i];
+                if (!group.groupEnabled)//group disabled
+                {
+                    continue;
+                }
                 model = group.enabledModel;
-                if (!controlledNodes.Contains(group.parentNode)) { continue; }//not a node that we should touch...
-                if (model == null || model.suppressNode) { continue; }
-                enabledNodeNames.Add(group.parentNode);                
-                Vector3 pos = group.getModelRootTransform().position;
-                pos = part.transform.InverseTransformPoint(pos);
-                Vector3 rotation = group.getModelRootTransform().up;
-                attachNode = part.findAttachNode(group.parentNode);
-                if (attachNode == null)
+                if (model == null)//ERROR - no model on enabled group
                 {
-                    attachNode = SSTUAttachNodeUtils.createAttachNode(part, group.parentNode, pos, rotation, 2);
+                    continue;
                 }
-                else
+                //if (model.nodes == null) { continue; }//ERROR - nodes should not be null; let it crash
+                int len2 = model.nodes.Length;
+                if (len2>0)
                 {
-                    SSTUAttachNodeUtils.updateAttachNodePosition(part, attachNode, pos, rotation, userInput);
+                    for (int k = 0; k < len2; k++)
+                    {
+                        if (!controlledNodes.Contains(model.nodes[k].name)) { continue; }//not a node under this modules control
+                        if (group.isChildAtNodeEnabled(model.nodes[k].name)) { continue; }//child enabled, let it handle the node setup
+                        if (!model.nodes[k].createAttachNode) { continue; }//node is disabled
+                        if (enabledNodeNames.Contains(model.nodes[k].name)) { continue; }//node already enabled from other model -- user config/setup ERROR
+                        // if it passed all those checks it is a valid model node for attach-node creation; setup the position and rotation relative to this groups base transform
+                        Vector3 pos = model.nodes[k].position;
+                        Quaternion nr = Quaternion.Euler(model.nodes[k].rotation);
+                        Vector3 rot = Vector3.zero;
+                        //position will be a local position transformed by group base transform into world space, and then by part transform into local space
+                        //rotation will be the base-transforms rotation quaternion multiplied (or inverse) by the local-rotation quaternion from euler-angle of the rotation for the node
+                        //and then how to get it as a vector-axis?  mult the 'fwd' vector by the quat?
+                        
+                        attachNode = part.findAttachNode(model.nodes[k].name);
+                        if (attachNode == null)
+                        {
+                            attachNode = SSTUAttachNodeUtils.createAttachNode(part, group.parentNode, pos, rot, 2);
+                        }
+                        else
+                        {
+                            SSTUAttachNodeUtils.updateAttachNodePosition(part, attachNode, pos, rot, userInput);
+                        }
+                    }
+                    //check each node for 'enabled' flag
+                    //if enabled check for children
+                    //if child is present, let child handle the node
+                    //else enable it
                 }
+                else//no model nodes, so no chance for children groups; only nodes defined in the MODEL and flagged for enabled will be enabled; no nodes == no nodes!
+                {
+                    //NOOP
+                }
+
+                // original code block
+                // does not use the 'enableAttachNode' data from the node specifications in the MODELs
+                //group = modelGroups[i];
+                //model = group.enabledModel;
+                //if (!controlledNodes.Contains(group.parentNode)) { continue; }//not a node that we should touch...
+                //if (model == null || model.suppressNode) { continue; }
+                //enabledNodeNames.Add(group.parentNode);                
+                //Vector3 pos = group.getModelRootTransform().position;
+                //pos = part.transform.InverseTransformPoint(pos);
+                //Vector3 rotation = group.getModelRootTransform().up;
+                //attachNode = part.findAttachNode(group.parentNode);
+                //if (attachNode == null)
+                //{
+                //    attachNode = SSTUAttachNodeUtils.createAttachNode(part, group.parentNode, pos, rotation, 2);
+                //}
+                //else
+                //{
+                //    SSTUAttachNodeUtils.updateAttachNodePosition(part, attachNode, pos, rotation, userInput);
+                //}
             }
             List<AttachNode> attachNodes = new List<AttachNode>();
             attachNodes.AddRange(part.attachNodes);
@@ -362,6 +415,11 @@ namespace SSTUTools
                     SSTUAttachNodeUtils.destroyAttachNode(part, attachNode);
                 }
             }
+        }
+
+        private void updateAttachNodesForModel(ModelSwitchData modelData)
+        {
+
         }
         
         private void updateDragCube()
@@ -377,6 +435,7 @@ namespace SSTUTools
         public readonly string modelName;
         public readonly string groupName = "Main";
         public readonly int containerIndex;
+        public readonly int[] moduleIDs;
         public readonly Vector3 localPosition;
         public readonly Vector3 localRotation;
         public readonly float scale = 1f;
@@ -394,6 +453,7 @@ namespace SSTUTools
             modelName = node.GetStringValue("modelName", name);
             groupName = node.GetStringValue("group", groupName);
             containerIndex = node.GetIntValue("containerIndex", 0);
+            moduleIDs = node.GetIntValues("managedModuleID", new int[] { });
             localPosition = node.GetVector3("localPosition", Vector3.zero);
             localRotation = node.GetVector3("localRotation", Vector3.zero);
             scale = node.GetFloatValue("scale", scale);
@@ -455,8 +515,9 @@ namespace SSTUTools
             if (!String.IsNullOrEmpty(modelDefinition.modelName))
             {
                 Transform baseTransform = getBaseTransform();
-                GameObject model = SSTUUtils.cloneModel(modelDefinition.modelName);
-                model.transform.NestToParent(baseTransform);
+                SingleModelData smd = new SingleModelData(modelDefinition.name);
+                smd.setupModel(baseTransform, ModelOrientation.CENTRAL);
+                GameObject model = smd.model;
                 model.transform.localScale = new Vector3(scale, scale, scale);
             }
         }
@@ -693,6 +754,17 @@ namespace SSTUTools
             currentEnabledModel = null;
         }
 
+        internal bool isChildAtNodeEnabled(string nodeName)
+        {
+            bool val = false;
+            int len = children.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (children[i].parentNode == nodeName && children[i].enabled) { val = true; break; }
+            }
+            return val;
+        }
+
         /// <summary>
         /// enable/disable nodes depending on if they are enabled/disabled for the currently enabled model
         /// </summary>
@@ -758,6 +830,11 @@ namespace SSTUTools
         }
 
         private ModelNode findNode(string name) { return Array.Find(modelNodes, m => m.name == name); }
+
+        public bool groupEnabled
+        {
+            get { return enabled; }
+        }
 
     }
 
@@ -845,4 +922,5 @@ namespace SSTUTools
             }
         }
     }
+
 }

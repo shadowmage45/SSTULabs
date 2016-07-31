@@ -117,6 +117,7 @@ namespace SSTUTools
             if (controller != null)
             {
                 controller.clearAnimationData();
+                controller = null;
                 initialize();
             }
         }

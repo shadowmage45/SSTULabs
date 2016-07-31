@@ -309,7 +309,7 @@ namespace SSTUTools
                 ConfigNode modelNode = new ConfigNode("MODEL");
                 modelNode.AddValue("name", modelName);
                 mainModelData = new SingleModelData(modelNode);
-                mainModelData.setupModel(part, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
+                mainModelData.setupModel(part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
                 setModelDiameter(currentDiameter);
                 updateAttachNodes(false);
                 updateDragCube();

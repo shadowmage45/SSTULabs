@@ -73,7 +73,7 @@ namespace SSTUTools
 
         [KSPField]
         public double lastBoiloffUpdate = 0d;
-        
+
         //private cached vars for... things....
         private ContainerDefinition[] containers;
         private float modifiedMass = -1;
@@ -291,7 +291,7 @@ namespace SSTUTools
             float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
             SSTUModInterop.onPartKISInventoryVolumeChanged(part, volume);
         }
-        
+
         /// <summary>
         /// Update part impact tolerance and max temp stats based on first containers modifier values and part prefab values
         /// </summary>
@@ -309,7 +309,7 @@ namespace SSTUTools
         /// </summary>
         private void updateFuelSelections()
         {
-            ContainerDefinition container = getBaseContainer();            
+            ContainerDefinition container = getBaseContainer();
             string currentType = container.fuelPreset;
             guiFuelType = prevFuelType = currentType;
             string[] presetNames;
@@ -355,7 +355,7 @@ namespace SSTUTools
                 containers[i].setContainerVolume(volume);
             }
         }
-        
+
         /// <summary>
         /// Update cached mass and cost values from container calculated data
         /// </summary>
