@@ -30,22 +30,22 @@ namespace SSTUTools
         public bool useAdapterCost = false;
 
         [KSPField]
-        string topManagedNodes = "top1, top2, top3, top4, top5";
+        public string topManagedNodes = "top1, top2, top3, top4, top5";
 
         [KSPField]
-        string bottomManagedNodes = "bottom1, bottom2, bottom3, bottom4, bottom5";
+        public string bottomManagedNodes = "bottom1, bottom2, bottom3, bottom4, bottom5";
 
         [KSPField]
-        string topDockNode = "top1";
+        public string topDockNode = "top1";
 
         [KSPField]
-        string bottomDockNode = "bottom1";
+        public string bottomDockNode = "bottom1";
 
         [KSPField]
-        string topDockName = "topDockTransform";
+        public string topDockName = "topDockTransform";
 
         [KSPField]
-        string bottomDockName = "bottomDockTransform";
+        public string bottomDockName = "bottomDockTransform";
 
         //persistent config fields for module selections
         //also GUI controls for module selection
@@ -87,12 +87,6 @@ namespace SSTUTools
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
-
-        [KSPField(isPersistant = true)]
-        public int topDockIndex = -1;
-
-        [KSPField(isPersistant = true)]
-        public int bottomDockIndex = -1;
 
         #endregion REGION - Standard Part Config Fields
 
@@ -295,11 +289,12 @@ namespace SSTUTools
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Custom Update Methods
-        
+
         private void init(bool start = false)
         {
             if (initialized) { return; }
             initialized = true;
+
             topNodeNames = SSTUUtils.parseCSV(topManagedNodes);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodes);
             ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
@@ -524,18 +519,22 @@ namespace SSTUTools
             }
         }
 
+        //TODO save out the data from the enabled modules, restore to that module if it is still enabled when it is all said and done;
+        //  this should fix up any lack of persistence due to removing the modules entirely each time the setup is changed to enforce indexing
         private void updateDockingModules(bool start)
         {
-            if (topDockIndex >= 0 && bottomDockIndex >= 0 && bottomDockIndex < topDockIndex)
+            if (topDockPartModule != null)
             {
-                updateBottomDockModule(start);
-                updateTockDockModule(start);
+                part.RemoveModule(topDockPartModule);
+                topDockPartModule = null;
             }
-            else
+            if (bottomDockPartModule != null)
             {
-                updateTockDockModule(start);
-                updateBottomDockModule(start);
+                part.RemoveModule(bottomDockPartModule);
+                bottomDockPartModule = null;
             }
+            updateTockDockModule(start);
+            updateBottomDockModule(start);
         }
 
         //TODO load docking module config from sub-config nodes in the module node
@@ -547,25 +546,21 @@ namespace SSTUTools
                 ConfigNode topModuleNode = new ConfigNode("MODULE");
                 topModuleNode.AddValue("name", "ModuleDockingNode");
                 topModuleNode.AddValue("referenceAttachNode", topDockNode);
+                topModuleNode.AddValue("useReferenceAttachNode", true);
                 topModuleNode.AddValue("nodeTransformName", topDockName);
                 topModuleNode.AddValue("controlTransformName", topDockName + "Control");
                 topModuleNode.AddValue("captureRange", 0.1f);
                 topDockPartModule = (ModuleDockingNode)part.AddModule(topModuleNode);
                 if (start) { topDockPartModule.OnStart(StartState.Editor); }
+                topDockPartModule.referenceNode = part.findAttachNode(topDockNode);
             }
             else if (!topNodeActive && topDockPartModule != null)
             {
                 part.RemoveModule(topDockPartModule);
-                topDockIndex = -1;
             }
             if (topNodeActive)
             {
                 SSTUMultiDockingPort.updateDockingModuleFieldNames(topDockPartModule, "Top Port");
-                topDockIndex = part.Modules.IndexOf(topDockPartModule);
-            }
-            else
-            {
-                topDockIndex = -1;
             }
         }
 
@@ -578,25 +573,21 @@ namespace SSTUTools
                 ConfigNode bottomModuleNode = new ConfigNode("MODULE");
                 bottomModuleNode.AddValue("name", "ModuleDockingNode");
                 bottomModuleNode.AddValue("referenceAttachNode", bottomDockNode);
+                bottomModuleNode.AddValue("useReferenceAttachNode", true);
                 bottomModuleNode.AddValue("nodeTransformName", bottomDockName);
                 bottomModuleNode.AddValue("controlTransformName", bottomDockName + "Control");
                 bottomModuleNode.AddValue("captureRange", 0.1f);
                 bottomDockPartModule = (ModuleDockingNode)part.AddModule(bottomModuleNode);
                 if (start) { bottomDockPartModule.OnStart(StartState.Editor); }
+                bottomDockPartModule.referenceNode = part.findAttachNode(bottomDockNode);
             }
             else if (!bottomNodeActive && bottomDockPartModule != null)
             {
                 part.RemoveModule(bottomDockPartModule);
-                bottomDockIndex = -1;
             }
             if (bottomNodeActive)
             {
                 SSTUMultiDockingPort.updateDockingModuleFieldNames(bottomDockPartModule, "Bottom Port");
-                bottomDockIndex = part.Modules.IndexOf(bottomDockPartModule);
-            }
-            else
-            {
-                bottomDockIndex = -1;
             }
         }
         
