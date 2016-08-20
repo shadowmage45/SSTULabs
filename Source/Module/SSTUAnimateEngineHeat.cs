@@ -46,7 +46,7 @@ namespace SSTUTools
         public FloatCurve greenCurve = new FloatCurve();
 
         [KSPField]
-        public int engineModuleIndex;
+        public string engineID = "Engine";
 
         [KSPField]
         public String meshName = String.Empty;
@@ -111,17 +111,19 @@ namespace SSTUTools
         private void locateEngineModule()
         {
             engineModule = null;
-            if (engineModuleIndex < part.Modules.Count)
+            ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
+            int len = engines.Length;
+            for (int i = 0; i < len; i++)
             {
-                ModuleEngines engine = part.Modules[engineModuleIndex] as ModuleEngines;
-                if (engine != null)
+                if (engines[i].engineID == engineID)
                 {
-                    engineModule = engine;
+                    engineModule = engines[i];
                 }
             }
             if (engineModule == null)
             {
-                print("ERROR!  SSTUAnimateHeat could not locate engine module at index: " + engineModuleIndex);
+                MonoBehaviour.print("ERROR: Could not locate engine by ID: " + engineID + " for part: " + part + " for SSTUAnimateEngineHeat.  This will cause errors during gameplay.  Setting engine to first engine module (if present)");
+                if (engines.Length > 0) { engineModule = engines[0]; }
             }
         }
 
@@ -140,6 +142,7 @@ namespace SSTUTools
 
         private void updateHeat()
         {
+            if (engineModule == null) { return; }
             //add heat from engine
             if (engineModule.EngineIgnited && !engineModule.flameout && engineModule.currentThrottle > 0)
             {

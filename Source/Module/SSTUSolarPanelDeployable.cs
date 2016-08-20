@@ -104,8 +104,6 @@ namespace SSTUTools
 
         private bool initialized = false;
 
-        private bool hasSetupDefaultRotations = false;
-
         //KSP Action Group 'Extend Panels' action, will only trigger when panels are actually retracted/ing
         [KSPAction("Extend Panels")]
         public void extendAction(KSPActionParam param)
@@ -173,6 +171,13 @@ namespace SSTUTools
         //TODO - add GetInfo stuff for panel output/etc
         public override string GetInfo()
         {
+            if (suncatcherData != null)
+            {
+                String data = "Deployable Solar Panel\n";
+                data = data + "EC/s max: " + resourceAmount * suncatcherData.Length+"\n";
+                data = data + "Tracking Speed: " + trackingSpeed + "deg/s";
+                return data;
+            }
             return base.GetInfo();
         }
 
@@ -186,11 +191,6 @@ namespace SSTUTools
             }
             else if (panelState == SSTUPanelState.EXTENDED)
             {
-                if (!hasSetupDefaultRotations)
-                {
-                    hasSetupDefaultRotations = true;
-                    setupDefaultRotations();
-                }
                 if (HighLogic.LoadedSceneIsFlight)
                 {
                     updatePowerStatus();
@@ -486,8 +486,10 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 name = pivotNames[i];
+                if (String.IsNullOrEmpty(name)) { MonoBehaviour.print("ERROR: Empty name for solar pivot for part: " + part); }
                 trs = part.transform.FindChildren(name);
                 len2 = trs.Length;
+                if (len2 == 0) { MonoBehaviour.print("ERROR: Could not locate solar pivot transforms for name: "+name + " for part: " + part); }
                 for (int k = 0; k < len2; k++)
                 {
                     pd = new PivotData();
@@ -503,8 +505,10 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 name = secPivotNames[i];
+                if (String.IsNullOrEmpty(name)) { continue; }
                 trs = part.transform.FindChildren(name);
                 len2 = trs.Length;
+                if (len2 == 0) { MonoBehaviour.print("ERROR: Could not locate secondary pivot transforms for name: " + name + " for part: " + part); }
                 for (int k = 0; k < len2; k++)
                 {
                     pd = new PivotData();
@@ -521,8 +525,10 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 name = suncatcherNames[i];
+                if (String.IsNullOrEmpty(name)) { MonoBehaviour.print("ERROR: Empty name for suncatcher for part: "+ part); }
                 trs = part.transform.FindChildren(name);
                 len2 = trs.Length;
+                if (len2 == 0) { MonoBehaviour.print("ERROR: Could not locate suncatcher transforms for name: " + name+" for part: "+part); }
                 for (int k = 0; k < len2; k++)
                 {
                     sd = new SuncatcherData();
@@ -549,6 +555,8 @@ namespace SSTUTools
 
         private void setupDefaultRotations()
         {
+            AnimState state = animationController.getAnimationState();
+            animationController.setToState(AnimState.STOPPED_END);//will trigger an animation sample
             int len = pivotData.Length;
             for (int i = 0; i < len; i++)
             {
@@ -559,6 +567,7 @@ namespace SSTUTools
             {
                 secondaryPivotData[i].defaultOrientation = secondaryPivotData[i].pivotTransform.localRotation;
             }
+            animationController.setToState(state);//restore actual state...
         }
         
         private void updateGuiData()
@@ -573,6 +582,10 @@ namespace SSTUTools
                 if (energyFlow > 0)
                 {
                     guiStatus += " : " + String.Format("{0:F1}", (energyFlow * (1 / TimeWarp.fixedDeltaTime))) + " e/s";
+                }
+                else if (suncatcherData.Length <= 0)
+                {
+                    guiStatus += " : NO TRANSFORM";
                 }
             }
             if (panelState == SSTUPanelState.BROKEN)

@@ -184,7 +184,7 @@ namespace SSTUTools
             for (int i = len; i <8; i++)//destroy extra unused panels
             {
                 trs = parent.transform.FindChildren("FairingPanel-" + i);
-                for (int k = 0; k < trs.Length; k++) { GameObject.Destroy(trs[k].gameObject); }
+                for (int k = 0; k < trs.Length; k++) { GameObject.DestroyImmediate(trs[k].gameObject); }
             }
             return gos;
         }

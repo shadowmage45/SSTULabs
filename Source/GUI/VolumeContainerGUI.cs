@@ -201,7 +201,7 @@ namespace SSTUTools
                 }
                 if (GUILayout.Button(mod.title, GUILayout.Width(175)))
                 {
-                    module.containerTypeUpdated(container, mod);
+                    module.containerTypeUpdated(container, mod, true);
                 }
             }
             GUILayout.EndHorizontal();
@@ -225,15 +225,15 @@ namespace SSTUTools
                 {
                     if (ctrlPressed())//ctrl == set fuel type
                     {                        
-                        container.setFuelPreset(presets[i]);
+                        container.module.setFuelPreset(container, presets[i], true);
                     }
                     else if (shiftPressed())
                     {
-                        container.subtractPresetRatios(presets[i]);
+                        container.module.subtractPresetRatios(container, presets[i], true);
                     }
                     else
                     {
-                        container.addPresetRatios(presets[i]);
+                        container.module.addPresetRatios(container, presets[i], true);
                     }
                 }
             }
@@ -333,7 +333,7 @@ namespace SSTUTools
                 if (int.TryParse(textRatio, out parsedTextVal))
                 {
                     prevRatio = parsedTextVal;
-                    container.setResourceRatio(resourceName, parsedTextVal);
+                    container.module.setResourceRatio(container, resourceName, parsedTextVal);
                     update = true;
                 }
             }
@@ -347,7 +347,7 @@ namespace SSTUTools
             if (val != fillPercent)
             {
                 fillPercent = val;
-                container.setResourceFillPercent(resourceName, fillPercent);
+                container.module.setResourceFillPercent(container, resourceName, fillPercent);
                 update = true;
             }
             return update;
@@ -362,6 +362,6 @@ namespace SSTUTools
             percent = container.getResourceVolume(resourceName) / container.usableVolume;
             fillPercent = container.getResourceFillPercent(resourceName);
         }
-
     }
+
 }

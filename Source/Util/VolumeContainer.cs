@@ -27,7 +27,7 @@ namespace SSTUTools
         public readonly bool ecHasMass = true;
         public readonly bool ecHasCost = true;
         public readonly bool guiAvailable = true;
-
+        public readonly SSTUVolumeContainer module;
         //runtime accessible data
         public readonly string[] applicableResources;
         public readonly ContainerFuelPreset[] fuelPresets;
@@ -51,9 +51,11 @@ namespace SSTUTools
         private int currentTotalUnitRatio;
         private float currentTotalVolumeRatio;
         private bool resourcesDirty = false;
+        
 
-        public ContainerDefinition(ConfigNode node, float tankTotalVolume)
+        public ContainerDefinition(SSTUVolumeContainer module, ConfigNode node, float tankTotalVolume)
         {
+            this.module = module;
             name = node.GetStringValue("name", name);
             availableResources = node.GetStringValues("resource");
             resourceSets = node.GetStringValues("resourceSet");
@@ -467,11 +469,11 @@ namespace SSTUTools
             resourcesDirty = true;
         }
 
-        private SubContainerDefinition internalGetVolumeData(string resourceName) { return subContainersByName[resourceName]; }
+        public SubContainerDefinition internalGetVolumeData(string resourceName) { return subContainersByName[resourceName]; }
 
-        private ContainerFuelPreset internalGetFuelPreset(string name) { return Array.Find(fuelPresets, m => m.name == name); }
+        public ContainerFuelPreset internalGetFuelPreset(string name) { return Array.Find(fuelPresets, m => m.name == name); }
 
-        private ContainerModifier internalGetModifier(string name) { return Array.Find(modifiers, m => m.name == name); }
+        public ContainerModifier internalGetModifier(string name) { return Array.Find(modifiers, m => m.name == name); }
 
     }
 

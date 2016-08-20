@@ -228,7 +228,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            init();
+            init(false);
         }
 
         public override void OnStart(StartState state)
@@ -290,7 +290,7 @@ namespace SSTUTools
 
         #region REGION - Custom Update Methods
 
-        private void init(bool start = false)
+        private void init(bool start)
         {
             if (initialized) { return; }
             initialized = true;
@@ -593,6 +593,8 @@ namespace SSTUTools
         
         private void updateAttachNodes(bool userInput)
         {
+            //if XX-dockModule!=empty, remove dock node name from NodeNames
+            //I believe this is what is causing the duplicate attach nodes reported by someone on the forums
             topModule.updateAttachNodes(part, topNodeNames, userInput, ModelOrientation.TOP);
             bottomModule.updateAttachNodes(part, bottomNodeNames, userInput, ModelOrientation.BOTTOM);
             topDockModule.updateAttachNodes(part, new string[] { topDockNode }, userInput, ModelOrientation.TOP);

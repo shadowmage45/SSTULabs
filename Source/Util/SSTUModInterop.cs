@@ -44,12 +44,33 @@ namespace SSTUTools
             part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
             if (isFARInstalled())
             {
+                //FARdebug(part);
                 part.SendMessage("GeometryPartModuleRebuildMeshData");
             }
             else if (createDefaultCube && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 SSTUStockInterop.addDragUpdatePart(part);
             }
+        }
+
+        private static void FARdebug(Part part)
+        {
+            MonoBehaviour.print("FAR DEBUG FOR PART: " + part);
+            GameObject go;
+            Mesh m;
+            Mesh m2;
+            MeshFilter[] mfs = part.GetComponentsInChildren<MeshFilter>();
+            MeshFilter mf;
+            int len = mfs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                mf = mfs[i];
+                m = mf.mesh;
+                m2 = mf.sharedMesh;
+                go = mf.gameObject;
+                MonoBehaviour.print("FAR debug data || go: " + go + " || mf: " + mf + " || mesh: " + m + " || sharedMesh" + m2);
+            }
+            MonoBehaviour.print("-------------------------------------------------------------------------");
         }
 
         public static bool onPartFuelVolumeUpdate(Part part, float liters)

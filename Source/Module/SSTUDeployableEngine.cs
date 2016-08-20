@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 namespace SSTUTools
 {
@@ -12,7 +13,7 @@ namespace SSTUTools
         public int animationID = -1;
 
         [KSPField]
-        public int engineModuleIndex = 0;
+        public string engineID = "Engine";
 
         private SSTUAnimateControlled animationControl;
         private ModuleEnginesFX engineModule;
@@ -63,8 +64,23 @@ namespace SSTUTools
 
         public void Start()
         {
+
             animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
-            engineModule = (ModuleEnginesFX)part.Modules[engineModuleIndex];//unsafe, but intend it to crash if setup improperly
+            engineModule = null;
+            ModuleEnginesFX[] engines = part.GetComponents<ModuleEnginesFX>();
+            int len = engines.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (engines[i].engineID == engineID)
+                {
+                    engineModule = engines[i];
+                }
+            }
+            if (engineModule == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate engine by ID: " + engineID + " for part: " + part + " for SSTUAnimateEngineHeat.  This will cause errors during gameplay.  Setting engine to first engine module (if present)");
+                if (engines.Length > 0) { engineModule = engines[0]; }
+            }
             setupEngineModuleGui();
             setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }

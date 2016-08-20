@@ -178,7 +178,7 @@ namespace SSTUTools
             containers = new ContainerDefinition[len];
             for (int i = 0; i < len; i++)
             {
-                containers[i] = new ContainerDefinition(containerNodes[i], volume);
+                containers[i] = new ContainerDefinition(this, containerNodes[i], volume);
             }
             if (!string.IsNullOrEmpty(persistentData))
             {
@@ -242,23 +242,6 @@ namespace SSTUTools
             updateFuelSelections();
             updatePersistentData();
             SSTUStockInterop.fireEditorUpdate();
-        }
-
-        public void containerFuelTypeSet(ContainerDefinition container, ContainerFuelPreset fuelType)
-        {
-            updateFuelSelections();
-        }
-
-        public void containerFuelTypeAdded(ContainerDefinition container, ContainerFuelPreset fuelType)
-        {
-            container.addPresetRatios(fuelType);
-            updateFuelSelections();
-        }
-
-        public void containerTypeUpdated(ContainerDefinition container, ContainerModifier newType)
-        {
-            container.setModifier(newType);
-            updatePartStats();
         }
 
         public ContainerDefinition highestVolumeContainer(string resourceName)
@@ -376,7 +359,111 @@ namespace SSTUTools
             tankageMass = modifiedMass;
             usableVolume = volume - tankageVolume;
         }
+
+        #region GUI update methods with symmetry counterpart handling (apparently not working)
+
+        public void setFuelPreset(ContainerDefinition container, ContainerFuelPreset preset, bool updateSymmetry)
+        {
+            container.setFuelPreset(preset);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer mod = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition def2 = mod.getContainer(container.name);
+                    ContainerFuelPreset preset2 = def2.internalGetFuelPreset(preset.name);
+                    mod.setFuelPreset(def2, preset2, false);
+                }
+            }
+        }
         
+        public void subtractPresetRatios(ContainerDefinition container, ContainerFuelPreset preset, bool updateSymmetry)
+        {
+            container.subtractPresetRatios(preset);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer mod = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition def2 = mod.getContainer(container.name);
+                    ContainerFuelPreset preset2 = def2.internalGetFuelPreset(preset.name);
+                    mod.subtractPresetRatios(def2, preset2, false);
+                }
+            }
+        }
+        
+        public void addPresetRatios(ContainerDefinition container, ContainerFuelPreset preset, bool updateSymmetry)
+        {
+            container.addPresetRatios(preset);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer symmetryModule = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition symmetryModuleContainer = symmetryModule.getContainer(container.name);
+                    ContainerFuelPreset symmetryModulePreset = symmetryModuleContainer.internalGetFuelPreset(preset.name);
+                    symmetryModule.addPresetRatios(symmetryModuleContainer, symmetryModulePreset, false);
+                }
+            }
+        }
+
+        public void setResourceRatio(ContainerDefinition def, string resourceName, int newRatio, bool updateSymmetry = false)
+        {
+            def.setResourceRatio(resourceName, newRatio);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer mod = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition def2 = mod.getContainer(def.name);
+                    mod.setResourceRatio(def2, resourceName, newRatio, false);
+                }
+            }
+        }
+        
+        public void setResourceFillPercent(ContainerDefinition def, string resourceName, float newPercent, bool updateSymmetry = false)
+        {
+            def.setResourceFillPercent(resourceName, newPercent);
+            if (updateSymmetry)
+            {
+                foreach(Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer mod = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition def2 = mod.getContainer(def.name);
+                    mod.setResourceFillPercent(def2, resourceName, newPercent, false);
+                }
+            }
+        }
+
+        public void containerTypeUpdated(ContainerDefinition container, ContainerModifier newType, bool updateSymmetry = false)
+        {
+            container.setModifier(newType);
+            updatePartStats();
+
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    SSTUVolumeContainer mod = p.GetComponent<SSTUVolumeContainer>();
+                    ContainerDefinition def2 = mod.getContainer(container.name);
+                    ContainerModifier mod2 = def2.internalGetModifier(newType.name);
+                    mod.containerTypeUpdated(def2, mod2, false);
+                }
+            }
+        }
+
+        #endregion
+
+        private ContainerDefinition getContainer(string name)
+        {
+            int len = containers.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (containers[i].name == name) { return containers[i]; }
+            }
+            return null;
+        }
+
         private void OnGUI()
         {
             if (guiEnabled)
@@ -391,6 +478,12 @@ namespace SSTUTools
                     updateTankResources();
                     updatePersistentData();
                     VolumeContainerGUI.updateGuiData();
+                    foreach (Part p in part.symmetryCounterparts)
+                    {
+                        SSTUVolumeContainer vc = p.GetComponent<SSTUVolumeContainer>();
+                        vc.updateTankResources();
+                        vc.updatePersistentData();
+                    }
                 }
             }
         }

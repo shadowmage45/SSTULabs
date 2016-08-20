@@ -1,0 +1,19 @@
+
+
+                [@y-8][@x2]{0,6:000.0}° $&$ HEADING
+
+
+
+
+
+
+      [hw][@y15][@x5]VS:[@x3]{0:SIP_5.1} $&$ VERTSPEED
+
+
+                [@y-5][@x10]R:{0,3:SIP_4.2}m $&$ ALTITUDEBOTTOM
+
+
+
+               [@y-30][@x6]GS {0:SIP_5.4}[hw]m/s[/hw] $&$ HORZVELOCITY
+
+                 [@y-20][@x6][#FF0000]{0:"SLOPE!";;} $&$ SLOPEALARM
