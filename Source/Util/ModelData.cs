@@ -693,7 +693,7 @@ namespace SSTUTools
                     }
                     pos.y += currentVerticalPosition;
                     orient = data.orientation;
-                    if (invert) { orient = -orient; }
+                    if (invert) { orient = -orient; orient.z = -orient.z; }
                     if (node == null)//create it
                     {
                         SSTUAttachNodeUtils.createAttachNode(part, nodeNames[i], pos, orient, size);

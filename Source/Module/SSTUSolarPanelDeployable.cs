@@ -105,7 +105,7 @@ namespace SSTUTools
         private bool initialized = false;
 
         //KSP Action Group 'Extend Panels' action, will only trigger when panels are actually retracted/ing
-        [KSPAction("Extend Panels")]
+        [KSPAction("Extend Solar Panels")]
         public void extendAction(KSPActionParam param)
         {
             if (panelState == SSTUPanelState.RETRACTED || panelState == SSTUPanelState.RETRACTING)
@@ -115,7 +115,7 @@ namespace SSTUTools
         }
 
         //KSP Action Group 'Retract Panels' action, will only trigger when panels are actually extended/ing
-        [KSPAction("Retract Panels")]
+        [KSPAction("Retract Solar Panels")]
         public void retractAction(KSPActionParam param)
         {
             if (panelState == SSTUPanelState.EXTENDING || panelState == SSTUPanelState.EXTENDED)
@@ -125,7 +125,7 @@ namespace SSTUTools
         }
 
         //KSP Action Group 'Toggle Panels' action, will operate regardless of current panel status (except broken)
-        [KSPAction("Toggle Panels")]
+        [KSPAction("Toggle Solar Panels")]
         public void toggleAction(KSPActionParam param)
         {
             toggle();

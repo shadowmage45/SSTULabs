@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using System.Reflection;
 
@@ -14,6 +15,21 @@ namespace SSTUTools
         private static bool installedRF = false;
         private static bool installedMFT = false;
         private static bool installedKIS = false;
+
+        private static List<Action<SSTUVolumeContainer>> containerUpdatedCallbacks = new List<Action<SSTUVolumeContainer>>();
+
+        public static void onContainerUpdated(SSTUVolumeContainer container)
+        {
+            int len = containerUpdatedCallbacks.Count;
+            for (int i = 0; i < len; i++)
+            {
+                containerUpdatedCallbacks[i].Invoke(container);
+            }
+        }
+
+        public static void addContainerUpdatedCallback(Action<SSTUVolumeContainer> cb) { containerUpdatedCallbacks.AddUnique(cb); }
+
+        public static void removeContainerUpdatedCallback(Action<SSTUVolumeContainer> cb) { containerUpdatedCallbacks.Remove(cb); }
 
         public static void onEngineConfigChange(Part part, String config, float scale)
         {
@@ -80,6 +96,7 @@ namespace SSTUTools
             if (vc != null)
             {
                 vc.onVolumeUpdated(liters);
+                onContainerUpdated(vc);
                 return true;
             }
             Type moduleFuelTank = null;

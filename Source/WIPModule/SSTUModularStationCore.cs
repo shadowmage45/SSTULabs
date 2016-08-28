@@ -437,7 +437,6 @@ namespace SSTUTools
             pos = new Vector3(0, bottomDockY - bottomDockModule.currentHeight, 0);
             bottomDockTransform.localPosition = pos;
             bottomControlTransform.localPosition = pos;
-            //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
         
         /// <summary>
@@ -518,9 +517,7 @@ namespace SSTUTools
                 modifiedMass += bottomDockModule.getModuleMass();
             }
         }
-
-        //TODO save out the data from the enabled modules, restore to that module if it is still enabled when it is all said and done;
-        //  this should fix up any lack of persistence due to removing the modules entirely each time the setup is changed to enforce indexing
+        
         private void updateDockingModules(bool start)
         {
             if (topDockPartModule != null)
@@ -549,7 +546,8 @@ namespace SSTUTools
                 topModuleNode.AddValue("useReferenceAttachNode", true);
                 topModuleNode.AddValue("nodeTransformName", topDockName);
                 topModuleNode.AddValue("controlTransformName", topDockName + "Control");
-                topModuleNode.AddValue("captureRange", 0.1f);
+                topModuleNode.AddValue("nodeType", "size0, size1");
+                topModuleNode.AddValue("captureRange", "0.1");
                 topDockPartModule = (ModuleDockingNode)part.AddModule(topModuleNode);
                 if (start) { topDockPartModule.OnStart(StartState.Editor); }
                 topDockPartModule.referenceNode = part.findAttachNode(topDockNode);
@@ -576,7 +574,8 @@ namespace SSTUTools
                 bottomModuleNode.AddValue("useReferenceAttachNode", true);
                 bottomModuleNode.AddValue("nodeTransformName", bottomDockName);
                 bottomModuleNode.AddValue("controlTransformName", bottomDockName + "Control");
-                bottomModuleNode.AddValue("captureRange", 0.1f);
+                bottomModuleNode.AddValue("nodeType", "size0, size1");
+                bottomModuleNode.AddValue("captureRange", "0.1");
                 bottomDockPartModule = (ModuleDockingNode)part.AddModule(bottomModuleNode);
                 if (start) { bottomDockPartModule.OnStart(StartState.Editor); }
                 bottomDockPartModule.referenceNode = part.findAttachNode(bottomDockNode);

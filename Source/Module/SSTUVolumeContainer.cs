@@ -325,6 +325,8 @@ namespace SSTUTools
             list.setResourcesToPart(part);
             updateMassAndCost();
             updateKISVolume();
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onContainerUpdated(this);
         }
 
         /// <summary>
@@ -360,7 +362,7 @@ namespace SSTUTools
             usableVolume = volume - tankageVolume;
         }
 
-        #region GUI update methods with symmetry counterpart handling (apparently not working)
+        #region GUI update methods with symmetry counterpart handling
 
         public void setFuelPreset(ContainerDefinition container, ContainerFuelPreset preset, bool updateSymmetry)
         {
