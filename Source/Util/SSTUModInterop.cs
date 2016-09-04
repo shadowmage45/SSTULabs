@@ -96,7 +96,6 @@ namespace SSTUTools
             if (vc != null)
             {
                 vc.onVolumeUpdated(liters);
-                onContainerUpdated(vc);
                 return true;
             }
             Type moduleFuelTank = null;

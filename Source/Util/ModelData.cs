@@ -249,16 +249,22 @@ namespace SSTUTools
         public void enable(GameObject root)
         {
             Renderer r;
-            foreach (String mesh in meshNames)
+            foreach (String meshName in meshNames)
             {
-                Transform tr = root.transform.FindRecursive(mesh);
-                if (tr == null) { continue; }
-                if (tr != null && (r=tr.GetComponent<Renderer>()) != null)
+                Transform tr;
+                Transform[] trs = root.transform.FindChildren(meshName);
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    Material m = r.material;
-                    if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
-                    if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
-                    if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }
+                    tr = trs[i];
+                    if (tr == null) { continue; }
+                    if (tr != null && (r = tr.GetComponent<Renderer>()) != null)
+                    {
+                        Material m = r.material;
+                        if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
+                        if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
+                        if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }
+                    }
                 }
             }
         }

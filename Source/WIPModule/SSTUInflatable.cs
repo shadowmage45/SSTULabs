@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Reflection;
+using UnityEngine;
+
 
 namespace SSTUTools
 {
@@ -21,6 +24,9 @@ namespace SSTUTools
 
         [KSPField]
         public string resourceName = "RocketParts";
+
+        [KSPField]
+        public bool canDeflate = false;
 
         [KSPField(isPersistant = true)]
         public float appliedMass = 0f;
@@ -59,12 +65,13 @@ namespace SSTUTools
                 updateCrewCapacity(inflatedCrew);
                 inflated = true;
 
-                BaseEvent evt = Events["inflateEvent"];
-                evt.guiActive = evt.guiActiveEditor = false;
-
-                evt = Events["deflateEvent"];
-                evt.guiActiveEditor = true;
             }
+            BaseEvent evt = Events["inflateEvent"];
+            evt.guiActive = evt.guiActiveEditor = false;
+
+            evt = Events["deflateEvent"];
+            evt.guiActiveEditor = true;
+            evt.guiActive = canDeflate;
         }
 
         [KSPEvent(guiName = "Deflate", guiActiveEditor = true)]
@@ -83,7 +90,7 @@ namespace SSTUTools
             evt.guiActive = evt.guiActiveEditor = true;
 
             evt = Events["deflateEvent"];
-            evt.guiActiveEditor = false;
+            evt.guiActive = evt.guiActiveEditor = false;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -161,6 +168,7 @@ namespace SSTUTools
             
             evt = Events["deflateEvent"];
             evt.guiActiveEditor = inflated;
+            evt.guiActive = inflated && (HighLogic.LoadedSceneIsEditor || canDeflate);
 
             resourceDef = PartResourceLibrary.Instance.GetDefinition(resourceName);
             if (resourceDef == null)
@@ -200,10 +208,46 @@ namespace SSTUTools
             appliedMass += (float) unitsUsed * resourceDef.density;
         }
 
+        /// <summary>
+        /// most functioniality derived from TweakScale ScaleCrewCapacity method
+        /// https://github.com/pellinor0/TweakScale/blob/master/Scale.cs#L279
+        /// </summary>
+        /// <param name="capacity"></param>
         private void updateCrewCapacity(int capacity)
         {
+            MonoBehaviour.print("Set crew capacity to: " + capacity+" current: "+part.CrewCapacity);
             part.CrewCapacity = capacity;
-            MonoBehaviour.print("Set crew capacity to: " + part.CrewCapacity);
+            List<PartCrewManifest> manifests = ShipConstruction.ShipManifest.GetCrewableParts();
+            if (manifests == null || manifests.Count == 0) { return; }
+            int len = manifests.Count;
+            PartCrewManifest crewManifest = null;
+            PartCrewManifest temp;
+            for (int i = 0; i < len; i++)
+            {
+                temp = manifests[i];
+                if (temp.PartID == part.craftID)
+                {
+                    crewManifest = temp;
+                    break;
+                }
+            }
+            if(crewManifest == null) { return; }
+            //force the part-selection panel to be active, else the crew-selection UI will not be updated properly
+            if (EditorLogic.fetch.editorScreen == EditorScreen.Crew)
+            {
+                EditorLogic.fetch.SelectPanelParts();
+                //EditorLogic.fetch.SelectPanelCrew(); //TODO toggle back to crew select?
+            }
+            //clear existing crew from part before updating the crew manifest size
+            len = crewManifest.GetPartCrew().Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (crewManifest.GetPartCrew()[i] != null) { crewManifest.RemoveCrewFromSeat(i); }
+            }
+            //TODO bug SQUAD devs about a public way to alter crew capacity, without having to resort to reflection hacks
+            FieldInfo crewField = typeof(PartCrewManifest).GetField("partCrew", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (crewField != null) { crewField.SetValue(crewManifest, new string[capacity]); }
+            ShipConstruction.ShipManifest.SetPartManifest(part.craftID, crewManifest);
         }
 
         private void updateRequiredMass()
@@ -213,5 +257,6 @@ namespace SSTUTools
             fld.guiActive = fld.guiActiveEditor = requiredMass > 0;
             fld.guiName = resourceName + " reqd";
         }
+
     }
 }

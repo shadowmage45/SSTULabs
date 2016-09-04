@@ -335,12 +335,9 @@ namespace SSTUTools
             coreModule = SingleModelData.findModel(coreModules, currentCore);
             bottomModule = SingleModelData.findModel(bottomModules, currentBottom);
             bottomDockModule = SingleModelData.findModel(bottomDockModules, currentBottomDock);
-            if (!initializedDefaults)
-            {
-                currentTopTexture = topModule.getDefaultTextureSet();
-                currentCoreTexture = coreModule.getDefaultTextureSet();
-                currentBottomTexture = bottomModule.getDefaultTextureSet();
-            }
+            if (!topModule.isValidTextureSet(currentTopTexture)) { currentTopTexture = topModule.getDefaultTextureSet(); }
+            if (!coreModule.isValidTextureSet(currentCoreTexture)) { currentCoreTexture = coreModule.getDefaultTextureSet(); }
+            if (!bottomModule.isValidTextureSet(currentBottomTexture)) { currentBottomTexture = bottomModule.getDefaultTextureSet(); }
             restoreModels();
             updateModulePositions();
             updateMass();
