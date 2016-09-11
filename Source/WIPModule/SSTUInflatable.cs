@@ -203,6 +203,11 @@ namespace SSTUTools
 
         private void consumeResources()
         {
+            if (resourceDef == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate resource definition for name: " + resourceName + " to consume for inflatable module.  This is a configuration error and should be corrected.");
+                return;
+            }
             double unitsNeeded = (inflationMass - appliedMass) / resourceDef.density;
             double unitsUsed = part.RequestResource(resourceName, unitsNeeded);
             appliedMass += (float) unitsUsed * resourceDef.density;
@@ -217,6 +222,7 @@ namespace SSTUTools
         {
             MonoBehaviour.print("Set crew capacity to: " + capacity+" current: "+part.CrewCapacity);
             part.CrewCapacity = capacity;
+            if (!HighLogic.LoadedSceneIsEditor) { return; }//only run the following block in the editor; it updates the crew-assignment GUI
             List<PartCrewManifest> manifests = ShipConstruction.ShipManifest.GetCrewableParts();
             if (manifests == null || manifests.Count == 0) { return; }
             int len = manifests.Count;

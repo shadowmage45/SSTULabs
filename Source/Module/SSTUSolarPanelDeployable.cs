@@ -78,6 +78,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String savedAnimationState = "RETRACTED";
 
+        [KSPField(isPersistant = true)]
+        public bool moduleDisabled = false;
+
         //Status displayed for panel state, includes animation state and energy state;  Using in place of the three-line output from stock panels
         [KSPField(guiName = "S.P.", guiActive = true)]
         public String guiStatus = String.Empty;
@@ -167,8 +170,7 @@ namespace SSTUTools
             }
             initializeState();
         }
-
-        //TODO - add GetInfo stuff for panel output/etc
+        
         public override string GetInfo()
         {
             if (suncatcherData != null)
@@ -183,6 +185,7 @@ namespace SSTUTools
 
         public void FixedUpdate()
         {
+            if (moduleDisabled) { return; }
             energyFlow = 0.0f;
             occluderName = String.Empty;
             if (retractLerp > 0)
@@ -200,8 +203,9 @@ namespace SSTUTools
             updateGuiData();
         }
 
-        public void reInitialize()
+        private void reInitialize()
         {
+            initialized = false;
             OnStart(StartState.Flying);
         }
 
@@ -215,6 +219,36 @@ namespace SSTUTools
             {
                 setPanelState(SSTUPanelState.RETRACTED);
             }
+        }
+
+        public void disableModule()
+        {
+            moduleDisabled = true;
+            energyFlow = 0;
+            Events["extendEvent"].active = false;
+            Events["retractEvent"].active = false;
+            Fields["guiStatus"].guiActive = false;
+            Actions["toggleAction"].active = false;
+            Actions["extendAction"].active = false;
+            Actions["retractAction"].active = false;
+            sunTransform = null;
+            windBreakTransform = null;
+            pivotData = null;
+            secondaryPivotData = null;
+            suncatcherData = null;
+            if (animationController != null) { animationController.removeCallback(onAnimationStatusChanged); }
+            animationController = null;
+        }
+
+        public void enableModule()
+        {
+            moduleDisabled = false;
+            energyFlow = 0;
+            Fields["guiStatus"].guiActive = true;
+            Actions["toggleAction"].active = true;
+            Actions["extendAction"].active = true;
+            Actions["retractAction"].active = true;
+            reInitialize();
         }
 
         private void initializeState()

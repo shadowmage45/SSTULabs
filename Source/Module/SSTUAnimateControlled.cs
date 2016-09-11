@@ -126,7 +126,12 @@ namespace SSTUTools
 
         public void addCallback(Action<AnimState> cb)
         {
-            callbacks.Add(cb);
+            callbacks.AddUnique(cb);
+        }
+
+        public void removeCallback(Action<AnimState> cb)
+        {
+            callbacks.Remove(cb);
         }
 
         //External method to set the state; does not callback on this state change, as this is supposed to originate -from- the callback;

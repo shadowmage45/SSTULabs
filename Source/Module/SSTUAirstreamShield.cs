@@ -25,6 +25,9 @@ namespace SSTUTools
 
         [KSPField]
         public float bottomRadius;
+
+        [KSPField]
+        public int animationID = -1;
         
         [KSPField(guiName = "Shielded Parts", guiActive = true, guiActiveEditor = true)]
         public int partsShielded = 0;
@@ -33,6 +36,9 @@ namespace SSTUTools
 
         private List<AirstreamShieldArea> shieldedAreas = new List<AirstreamShieldArea>();
 
+        private SSTUAnimateControlled animationControl;
+        private AirstreamShieldArea baseArea;
+
         private bool needsUpdate = true;
 
         public override void OnStart(StartState state)
@@ -40,8 +46,8 @@ namespace SSTUTools
             base.OnStart(state);
             if (topRadius != 0 && bottomRadius != 0)//add a shield based on base config params
             {
-                AirstreamShieldArea area = new AirstreamShieldArea("baseArea", topRadius, bottomRadius, topY, bottomY, useAttachNodeTop, useAttachNodeBottom);
-                shieldedAreas.Add(area);
+                baseArea = new AirstreamShieldArea("baseArea", topRadius, bottomRadius, topY, bottomY, useAttachNodeTop, useAttachNodeBottom);
+                shieldedAreas.AddUnique(baseArea);
             }
             //TODO check config node for additional shield defs; persist these regardless of external modules
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
@@ -62,6 +68,11 @@ namespace SSTUTools
         public void Start()
         {
             needsUpdate = true;
+            if (animationID >= 0)
+            {
+                animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStateChange);
+                if (animationControl != null) { onAnimationStateChange(animationControl.getAnimationState()); }
+            }
         }
 
         public void LateUpdate()
@@ -96,6 +107,22 @@ namespace SSTUTools
         public Vessel GetVessel()
         {
             return vessel;
+        }
+
+        private void onAnimationStateChange(AnimState newState)
+        {
+            if (newState == AnimState.STOPPED_START)
+            {
+                if (baseArea != null)
+                {
+                    shieldedAreas.AddUnique(baseArea);
+                }
+            }
+            else if (newState == AnimState.STOPPED_END)
+            {
+                shieldedAreas.Remove(baseArea);
+            }
+            needsUpdate = true;
         }
 
         public void addShieldArea(String name, float topRad, float bottomRad, float topY, float bottomY, bool topNode, bool bottomNode)
