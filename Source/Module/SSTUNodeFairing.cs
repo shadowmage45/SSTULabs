@@ -178,9 +178,12 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public String persistentDataString = String.Empty;
-  
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion
-        
+
         #region REGION - private working vars, not user editable
         private float prevNumOfSections = 0;
         private float prevTopDiameter;
@@ -337,6 +340,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
         }
 
         public override void OnSave(ConfigNode node)
@@ -385,7 +389,7 @@ namespace SSTUTools
             {
                 SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(rendersToRemove));
             }
-            loadFairingData(SSTUStockInterop.getPartModuleConfig(part, this));
+            loadFairingData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             if (externalUpdateData != null)
             {
                 updateFromExternalData(externalUpdateData);
@@ -764,6 +768,7 @@ namespace SSTUTools
             }
             fairingJettisoned = true;
             currentlyEnabled = false;
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
         private void enableFairing(bool enable)
@@ -848,7 +853,7 @@ namespace SSTUTools
 
         private bool shouldSpawnFairingForNode(out AttachNode watchedNode, out Part triggerPart, out float fairingPos)
         {
-            watchedNode = part.findAttachNode(nodeName);
+            watchedNode = part.FindAttachNode(nodeName);
             if (watchedNode == null)
             {
                 //no node found, return false

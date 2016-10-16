@@ -116,6 +116,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string presetCurveName;
 
+        [KSPField]
+        public bool useModelSelectionGUI = true;
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion ENDREGION - Persistent variables
 
         #region REGION - GUI Display Variables
@@ -148,8 +154,6 @@ namespace SSTUTools
         private SingleModelData currentNoseModule;
         private SRBNozzleData currentNozzleModule;
         private SRBModelData currentMainModule;
-        
-        private float techLimitMaxDiameter;
 
         private float modifiedCost = -1;
         private float modifiedMass = -1;
@@ -163,15 +167,19 @@ namespace SSTUTools
         #endregion ENDREGION - Private working variables
 
         #region REGION - KSP GUI Interaction Methods
-        
+
+        [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
+        public void selectNoseEvent()
+        {
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModules, new string[] { "top"}), currentDiameter, updateNoseFromEditor);
+        }
+
         public void onDiameterUpdated(BaseField field, object obj)
         {
             if (currentDiameter != prevDiameter)
             {
                 updateDiameterFromEditor(currentDiameter, true);
             }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
         public void onNoseUpdated(BaseField field, object obj)
@@ -180,8 +188,6 @@ namespace SSTUTools
             {
                 updateNoseFromEditor(currentNoseName, true);
             }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void onBodyUpdated(BaseField field, object obj)
@@ -190,8 +196,6 @@ namespace SSTUTools
             {
                 updateMainModelFromEditor(currentMainName, true);
             }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void onNozzleUpdated(BaseField field, object obj)
@@ -200,8 +204,6 @@ namespace SSTUTools
             {
                 updateMountFromEditor(currentNozzleName, true);
             }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void onGimbalUpdated(BaseField field, object obj)
@@ -211,8 +213,6 @@ namespace SSTUTools
                 updateGimbalOffsetFromEditor(currentGimbalOffset, true);
                 prevGimbal = currentGimbalOffset;
             }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void onNoseTextureUpdated(BaseField field, object obj)
@@ -284,6 +284,8 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateDiameterFromEditor(newDiameter, false);
                 }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>
@@ -299,8 +301,8 @@ namespace SSTUTools
                 currentMainModule.destroyCurrentModel();
                 currentMainModule = mod;
                 currentMainModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.CENTRAL);
-                currentMainName = currentMainModule.name;
             }
+            currentMainName = currentMainModule.name;
             if (!currentMainModule.isValidTextureSet(currentMainTexture))
             {
                 currentMainTexture = currentMainModule.getDefaultTextureSet();            
@@ -323,6 +325,8 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateMainModelFromEditor(newModel, false);
                 }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>
@@ -338,8 +342,8 @@ namespace SSTUTools
                 currentNoseModule.destroyCurrentModel();
                 mod.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.TOP);
                 currentNoseModule = mod;
-                currentNoseName = currentNoseModule.name;
             }
+            currentNoseName = currentNoseModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
             {
                 currentNoseTexture = currentNoseModule.getDefaultTextureSet();
@@ -361,6 +365,8 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateNoseFromEditor(newNose, false);
                 }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         /// <summary>
@@ -379,9 +385,9 @@ namespace SSTUTools
                 currentNozzleModule.destroyCurrentModel();
                 currentNozzleModule = mod;
                 currentNozzleModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.BOTTOM);
-                currentNozzleName = currentNozzleModule.name;
-                currentGimbalOffset = 0;                
+                currentGimbalOffset = 0;
             }
+            currentNozzleName = currentNozzleModule.name;
             if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
             {
                 currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
@@ -410,6 +416,8 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateMountFromEditor(newMount, false);
                 }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateGimbalOffsetFromEditor(float newOffset, bool updateSymmetry)
@@ -432,6 +440,8 @@ namespace SSTUTools
                     p.GetComponent<SSTUModularBooster>().updateGimbalOffsetFromEditor(newOffset, false);
                 }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateMainTextureFromEditor(String newTex, bool updateSymmetry)
@@ -481,9 +491,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
-            if (currentDiameter > max) { currentDiameter = max; }
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
+            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
             this.updateUIFloatEditControl("currentGimbalOffset", -currentNozzleModule.gimbalAdjustmentRange, currentNozzleModule.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
 
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
@@ -497,13 +505,15 @@ namespace SSTUTools
             names = SSTUUtils.getNames(nozzleModules, m => m.name);
             this.updateUIChooseOptionControl("currentNozzleName", names, names, true, currentNozzleName);
 
+            Events["selectNoseEvent"].guiActiveEditor = useModelSelectionGUI;
+
             Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["currentGimbalOffset"].uiControlEditor.onFieldChanged = onGimbalUpdated;
             Fields["currentNoseName"].uiControlEditor.onFieldChanged = onNoseUpdated;
             Fields["currentMainName"].uiControlEditor.onFieldChanged = onBodyUpdated;
             Fields["currentNozzleName"].uiControlEditor.onFieldChanged = onNozzleUpdated;
 
-            Fields["currentNoseName"].guiActiveEditor = noseModules.Length>1;
+            Fields["currentNoseName"].guiActiveEditor = !useModelSelectionGUI && noseModules.Length>1;
             Fields["currentNozzleName"].guiActiveEditor = nozzleModules.Length > 1;
             Fields["currentMainName"].guiActiveEditor = mainModules.Length > 1;
             Fields["currentGimbalOffset"].guiActiveEditor = currentNozzleModule.gimbalAdjustmentRange > 0;
@@ -520,6 +530,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -637,9 +648,7 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigNodeData()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             
             //load all main tank model datas
             mainModules = SRBModelData.parseSRBModels(node.GetNodes("MAINMODEL"));
@@ -889,17 +898,17 @@ namespace SSTUTools
                 return;
             }
             float diameterScale = currentMainModule.currentDiameterScale;
-            foreach (FXGroup group in part.fxGroups)
-            {
-                if (group.fxEmitters == null)
-                {
-                    continue;
-                }
-                foreach (ParticleEmitter fx in group.fxEmitters)
-                {
-                    fx.transform.localScale = new Vector3(diameterScale, diameterScale, diameterScale);
-                }
-            }
+            //foreach (FXGroup group in part.fxGroups)
+            //{
+            //    if (group.fxEmitters == null)
+            //    {
+            //        continue;
+            //    }
+            //    foreach (ParticleEmitter fx in group.fxEmitters)
+            //    {
+            //        fx.transform.localScale = new Vector3(diameterScale, diameterScale, diameterScale);
+            //    }
+            //}
             if (part.partInfo != null && part.partInfo.partConfig != null)
             {
                 ConfigNode effectsNode = part.partInfo.partConfig.GetNode("EFFECTS");
@@ -988,13 +997,13 @@ namespace SSTUTools
         private void updateAttachnodes(bool userInput)
         {
             Vector3 pos;
-            AttachNode topNode = part.findAttachNode("top");
+            AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
                 pos = new Vector3(0, currentMainModule.currentHeight * 0.5f + currentNoseModule.currentHeight, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
             }
-            AttachNode bottomNode = part.findAttachNode("bottom");
+            AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
             {
                 pos = new Vector3(0, -currentMainModule.currentHeight * 0.5f - currentNozzleModule.currentHeight, 0);

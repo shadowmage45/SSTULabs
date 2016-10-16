@@ -100,6 +100,9 @@ namespace SSTUTools
         [KSPField]
         public bool adjustCost = true;
 
+        [KSPField]
+        public bool useModelSelectionGUI = true;
+
         #endregion ENDREGION - Standard KSPField variables
 
         #region REGION - KSP Editor Adjust Fields (Float Sliders) and KSP GUI Fields (visible data)
@@ -169,11 +172,13 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool fairingInitialized = false;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion ENDREGION - persistent save-data values, should not be edited in config
 
         #region REGION - Private working variables
-
-        private List<SingleModelData> mountModelData = new List<SingleModelData>();
+        
         private EngineClusterLayoutMountData currentMountData = null;
         private EngineClusterLayoutData[] engineLayouts;     
         private EngineClusterLayoutData currentEngineLayout = null;
@@ -190,18 +195,30 @@ namespace SSTUTools
         
         private float modifiedCost = -1f;
         private float modifiedMass = -1f;
-        
+
+        // cached thrust values, to remove the need to query the part config for the engine module config node
+        // are initialized the first time the engines stats are updated (during Start())
+        // this should allow it to catch any 'upgraded' stats for the engines.
+        private float[] minThrustBase, maxThrustBase;
+        private float[][] trsMults;
+
         #endregion ENDREGION - Private working variables
 
         #region REGION - GUI Interaction Methods
-        
+
+        [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
+        public void selectMountEvent()
+        {
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, updateMountFromEditor);
+        }
+
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
             EngineClusterLayoutMountData mountData = Array.Find(currentEngineLayout.mountData, m => m.name == "Mount-None");
             if (mountData != null)
             {
-                updateMountFromEditor(mountData.name, true, true);
+                updateMountFromEditor(mountData.name, true);
                 SSTUStockInterop.fireEditorUpdate();
                 SSTUModInterop.onPartGeometryUpdate(part, true);
             }
@@ -228,14 +245,12 @@ namespace SSTUTools
 
         public void onMountUpdated(BaseField field, object obj)
         {
-            updateMountFromEditor(guiMountOption, true, false);
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
+            updateMountFromEditor(guiMountOption, true);
         }
 
         public void onLayoutUpdated(BaseField field, object obj)
         {
-            updateLayoutFromEditor(guiLayoutOption, true, false);
+            updateLayoutFromEditor(guiLayoutOption, true);
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
@@ -299,7 +314,7 @@ namespace SSTUTools
             }
         }
 
-        private void updateLayoutFromEditor(String newLayout, bool updateSymmetry, bool forceGuiUpdate)
+        private void updateLayoutFromEditor(String newLayout, bool updateSymmetry)
         {
             currentEngineLayoutName = newLayout;
             currentEngineLayout = Array.Find(engineLayouts, m => m.layoutName == newLayout);
@@ -311,6 +326,8 @@ namespace SSTUTools
             {
                 currentMountName = currentEngineLayout.defaultMount;
             }
+            Fields["guiMountOption"].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
             currentMountData = currentEngineLayout.getMountData(currentMountName);
             currentMountDiameter = currentMountData.initialDiameter;
             currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, currentMountData) + editorEngineSpacingAdjust;
@@ -324,18 +341,18 @@ namespace SSTUTools
             updateDragCubes();
             updateEditorFields();
             updateMountSizeGuiControl(true, currentMountData.initialDiameter);
-            updateMountOptionsGuiControl(true);
+            updateMountOptionsGuiControl();
             updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
             updateGuiState();
             updateFairing(true);
             if (updateSymmetry)
             {
-                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularEngineCluster>().updateLayoutFromEditor(newLayout, false, false); }
+                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularEngineCluster>().updateLayoutFromEditor(newLayout, false); }
             }
         }
 
-        private void updateMountFromEditor(String newMount, bool updateSymmetry, bool forceGuiUpdate)
+        private void updateMountFromEditor(String newMount, bool updateSymmetry)
         {
             currentMountName = newMount;
             currentMountData = currentEngineLayout.getMountData(currentMountName);
@@ -347,7 +364,7 @@ namespace SSTUTools
             updateNodePositions(true);
             updateDragCubes();
             updateEditorFields();
-            updateMountOptionsGuiControl(forceGuiUpdate);
+            updateMountOptionsGuiControl();
             updateMountSizeGuiControl(true);
             updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
@@ -355,8 +372,10 @@ namespace SSTUTools
             updateFairing(true);
             if (updateSymmetry)
             {
-                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularEngineCluster>().updateMountFromEditor(newMount, false, false); }
+                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUModularEngineCluster>().updateMountFromEditor(newMount, false); }
             }
+            SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void updateEngineOffsetFromEditor(float newOffset, bool updateSymmetry)
@@ -404,6 +423,11 @@ namespace SSTUTools
             {
                 initialize();
             }
+
+            Fields["guiMountOption"].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Events["clearMountEvent"].guiActiveEditor = currentEngineLayout.mountData.Length > 1;
+
             Fields["currentMountDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["guiMountOption"].uiControlEditor.onFieldChanged = onMountUpdated;
             Fields["guiLayoutOption"].uiControlEditor.onFieldChanged = onLayoutUpdated;
@@ -416,6 +440,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
                 //prefab init... do not do init during OnLoad for editor or flight... trying for some consistent loading sequences this time around
@@ -481,7 +506,7 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
-            loadConfigNodeData(SSTUStockInterop.getPartModuleConfig(part, part.Modules.IndexOf(this)));
+            loadConfigNodeData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             removeStockTransforms();
             initializeSmokeTransform();
             setupMountModel();
@@ -493,7 +518,7 @@ namespace SSTUTools
             updateEditorFields();
             updateLayoutOptionsGuiControl(false);
             updateMountSizeGuiControl(false);
-            updateMountOptionsGuiControl(false);
+            updateMountOptionsGuiControl();
             updateMountTextureOptionsGuiControl();
             updatePartCostAndMass();
             updateGuiState();
@@ -758,10 +783,10 @@ namespace SSTUTools
             prevMountDiameter = currentMountDiameter;
         }
 
-        private void updateMountOptionsGuiControl(bool forceUpdate)
+        private void updateMountOptionsGuiControl()
         {
             string[] optionsArray = SSTUUtils.getNames(currentEngineLayout.mountData, m => m.name);
-            this.updateUIChooseOptionControl("guiMountOption", optionsArray, optionsArray, forceUpdate, currentMountName);
+            this.updateUIChooseOptionControl("guiMountOption", optionsArray, optionsArray, true, currentMountName);
         }
 
         private void updateMountTextureOptionsGuiControl()
@@ -794,7 +819,7 @@ namespace SSTUTools
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }            
             bool enable = !currentMountData.modelDefinition.fairingDisabled;
-            AttachNode node = part.findAttachNode("top");
+            AttachNode node = part.FindAttachNode("top");
             // this was an attempt to fix fairing interaction between tanks and engines;
             // unfortunately it results in the engine fairing being permanently disabled
             // whenever it is mounted below a tank regardless of the tanks current fairing
@@ -832,23 +857,33 @@ namespace SSTUTools
         /// </summary>
         private void updateNodePositions(bool userInput)
         {
-            AttachNode bottomNode = part.findAttachNode("bottom");
-            if (bottomNode == null) { print("ERROR, could not locate bottom node"); return; }
-            Vector3 pos = bottomNode.position;
-            pos.y = fairingBottomY;
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+            AttachNode bottomNode = part.FindAttachNode("bottom");
+            if (bottomNode != null)
+            {
+                Vector3 pos = bottomNode.position;
+                pos.y = fairingBottomY;
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
+            }
+            
                         
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
                 float y = partTopY + (currentMountData.modelDefinition.fairingTopOffset * getCurrentMountScale());
-                pos = new Vector3(0, y, 0);
+                Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
-                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                AttachNode interstage = part.FindAttachNode(interstageNodeName);
                 if (interstage != null)
                 {
                     Vector3 orientation = new Vector3(0, -1, 0);
                     SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
                 }
+            }
+            AttachNode surface = part.srfAttachNode;
+            if (surface != null)
+            {
+                Vector3 pos = new Vector3(0, partTopY, 0);
+                Vector3 rot = new Vector3(0, 1, 0);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);
             }
         }
 
@@ -867,8 +902,7 @@ namespace SSTUTools
         private void reInitEngineModule()
         {
             SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
-            StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;
-            ConfigNode partConfig = SSTUStockInterop.getPartConfig(part);
+            StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;            
             
             //model constraints need to be updated whenever the number of models (or just the game-objects) are updated
             SSTUModelConstraint constraint = part.GetComponent<SSTUModelConstraint>();
@@ -892,25 +926,24 @@ namespace SSTUTools
 
             //update the engine module(s), forcing them to to reload their thrust, transforms, and effects.
             ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
-            String engineModuleName = engines[0].GetType().Name;
-            ConfigNode[] engineNodes = partConfig.GetNodes("MODULE", "name", engineModuleName);
+            if (minThrustBase == null)
+            {
+                setupThrustCache(engines);
+                setupSplitThrustCache(engines);
+            }
             ConfigNode engineNode;
             float maxThrust, minThrust;
             int positions = layout.positions.Count;
             for (int i = 0; i < engines.Length; i++)
             {
                 engineNode = new ConfigNode("MODULE");
-                engineNodes[i].CopyTo(engineNode);
-                minThrust = engineNode.GetFloatValue("minThrust") * (float)positions;
-                maxThrust = engineNode.GetFloatValue("maxThrust") * (float)positions;
+                minThrust = minThrustBase[i] * (float)positions;
+                maxThrust = maxThrustBase[i] * (float)positions;
                 engineNode.SetValue("minThrust", minThrust.ToString(), true);
                 engineNode.SetValue("maxThrust", maxThrust.ToString(), true);
-                engines[i].propellants.Clear();//as i'm feeding it nodes with propellants, clear the existing ones..
-                if (engineNode.HasNode("transformMultipliers"))
+                if (trsMults[i].Length > 0)
                 {
-                    ConfigNode orig = engineNode.GetNode("transformMultipliers");
-                    engineNode.RemoveNode(orig);
-                    engineNode.AddNode(getSplitThrustNode(orig, positions));
+                    engineNode.AddNode(getSplitThrustNode(trsMults[i], positions));
                 }
                 engines[i].Load(engineNode);
                 engines[i].OnStart(state);
@@ -919,7 +952,6 @@ namespace SSTUTools
 
             //update the gimbal modules, force them to reload transforms
             ModuleGimbal[] gimbals = part.GetComponents<ModuleGimbal>();
-            ConfigNode[] gimbalNodes = partConfig.GetNodes("MODULE", "name", "ModuleGimbal");
             float limit = 0;
             for (int i = 0; i < gimbals.Length; i++)
             {
@@ -931,22 +963,52 @@ namespace SSTUTools
             }
         }
 
+        private void setupThrustCache(ModuleEngines[] engines)
+        {
+            int len = engines.Length;
+            minThrustBase = new float[len];
+            maxThrustBase = new float[len];
+            for (int i = 0; i < len; i++)
+            {
+                minThrustBase[i] = engines[i].minThrust;
+                maxThrustBase[i] = engines[i].maxThrust;
+            }
+        }
+
+        private void setupSplitThrustCache(ModuleEngines[] engines)
+        {
+            int len = engines.Length;
+            int tLen;
+            trsMults = new float[len][];
+            List<float> mults;
+            for (int i = 0; i < len; i++)
+            {
+                mults = engines[i].thrustTransformMultipliers;
+                if (mults == null || mults.Count==0)
+                {
+                    trsMults[i] = new float[0];
+                    continue;
+                }
+                tLen = mults.Count;
+                trsMults[i] = new float[tLen];
+                for (int k = 0; k < tLen; k++)
+                {
+                    trsMults[i][k] = mults[k];
+                }
+            }
+        }
+
         /// <summary>
         /// Return a config node representing the 'split thrust transform' setup for this engine given the original input thrust-split setup and the number of engines currently in the part/model.
         /// </summary>
         /// <param name="original"></param>
         /// <param name="positions"></param>
         /// <returns></returns>
-        private ConfigNode getSplitThrustNode(ConfigNode original, int positions)
+        private ConfigNode getSplitThrustNode(float[] originalValues, int positions)
         {
-            int numOfTransforms = original.values.Count;
-            ConfigNode output = new ConfigNode("transformMultipliers");
-            float[] originalValues = new float[numOfTransforms];
+            int numOfTransforms = originalValues.Length;            
             float newValue;
-            for (int i = 0; i < numOfTransforms; i++)
-            {
-                originalValues[i] = original.GetFloatValue("trf" + i);
-            }
+            ConfigNode output = new ConfigNode("transformMultipliers");
             int rawIndex = 0;
             float totalValue = 0;
             for (int i = 0; i < positions; i++)

@@ -10,7 +10,10 @@ namespace SSTUTools
 
         [KSPField]
         public int numOfPasses = 1;
-        
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
@@ -20,6 +23,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -36,7 +40,7 @@ namespace SSTUTools
         private void initialize()
         {
             constraints.Clear();
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] lookConstraintNodes = node.GetNodes("LOOK_CONST");
             foreach (ConfigNode lcn in lookConstraintNodes)

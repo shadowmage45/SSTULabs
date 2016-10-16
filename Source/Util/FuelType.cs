@@ -305,13 +305,7 @@ namespace SSTUTools
                     return;
                 }
             }
-            part.Resources.list.Clear();
-            PartResource[] resources = part.GetComponents<PartResource>();
-            len = resources.Length;
-            for (int i = 0; i < len; i++)
-            {
-                GameObject.Destroy(resources[i]);
-            }            
+            part.Resources.dict.Clear();            
             ConfigNode resourceNode;
             foreach (String name in resourceList.Keys)
             {
@@ -320,7 +314,7 @@ namespace SSTUTools
                 resourceNode.AddValue("name", name);
                 resourceNode.AddValue("maxAmount", entry.max);
                 resourceNode.AddValue("amount", entry.fill);
-                part.AddResource(resourceNode);
+                part.AddResource(resourceNode);                
             }
             SSTUModInterop.updatePartResourceDisplay(part);
         }

@@ -98,6 +98,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
 
+        [KSPField]
+        public bool useModelSelectionGUI = true;
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion REGION - Standard Part Config Fields
 
         #region REGION - Private working vars
@@ -133,19 +139,50 @@ namespace SSTUTools
 
         //TODO symmetry counterpart updates for all of these
         #region REGION - GUI Methods
+        
+        [KSPEvent(guiName = "Select Top", guiActiveEditor = true)]
+        public void selectTopEvent()
+        {
+            ModuleSelectionGUI.openGUI(topModules, topDiameter, setTopEditor);
+        }
+
+        [KSPEvent(guiName = "Select Bottom", guiActiveEditor = true)]
+        public void selectBottomEvent()
+        {
+            ModuleSelectionGUI.openGUI(bottomModules, bottomDiameter, setBottomEditor);
+        }
 
         private void onTopDockChanged(BaseField field, System.Object obj)
         {
+            setTopDockEditor(currentTopDock, true);
+        }
+
+        private void setTopDockEditor(string newDock, bool updateSymmetry)
+        {
+            currentTopDock = newDock;
             SingleModelData prev = topDockModule;
             topDockModule.destroyCurrentModel();
             topDockModule = SingleModelData.findModel(topDockModules, currentTopDock);
             topDockModule.setupModel(getTopDockRoot(false), ModelOrientation.TOP);
             onModelChanged(prev, topDockModule);
             updateDockingModules(true);
+            if (updateSymmetry)
+            {
+                foreach(Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setTopDockEditor(currentTopDock, false);
+                }
+            }
         }
 
         private void onTopChanged(BaseField field, System.Object obj)
         {
+            setTopEditor(currentTop, true);
+        }
+
+        private void setTopEditor(string newTop, bool updateSymmetry)
+        {
+            currentTop = newTop;
             SingleModelData prev = topModule;
             topModule.destroyCurrentModel();
             topModule = SingleModelData.findModel(topModules, currentTop);
@@ -157,10 +194,23 @@ namespace SSTUTools
             }
             topModule.enableTextureSet(currentTopTexture);
             topModule.updateTextureUIControl(this, "currentTopTexture", currentTopTexture);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setTopEditor(newTop, false);
+                }
+            }
         }
 
         private void onCoreChanged(BaseField field, System.Object obj)
         {
+            setCoreEditor(currentCore, true);
+        }
+
+        private void setCoreEditor(string newCore, bool updateSymmetry)
+        {
+            currentCore = newCore;
             SingleModelData prev = coreModule;
             coreModule.destroyCurrentModel();
             coreModule = SingleModelData.findModel(coreModules, currentCore);
@@ -172,10 +222,23 @@ namespace SSTUTools
             }
             coreModule.enableTextureSet(currentCoreTexture);
             coreModule.updateTextureUIControl(this, "currentCoreTexture", currentCoreTexture);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setCoreEditor(newCore, false);
+                }
+            }
         }
         
         private void onBottomChanged(BaseField field, System.Object obj)
         {
+            setBottomEditor(currentBottom, true);
+        }
+
+        private void setBottomEditor(string newBottom, bool updateSymmetry)
+        {
+            currentBottom = newBottom;
             SingleModelData prev = bottomModule;
             bottomModule.destroyCurrentModel();
             bottomModule = SingleModelData.findModel(bottomModules, currentBottom);
@@ -187,20 +250,46 @@ namespace SSTUTools
             }
             bottomModule.enableTextureSet(currentBottomTexture);
             bottomModule.updateTextureUIControl(this, "currentBottomTexture", currentBottomTexture);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setBottomEditor(newBottom, false);
+                }
+            }
         }
         
         private void onBottomDockChanged(BaseField field, System.Object obj)
         {
+            setBottomDockEditor(currentBottomDock, true);
+        }
+
+        private void setBottomDockEditor(string newBottomDock, bool updateSymmetry)
+        {
+            currentBottomDock = newBottomDock;
             SingleModelData prev = bottomDockModule;
             bottomDockModule.destroyCurrentModel();
             bottomDockModule = SingleModelData.findModel(bottomDockModules, currentBottomDock);
             bottomDockModule.setupModel(getBottomDockRoot(false), ModelOrientation.BOTTOM);
             onModelChanged(prev, bottomDockModule);
             updateDockingModules(true);
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setBottomDockEditor(newBottomDock, false);
+                }
+            }
         }
 
         private void onSolarChanged(BaseField field, System.Object obj)
         {
+            setSolarEditor(currentSolar, true);
+        }
+
+        private void setSolarEditor(string newSolar, bool updateSymmetry)
+        {
+            currentSolar = newSolar;
             solarModule.disable();
             solarModule = Array.Find(solarModules, m => m.modelName == currentSolar);//TODO cleanup
             solarModule.enable(getSolarRoot(false), coreModule.currentVerticalPosition);
@@ -210,6 +299,13 @@ namespace SSTUTools
             updateDragCubes();
             updateGUI();
             SSTUStockInterop.fireEditorUpdate();//update editor for mass/cost values
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularStationCore>().setSolarEditor(newSolar, false);
+                }
+            }
         }
 
         private void onModelChanged(SingleModelData prev, SingleModelData cur)
@@ -254,6 +350,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             init(false);
         }
 
@@ -324,7 +421,7 @@ namespace SSTUTools
 
             topNodeNames = SSTUUtils.parseCSV(topManagedNodes);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodes);
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             coreModules = SingleModelData.parseModels(node.GetNodes("CORE"));
 
@@ -409,7 +506,8 @@ namespace SSTUTools
             names = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
             this.updateUIChooseOptionControl("currentTop", names, names, true, currentTop);
             Fields["currentTop"].uiControlEditor.onFieldChanged = onTopChanged;
-            Fields["currentTop"].guiActiveEditor = topModules.Length > 1;
+            Fields["currentTop"].guiActiveEditor = !useModelSelectionGUI && names.Length > 1;
+            Events["selectTopEvent"].guiActiveEditor = useModelSelectionGUI && names.Length > 1;
 
             names = SingleModelData.getModelNames(coreModules);
             this.updateUIChooseOptionControl("currentCore", names, names, true, currentCore);
@@ -419,7 +517,8 @@ namespace SSTUTools
             names = SingleModelData.getValidSelectionNames(part, bottomModules, bottomNodeNames);
             this.updateUIChooseOptionControl("currentBottom", names, names, true, currentBottom);
             Fields["currentBottom"].uiControlEditor.onFieldChanged = onBottomChanged;
-            Fields["currentBottom"].guiActiveEditor = bottomModules.Length > 1;
+            Fields["currentBottom"].guiActiveEditor = !useModelSelectionGUI && names.Length > 1;
+            Events["selectBottomEvent"].guiActiveEditor = useModelSelectionGUI && names.Length > 1;
 
             names = SingleModelData.getModelNames(bottomDockModules);
             this.updateUIChooseOptionControl("currentBottomDock", names, names, true, currentBottomDock);
@@ -641,7 +740,7 @@ namespace SSTUTools
                 topModuleNode.AddValue("captureRange", "0.1");
                 topDockPartModule = (ModuleDockingNode)part.AddModule(topModuleNode);
                 if (start) { topDockPartModule.OnStart(StartState.Editor); }
-                topDockPartModule.referenceNode = part.findAttachNode(topDockNode);
+                topDockPartModule.referenceNode = part.FindAttachNode(topDockNode);
             }
             else if (!topNodeActive && topDockPartModule != null)
             {
@@ -669,7 +768,7 @@ namespace SSTUTools
                 bottomModuleNode.AddValue("captureRange", "0.1");
                 bottomDockPartModule = (ModuleDockingNode)part.AddModule(bottomModuleNode);
                 if (start) { bottomDockPartModule.OnStart(StartState.Editor); }
-                bottomDockPartModule.referenceNode = part.findAttachNode(bottomDockNode);
+                bottomDockPartModule.referenceNode = part.FindAttachNode(bottomDockNode);
             }
             else if (!bottomNodeActive && bottomDockPartModule != null)
             {
@@ -693,21 +792,20 @@ namespace SSTUTools
         
         private void updateGUI()
         {
-            if (topModules.Length > 1)
-            {
-                string[] moduleNames = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
-                this.updateUIChooseOptionControl("currentTop", moduleNames, moduleNames, true, currentTop);
-            }
-            if (bottomModules.Length > 1)
-            {
-                string[] moduleNames = SingleModelData.getValidSelectionNames(part, bottomModules, bottomNodeNames);
-                this.updateUIChooseOptionControl("currentBottom", moduleNames, moduleNames, true, currentBottom);
-            }
+            string[] moduleNames = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
+            this.updateUIChooseOptionControl("currentTop", moduleNames, moduleNames, true, currentTop);
+            Fields["currentTop"].guiActiveEditor = !useModelSelectionGUI && moduleNames.Length > 1;
+            Events["selectTopEvent"].guiActiveEditor = useModelSelectionGUI && moduleNames.Length > 1;
+
+            moduleNames = SingleModelData.getValidSelectionNames(part, bottomModules, bottomNodeNames);
+            this.updateUIChooseOptionControl("currentBottom", moduleNames, moduleNames, true, currentBottom);
+            Fields["currentBottom"].guiActiveEditor = !useModelSelectionGUI && moduleNames.Length > 1;
+            Events["selectBottomEvent"].guiActiveEditor = useModelSelectionGUI && moduleNames.Length > 1;
         }
 
         private void updateDragCubes()
         {
-            SSTUStockInterop.addDragUpdatePart(part);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private Transform getRootTransformFor(string name, bool recreate)

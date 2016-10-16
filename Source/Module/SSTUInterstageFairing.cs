@@ -103,9 +103,6 @@ namespace SSTUTools
         public float heightIncrement = 1;
 
         [KSPField]
-        public String techLimitSet = "Default";
-
-        [KSPField]
         public String uvMap = "NodeFairing";
 
         [KSPField(isPersistant = true, guiName = "Texture", guiActiveEditor = true),
@@ -174,6 +171,9 @@ namespace SSTUTools
         [KSPField(guiName = "Colliders", guiActiveEditor = true, isPersistant =true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool generateColliders = false;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion
 
         #region private working variables
@@ -191,9 +191,6 @@ namespace SSTUTools
         //list of parts that are shielded from the airstream
         //rebuilt whenever vessel is modified
         private List<Part> shieldedParts = new List<Part>();
-
-        // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private float techLimitMaxDiameter;
 
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
@@ -296,9 +293,6 @@ namespace SSTUTools
 
         private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             topDiameter = newDiameter;
             rebuildFairing(true);
             updateShieldStatus();
@@ -315,9 +309,6 @@ namespace SSTUTools
 
         private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            if (SSTUUtils.isResearchGame() && newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             bottomDiameter = newDiameter;
             rebuildFairing(true);
             updateShieldStatus();
@@ -391,6 +382,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -398,9 +390,8 @@ namespace SSTUTools
         {
             base.OnStart(state);            
             initialize();
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
-            this.updateUIFloatEditControl("topDiameter", minDiameter, max, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, topDiameter);
-            this.updateUIFloatEditControl("bottomDiameter", minDiameter, max, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, bottomDiameter);
+            this.updateUIFloatEditControl("topDiameter", minDiameter, maxDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, topDiameter);
+            this.updateUIFloatEditControl("bottomDiameter", minDiameter, maxDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, bottomDiameter);
             this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
             this.updateUIFloatEditControl("currentStraightHeight", 0, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentStraightHeight);
             Fields["topDiameter"].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
@@ -478,7 +469,16 @@ namespace SSTUTools
 
         //IMultipleDragCube override
         public bool UsesProceduralDragCubes() { return false; }
-        
+
+        //IMultipleDragCube override
+        public bool IsMultipleCubesActive
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         //IPartCostModifier override
         public float GetModuleCost(float cost, ModifierStagingSituation sit) { return -cost + fairingCost; }
 
@@ -670,7 +670,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             textureSetData = TextureSet.loadTextureSets(textureNodes);
@@ -693,16 +693,6 @@ namespace SSTUTools
             fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
 
             loadMaterial();
-
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (topDiameter > techLimitMaxDiameter)
-            {
-                topDiameter = techLimitMaxDiameter;
-            }
-            if (bottomDiameter > techLimitMaxDiameter)
-            {
-                bottomDiameter = techLimitMaxDiameter;
-            }
 
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
             fairingBase = new InterstageFairingContainer(tr.gameObject, cylinderSides, numberOfPanels, wallThickness);
@@ -755,17 +745,17 @@ namespace SSTUTools
             Vector3 innerNodePos = new Vector3(0, innerY, 0);
             Vector3 topNodePos = new Vector3(0, topY, 0);
 
-            AttachNode node = part.findAttachNode(bottomNodeName);
+            AttachNode node = part.FindAttachNode(bottomNodeName);
             if (node != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, node, bottomNodePOs, node.orientation, userInput);
             }
-            node = part.findAttachNode(internalNodeName);
+            node = part.FindAttachNode(internalNodeName);
             if (node != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, node, innerNodePos, node.orientation, userInput);
             }
-            node = part.findAttachNode(topNodeName);
+            node = part.FindAttachNode(topNodeName);
             if (node != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, node, topNodePos, node.orientation, userInput);

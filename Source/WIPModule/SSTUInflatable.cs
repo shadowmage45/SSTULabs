@@ -220,40 +220,30 @@ namespace SSTUTools
         /// <param name="capacity"></param>
         private void updateCrewCapacity(int capacity)
         {
-            MonoBehaviour.print("Set crew capacity to: " + capacity+" current: "+part.CrewCapacity);
+            MonoBehaviour.print("Setting crew capacity to: " + capacity + " current: " + part.CrewCapacity);
             part.CrewCapacity = capacity;
-            if (!HighLogic.LoadedSceneIsEditor) { return; }//only run the following block in the editor; it updates the crew-assignment GUI
-            List<PartCrewManifest> manifests = ShipConstruction.ShipManifest.GetCrewableParts();
-            if (manifests == null || manifests.Count == 0) { return; }
-            int len = manifests.Count;
-            PartCrewManifest crewManifest = null;
-            PartCrewManifest temp;
-            for (int i = 0; i < len; i++)
-            {
-                temp = manifests[i];
-                if (temp.PartID == part.craftID)
-                {
-                    crewManifest = temp;
-                    break;
-                }
-            }
-            if(crewManifest == null) { return; }
-            //force the part-selection panel to be active, else the crew-selection UI will not be updated properly
-            if (EditorLogic.fetch.editorScreen == EditorScreen.Crew)
-            {
-                EditorLogic.fetch.SelectPanelParts();
-                //EditorLogic.fetch.SelectPanelCrew(); //TODO toggle back to crew select?
-            }
-            //clear existing crew from part before updating the crew manifest size
-            len = crewManifest.GetPartCrew().Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (crewManifest.GetPartCrew()[i] != null) { crewManifest.RemoveCrewFromSeat(i); }
-            }
-            //TODO bug SQUAD devs about a public way to alter crew capacity, without having to resort to reflection hacks
-            FieldInfo crewField = typeof(PartCrewManifest).GetField("partCrew", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (crewField != null) { crewField.SetValue(crewManifest, new string[capacity]); }
-            ShipConstruction.ShipManifest.SetPartManifest(part.craftID, crewManifest);
+
+            //if (!HighLogic.LoadedSceneIsEditor) { return; }//only run the following block in the editor; it updates the crew-assignment GUI
+            //if (EditorLogic.fetch.editorScreen == EditorScreen.Crew)
+            //{
+            //    EditorLogic.fetch.SelectPanelParts();
+            //    //EditorLogic.fetch.SelectPanelCrew(); //TODO toggle back to crew select? -- NOPE, causes KSP to explode as it tries to render both GUIs simultaneously
+            //}
+
+            //VesselCrewManifest vcm = ShipConstruction.ShipManifest;
+            //if (vcm == null) { return; }
+            //PartCrewManifest pcm = vcm.GetPartCrewManifest(part.craftID);
+            //if (pcm == null) { return; }
+            //int len = pcm.partCrew.Length;
+            //for (int i = 0; i < len; i++)
+            //{
+            //    pcm.RemoveCrewFromSeat(i);
+            //}
+            //pcm.partCrew = new string[capacity];
+            //for (int i = 0; i < capacity; i++)
+            //{
+            //    pcm.partCrew[i] = "";
+            //}
         }
 
         private void updateRequiredMass()

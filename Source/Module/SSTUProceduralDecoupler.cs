@@ -46,9 +46,6 @@ namespace SSTUTools
         public float forcePerKg = 0.75f;
 
         [KSPField]
-        public String techLimitSet = "Default";
-
-        [KSPField]
         public String uvMap = "NodeFairing";
 
         [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true),
@@ -70,6 +67,9 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentTextureSet = String.Empty;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float modifiedMass = 0;
         private float modifiedCost = 0;
         private float volume = 0;
@@ -83,8 +83,6 @@ namespace SSTUTools
 
         private TextureSet currentTextureSetData;
         private TextureSet[] textureSetData;
-        
-        private float techLimitMaxDiameter;
                 
         #endregion
 
@@ -137,7 +135,6 @@ namespace SSTUTools
         private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             diameter = newDiameter;
             updateEditorFields();
@@ -223,6 +220,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             //this preps the model that will be displayed for the prefab part / editor part icon
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
             {
@@ -244,9 +242,8 @@ namespace SSTUTools
         {
             base.OnStart(state);
             loadConfigData();
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2f, heightIncrement, heightIncrement*0.05f, true, height);
-            this.updateUIFloatEditControl("diameter", minDiameter, max, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, diameter);
+            this.updateUIFloatEditControl("diameter", minDiameter, maxDiameter, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, diameter);
             this.updateUIFloatEditControl("thickness", minThickness, maxThickness, thicknessIncrement*2f, thicknessIncrement, thicknessIncrement*0.05f, true, thickness);
             updateEditorFields();
             prepModel();
@@ -260,7 +257,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             int len = textureNodes.Length;
@@ -281,12 +278,6 @@ namespace SSTUTools
                 textureSetNames[i] = textureSetData[i].setName;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
-
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (diameter > techLimitMaxDiameter)
-            {
-                diameter = techLimitMaxDiameter;
-            }
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
@@ -369,12 +360,12 @@ namespace SSTUTools
         public void updateAttachNodePositions(bool userInput)
         {
             float h = height * 0.5f;
-            AttachNode topNode = part.findAttachNode("top");
+            AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(topNode.position.x, h, topNode.position.z), topNode.orientation, userInput);
             }
-            AttachNode bottomNode = part.findAttachNode("bottom");
+            AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(bottomNode.position.x, -h, bottomNode.position.z), bottomNode.orientation, userInput);

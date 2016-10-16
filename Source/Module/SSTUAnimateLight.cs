@@ -74,12 +74,17 @@ namespace SSTUTools
         [KSPField]
         public int animationID = -1;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private bool initialized = false;
         private LightAnimationState state = LightAnimationState.OFF;
         private SSTUAnimateControlled animationController;
         private List<Renderer> emissiveRenderers = new List<Renderer>();
         private LightData[] lightTransforms;
         private int shaderEmissiveID;
+
+        private MaterialPropertyBlock matProps;
 
         [KSPAction("Toggle Lights", KSPActionGroup.Light)]
         public void enableLightsAction(KSPActionParam param)
@@ -122,6 +127,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -185,6 +191,7 @@ namespace SSTUTools
             lightLoopGreenCurve.Add(1, 1);
 
             shaderEmissiveID = Shader.PropertyToID("_EmissiveColor");
+            matProps = new MaterialPropertyBlock();
         }
 
         public void OnAnimationStatusCallback(AnimState newState)
@@ -284,7 +291,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            loadConfigData(SSTUStockInterop.getPartModuleConfig(part, this));
+            loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             setState(state);
         }
 
@@ -383,12 +390,14 @@ namespace SSTUTools
             color.r = rCurve.Evaluate(p);
             color.b = bCurve.Evaluate(p);
             color.g = gCurve.Evaluate(p);
+            matProps.SetColor(shaderEmissiveID, color);
             int len = emissiveRenderers.Count;
             for (int i = 0; i < len; i++)
             {
                 if (emissiveRenderers[i] != null)
                 {
-                    emissiveRenderers[i].sharedMaterial.SetColor(shaderEmissiveID, color);
+                    emissiveRenderers[i].SetPropertyBlock(matProps);
+                    //emissiveRenderers[i].sharedMaterial.SetColor(shaderEmissiveID, color);
                 }
             }
         }

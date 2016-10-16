@@ -97,9 +97,6 @@ namespace SSTUTools
         public String rcsTransformName = "SSTUMUSRCS";
 
         [KSPField]
-        public String techLimitSet = "Default";
-
-        [KSPField]
         public bool subtractMass = false;
 
         [KSPField]
@@ -189,6 +186,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedFairing = false;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #endregion
 
         #region ----------------- REGION - Private working value fields ----------------- 
@@ -210,9 +210,6 @@ namespace SSTUTools
         private float moduleMass = 0;
         private float moduleCost = 0;
         private float rcsThrust = 0;
-
-        // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private float techLimitMaxDiameter;
 
         //Private-instance-local fields for tracking the current/loaded config; basically parsed from configNodeData when config is loaded
         //upper, rcs, and mount must be present for every part
@@ -489,6 +486,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
         
@@ -500,8 +498,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            float max = techLimitMaxDiameter < maxTankDiameter ? techLimitMaxDiameter : maxTankDiameter;
-            this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, max, tankDiameterIncrement*2, tankDiameterIncrement, tankDiameterIncrement*0.05f, true, currentTankDiameter);
+            this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, maxTankDiameter, tankDiameterIncrement*2, tankDiameterIncrement, tankDiameterIncrement*0.05f, true, currentTankDiameter);
             this.updateUIFloatEditControl("currentTankHeight", minTankHeight, maxTankHeight, tankHeightIncrement*2f, tankHeightIncrement, tankHeightIncrement*0.05f, true, currentTankHeight);
             string[] names = SSTUUtils.getNames(mountModules, m => m.name);
             this.updateUIChooseOptionControl("currentMount", names, names, true, currentMount);
@@ -604,11 +601,6 @@ namespace SSTUTools
                 currentRcsThrust = defaultRcsThrust;
             }
             loadConfigData();
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentTankDiameter > techLimitMaxDiameter)
-            {
-                currentTankDiameter = techLimitMaxDiameter;
-            }
             updateModules(false);
             buildSavedModel();
             updateModels();
@@ -634,7 +626,7 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigData()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             //mandatory nodes, -all- tank types must have these
             ConfigNode upperDomeNode = node.GetNode("TANKDOME");
@@ -848,20 +840,20 @@ namespace SSTUTools
         /// </summary>
         private void updateNodePositions(bool userInput)
         {
-            AttachNode topNode = part.findAttachNode("top");
+            AttachNode topNode = part.FindAttachNode("top");
             SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(0, partTopY, 0), topNode.orientation, userInput);
 
-            AttachNode topNode2 = part.findAttachNode("top2");
+            AttachNode topNode2 = part.FindAttachNode("top2");
             SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode2, new Vector3(0, topFairingBottomY, 0), topNode2.orientation, userInput);
 
-            AttachNode bottomNode = part.findAttachNode("bottom");
+            AttachNode bottomNode = part.FindAttachNode("bottom");
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
             
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
                 Vector3 pos = new Vector3(0, bottomFairingTopY, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
-                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                AttachNode interstage = part.FindAttachNode(interstageNodeName);
                 if (interstage != null)
                 {
                     Vector3 orientation = new Vector3(0, -1, 0);

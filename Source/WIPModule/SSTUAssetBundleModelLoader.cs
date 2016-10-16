@@ -79,11 +79,17 @@ namespace SSTUTools
             {
                 m = render.sharedMaterial;
                 if (adjustedMaterials.Contains(m)) { continue; }//already fixed that material (many are shared across transforms), so skip it
-                else { adjustedMaterials.Add(m); }                
+                else { adjustedMaterials.Add(m); }
+                replaceShader(m, m.shader.name);
                 replaceTexture(m, "_MainTex", false);
                 replaceTexture(m, "_BumpMap", true);
                 replaceTexture(m, "_Emissive", false);
             }
+        }
+
+        private static void replaceShader(Material m, string name)
+        {
+            m.shader = SSTUDatabase.getShader(name);
         }
 
         private static void replaceTexture(Material m, string name, bool nrm = false)

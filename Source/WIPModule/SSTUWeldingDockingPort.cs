@@ -21,9 +21,6 @@ namespace SSTUTools
         public float maxDiameter = 10f;
 
         [KSPField]
-        public String techLimitSet = "Default";
-
-        [KSPField]
         public float cost = 1000f;
 
         [KSPField]
@@ -45,8 +42,7 @@ namespace SSTUTools
         public bool enableSnap = false;
 
         private float modifiedMass;
-        private float modifiedCost;        
-        private float techLimitMaxDiameter;
+        private float modifiedCost;
         private bool initialized = false;
         private SSTUAnimateControlled animation;
 
@@ -88,7 +84,6 @@ namespace SSTUTools
 
         private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             currentDiameter = newDiameter;
@@ -136,8 +131,7 @@ namespace SSTUTools
             base.OnStart(state);
             initialize();
             GameEvents.onPartCouple.Add(new EventData<GameEvents.FromToAction<Part, Part>>.OnEvent(onDock));
-            float max = Math.Min(maxDiameter, techLimitMaxDiameter);
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
+            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
             BaseField diameter = Fields["currentDiameter"];
             diameter.uiControlEditor.onFieldChanged = onDiameterChanged;
 
@@ -192,8 +186,6 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
             if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }            
             if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }    
             updateModelScale();
@@ -252,8 +244,8 @@ namespace SSTUTools
             Part weld = getBasePart();
             if (otherPort == null || otherPortModule == null || otherWeld == null || weld == null) { return; }
 
-            AttachNode thisNode = weld.findAttachNodeByPart(part);
-            AttachNode otherNode = otherWeld.findAttachNodeByPart(otherPort);
+            AttachNode thisNode = weld.FindAttachNodeByPart(part);
+            AttachNode otherNode = otherWeld.FindAttachNodeByPart(otherPort);
             decoupleFromBase();
             otherPortModule.decoupleFromBase();
             weld.Couple(otherWeld);
@@ -281,7 +273,7 @@ namespace SSTUTools
 
         private Part getBasePart()
         {
-            AttachNode weldNode = part.findAttachNode(weldNodeName);
+            AttachNode weldNode = part.FindAttachNode(weldNodeName);
             if (weldNode != null && weldNode.attachedPart != null) { return weldNode.attachedPart; }
             AttachNode srfNode = part.srfAttachNode;
             if (srfNode != null && srfNode.attachedPart != null) { return srfNode.attachedPart; }

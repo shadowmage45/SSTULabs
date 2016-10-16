@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine;
 
 namespace SSTUTools
@@ -159,8 +158,11 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool hasJettisonedDrogueCap = false;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         #region private working variables
-        
+
         private ChuteState chuteState = ChuteState.RETRACTED;
                 
         private ParachuteModelData[] mainChuteModules;
@@ -232,6 +234,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             chuteState = (ChuteState)Enum.Parse(typeof(ChuteState), chutePersistence);
             initialize();
         }
@@ -269,7 +272,7 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            loadConfigData(SSTUStockInterop.getPartModuleConfig(part, this));
+            loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
             initializeModels();
             setChuteState(chuteState);
         }
@@ -331,8 +334,8 @@ namespace SSTUTools
                 case ChuteState.RETRACTED:
                     chuteStatusText = "Packed-";
                     if (noAtmo) { chuteStatusText += "No Atmo"; }
-                    else if (hasDrogueChute){chuteStatusText += shouldAutoCutDrogue() ? "Unsafe" : "Safe";}
-                    else { chuteStatusText += shouldAutoCutMain() ? "Unsafe" : "Safe"; }
+                    else if (hasDrogueChute){chuteStatusText += shouldDestroyDrogue() ? "Unsafe" : "Safe";}
+                    else { chuteStatusText += shouldDestroyMain() ? "Unsafe" : "Safe"; }
                     break;
                 
                 case ChuteState.ARMED:
@@ -347,14 +350,24 @@ namespace SSTUTools
                     else
                     {
                         chuteStatusText = "Armed-";
-                        if (noAtmo) { chuteStatusText += "No Atmo"; }
-                        else { chuteStatusText += "Unsafe"; }
+                        if (noAtmo)
+                        {
+                            chuteStatusText += "No Atmo";
+                        }
+                        else if ((hasDrogueChute && shouldDestroyDrogue()) || (!hasDrogueChute && shouldDestroyMain()))
+                        {
+                            chuteStatusText += "Unsafe";
+                        }
+                        else
+                        {
+                            chuteStatusText += "Waiting";
+                        }
                     }                    
                     break;
                     
                 case ChuteState.DROGUE_DEPLOYING_SEMI:
                     applyDrag = true;
-                    if (shouldAutoCutDrogue() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyDrogue() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -383,7 +396,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.DROGUE_SEMI_DEPLOYED:
-                    if (shouldAutoCutDrogue() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyDrogue() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -409,7 +422,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.DROGUE_DEPLOYING_FULL:
-                    if (shouldAutoCutDrogue() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyDrogue() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -439,7 +452,7 @@ namespace SSTUTools
                     
                 case ChuteState.DROGUE_FULL_DEPLOYED:
                     applyPhysicsDrag();
-                    if (shouldAutoCutDrogue() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyDrogue() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     } 
@@ -459,7 +472,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.MAIN_DEPLOYING_SEMI:
-                    if (shouldAutoCutMain() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyMain() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -482,7 +495,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.MAIN_SEMI_DEPLOYED:
-                    if (shouldAutoCutMain() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyMain() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -510,7 +523,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.MAIN_DEPLOYING_FULL:
-                    if (shouldAutoCutMain())
+                    if (shouldDestroyMain())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -533,7 +546,7 @@ namespace SSTUTools
                     break;
                     
                 case ChuteState.MAIN_FULL_DEPLOYED:
-                    if (shouldAutoCutMain() || shouldAutoCutLandedSpeed())
+                    if (shouldDestroyMain() || shouldAutoCutLandedSpeed())
                     {
                         setChuteState(ChuteState.CUT);
                     }
@@ -785,12 +798,12 @@ namespace SSTUTools
             return atmoDensity >= mainMinAtm;
         }
 
-        private bool shouldAutoCutMain()
+        private bool shouldDestroyMain()
         {
             return dynamicPressure > mainMaxQ || externalTemp > mainMaxTemp || atmoDensity < mainMinAtm;
         }
 
-        private bool shouldAutoCutDrogue()
+        private bool shouldDestroyDrogue()
         {
             return dynamicPressure > drogueMaxQ || externalTemp > drogueMaxTemp || atmoDensity < drogueMinAtm;
         }
@@ -803,13 +816,13 @@ namespace SSTUTools
         private bool shouldDeployDrogue()
         {
             if (!hasDrogueChute) { return false; }
-            if (shouldAutoCutDrogue()) { return false; }
+            if (shouldDestroyDrogue()) { return false; }
             return shouldDeploySeaLevelAlt(drogueSafetyAlt);
         }
 
         private bool shouldDeployMains()
         {
-            if (shouldAutoCutMain()) { return false;}
+            if (shouldDestroyMain()) { return false;}
             if (shouldDeploySeaLevelAlt(mainSafetyAlt)) { return true; }
             return shouldDeployRadarAlt(mainSafetyAlt);
         }
@@ -836,7 +849,8 @@ namespace SSTUTools
             Vector3 dragDirLocal = part.dragVectorDirLocal;
             dragPoint = Vector3.Lerp(dragPoint, dragDirLocal, 0.5f);//lerp between these to stabalize the oscilations
             Vector3 dragPointWorld = part.transform.TransformPoint(dragPoint);
-            part.rb.AddForceAtPosition(dragForce, dragPointWorld, ForceMode.Force);
+            part.AddForceAtPosition(dragForce, dragPointWorld);
+            //part.rb.AddForceAtPosition(dragForce, dragPointWorld, ForceMode.Force);
         }
 
         private Vector3 getDragForce()

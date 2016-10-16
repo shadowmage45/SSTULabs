@@ -42,6 +42,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float modifiedMass;
         private float modifiedCost;
         private string[] controlledNodes=new string[] { };
@@ -78,6 +81,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -129,7 +133,7 @@ namespace SSTUTools
         /// </summary>
         private void initialize()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             if (node.HasValue("controlledNode"))
             {
                 controlledNodes = node.GetStringValues("controlledNode");
@@ -331,7 +335,6 @@ namespace SSTUTools
             AttachNode attachNode;
             ModelSwitchGroup group;
             ModelSwitchData model;
-            Transform groupTransform;
             for (int i = 0; i < len; i++)
             {
                 //updated node handling routing
@@ -363,7 +366,7 @@ namespace SSTUTools
                         //rotation will be the base-transforms rotation quaternion multiplied (or inverse) by the local-rotation quaternion from euler-angle of the rotation for the node
                         //and then how to get it as a vector-axis?  mult the 'fwd' vector by the quat?
                         
-                        attachNode = part.findAttachNode(model.nodes[k].name);
+                        attachNode = part.FindAttachNode(model.nodes[k].name);
                         if (attachNode == null)
                         {
                             attachNode = SSTUAttachNodeUtils.createAttachNode(part, group.parentNode, pos, rot, 2);

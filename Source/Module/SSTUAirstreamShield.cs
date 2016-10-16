@@ -178,12 +178,12 @@ namespace SSTUTools
                 area = shieldedAreas[i];
                 if (area.useTopNode)//TODO find the top-most node(s) by Y level
                 {
-                    AttachNode node = part.findAttachNode("top");
+                    AttachNode node = part.FindAttachNode("top");
                     if (node != null && node.attachedPart == null) { continue; }
                 }
                 if (area.useBottomNode)//TODO find the bottom-most node(s) by Y level
                 {
-                    AttachNode node = part.findAttachNode("bottom");
+                    AttachNode node = part.FindAttachNode("bottom");
                     if (node != null && node.attachedPart == null) { continue; }
                 }
                 shieldedAreas[i].updateShieldStatus(part, shieldedParts);

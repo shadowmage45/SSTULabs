@@ -73,13 +73,13 @@ namespace SSTUTools.Module
 
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
-        
-        [KSPField]
-        public String techLimitSet = "Default";
 
         [KSPField]
         public string fuelPreset = "Solid";
-                
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float prevHeight;
         private float prevDiameter;
 
@@ -91,9 +91,6 @@ namespace SSTUTools.Module
         private Transform scalarTransform;
         
         private ContainerFuelPreset fuelType;
-
-        // tech limit values are updated every time the part is initialized in the editor; ignored otherwise
-        private float techLimitMaxDiameter;
 
         public void onHeightUpdated(BaseField field, object obj)
         {
@@ -116,18 +113,16 @@ namespace SSTUTools.Module
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (diameter > techLimitMaxDiameter) { diameter = techLimitMaxDiameter; }
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
             this.updateUIFloatEditControl("height", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, height);
-            this.updateUIFloatEditControl("diameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
+            this.updateUIFloatEditControl("diameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, diameter);
             locateTransforms();
             updateModelScales();
             updateModelPositions();
@@ -187,7 +182,6 @@ namespace SSTUTools.Module
         {
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             diameter = newDiameter;
             updateEditorFields();
             updatePartResources();

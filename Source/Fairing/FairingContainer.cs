@@ -123,6 +123,7 @@ namespace SSTUTools
                 rb.AddForce(globalForceDirection * force);
                 rb.useGravity = false;
             }
+            panelPivots = new GameObject[0];//de-reference old panels for garbage collection
         }
 
         public void setPanelRotations(float angle)

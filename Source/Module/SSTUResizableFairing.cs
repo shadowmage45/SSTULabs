@@ -51,9 +51,6 @@ namespace SSTUTools
         [KSPField]
         public String modelName = "SSTU/Assets/SC-GEN-FR";
 
-        [KSPField]
-        public String techLimitSet = "Default";
-
         /// <summary>
         /// Persistent scale value, whatever value is here/in the config will be the 'start diameter' for parts in the editor/etc
         /// </summary>
@@ -65,8 +62,10 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = "Fairings-White";
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float prevDiameter;
-        private float techLimitMaxDiameter;
         private ModuleProceduralFairing mpf = null;
         private TextureSet[] textureSets;
 
@@ -91,7 +90,6 @@ namespace SSTUTools
         public void onUserSizeChange(float newDiameter, bool updateSymmetry)
         {
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             currentDiameter = newDiameter;
             updateModelScale();
@@ -108,7 +106,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
             int len = textureSets.Length;
             string[] textureSetNames = new string[len];
@@ -117,16 +115,11 @@ namespace SSTUTools
                 textureSetNames[i] = textureSets[i].setName;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentDiameter > techLimitMaxDiameter)
-            {
-                currentDiameter = techLimitMaxDiameter;
-            }
+            
             updateModelScale();
             updateTexture(currentTextureSet);
             updateNodePositions(false);
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, max, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
+            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
             Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
             Fields["currentTextureSet"].guiActiveEditor = textureSets.Length > 1;
@@ -136,6 +129,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//for prefab part...
             updateEditorFields();
@@ -184,8 +178,8 @@ namespace SSTUTools
 
         private void updateNodePositions(bool userInput)
         {
-            AttachNode topNode = part.findAttachNode("top");
-            AttachNode bottomNode = part.findAttachNode("bottom");
+            AttachNode topNode = part.FindAttachNode("top");
+            AttachNode bottomNode = part.FindAttachNode("bottom");
             float scale = currentDiameter / modelDiameter;
             float topY = topNodePosition * scale;
             float bottomY = bottomNodePosition * scale;

@@ -14,6 +14,9 @@ namespace SSTUTools
         private Transform[] meshes;        
         private SSTUDecal[] possibleDecals;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         [KSPEvent(guiName ="Next Decal", guiActiveEditor = true)]
         public void nextDecalEvent()
         {
@@ -28,6 +31,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
         }
 
         public override void OnStart(StartState state)
@@ -39,7 +43,7 @@ namespace SSTUTools
         private void initialize()
         {
             meshes = part.transform.FindChildren(decalMeshName);
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] decalNodes = node.GetNodes("DECAL");
             int len = decalNodes.Length;
             possibleDecals = new SSTUDecal[len];

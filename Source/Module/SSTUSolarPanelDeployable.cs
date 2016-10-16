@@ -9,7 +9,7 @@ namespace SSTUTools
     //Solar panel code based from Near-Future code originally, but has been vastly changed since the original implementation
     //solar pivots rotate around localY, to make localZ face the sun
     //e.g. y+ should point towards origin, z+ should point towards the panel solar input direction
-    public class SSTUSolarPanelDeployable : PartModule
+    public class SSTUSolarPanelDeployable : PartModule, IContractObjectiveModule
     {
         //panel state enum, each represents a discrete state
         public enum SSTUPanelState
@@ -61,6 +61,9 @@ namespace SSTUTools
 
         [KSPField]
         public bool canDeployShrouded = false;
+
+        [KSPField]
+        public bool canRetract = true;
 
         [KSPField]
         public float trackingSpeed = 0.25f;
@@ -203,6 +206,42 @@ namespace SSTUTools
             updateGuiData();
         }
 
+        public void Start()
+        {
+            if (vessel.solarFlux < 0)
+            {
+                MonoBehaviour.print("Skipping solar panel initial alignment");
+                return;
+            }
+            MonoBehaviour.print("Setting up solar panel intial orientation from Start()");
+            CelestialBody sun = FlightGlobals.Bodies[0];
+            sunTransform = sun.transform;
+            if (panelState == SSTUPanelState.EXTENDED)
+            {
+                PivotData pd;
+                int len = pivotData.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    pd = pivotData[i];
+                    //vector from pivot to sun
+                    Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
+                    float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
+                    Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
+                    pd.pivotTransform.rotation = to;
+                }
+                len = secondaryPivotData.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    pd = secondaryPivotData[i];
+                    //vector from pivot to sun
+                    Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
+                    float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
+                    Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
+                    pd.pivotTransform.rotation = to;
+                }
+            }
+        }
+
         private void reInitialize()
         {
             initialized = false;
@@ -270,7 +309,10 @@ namespace SSTUTools
             }
             else if (panelState == SSTUPanelState.EXTENDING || panelState == SSTUPanelState.EXTENDED)
             {
-                retract();
+                if (canRetract)
+                {
+                    retract();
+                }                
             }
             else //must be retracting or retracted
             {
@@ -630,7 +672,7 @@ namespace SSTUTools
             else if (panelState == SSTUPanelState.EXTENDING || panelState == SSTUPanelState.EXTENDED)
             {
                 Events["extendEvent"].active = false;
-                Events["retractEvent"].active = true;
+                Events["retractEvent"].active = canRetract;
             }
             else//
             {
@@ -639,6 +681,15 @@ namespace SSTUTools
             }
         }
 
+        public string GetContractObjectiveType()
+        {
+            return "Generator";
+        }
+
+        public bool CheckContractObjectiveValidity()
+        {
+            return true;
+        }
     }
 
 }

@@ -219,7 +219,7 @@ namespace SSTUTools.WIPModule
         }
 
         /// <summary>
-        /// Update 'dorsal' attach node(s) (all others handled by base MFT code)
+        /// Update 'dorsal' and interior attach node(s) (all others handled by base MFT code)
         /// </summary>
         /// <param name="userInput"></param>
         protected override void updateAttachNodes(bool userInput)
@@ -229,7 +229,7 @@ namespace SSTUTools.WIPModule
             //internal dorsal node
             if (currentMainTankModule.modelDefinition.attachNodeData.Length > 0)
             {                
-                AttachNode node = part.findAttachNode("dorsal");
+                AttachNode node = part.FindAttachNode("dorsal");
                 if (node == null) { return; }
                 AttachNodeBaseData d = currentMainTankModule.modelDefinition.attachNodeData[0];
                 Vector3 pos = d.position * currentMainTankModule.currentDiameterScale;
@@ -238,41 +238,17 @@ namespace SSTUTools.WIPModule
             //internal front/rear nodes
             float height = currentMainTankModule.currentHeight + (currentMainTankModule.modelDefinition.fairingTopOffset * 2f * currentMainTankModule.currentHeightScale);
             height *= 0.5f;
-            AttachNode front = part.findAttachNode("front");
+            AttachNode front = part.FindAttachNode("front");
             if (front != null)
             {
                 Vector3 pos = new Vector3(0, height, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, front, pos, Vector3.down, userInput);
             }
-            AttachNode rear = part.findAttachNode("rear");
+            AttachNode rear = part.FindAttachNode("rear");
             if (rear != null)
             {
                 Vector3 pos = new Vector3(0, -height, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, rear, pos, Vector3.up, userInput);
-            }
-        }
-
-        /// <summary>
-        /// Updates the body-surround fairing for the ModularCargoBay (optional, not all will have surround fairings)
-        /// </summary>
-        protected override void updateFairing()
-        {
-            //fairing module #1 handled through base update code, this is the 'mount' fairing module
-            base.updateFairing();
-            //only care about #2 (index=1) here, if it is present on the part
-            SSTUNodeFairing[] fairings = part.GetComponents<SSTUNodeFairing>();
-            if (fairings.Length > 1)
-            {
-                float height = currentMainTankModule.currentHeight + (currentMainTankModule.modelDefinition.fairingTopOffset * 2f * currentMainTankModule.currentHeightScale);
-                height *= 0.5f;
-                float radius = currentMainTankModule.currentDiameter * 0.5f;
-                SSTUNodeFairing fairing = fairings[1];
-                FairingUpdateData fud = new FairingUpdateData();
-                fud.setBottomRadius(radius);
-                fud.setTopRadius(radius);
-                fud.setTopY(height);
-                fud.setBottomY(-height);
-                fairing.updateExternal(fud);
             }
         }
 

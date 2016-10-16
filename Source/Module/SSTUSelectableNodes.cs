@@ -46,7 +46,7 @@ namespace SSTUTools
                 {
                     currentlyEnabled = startsEnabled;
                     initialized = true;
-                    AttachNode node = part.findAttachNode(nodeName);
+                    AttachNode node = part.FindAttachNode(nodeName);
                     if (currentlyEnabled && node == null)
                     {
                         SSTUAttachNodeUtils.createAttachNode(part, nodeName, nodeDefaultPosition, nodeDefaultOrientation, 2);
@@ -62,7 +62,7 @@ namespace SSTUTools
                 }
                 else
                 {
-                    AttachNode node = part.findAttachNode(nodeName);
+                    AttachNode node = part.FindAttachNode(nodeName);
                     if (currentlyEnabled && node == null)
                     {
                         currentlyEnabled = true;
@@ -79,7 +79,7 @@ namespace SSTUTools
 
         public void toggleNode()
         {
-            AttachNode node = part.findAttachNode(nodeName);
+            AttachNode node = part.FindAttachNode(nodeName);
             if (node == null)
             {
                 currentlyEnabled = true;

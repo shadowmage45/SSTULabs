@@ -31,6 +31,7 @@ namespace SSTUTools
 
         public static void removeContainerUpdatedCallback(Action<SSTUVolumeContainer> cb) { containerUpdatedCallbacks.Remove(cb); }
 
+        //RealFuels ModuleEngineConfigs compatibility for updating the 'scale' value of an engine
         public static void onEngineConfigChange(Part part, String config, float scale)
         {
             if (isRFInstalled())
@@ -52,11 +53,31 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Updates part highlight renderer list, sends message to SSTUFlagDecal to update its renderer,
+        ///  sends message to FAR to update voxels, or if createDefaultCube==true will re-render the 'default' stock drag cube for the part<para/>
+        /// Should be called anytime the model geometry in a part is changed -- either models added/deleted, procedural meshes updated.  Other methods exist for pure drag-cube updating in SSTUStockInterop.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="createDefaultCube"></param>
         public static void onPartGeometryUpdate(Part part, bool createDefaultCube)
         {
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//noop on prefabs
             //MonoBehaviour.print(System.Environment.StackTrace);
-            part.HighlightRenderers = null;//force refresh of part highlighting
+            if (part.HighlightRenderer != null)
+            {
+                MonoBehaviour.print("Updating part highlighter.");
+                part.HighlightRenderer = null;
+                //part.HighlightRenderer.Clear();
+                Transform model = part.transform.FindRecursive("model");
+                if (model != null)
+                {
+                    MeshRenderer[] renders = model.GetComponentsInChildren<MeshRenderer>(false);
+                    part.HighlightRenderer = new List<Renderer>(renders);//.AddRange(renders);
+                }
+                part.RefreshHighlighter();
+                MonoBehaviour.print("Highlighting updated.");
+            }
             part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
             if (isFARInstalled())
             {
@@ -91,7 +112,6 @@ namespace SSTUTools
 
         public static bool onPartFuelVolumeUpdate(Part part, float liters)
         {
-            updateKISPartVolume(part, liters);
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
             if (vc != null)
             {
@@ -205,25 +225,6 @@ namespace SSTUTools
             fi.SetValue(pm, liters);
             BaseEvent inventoryEvent = pm.Events["ShowInventory"];
             inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
-        }
-
-        public static void updateKISPartVolume(Part part, float volume)
-        {
-            if (true) { return; }//NOOP doesn't work, even if the part has the kis module; KIS is hard-coded to use prefab for most functionality
-            if (!isKISInstalled()) { return; }
-            string typeName = "KIS.ModuleKISItem,KIS";
-            Type kisModuleType = Type.GetType(typeName);
-            if (kisModuleType == null)
-            {
-                MonoBehaviour.print("ERROR: Could not locate KIS Item module for name: " + typeName);
-                return;
-            }
-            PartModule pm = (PartModule)part.GetComponent(kisModuleType);
-            if (pm != null)
-            {
-                FieldInfo fi = kisModuleType.GetField("volumeOverride");
-                fi.SetValue(pm, volume);
-            }
         }
 
         public static bool isFARInstalled()

@@ -27,9 +27,6 @@ namespace SSTUTools
 
         [KSPField]
         public float maxTankDiameter = 10f;
-                
-        [KSPField]
-        public String techLimitSet = "Default";
 
         [KSPField]
         public String topManagedNodeNames = "top, top2, top3, top4";
@@ -50,7 +47,11 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String currentFuelType = String.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Tank"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Length"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentTankSet = String.Empty;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Variant"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTankType = String.Empty;
 
@@ -82,6 +83,9 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
+        [KSPField]
+        public bool useModelSelectionGUI = true;
+
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
         /// checked and updated during OnStart, and should generally only run in the editor the first
@@ -89,9 +93,9 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
-
-        [KSPField(isPersistant = true)]
-        public bool initializedFairing = false;
+        
+        [Persistent]
+        public string configNodeData = string.Empty;
 
         #endregion
 
@@ -107,10 +111,11 @@ namespace SSTUTools
         private float currentTankMass=-1;
         private float currentTankCost=-1;
         
-        private float techLimitMaxDiameter;
+        private TankSet[] tankSets;
+        private TankSet currentTankSetModule;
         
-        protected SingleModelData[] mainTankModules;
-        protected SingleModelData currentMainTankModule;
+        protected TankModelData[] mainTankModules;
+        protected TankModelData currentMainTankModule;
 
         protected SingleModelData[] noseModules;
         protected SingleModelData currentNoseModule;
@@ -124,11 +129,26 @@ namespace SSTUTools
         private string[] noseVariants;
         private string[] mountVariants;
 
+        //populated during init to the variant type of the currently selected model data
+        private string lastSelectedVariant;
+
         protected bool initialized = false;
 
         #endregion
 
         #region REGION - GUI Events/Interaction methods
+
+        [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
+        public void selectNoseEvent()
+        {
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModules, topNodeNames), currentTankDiameter, setNoseModuleFromEditor);
+        }
+
+        [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
+        public void selectMountEvent()
+        {
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModules, bottomNodeNames), currentTankDiameter, setMountModuleFromEditor);
+        }
 
         public void tankDiameterUpdated(BaseField field, object obj)
         {
@@ -151,6 +171,14 @@ namespace SSTUTools
             if (prevNose != currentNoseType || currentNoseModule.name!=currentNoseType)
             {
                 setNoseModuleFromEditor(currentNoseType, true);
+            }
+        }
+
+        public void tankSetUpdated(BaseField field, object obj)
+        {
+            if ((string)obj != currentTankSet)
+            {
+                setTankSetFromEditor(currentTankSet, true);
             }
         }
 
@@ -212,8 +240,8 @@ namespace SSTUTools
             mountVariants = availMountTypes.ToArray();
             this.updateUIChooseOptionControl("currentNoseType", noseVariants, noseVariants, true, currentNoseType);
             this.updateUIChooseOptionControl("currentMountType", mountVariants, mountVariants, true, currentMountType);
-            Fields["currentNoseType"].guiActiveEditor = noseVariants.Length>1;
-            Fields["currentMountType"].guiActiveEditor = mountVariants.Length>1;
+            Fields["currentNoseType"].guiActiveEditor = !useModelSelectionGUI && noseVariants.Length>1;
+            Fields["currentMountType"].guiActiveEditor = !useModelSelectionGUI && mountVariants.Length>1;
         }
 
         private void updateUIScaleControls()
@@ -232,6 +260,7 @@ namespace SSTUTools
 
         protected virtual void setNoseModuleFromEditor(String newNoseType, bool updateSymmetry)
         {
+            currentNoseType = newNoseType;
             SingleModelData newModule = Array.Find(noseModules, m => m.name == newNoseType);
             currentNoseModule.destroyCurrentModel();
             currentNoseModule = newModule;
@@ -252,9 +281,32 @@ namespace SSTUTools
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
+        protected virtual void setTankSetFromEditor(String newTankSet, bool updateSymmetry)
+        {
+            TankSet newSet = Array.Find(tankSets, m => m.name == newTankSet);
+            currentTankSetModule = newSet;
+            string variant = lastSelectedVariant;
+            string newTankName = newSet.getDefaultModel(lastSelectedVariant);
+            this.updateUIChooseOptionControl("currentTankType", newSet.getModelNames(), newSet.getTankDescriptions(), true, newTankName);
+            setMainTankModuleFromEditor(newTankName, false);
+            Fields["currentTankType"].guiActiveEditor = newSet.Length > 1;
+            //re-seat this if it was changed in the 'setMainTankModuleFromEditor' method
+            //will allow for user-initiated main-tank changes to still change the 'last variant' but will
+            //persist the variant if the newly selected set did not contain the selected variant
+            //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
+            if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
+            if (updateSymmetry)
+            {
+                foreach (Part p in part.symmetryCounterparts)
+                {
+                    p.GetComponent<SSTUModularFuelTank>().setTankSetFromEditor(newTankSet, false);
+                }
+            }
+        }
+
         protected virtual void setMainTankModuleFromEditor(String newMainTank, bool updateSymmetry)
         {
-            SingleModelData newModule = Array.Find(mainTankModules, m => m.name == newMainTank);
+            TankModelData newModule = Array.Find(mainTankModules, m => m.name == newMainTank);
             currentMainTankModule.destroyCurrentModel();
             currentMainTankModule = newModule;
             currentMainTankModule.setupModel(getTankRootTransform(false), ModelOrientation.CENTRAL);
@@ -264,7 +316,7 @@ namespace SSTUTools
             currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
             updateUIScaleControls();
             updateEditorStats(true);
-
+            lastSelectedVariant = currentMainTankModule.variantName;
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -279,6 +331,7 @@ namespace SSTUTools
 
         protected virtual void setMountModuleFromEditor(String newMountType, bool updateSymmetry)
         {
+            currentMountType = newMountType;
             SingleModelData newModule = Array.Find(mountModules, m => m.name == newMountType);
             currentMountModule.destroyCurrentModel();
             currentMountModule = newModule;
@@ -385,6 +438,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -392,14 +446,35 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            float max = techLimitMaxDiameter < maxTankDiameter ? techLimitMaxDiameter : maxTankDiameter;
-            string[] names = SSTUUtils.getNames(mainTankModules, m => m.name);
-            this.updateUIChooseOptionControl("currentTankType", names, names, true, currentTankType);            
-            this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, max, tankDiameterIncrement*2, tankDiameterIncrement, tankDiameterIncrement*0.05f, true, currentTankDiameter);            
+
+            string[] groupNames = TankSet.getSetNames(tankSets);
+            this.updateUIChooseOptionControl("currentTankSet", groupNames, groupNames, true, currentTankSet);
+
+            string[] names = currentTankSetModule.getModelNames();
+            string[] descs = currentTankSetModule.getTankDescriptions();
+            this.updateUIChooseOptionControl("currentTankType", names, descs, true, currentTankType);
+
+            if (maxTankDiameter == minTankDiameter)
+            {
+                Fields["currentTankDiameter"].guiActiveEditor = false;
+            }
+            else
+            {
+                this.updateUIFloatEditControl("currentTankDiameter", minTankDiameter, maxTankDiameter, tankDiameterIncrement * 2, tankDiameterIncrement, tankDiameterIncrement * 0.05f, true, currentTankDiameter);
+            }
             updateAvailableVariants();
             updateUIScaleControls();
+
+            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
+            currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
+            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
+
+            Events["selectNoseEvent"].guiActiveEditor = useModelSelectionGUI;
+            Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI;
+
             Fields["currentTankDiameter"].uiControlEditor.onFieldChanged = tankDiameterUpdated;
             Fields["currentTankVerticalScale"].uiControlEditor.onFieldChanged = tankHeightScaleUpdated;
+            Fields["currentTankSet"].uiControlEditor.onFieldChanged = tankSetUpdated;
             Fields["currentTankType"].uiControlEditor.onFieldChanged = tankTypeUpdated;
             Fields["currentNoseType"].uiControlEditor.onFieldChanged = noseTypeUpdated;
             Fields["currentMountType"].uiControlEditor.onFieldChanged = mountTypeUpdated;
@@ -408,9 +483,10 @@ namespace SSTUTools
             Fields["currentTankTexture"].uiControlEditor.onFieldChanged = onTankTextureUpdated;
             Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
 
-            Fields["currentTankType"].guiActiveEditor = mainTankModules.Length > 1;
-            Fields["currentNoseType"].guiActiveEditor = noseModules.Length > 1;
-            Fields["currentMountType"].guiActiveEditor = mountModules.Length > 1;
+            Fields["currentTankSet"].guiActiveEditor = tankSets.Length > 1;
+            Fields["currentTankType"].guiActiveEditor = currentTankSetModule.Length > 1;
+            Fields["currentNoseType"].guiActiveEditor = !useModelSelectionGUI && noseModules.Length > 1;
+            Fields["currentMountType"].guiActiveEditor = !useModelSelectionGUI && mountModules.Length > 1;
 
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
@@ -422,14 +498,6 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
-            {
-                if (!initializedFairing)
-                {
-                    initializedFairing = true;
-                    updateFairing();
-                }
-            }
             if (!initializedResources && HighLogic.LoadedSceneIsEditor)
             {
                 initializedResources = true;
@@ -501,11 +569,6 @@ namespace SSTUTools
             initialized = true;
             
             loadConfigData();
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentTankDiameter > techLimitMaxDiameter)
-            {
-                currentTankDiameter = techLimitMaxDiameter;
-            }
             updateModuleStats();
             restoreModels();
             updateModels();
@@ -520,14 +583,37 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigData()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ConfigNode[] tankSetsNodes = node.GetNodes("TANKSET");
             ConfigNode[] tankNodes = node.GetNodes("TANK");
             ConfigNode[] mountNodes = node.GetNodes("CAP");
             ConfigNode[] limitNodes = node.GetNodes("TECHLIMIT");
-                        
-            mainTankModules = SingleModelData.parseModels(tankNodes);
 
-            int len = mountNodes.Length;
+            tankSets = TankSet.parseSets(tankSetsNodes);
+            //if no sets exist, initialize a default set to add all models to
+            if (tankSets.Length == 0)
+            {
+                tankSets = new TankSet[1];
+                ConfigNode defaultSetNode = new ConfigNode("TANKSET");
+                defaultSetNode.AddValue("name", "default");
+                tankSets[0] = new TankSet(defaultSetNode);
+            }
+            mainTankModules = ModelData.parseModels<TankModelData>(tankNodes, m => new TankModelData(m));
+
+            int len = mainTankModules.Length;
+            TankSet set;
+            for (int i = 0; i < len; i++)
+            {
+                set = Array.Find(tankSets, m => m.name == mainTankModules[i].setName);
+                //if set is not found by name, add it to the first set which is guaranteed to exist due to the default-set-adding code above.
+                if (set == null)
+                {
+                    set = tankSets[0];
+                }
+                set.addModel(mainTankModules[i]);
+            }
+
+            len = mountNodes.Length;
             ConfigNode mountNode;
             List<SingleModelData> noses = new List<SingleModelData>();
             List<SingleModelData> mounts = new List<SingleModelData>();
@@ -547,7 +633,7 @@ namespace SSTUTools
             }
             mountModules = mounts.ToArray();
             noseModules = noses.ToArray();
-                                    
+
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
             
@@ -558,6 +644,10 @@ namespace SSTUTools
                 currentMainTankModule = mainTankModules[0];
                 currentTankType = currentMainTankModule.name;
             }
+
+            currentTankSetModule = Array.Find(tankSets, m => m.name == currentMainTankModule.setName);
+            currentTankSet = currentTankSetModule.name;
+            lastSelectedVariant = currentMainTankModule.variantName;
 
             currentNoseModule = Array.Find(noseModules, m => m.name == currentNoseType);
             if (currentNoseModule == null)
@@ -586,9 +676,6 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountModule.getDefaultTextureSet();
             }
-            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
-            currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
-            currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
         }
 
         /// <summary>
@@ -681,7 +768,6 @@ namespace SSTUTools
             updateContainerVolume();
             updateTextureSet(false);
             updateAttachNodes(userInput);
-            updateFairing();
             updateGuiState();
         }
 
@@ -729,25 +815,13 @@ namespace SSTUTools
                 float y = currentMountModule.currentVerticalPosition + (currentMountModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale);
                 Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
-                AttachNode interstage = part.findAttachNode(interstageNodeName);
+                AttachNode interstage = part.FindAttachNode(interstageNodeName);
                 if (interstage != null)
                 {
                     Vector3 orientation = new Vector3(0, -1, 0);
                     SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
                 }
             }
-        }
-
-        protected virtual void updateFairing()
-        {
-            SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
-            if (fairing==null) { return; }
-            float pos = currentMountModule.currentVerticalPosition + (currentMountModule.currentHeightScale * currentMountModule.modelDefinition.fairingTopOffset);
-            FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(pos);
-            data.setTopRadius(currentTankDiameter * 0.5f);
-            if (currentMountModule.modelDefinition.fairingDisabled) { data.setEnable(false); }
-            fairing.updateExternal(data);
         }
 
         protected Transform getTankRootTransform(bool recreate)
@@ -800,6 +874,105 @@ namespace SSTUTools
 
         #endregion ENDREGION - Updating methods
    
-    }    
+    }
+
+    public class TankSet
+    {
+        public readonly string name;
+        private List<TankModelData> modelData = new List<TankModelData>();
+
+        public TankSet(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+        }
+
+        public int Length { get { return modelData.Count; } }
+
+        public void addModel(TankModelData data)
+        {
+            modelData.AddUnique(data);
+        }
+
+        public string getDefaultModel(string preferredVariant)
+        {
+            int len = modelData.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelData[i].variantName == preferredVariant) { return modelData[i].name; }
+            }
+            return modelData[0].name;
+        }
+
+        public String[] getModelNames()
+        {
+            int len = modelData.Count;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = modelData[i].name;
+            }
+            return names;
+        }
+
+        public string[] getTankDescriptions()
+        {
+            int len = modelData.Count;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = String.IsNullOrEmpty(modelData[i].variantName) ? modelData[i].name : modelData[i].variantName;
+            }
+            return names;
+        }
+
+        public bool hasVariant(string name)
+        {
+            int len = modelData.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelData[i].variantName == name) { return true; }
+            }
+            return false;
+        }
+
+        public static string[] getSetNames(TankSet[] sets, bool includeEmpty = false)
+        {
+            List<string> names = new List<string>();
+            int len = sets.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (sets[i].Length > 0 || includeEmpty) { names.Add(sets[i].name); }
+            }
+            return names.ToArray();
+        }
+
+        public static TankSet[] parseSets(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            TankSet[] sets = new TankSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                sets[i] = new TankSet(nodes[i]);
+            }
+            return sets;
+        }
+
+        public override string ToString()
+        {
+            return "TankSet: " + name;
+        }
+    }
+
+    public class TankModelData : SingleModelData
+    {
+        public string setName;
+        public string variantName;
+        public TankModelData(ConfigNode node) : base(node)
+        {
+            setName = node.GetStringValue("setName", "default");
+            variantName = node.GetStringValue("variantName", name);
+        }
+    }
+
 }
 

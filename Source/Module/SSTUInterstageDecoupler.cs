@@ -88,10 +88,7 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float autoDecoupleDelay = 4f;
-
-        [KSPField]
-        public String techLimitSet = "Default";
-
+        
         [KSPField]
         public String uvMap = "NodeFairing";
 
@@ -144,7 +141,10 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true, guiName = "Texture Set", guiActiveEditor = true),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
-        
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float remainingDelay;
 
         private float minHeight;
@@ -163,8 +163,6 @@ namespace SSTUTools.Module
         private InterstageDecouplerEngine[] engineModels;
 
         private ContainerFuelPreset fuelType;
-        
-        private float techLimitMaxDiameter;
 
         private bool initialized = false;
 
@@ -296,7 +294,6 @@ namespace SSTUTools.Module
 
         private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             currentTopDiameter = newDiameter;
             updateEditorFields();
             buildFairing();
@@ -317,7 +314,6 @@ namespace SSTUTools.Module
 
         private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
         {
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             currentBottomDiameter = newDiameter;
             updateEditorFields();
             buildFairing();
@@ -385,6 +381,7 @@ namespace SSTUTools.Module
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -392,9 +389,8 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             initialize();
-            float max = techLimitMaxDiameter < maxDiameter ? techLimitMaxDiameter : maxDiameter;
-            this.updateUIFloatEditControl("currentTopDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
-            this.updateUIFloatEditControl("currentBottomDiameter", minDiameter, max, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
+            this.updateUIFloatEditControl("currentTopDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
+            this.updateUIFloatEditControl("currentBottomDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
             this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
             this.updateUIFloatEditControl("currentTaperHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
             Fields["currentTopDiameter"].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
@@ -472,7 +468,7 @@ namespace SSTUTools.Module
         {
             if (initialized) { return; }
             initialized = true;
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             textureSetData = TextureSet.loadTextureSets(textureNodes);
             currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
@@ -491,16 +487,6 @@ namespace SSTUTools.Module
 
             TextureData data = currentTextureSetData.textureDatas[0];
             fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
-
-            techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-            if (currentTopDiameter > techLimitMaxDiameter)
-            {
-                currentTopDiameter = techLimitMaxDiameter;
-            }
-            if (currentBottomDiameter > techLimitMaxDiameter)
-            {
-                currentBottomDiameter = techLimitMaxDiameter;
-            }
 
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 
@@ -666,8 +652,8 @@ namespace SSTUTools.Module
         private void updateNodePositions(bool userInput)
         {
             float h = currentHeight * 0.5f;
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("top"), new Vector3(0, h, 0), Vector3.up, userInput);
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.findAttachNode("bottom"), new Vector3(0, -h, 0), Vector3.down, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.FindAttachNode("top"), new Vector3(0, h, 0), Vector3.up, userInput);
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, part.FindAttachNode("bottom"), new Vector3(0, -h, 0), Vector3.down, userInput);
         }
 
         private void updateDragCubes()

@@ -26,8 +26,11 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public String persistentState = AnimState.STOPPED_START.ToString();
+
+        [Persistent]
+        public string configNodeData = string.Empty;
         
-        AnimationController controller;
+        private AnimationController controller;
 
         private List<Action<AnimState>> callbacks = new List<Action<AnimState>>();
         
@@ -75,12 +78,13 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
         private void initialize()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);// SSTUStockInterop.getPartModuleConfig(part, this);
             ConfigNode[] animNodes = node.GetNodes("ANIMATION");
             int len = animNodes.Length;
             ConfigNode[] allNodes=null;
@@ -104,7 +108,7 @@ namespace SSTUTools
             len = allNodes.Length;
             for (int i = 0; i < len; i++)
             {
-                animationData = new SSTUAnimData(allNodes[i], part.gameObject.transform);
+                animationData = new SSTUAnimData(allNodes[i], part.gameObject.transform.FindRecursive("model"));
                 controller.addAnimationData(animationData);
             }
             AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);

@@ -251,6 +251,17 @@ namespace SSTUTools
             return curve;
         }
 
+        public static Color getColor(this ConfigNode node, String name)
+        {
+            Color color = new Color();
+            float[] vals = node.GetFloatValuesCSV(name);
+            color.r = vals[0];
+            color.g = vals[1];
+            color.b = vals[2];
+            color.a = vals[3];
+            return color;
+        }
+
         #endregion
 
         #region Transform extensionMethods

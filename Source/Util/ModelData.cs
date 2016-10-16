@@ -53,7 +53,10 @@ namespace SSTUTools
         public readonly ConfigNode configNode;
         public readonly String modelName;
         public readonly String name;
-        public readonly String techLimit = "start";        
+        public readonly String title;
+        public readonly String description;
+        public readonly String icon;
+        public readonly String techLimit = "start";
         public readonly float height = 1;
         public readonly float volume = 0;
         public readonly float mass = 0;
@@ -78,6 +81,9 @@ namespace SSTUTools
         {
             configNode = node;
             name = node.GetStringValue("name", String.Empty);
+            title = node.GetStringValue("title", name);
+            description = node.GetStringValue("description", title);
+            icon = node.GetStringValue("icon");
             modelName = node.GetStringValue("modelName", String.Empty);
             techLimit = node.GetStringValue("techLimit", techLimit);
             height = node.GetFloatValue("height", height);
@@ -237,38 +243,65 @@ namespace SSTUTools
         public readonly String diffuseTextureName;
         public readonly String normalTextureName;
         public readonly String emissiveTextureName;
+        public readonly String specularTextureName;
+        public readonly String aoTextureName;
+        public readonly String shader;
         public readonly String[] meshNames;
+        public readonly String[] excludedMeshes;
 
         public ModelTextureData(ConfigNode node)
         {
             diffuseTextureName = node.GetStringValue("diffuseTexture");
             normalTextureName = node.GetStringValue("normalTexture");
+            emissiveTextureName = node.GetStringValue("emissiveTexture");
+            specularTextureName = node.GetStringValue("specularTexture");
+            aoTextureName = node.GetStringValue("aoTexture");
+            shader = node.GetStringValue("shader");
             meshNames = node.GetStringValues("mesh");
+            excludedMeshes = node.GetStringValues("excludeMesh");
         }
 
         public void enable(GameObject root)
         {
             Renderer r;
-            foreach (String meshName in meshNames)
+            Transform tr;
+            Transform[] trs;
+            if (meshNames.Length == 0)
             {
-                Transform tr;
-                Transform[] trs = root.transform.FindChildren(meshName);
-                int len = trs.Length;
+                Renderer[] rs = root.GetComponentsInChildren<Renderer>(false);
+                int len = rs.Length;
                 for (int i = 0; i < len; i++)
                 {
-                    tr = trs[i];
-                    if (tr == null) { continue; }
-                    if (tr != null && (r = tr.GetComponent<Renderer>()) != null)
+                    r = rs[i];                    
+                    if (Array.Exists(excludedMeshes, m => m == r.name)) { continue; }
+                    updateRenderer(r);
+                }
+            }
+            else
+            {
+                int len = meshNames.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    trs = root.transform.FindChildren(meshNames[i]);
+                    int len2 = trs.Length;
+                    for (int k = 0; k < len2; k++)
                     {
-                        Material m = r.material;
-                        if (!String.IsNullOrEmpty(diffuseTextureName)) { m.mainTexture = GameDatabase.Instance.GetTexture(diffuseTextureName, false); }
-                        if (!String.IsNullOrEmpty(normalTextureName)) { m.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(normalTextureName, true)); }
-                        if (!String.IsNullOrEmpty(emissiveTextureName)) { m.SetTexture("_Emissive", GameDatabase.Instance.GetTexture(emissiveTextureName, false)); }
+                        tr = trs[k];
+                        if (tr == null) { continue; }
+                        if (tr != null && (r = tr.GetComponent<Renderer>()) != null)
+                        {
+                            updateRenderer(r);
+                        }
                     }
                 }
             }
         }
 
+        private void updateRenderer(Renderer r)
+        {
+            MonoBehaviour.print("updating textures for: " + r);
+            SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, null);
+        }
     }
 
     public enum ModelOrientation
@@ -468,6 +501,145 @@ namespace SSTUTools
             }
             return vals;
         }
+
+        /// <summary>
+        /// Example Use:
+        /// CustomModelData[] tmds = parseModels<TankModelData>(nodes, m => { return new CustomModelData(m); });
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="nodes"></param>
+        /// <param name="constructor"></param>
+        /// <returns></returns>
+        public static T[] parseModels<T>(ConfigNode[] nodes, Func<ConfigNode,T> constructor) where T : ModelData
+        {
+            int len = nodes.Length;
+            T[] ts = new T[len];
+            for (int i = 0; i < len; i++)
+            {
+                ts[i] = constructor.Invoke(nodes[i]);
+            }
+            return ts;
+        }
+
+        /// <summary>
+        /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
+        /// Any 'extra' attach nodes from the part will be disabled.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="nodeNames"></param>
+        /// <param name="userInput"></param>
+        /// <param name="orientation"></param>
+        public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
+        {
+            if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0] == "none")) { return; }
+            float currentVerticalPosition = this.currentVerticalPosition;
+            float offset = getVerticalOffset();
+            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            currentVerticalPosition -= offset;
+
+            AttachNode node = null;
+            AttachNodeBaseData data;
+
+            int nodeCount = modelDefinition.attachNodeData.Length;
+            int len = nodeNames.Length;
+
+            Vector3 pos = Vector3.zero;
+            Vector3 orient = Vector3.up;
+            int size = 2;
+
+            bool invert = (orientation == ModelOrientation.BOTTOM && modelDefinition.invertForBottom) || (orientation == ModelOrientation.TOP && modelDefinition.invertForTop);
+            for (int i = 0; i < len; i++)
+            {
+                node = part.FindAttachNode(nodeNames[i]);
+                if (i < nodeCount)
+                {
+                    data = modelDefinition.attachNodeData[i];
+                    size = data.size;
+                    pos = data.position * currentHeightScale;
+                    if (invert)
+                    {
+                        pos.y = -pos.y;
+                        pos.x = -pos.x;
+                    }
+                    pos.y += currentVerticalPosition;
+                    orient = data.orientation;
+                    if (invert) { orient = -orient; orient.z = -orient.z; }
+                    if (node == null)//create it
+                    {
+                        SSTUAttachNodeUtils.createAttachNode(part, nodeNames[i], pos, orient, size);
+                    }
+                    else//update its position
+                    {
+                        SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, orient, userInput);
+                    }
+                }
+                else//extra node, destroy
+                {
+                    if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
+                    {
+                        SSTUAttachNodeUtils.destroyAttachNode(part, node);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determine if the number of parts attached to the part will prevent this mount from being applied;
+        /// if any node that has a part attached would be deleted, return false.  To be used for GUI validation
+        /// to determine what modules are valid 'swap' selections for the current part setup.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="nodeNames"></param>
+        /// <returns></returns>
+        public bool canSwitchTo(Part part, String[] nodeNames)
+        {
+            AttachNode node;
+            int len = nodeNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (i < modelDefinition.attachNodeData.Length) { continue; }//don't care about those nodes, they will be present
+                node = part.FindAttachNode(nodeNames[i]);//this is a node that would be disabled
+                if (node == null) { continue; }//already disabled, and that is just fine
+                else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount
+            }
+            return true;//and if all node checks go okay, return true by default...
+        }
+
+        /// <summary>
+        /// Returns an array of valid selectable models given the current part attach-node setup (if parts are attached to enabled nodes)
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="models"></param>
+        /// <param name="nodeNames"></param>
+        /// <returns></returns>
+        public static string[] getValidSelectionNames(Part part, SingleModelData[] models, string[] nodeNames)
+        {
+            List<String> names = new List<String>();
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i].canSwitchTo(part, nodeNames))
+                {
+                    names.Add(models[i].name);
+                }
+            }
+            return names.ToArray();
+        }
+
+        public static T[] getValidSelections<T>(Part part, T[] models, string[] nodeNames) where T : SingleModelData
+        {
+            List<T> validModels = new List<T>();
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i].canSwitchTo(part, nodeNames))
+                {
+                    validModels.Add(models[i]);
+                }
+            }
+            return validModels.ToArray();
+        }
+
     }
     
     /// <summary>
@@ -660,87 +832,7 @@ namespace SSTUTools
                 model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
             }
         }
-
-        /// <summary>
-        /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
-        /// Any 'extra' attach nodes from the part will be disabled.
-        /// </summary>
-        /// <param name="part"></param>
-        /// <param name="nodeNames"></param>
-        /// <param name="userInput"></param>
-        /// <param name="orientation"></param>
-        public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
-        {
-            if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0]=="none")) { return; }
-            Vector3 basePos = new Vector3(0, currentVerticalPosition, 0);
-            AttachNode node = null;
-            AttachNodeBaseData data;
-
-            int nodeCount = modelDefinition.attachNodeData.Length;
-            int len = nodeNames.Length;
-
-            Vector3 pos = Vector3.zero;
-            Vector3 orient = Vector3.up;
-            int size = 2;
-
-            bool invert = (orientation == ModelOrientation.BOTTOM && modelDefinition.invertForBottom) || (orientation == ModelOrientation.TOP && modelDefinition.invertForTop);
-            for (int i = 0; i < len; i++)
-            {
-                node = part.findAttachNode(nodeNames[i]);
-                if (i < nodeCount)
-                {
-                    data = modelDefinition.attachNodeData[i];
-                    size = data.size;
-                    pos = data.position * currentHeightScale;
-                    if (invert)
-                    {
-                        pos.y = -pos.y;
-                        pos.x = -pos.x;
-                    }
-                    pos.y += currentVerticalPosition;
-                    orient = data.orientation;
-                    if (invert) { orient = -orient; orient.z = -orient.z; }
-                    if (node == null)//create it
-                    {
-                        SSTUAttachNodeUtils.createAttachNode(part, nodeNames[i], pos, orient, size);
-                    }
-                    else//update its position
-                    {
-                        SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, orient, userInput);
-                    }
-                }
-                else//extra node, destroy
-                {
-                    if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
-                    {
-                        SSTUAttachNodeUtils.destroyAttachNode(part, node);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Determine if the number of parts attached to the part will prevent this mount from being applied;
-        /// if any node that has a part attached would be deleted, return false.  To be used for GUI validation
-        /// to determine what modules are valid 'swap' selections for the current part setup.
-        /// </summary>
-        /// <param name="part"></param>
-        /// <param name="nodeNames"></param>
-        /// <returns></returns>
-        public bool canSwitchTo(Part part, String[] nodeNames)
-        {
-            AttachNode node;
-            int len = nodeNames.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (i < modelDefinition.attachNodeData.Length) { continue; }//don't care about those nodes, they will be present
-                node = part.findAttachNode(nodeNames[i]);//this is a node that would be disabled
-                if (node == null) { continue; }//already disabled, and that is just fine
-                else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount
-            }
-            return true;//and if all node checks go okay, return true by default...
-        }
-
+        
         public override string ToString()
         {
             return "SINGLEMODEL: " + name;
@@ -791,27 +883,37 @@ namespace SSTUTools
             }
             return model;
         }
+    }
 
-        /// <summary>
-        /// Returns an array of valid selectable models given the current part attach-node setup (if parts are attached to enabled nodes)
-        /// </summary>
-        /// <param name="part"></param>
-        /// <param name="models"></param>
-        /// <param name="nodeNames"></param>
-        /// <returns></returns>
-        public static string[] getValidSelectionNames(Part part, SingleModelData[] models, string[] nodeNames)
+    public class PositionedModelData : SingleModelData
+    {
+
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale;
+
+        public PositionedModelData(ConfigNode node) : base(node)
         {
-            List<String> names = new List<String>();
-            int len = models.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (models[i].canSwitchTo(part, nodeNames))
-                {
-                    names.Add(models[i].name);
-                }
-            }
-            return names.ToArray();
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
         }
 
+        public PositionedModelData(String name) : base(name)
+        {
+            position = Vector3.zero;
+            rotation = Vector3.zero;
+            scale = Vector3.one;
+        }
+        
+        public override void updateModel()
+        {
+            if (model != null)
+            {
+                model.transform.localScale = new Vector3(currentDiameterScale * baseScale * scale.x, currentHeightScale * baseScale * scale.y, currentDiameterScale * baseScale * scale.z);
+                model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0) + position;
+                model.transform.localRotation = Quaternion.Euler(rotation);
+            }
+        }
     }
 }

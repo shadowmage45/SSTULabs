@@ -74,6 +74,9 @@ namespace SSTUTools
         [KSPField]
         public double lastBoiloffUpdate = 0d;
 
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         //private cached vars for... things....
         private ContainerDefinition[] containers;
         private float modifiedMass = -1;
@@ -117,6 +120,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
         }
 
         public override void OnSave(ConfigNode node)
@@ -172,7 +176,7 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] containerNodes = node.GetNodes("CONTAINER");
             int len = containerNodes.Length;
             containers = new ContainerDefinition[len];

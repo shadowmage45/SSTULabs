@@ -79,9 +79,6 @@ namespace SSTUTools
 
         [KSPField]
         public float baseResourceQuantity = 200f;
-        
-        [KSPField]
-        public String techLimitSet = "Default";
 
         [KSPField]
         public bool standAlonePart = false;
@@ -100,6 +97,9 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
+
+        [Persistent]
+        public string configNodeData = string.Empty;
 
         #endregion
 
@@ -137,7 +137,6 @@ namespace SSTUTools
 
         //resizable heat-shield fields
         private SingleModelData mainModelData;
-        private float techLimitMaxDiameter;
         private float prevDiameter;
 
         #endregion
@@ -187,7 +186,6 @@ namespace SSTUTools
         {
             if (newDiameter < minDiameter) { newDiameter = minDiameter; }
             if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter > techLimitMaxDiameter) { newDiameter = techLimitMaxDiameter; }
             currentDiameter = newDiameter;
             setModelDiameter(currentDiameter);
             updateModuleStats();
@@ -230,6 +228,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
         }
 
         public void Start()
@@ -301,9 +300,7 @@ namespace SSTUTools
                 {
                     SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
                 }
-
-                techLimitMaxDiameter = SSTUStockInterop.getTechLimit(techLimitSet);
-                if (currentDiameter > techLimitMaxDiameter) { currentDiameter = techLimitMaxDiameter; }
+                
                 shieldTypeNames = SSTUDatabase.getHeatShieldNames();
 
                 ConfigNode modelNode = new ConfigNode("MODEL");
@@ -316,7 +313,7 @@ namespace SSTUTools
                 updateEditorFields();
             }
 
-            ConfigNode node = SSTUStockInterop.getPartModuleConfig(this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
             int len = typeNodes.Length;
             shieldTypeNames = new string[len];
@@ -490,13 +487,13 @@ namespace SSTUTools
         {
             if (!standAlonePart) { return; }
             float height = mainModelData.currentHeight;
-            AttachNode topNode = part.findAttachNode("top");
+            AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
                 Vector3 topNodePos = new Vector3(0, height * 0.5f, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, topNodePos, topNode.orientation, userInput);
             }
-            AttachNode bottomNode = part.findAttachNode("bottom");
+            AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
             {
                 Vector3 botNodePos = new Vector3(0, -height * 0.5f, 0);
