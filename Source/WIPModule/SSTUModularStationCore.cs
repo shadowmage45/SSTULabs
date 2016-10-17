@@ -291,7 +291,7 @@ namespace SSTUTools
         {
             currentSolar = newSolar;
             solarModule.disable();
-            solarModule = Array.Find(solarModules, m => m.modelName == currentSolar);//TODO cleanup
+            solarModule = Array.Find(solarModules, m => m.name == currentSolar);//TODO cleanup
             solarModule.enable(getSolarRoot(false), coreModule.currentVerticalPosition);
             updateSolarModules();
             updateCost();
@@ -468,7 +468,7 @@ namespace SSTUTools
             coreModule = SingleModelData.findModel(coreModules, currentCore);
             bottomModule = SingleModelData.findModel(bottomModules, currentBottom);
             bottomDockModule = SingleModelData.findModel(bottomDockModules, currentBottomDock);
-            solarModule = Array.Find(solarModules, m => m.modelName == currentSolar);//TODO cleanup
+            solarModule = Array.Find(solarModules, m => m.name == currentSolar);//TODO cleanup
             if (!topModule.isValidTextureSet(currentTopTexture)) { currentTopTexture = topModule.getDefaultTextureSet(); }
             if (!coreModule.isValidTextureSet(currentCoreTexture)) { currentCoreTexture = coreModule.getDefaultTextureSet(); }
             if (!bottomModule.isValidTextureSet(currentBottomTexture)) { currentBottomTexture = bottomModule.getDefaultTextureSet(); }
@@ -837,7 +837,8 @@ namespace SSTUTools
 
     public class SolarData
     {
-        public readonly string modelName;        
+        public readonly string name;
+        public readonly string modelName;
         public readonly string animationName;
         public readonly string pivotNames;
         public readonly string secPivotNames;
@@ -852,7 +853,8 @@ namespace SSTUTools
         
         public SolarData(ConfigNode node)
         {
-            modelName = node.GetStringValue("name");
+            name = node.GetStringValue("name");
+            modelName = node.GetStringValue("modelName", name);
             def = SSTUModelData.getModelDefinition(modelName);
             ConfigNode solarNode = def.configNode.GetNode("SOLARDATA");
             animationName = solarNode.GetStringValue("animationName");
@@ -899,7 +901,7 @@ namespace SSTUTools
                 rootTransforms[i].rotation = root.rotation;
                 rootTransforms[i].localPosition = pos;
                 rootTransforms[i].Rotate(positions[i].rotation, Space.Self);
-                models[i] = new SingleModelData(modelName);
+                models[i] = new SingleModelData(name);
                 models[i].setupModel(rootTransforms[i], ModelOrientation.TOP);
             }
         }
@@ -924,7 +926,7 @@ namespace SSTUTools
             string[] names = new string[len];
             for (int i = 0; i < len; i++)
             {
-                names[i] = data[i].modelName;
+                names[i] = data[i].name;
             }
             return names;
         }

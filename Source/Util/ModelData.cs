@@ -443,6 +443,11 @@ namespace SSTUTools
             module.Fields[fieldName].guiActiveEditor = names.Length > 1;
         }
 
+        /// <summary>
+        /// Creates the transforms and meshes for the model using default positioning and orientation defined by the passed in ModelOrientation parameter
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="orientation"></param>
         public virtual void setupModel(Transform parent, ModelOrientation orientation)
         {
             throw new NotImplementedException();
@@ -698,11 +703,22 @@ namespace SSTUTools
             return "default";
         }
 
+        /// <summary>
+        /// Creates the transforms and meshes for the model using default positioning and orientation defined by the passed in ModelOrientation parameter
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="orientation"></param>
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
             setupModel(parent, orientation, false);
         }
 
+        /// <summary>
+        /// Creates the transforms and meshes for the model using default positioning and orientation defined by the passed in ModelOrientation parameter
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="orientation"></param>
+        /// <param name="reUse"></param>
         public void setupModel(Transform parent, ModelOrientation orientation, bool reUse)
         {
             if (modelDefinition.subModelData.Length <= 0)

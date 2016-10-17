@@ -30,11 +30,24 @@ namespace SSTUTools
 
             ConfigNode[] mountNodes = node.GetNodes("MOUNT");
             len = mountNodes.Length;
-            mountOptions = new SSTUEngineLayoutMountOption[len];
+            List<SSTUEngineLayoutMountOption> mountOptionsList = new List<SSTUEngineLayoutMountOption>();
+            
+            string mountName;
+            ModelDefinition md;
             for (int i = 0; i < len; i++)
             {
-                mountOptions[i] = new SSTUEngineLayoutMountOption(mountNodes[i]);
+                mountName = mountNodes[i].GetStringValue("name");
+                md = SSTUModelData.getModelDefinition(mountName);
+                if (md != null)
+                {
+                    mountOptionsList.Add(new SSTUEngineLayoutMountOption(mountNodes[i]));
+                }
+                else
+                {
+                    MonoBehaviour.print("ERROR: Could not locate mount model data for name: " + mountName + " -- please check your configs for errors.");
+                }
             }
+            mountOptions = mountOptionsList.ToArray();
         }
         
         public static SSTUEngineLayout findLayoutForName(String name)
