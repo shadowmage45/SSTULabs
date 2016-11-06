@@ -29,6 +29,12 @@ namespace SSTUTools
         public float maxTankDiameter = 10f;
 
         [KSPField]
+        public float topAdapterRatio = 1f;
+
+        [KSPField]
+        public float bottomAdapterRatio = 1f;
+
+        [KSPField]
         public String topManagedNodeNames = "top, top2, top3, top4";
 
         [KSPField]
@@ -82,9 +88,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
-
-        [KSPField]
-        public bool useModelSelectionGUI = true;
 
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
@@ -240,6 +243,8 @@ namespace SSTUTools
             mountVariants = availMountTypes.ToArray();
             this.updateUIChooseOptionControl("currentNoseType", noseVariants, noseVariants, true, currentNoseType);
             this.updateUIChooseOptionControl("currentMountType", mountVariants, mountVariants, true, currentMountType);
+
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
             Fields["currentNoseType"].guiActiveEditor = !useModelSelectionGUI && noseVariants.Length>1;
             Fields["currentMountType"].guiActiveEditor = !useModelSelectionGUI && mountVariants.Length>1;
         }
@@ -468,6 +473,8 @@ namespace SSTUTools
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
             currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
+
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
 
             Events["selectNoseEvent"].guiActiveEditor = useModelSelectionGUI;
             Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI;
@@ -710,38 +717,31 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleStats()
         {
+            if (currentTankVerticalScale < currentMainTankModule.minVerticalScale)
+            {
+                currentTankVerticalScale = currentMainTankModule.minVerticalScale;
+                this.updateUIFloatEditControl("currentTankVerticalScale", currentTankVerticalScale);
+            }
+            else if (currentTankVerticalScale > currentMainTankModule.maxVerticalScale)
+            {
+                currentTankVerticalScale = currentMainTankModule.maxVerticalScale;
+                this.updateUIFloatEditControl("currentTankVerticalScale", currentTankVerticalScale);
+            }
             float diameterScale = currentTankDiameter / currentMainTankModule.modelDefinition.diameter;
-            currentMainTankModule.updateScale(diameterScale, currentTankVerticalScale*diameterScale);
-            currentNoseModule.updateScaleForDiameter(currentTankDiameter);
-            currentMountModule.updateScaleForDiameter(currentTankDiameter);
+            currentMainTankModule.updateScale(diameterScale, currentTankVerticalScale * diameterScale);
+            currentNoseModule.updateScaleForDiameter(currentTankDiameter * topAdapterRatio);
+            currentMountModule.updateScaleForDiameter(currentTankDiameter * bottomAdapterRatio);
 
             float totalHeight = currentMainTankModule.currentHeight + currentNoseModule.currentHeight + currentMountModule.currentHeight;
             float startY = totalHeight * 0.5f;//start at the top of the first tank
             startY -= currentNoseModule.currentHeight;
-
-            float offset = currentNoseModule.currentHeightScale * currentNoseModule.modelDefinition.verticalOffset;
-            if (currentNoseModule.modelDefinition.invertForTop)
-            {
-                currentNoseModule.currentVerticalPosition = startY - offset;
-            }
-            else
-            {
-                currentNoseModule.currentVerticalPosition = startY + offset;
-            }            
+            currentNoseModule.setPosition(startY, ModelOrientation.TOP);
 
             startY -= currentMainTankModule.currentHeight * 0.5f;
             currentMainTankModule.currentVerticalPosition = startY;
 
             startY -= currentMainTankModule.currentHeight * 0.5f;
-            offset = currentMountModule.currentHeightScale * currentMountModule.modelDefinition.verticalOffset;            
-            if (currentMountModule.modelDefinition.invertForBottom)
-            {
-                currentMountModule.currentVerticalPosition = startY - offset;
-            }
-            else
-            {
-                currentMountModule.currentVerticalPosition = startY + offset;
-            }
+            currentMountModule.setPosition(startY, ModelOrientation.BOTTOM);
         }
 
         private void updateModels()

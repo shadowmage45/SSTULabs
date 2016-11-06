@@ -99,10 +99,7 @@ namespace SSTUTools
 
         [KSPField]
         public bool adjustCost = true;
-
-        [KSPField]
-        public bool useModelSelectionGUI = true;
-
+        
         #endregion ENDREGION - Standard KSPField variables
 
         #region REGION - KSP Editor Adjust Fields (Float Sliders) and KSP GUI Fields (visible data)
@@ -326,6 +323,8 @@ namespace SSTUTools
             {
                 currentMountName = currentEngineLayout.defaultMount;
             }
+
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
             Fields["guiMountOption"].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
             Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
             currentMountData = currentEngineLayout.getMountData(currentMountName);
@@ -424,6 +423,7 @@ namespace SSTUTools
                 initialize();
             }
 
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
             Fields["guiMountOption"].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
             Events["selectMountEvent"].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
             Events["clearMountEvent"].guiActiveEditor = currentEngineLayout.mountData.Length > 1;

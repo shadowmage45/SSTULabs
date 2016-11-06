@@ -23,6 +23,11 @@ namespace SSTUTools
             {
                 data = new ModelDefinition(node);
                 MonoBehaviour.print("Loading model definition data for name: " + data.name + " with model URL: " + data.modelName);
+                if (baseModelData.ContainsKey(data.name))
+                {
+                    MonoBehaviour.print("ERROR: Model defs already contains def for name: " + data.name + ".  Please check your configs as this is an error.  The duplicate entry was found in the config node of:\n"+node);
+                    continue;
+                }
                 baseModelData.Add(data.name, data);
             }
         }
@@ -189,9 +194,19 @@ namespace SSTUTools
             int len = trs.Length;
             for (int i = 0; i < len; i++)
             {
+                if (trs[i] == null)
+                {
+                    //MonoBehaviour.print("Found null mesh while traversing model: " + modelURL);
+                    continue;
+                }
                 if (!isActiveMesh(trs[i].name))
                 {
+                    //MonoBehaviour.print("Destroying mesh: " + trs[i]);
                     GameObject.DestroyImmediate(trs[i].gameObject);
+                }
+                else
+                {
+                    //MonoBehaviour.print("Keeping mesh: " + trs[i]);
                 }
             }
         }
@@ -247,6 +262,7 @@ namespace SSTUTools
         public readonly String aoTextureName;
         public readonly String shader;
         public readonly String[] meshNames;
+        public readonly bool[] meshRecurse;
         public readonly String[] excludedMeshes;
 
         public ModelTextureData(ConfigNode node)
@@ -257,7 +273,22 @@ namespace SSTUTools
             specularTextureName = node.GetStringValue("specularTexture");
             aoTextureName = node.GetStringValue("aoTexture");
             shader = node.GetStringValue("shader");
-            meshNames = node.GetStringValues("mesh");
+            string[] meshNamesRaw = node.GetStringValues("mesh");
+            
+            int len = meshNamesRaw.Length;
+            meshRecurse = new bool[len];
+            meshNames = new string[len];
+            string[] splits;
+            string name;
+            bool recurse;
+            for (int i = 0; i < len; i++)
+            {
+                splits = meshNamesRaw[i].Split(new char[] { ',' });
+                name = splits[0];
+                recurse = splits.Length > 1 ? SSTUUtils.safeParseBool(splits[1]) : false;
+                meshNames[i] = name;
+                meshRecurse[i] = recurse;
+            }
             excludedMeshes = node.GetStringValues("excludeMesh");
         }
 
@@ -280,15 +311,21 @@ namespace SSTUTools
             else
             {
                 int len = meshNames.Length;
+                bool recurse = false;
                 for (int i = 0; i < len; i++)
                 {
                     trs = root.transform.FindChildren(meshNames[i]);
+                    recurse = meshRecurse[i];
                     int len2 = trs.Length;
                     for (int k = 0; k < len2; k++)
                     {
                         tr = trs[k];
                         if (tr == null) { continue; }
-                        if (tr != null && (r = tr.GetComponent<Renderer>()) != null)
+                        if (recurse)
+                        {
+                            updateRendererRecursive(tr);
+                        }
+                        else if ((r = tr.GetComponent<Renderer>()) != null)
                         {
                             updateRenderer(r);
                         }
@@ -297,9 +334,19 @@ namespace SSTUTools
             }
         }
 
+        private void updateRendererRecursive(Transform root)
+        {
+            Renderer[] renders = root.GetComponentsInChildren<Renderer>(true);
+            int len = renders.Length;
+            for (int i = 0; i < len; i++)
+            {
+                updateRenderer(renders[i]);
+            }
+        }
+
         private void updateRenderer(Renderer r)
         {
-            MonoBehaviour.print("updating textures for: " + r);
+            MonoBehaviour.print("Updating textures for: " + r);
             SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, null);
         }
     }

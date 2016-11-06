@@ -33,7 +33,7 @@ namespace SSTUTools
             }
 
             AssetBundle bundle = www.assetBundle;
-                        
+
             //TODO clean up linq
             string modelName = bundle.GetAllAssetNames().FirstOrDefault(assetName => assetName.EndsWith("prefab"));
             AssetBundleRequest abr = bundle.LoadAssetAsync<GameObject>(modelName);

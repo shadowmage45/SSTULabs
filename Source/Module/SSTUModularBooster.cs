@@ -115,10 +115,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public string presetCurveName;
-
-        [KSPField]
-        public bool useModelSelectionGUI = true;
-
+        
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -504,7 +501,8 @@ namespace SSTUTools
             this.updateUIChooseOptionControl("currentMainName", names, names, true, currentMainName);
             names = SSTUUtils.getNames(nozzleModules, m => m.name);
             this.updateUIChooseOptionControl("currentNozzleName", names, names, true, currentNozzleName);
-
+            
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
             Events["selectNoseEvent"].guiActiveEditor = useModelSelectionGUI;
 
             Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;

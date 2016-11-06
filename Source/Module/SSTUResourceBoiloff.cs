@@ -41,6 +41,11 @@ namespace SSTUTools
         //defaults to true, only runs once and is then set to false
         private bool unfocusedCatchup = true;
 
+        //updated from the game config settings during module OnStart()
+        private bool boiloffEnabled = true;
+
+        private float settingsBoiloffModifier = 1.0f;
+
         //NOOP?
         public override void OnLoad(ConfigNode node)
         {
@@ -63,11 +68,18 @@ namespace SSTUTools
         public void Start()
         {
             updateStatsFromContainer();
+            boiloffEnabled = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().boiloffEnabled;
+            settingsBoiloffModifier = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().boiloffModifier;
+            if (!boiloffEnabled)
+            {
+                Fields["guiVolumeLoss"].guiActive = false;
+                Fields["guiECCost"].guiActive = false;
+            }
         }
         
         public void FixedUpdate()
         {
-            if (!HighLogic.LoadedSceneIsFlight || boiloffData.Length <= 0 || boiloffLossModifier <= 0)
+            if (!HighLogic.LoadedSceneIsFlight || !boiloffEnabled || boiloffData.Length <= 0 || boiloffLossModifier <= 0)
             {
                 return;
             }
@@ -84,7 +96,7 @@ namespace SSTUTools
                 float val = 1.0f;
                 for (int i = 0; i < len; i++)
                 {
-                    val = boiloffData[i].processBoiloff(part, delta, unfocusedCatchup ? lastEffective : -1);
+                    val = boiloffData[i].processBoiloff(part, delta, settingsBoiloffModifier, unfocusedCatchup ? lastEffective : -1);
                     if (val < percentEff) { percentEff = val; }
                     guiVolumeLoss += boiloffData[i].volumeLost;
                     guiECCost += boiloffData[i].ecCost;
@@ -116,7 +128,7 @@ namespace SSTUTools
                 }
             }
             boiloffData = list.ToArray();
-            if (boiloffData.Length == 0)
+            if (boiloffData.Length == 0  || boiloffLossModifier <= 0)
             {
                 Fields["guiVolumeLoss"].guiActive = false;
                 Fields["guiECCost"].guiActive = false;
@@ -202,11 +214,11 @@ namespace SSTUTools
             passiveInsulationPrevention = mod.passiveInsulationPrevention;
         }
         
-        public float processBoiloff(Part part, double seconds, float fixedEffectiveness = -1)
+        public float processBoiloff(Part part, double seconds, float configMult, float fixedEffectiveness = -1)
         {            
             double hours = seconds / 3600d;//convert from delta-seconds into delta-hours...
             double resourceVolume = resource.amount * unitVolume;
-            double totalLoss = data.value * resourceVolume * hours * boiloffModifier;
+            double totalLoss = data.value * resourceVolume * hours * boiloffModifier * configMult;
 
             double activePrevention = totalLoss * activeInsulationPrevention * activeInsulationPercent;
             double inactivePrevention = 0f;

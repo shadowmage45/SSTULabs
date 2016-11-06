@@ -149,7 +149,7 @@ namespace SSTUTools
 
         public static void updateMaterialProperties(Material m, ShaderProperty[] props)
         {
-            if (m== null || props == null || props.Length == 0) { return; }
+            if (m == null || props == null || props.Length == 0) { return; }
             int len = props.Length;
             for (int i = 0; i < len; i++)
             {

@@ -21,6 +21,16 @@ namespace SSTUTools
             BROKEN,
         }
 
+        public enum Axis
+        {
+            XPlus,
+            XNeg,
+            YPlus,
+            YNeg,
+            ZPlus,
+            ZNeg
+        }
+
         private class PivotData
         {
             public Transform pivotTransform;
@@ -30,7 +40,6 @@ namespace SSTUTools
         private class SuncatcherData
         {
             public Transform suncatcherTransform;
-            float energyGeneration;
         }
 
         //config field, should contain CSV of transform names for ray cast checks
@@ -72,6 +81,9 @@ namespace SSTUTools
         public int animationID = 0;
 
         [KSPField]
+        public string sunAxis = Axis.ZPlus.ToString();
+
+        [KSPField]
         public FloatCurve temperatureEfficCurve;
 
         //BELOW HERE ARE NON-CONFIG EDITABLE FIELDS
@@ -90,6 +102,10 @@ namespace SSTUTools
 
         //current state of this solar panel module
         private SSTUPanelState panelState = SSTUPanelState.RETRACTED;
+
+        private Axis pivotAngleAxis = Axis.ZPlus;
+        private Axis pivotRotateAxis = Axis.YPlus;
+        private Axis suncatcherAngleAxis = Axis.ZPlus;
 
         //cached energy flow value, used to update gui
         private float energyFlow = 0.0f;
@@ -173,7 +189,14 @@ namespace SSTUTools
             }
             initializeState();
         }
-        
+
+        public override void OnSave(ConfigNode node)
+        {
+            base.OnSave(node);
+            savedAnimationState = panelState.ToString();
+            node.SetValue("savedAnimationState", savedAnimationState, true);
+        }
+
         public override string GetInfo()
         {
             if (suncatcherData != null)
@@ -208,12 +231,11 @@ namespace SSTUTools
 
         public void Start()
         {
+            if (vessel == null || pivotData==null || secondaryPivotData==null) { return; }
             if (vessel.solarFlux < 0)
             {
-                MonoBehaviour.print("Skipping solar panel initial alignment");
                 return;
             }
-            MonoBehaviour.print("Setting up solar panel intial orientation from Start()");
             CelestialBody sun = FlightGlobals.Bodies[0];
             sunTransform = sun.transform;
             if (panelState == SSTUPanelState.EXTENDED)
@@ -223,7 +245,6 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     pd = pivotData[i];
-                    //vector from pivot to sun
                     Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
                     float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
                     Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
@@ -233,7 +254,6 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     pd = secondaryPivotData[i];
-                    //vector from pivot to sun
                     Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
                     float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
                     Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
@@ -246,6 +266,11 @@ namespace SSTUTools
         {
             initialized = false;
             OnStart(StartState.Flying);
+        }
+
+        public void setSuncatcherAxis(Axis axis)
+        {
+            suncatcherAngleAxis = axis;
         }
 
         public void onAnimationStatusChanged(AnimState state)
@@ -299,6 +324,7 @@ namespace SSTUTools
             setupDefaultRotations();
             setPanelState(panelState);
             updateGuiData();
+            suncatcherAngleAxis = (Axis)Enum.Parse(typeof(Axis), sunAxis);
         }
         
         private void toggle()
@@ -374,14 +400,17 @@ namespace SSTUTools
             CelestialBody sun = FlightGlobals.Bodies[0];
             sunTransform = sun.transform;
             int len = pivotData.Length;
-            for (int i = 0; i < len; i++)
+            if (vessel.solarFlux > 0)
             {
-                updatePivotRotation(pivotData[i]);
-            }
-            len = secondaryPivotData.Length;
-            for (int i = 0; i < len; i++)
-            {
-                updatePivotRotation(secondaryPivotData[i]);
+                for (int i = 0; i < len; i++)
+                {
+                    updatePivotRotation(pivotData[i]);
+                }
+                len = secondaryPivotData.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    updatePivotRotation(secondaryPivotData[i]);
+                }
             }
             len = suncatcherData.Length;
             for (int i = 0; i < len; i++)
@@ -394,27 +423,67 @@ namespace SSTUTools
             }
         }
         
-        private void updatePivotRotation(PivotData pd)
+        private void updatePivotRotation(PivotData pd, bool lerp = true)
         {
-            if (vessel.solarFlux > 0)
+            //vector from pivot to sun
+            Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
+            //finding angle to turn towards based on direction of vector on a single axis
+            float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
+            if (pd.pivotTransform.lossyScale.z < 0) { y = -y; }
+            if (lerp) // lerp towards destination rotation by trackingSpeed amount
             {
-                //vector from pivot to sun
-                Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
-                //finding angle to turn towards based on direction of vector on a single axis
-                float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));// * 57.29578f;
-                //lerp towards destination rotation by trackingSpeed amount		
                 Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
                 pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
             }
+            else // or just set to the new rotation
+            {
+                Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
+                pd.pivotTransform.rotation = to;
+            }
         }
 
-        private void updatePanelPower(SuncatcherData pd)
+        private void updatePanelPower(SuncatcherData sc)
         {
-            if (!isOccludedByPart(pd.suncatcherTransform))
+            if (!isOccludedByPart(sc.suncatcherTransform))
             {
-                Vector3 normalized = (sunTransform.position - pd.suncatcherTransform.position).normalized;
-
-                float sunAOA = Mathf.Clamp(Vector3.Dot(pd.suncatcherTransform.forward, normalized), 0f, 1f);
+                Vector3 normalized = (sunTransform.position - sc.suncatcherTransform.position).normalized;
+                Vector3 suncatcherVector = Vector3.zero;
+                float invertValue = 0f;
+                switch (suncatcherAngleAxis)
+                {
+                    case Axis.XPlus:
+                        suncatcherVector = sc.suncatcherTransform.right;
+                        invertValue = sc.suncatcherTransform.lossyScale.x;
+                        break;
+                    case Axis.XNeg:
+                        suncatcherVector = -sc.suncatcherTransform.right;
+                        invertValue = sc.suncatcherTransform.lossyScale.x;
+                        break;
+                    case Axis.YPlus:
+                        suncatcherVector = sc.suncatcherTransform.up;
+                        invertValue = sc.suncatcherTransform.lossyScale.y;
+                        break;
+                    case Axis.YNeg:
+                        suncatcherVector = -sc.suncatcherTransform.up;
+                        invertValue = sc.suncatcherTransform.lossyScale.y;
+                        break;
+                    case Axis.ZPlus:
+                        suncatcherVector = sc.suncatcherTransform.forward;
+                        invertValue = sc.suncatcherTransform.lossyScale.z;
+                        break;
+                    case Axis.ZNeg:
+                        suncatcherVector = -sc.suncatcherTransform.forward;
+                        invertValue = sc.suncatcherTransform.lossyScale.z;
+                        break;
+                    default:
+                        break;
+                }
+                
+                if (invertValue < 0)
+                {
+                    suncatcherVector = -suncatcherVector;
+                }
+                float sunAOA = Mathf.Clamp(Vector3.Dot(suncatcherVector, normalized), 0f, 1f);
                 float distMult = (float)(vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
 
                 if (distMult == 0 && FlightGlobals.currentMainBody != null)//vessel.solarFlux == 0, so occluded by a planetary body
@@ -428,7 +497,15 @@ namespace SSTUTools
             }
         }
 
-        //does a very short raycast for vessel/part occlusion checking
+        private void debugPrint(Vector3 direction, Transform catcher)
+        {
+            float dotX = Vector3.Dot(direction, catcher.right);
+            float dotY = Vector3.Dot(direction, catcher.up);
+            float dotZ = Vector3.Dot(direction, catcher.forward);
+            MonoBehaviour.print("DOTS: " + dotX + "," + dotY + "," + dotZ);
+        }
+
+        //does a 'very short' raycast for vessel/part occlusion checking
         //rely on stock thermal input data for body occlusion checks
         private bool isOccludedByPart(Transform tr)
         {
@@ -688,8 +765,9 @@ namespace SSTUTools
 
         public bool CheckContractObjectiveValidity()
         {
-            return true;
+            return !moduleDisabled;
         }
+
     }
 
 }

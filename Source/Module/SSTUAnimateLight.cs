@@ -84,6 +84,7 @@ namespace SSTUTools
         private LightData[] lightTransforms;
         private int shaderEmissiveID;
 
+        private Color color = new Color(0, 0, 0);
         private MaterialPropertyBlock matProps;
 
         [KSPAction("Toggle Lights", KSPActionGroup.Light)]
@@ -223,7 +224,6 @@ namespace SSTUTools
                     }
                     else
                     {
-                        updateMeshEmissives(progress, false);
                         updateLights(progress, false);
                     }
                     break;
@@ -238,7 +238,6 @@ namespace SSTUTools
                     }
                     else
                     {
-                        updateMeshEmissives(progress, true);
                         updateLights(progress, true);
                     }
                     break;
@@ -251,7 +250,6 @@ namespace SSTUTools
                     }
                     else
                     {
-                        updateMeshEmissives(progress, true);
                         updateLights(progress, true);
                     }
                     break;
@@ -266,7 +264,6 @@ namespace SSTUTools
                         }
                         else
                         {
-                            updateMeshEmissives(progress, true);
                             updateLights(progress, true);
                         }
                     }
@@ -280,11 +277,17 @@ namespace SSTUTools
                     }
                     else
                     {
-                        updateMeshEmissives(progress, false);
                         updateLights(progress, false);
                     }
                     break;
             }
+        }
+
+        public void Update()
+        {
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//only operate flight/editor scenes
+            if (!initialized) { return; }
+            updateMeshEmissives(progress, state == LightAnimationState.LOOPING_BACKWARD || state==LightAnimationState.LOOPING_FORWARD);
         }
 
         private void initialize()
@@ -382,7 +385,6 @@ namespace SSTUTools
             Events["enableLightsEvent"].guiName = guiPrefix+ " " + actionName;
         }
 
-        private Color color = new Color(0, 0, 0);
         private void updateMeshEmissives(float progress, bool useLoop)
         {
             float p = progress / (useLoop ? animationLoopTime : animationOnTime);
@@ -390,14 +392,14 @@ namespace SSTUTools
             color.r = rCurve.Evaluate(p);
             color.b = bCurve.Evaluate(p);
             color.g = gCurve.Evaluate(p);
-            matProps.SetColor(shaderEmissiveID, color);
             int len = emissiveRenderers.Count;
             for (int i = 0; i < len; i++)
             {
                 if (emissiveRenderers[i] != null)
                 {
+                    emissiveRenderers[i].GetPropertyBlock(matProps);
+                    matProps.SetColor(shaderEmissiveID, color);
                     emissiveRenderers[i].SetPropertyBlock(matProps);
-                    //emissiveRenderers[i].sharedMaterial.SetColor(shaderEmissiveID, color);
                 }
             }
         }

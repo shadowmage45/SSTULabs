@@ -167,16 +167,9 @@ namespace SSTUTools
 
         internal static bool safeParseBool(string v)
         {
-            bool value = false;
-            try
-            {
-                value = Boolean.Parse(v);
-            }
-            catch (Exception e)
-            {
-                MonoBehaviour.print("ERROR: could not parse bool value from : " + v+"\n" + e.Message);
-            }
-            return value;
+            if (v == null) { return false; }
+            else if (v.Equals("true") || v.Equals("yes") || v.Equals("1")) { return true; }
+            return false;
         }
 
         public static float safeParseFloat(String val)

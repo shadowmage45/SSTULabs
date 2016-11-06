@@ -97,10 +97,7 @@ namespace SSTUTools
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
-
-        [KSPField]
-        public bool useModelSelectionGUI = true;
-
+        
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -363,6 +360,7 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+            updateDragCubes();
         }
 
         public void Start()
@@ -498,6 +496,8 @@ namespace SSTUTools
         
         private void initializeGUI()
         {
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
+
             string[] names = SingleModelData.getModelNames(topDockModules);
             this.updateUIChooseOptionControl("currentTopDock", names, names, true, currentTopDock);
             Fields["currentTopDock"].uiControlEditor.onFieldChanged = onTopDockChanged;
@@ -697,6 +697,10 @@ namespace SSTUTools
             solar.pivotTransforms = solarModule.pivotNames;
             solar.secondaryPivotTransforms = solarModule.secPivotNames;
             solar.rayTransforms = solarModule.sunNames;
+
+            SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.sunAxis);
+            solar.setSuncatcherAxis(axis);
+
             if (solarModule.panelsEnabled)
             {
                 solar.enableModule();
@@ -792,6 +796,7 @@ namespace SSTUTools
         
         private void updateGUI()
         {
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
             string[] moduleNames = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
             this.updateUIChooseOptionControl("currentTop", moduleNames, moduleNames, true, currentTop);
             Fields["currentTop"].guiActiveEditor = !useModelSelectionGUI && moduleNames.Length > 1;
@@ -844,6 +849,7 @@ namespace SSTUTools
         public readonly string secPivotNames;
         public readonly string sunNames;
         public readonly float energy;
+        public readonly string sunAxis;
         public readonly bool panelsEnabled;
 
         private ModelDefinition def;
@@ -863,6 +869,7 @@ namespace SSTUTools
             sunNames = solarNode.GetStringValue("sunNames");
             energy = solarNode.GetFloatValue("energy");
             panelsEnabled = solarNode.GetBoolValue("enabled");
+            sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
             energy = node.GetFloatValue("energy", energy);//allow local override of energy
             ConfigNode[] posNodes = node.GetNodes("POSITION");
             int len = posNodes.Length;
@@ -901,8 +908,9 @@ namespace SSTUTools
                 rootTransforms[i].rotation = root.rotation;
                 rootTransforms[i].localPosition = pos;
                 rootTransforms[i].Rotate(positions[i].rotation, Space.Self);
-                models[i] = new SingleModelData(name);
+                models[i] = new SingleModelData(modelName);
                 models[i].setupModel(rootTransforms[i], ModelOrientation.TOP);
+                rootTransforms[i].localScale = positions[i].scale;
             }
         }
 
@@ -949,10 +957,12 @@ namespace SSTUTools
     {
         public Vector3 position;
         public Vector3 rotation;
+        public Vector3 scale;
         public SolarPosition(ConfigNode node)
         {
-            position = node.GetVector3("position");
-            rotation = node.GetVector3("rotation");
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
         }
     }
 

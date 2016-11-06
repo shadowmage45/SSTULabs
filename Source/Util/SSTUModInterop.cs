@@ -66,7 +66,6 @@ namespace SSTUTools
             //MonoBehaviour.print(System.Environment.StackTrace);
             if (part.HighlightRenderer != null)
             {
-                MonoBehaviour.print("Updating part highlighter.");
                 part.HighlightRenderer = null;
                 //part.HighlightRenderer.Clear();
                 Transform model = part.transform.FindRecursive("model");
@@ -76,8 +75,8 @@ namespace SSTUTools
                     part.HighlightRenderer = new List<Renderer>(renders);//.AddRange(renders);
                 }
                 part.RefreshHighlighter();
-                MonoBehaviour.print("Highlighting updated.");
             }
+            part.airlock = locateAirlock(part);
             part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
             if (isFARInstalled())
             {
@@ -88,6 +87,20 @@ namespace SSTUTools
             {
                 SSTUStockInterop.addDragUpdatePart(part);
             }
+        }
+
+        private static Transform locateAirlock(Part part)
+        {
+            Collider[] componentsInChildren = part.GetComponentsInChildren<Collider>();
+            int len = componentsInChildren.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (componentsInChildren[i].gameObject.tag == "Airlock")
+                {
+                    return componentsInChildren[i].transform;
+                }
+            }
+            return null;
         }
 
         private static void FARdebug(Part part)
