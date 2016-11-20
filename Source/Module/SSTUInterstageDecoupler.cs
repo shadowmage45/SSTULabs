@@ -120,6 +120,10 @@ namespace SSTUTools.Module
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentTaperHeight = 0.0f;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Engine Scale"),
+         UI_FloatEdit(sigFigs = 2, incrementLarge = 1f, incrementSmall = 0.25f, incrementSlide = 0.01f, minValue = 0.25f, maxValue = 2f, suppressEditorShipModified = true)]
+        public float currentEngineScale = 1f;
+
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
         
@@ -148,10 +152,6 @@ namespace SSTUTools.Module
         private float remainingDelay;
 
         private float minHeight;
-        private float prevHeight;
-        private float prevTopDiameter;
-        private float prevBottomDiameter;
-        private float prevTaperHeight;
 
         private float modifiedMass;
         private float modifiedCost;
@@ -174,68 +174,89 @@ namespace SSTUTools.Module
         [KSPEvent(guiName = "Invert Engines", guiActiveEditor = true)]
         public void invertEnginesEvent()
         {
-            invertEnginesFromEditor(true);
+            invertEngines = !invertEngines;
+            updateEnginePositionAndScale();
+            this.forEachSymmetryCounterpart(module =>
+            {
+                module.invertEngines = this.invertEngines;
+                module.updateEnginePositionAndScale();
+            });
+            SSTUStockInterop.fireEditorUpdate();
         }
 
         [KSPEvent(guiName = "Toggle Auto Decouple", guiActiveEditor = true)]
         public void toggleAutoDecoupleEvent()
         {
             autoDecouple = !autoDecouple;
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                p.GetComponent<SSTUInterstageDecoupler>().autoDecouple = this.autoDecouple;
-            }
+            this.forEachSymmetryCounterpart(module => module.autoDecouple = this.autoDecouple);
         }
 
         [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
         public void nextTextureEvent()
         {
             TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
-            setTextureFromEditor(next == null ? null : next.setName, true);
+            currentTextureSet = next?.setName;
+            onTextureUpdated(null, null);
         }
 
         public void onTextureUpdated(BaseField field, object obj)
         {
-            if ((string)obj != currentTextureSet)
+            textureWasUpdated();
+            this.forEachSymmetryCounterpart(module =>
             {
-                setTextureFromEditor(currentTextureSet, true);
-            }
+                module.currentTextureSet = this.currentTextureSet;
+                module.textureWasUpdated();
+            });
         }
         
         public void onTopDiameterUpdated(BaseField field, object obj)
         {
-            if (prevTopDiameter != currentTopDiameter)
+            dimensionsWereUpdated();
+            this.forEachSymmetryCounterpart(module =>
             {
-                prevTopDiameter = currentTopDiameter;
-                setTopDiameterFromEditor(currentTopDiameter, true);
-            }
+                module.currentTopDiameter = this.currentTopDiameter;
+                module.dimensionsWereUpdated();
+            });
         }
 
         public void onBottomDiameterUpdated(BaseField field, object obj)
         {
-            if (prevBottomDiameter != currentBottomDiameter)
+            dimensionsWereUpdatedWithEngineRecalc();
+            this.forEachSymmetryCounterpart(module =>
             {
-                prevBottomDiameter = currentBottomDiameter;
-                setBottomDiameterFromEditor(currentBottomDiameter, true);
-            }
+                module.currentBottomDiameter = this.currentBottomDiameter;
+                module.dimensionsWereUpdatedWithEngineRecalc();
+            });
         }
 
         public void onHeightUpdated(BaseField field, object obj)
         {
-            if (prevHeight != currentHeight)
+            dimensionsWereUpdated();
+            this.forEachSymmetryCounterpart(module =>
             {
-                prevHeight = currentHeight;
-                setHeightFromEditor(currentHeight, true);
-            }
+                module.currentHeight = this.currentHeight;
+                module.dimensionsWereUpdated();
+            });
         }
 
         public void onStraightUpdated(BaseField field, object obj)
         {
-            if (prevTaperHeight != currentTaperHeight)
+            dimensionsWereUpdated();
+            this.forEachSymmetryCounterpart(module =>
             {
-                prevTaperHeight = currentTaperHeight;
-                setTaperHeightFromEditor(currentTaperHeight, true);
-            }
+                module.currentTaperHeight = this.currentTaperHeight;
+                module.dimensionsWereUpdated();
+            });
+        }
+
+        public void onEngineScaleUpdated(BaseField field, object obj)
+        {
+            dimensionsWereUpdatedWithEngineRecalc();
+            this.forEachSymmetryCounterpart(module =>
+            {
+                module.currentEngineScale = this.currentEngineScale;
+                module.dimensionsWereUpdatedWithEngineRecalc();
+            });
         }
 
         public void onTransparencyUpdated(BaseField field, object obj)
@@ -252,69 +273,18 @@ namespace SSTUTools.Module
             }
         }
 
-        private void setTaperHeightFromEditor(float newHeight, bool updateSymmetry)
+        private void dimensionsWereUpdated()
         {
-            currentTaperHeight = newHeight;
             updateEditorFields();
             buildFairing();
             updateNodePositions(true);
             updatePartMass();
             updateShielding();
             updateDragCubes();
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler idc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    idc = part.GetComponent<SSTUInterstageDecoupler>();
-                    idc.setTaperHeightFromEditor(newHeight, false);
-                }
-            }
         }
 
-        private void setHeightFromEditor(float newHeight, bool updateSymmetry)
+        private void dimensionsWereUpdatedWithEngineRecalc()
         {
-            currentHeight = newHeight;
-            updateEditorFields();
-            buildFairing();
-            updateNodePositions(true);
-            updatePartMass();
-            updateShielding();
-            updateDragCubes();
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler idc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    idc = part.GetComponent<SSTUInterstageDecoupler>();
-                    idc.setHeightFromEditor(newHeight, false);
-                }
-            }
-        }
-
-        private void setTopDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            currentTopDiameter = newDiameter;
-            updateEditorFields();
-            buildFairing();
-            updateNodePositions(true);
-            updatePartMass();
-            updateShielding();
-            updateDragCubes();
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler idc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    idc = part.GetComponent<SSTUInterstageDecoupler>();
-                    idc.setTopDiameterFromEditor(newDiameter, false);
-                }
-            }
-        }
-
-        private void setBottomDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            currentBottomDiameter = newDiameter;
             updateEditorFields();
             buildFairing();
             updateNodePositions(true);
@@ -323,57 +293,19 @@ namespace SSTUTools.Module
             updateEngineThrust();
             updateShielding();
             updateDragCubes();
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler idc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    idc = part.GetComponent<SSTUInterstageDecoupler>();
-                    idc.setBottomDiameterFromEditor(newDiameter, false);
-                }
-            }
-
         }
 
-        private void invertEnginesFromEditor(bool updateSymmetry)
+        private void textureWasUpdated()
         {
-            invertEngines = !invertEngines;
-            updateEnginePositionAndScale();
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler idc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    idc = part.GetComponent<SSTUInterstageDecoupler>();
-                    idc.invertEngines = invertEngines;
-                    idc.updateEnginePositionAndScale();
-                }
-                SSTUStockInterop.fireEditorUpdate();
-            }
-        }
-
-        private void setTextureFromEditor(String newTexture, bool updateSymmetry)
-        {
-            currentTextureSet = newTexture;
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.setName;
-                newTexture = currentTextureSet;
             }
             TextureData data = currentTextureSetData.textureDatas[0];
             fairingMaterial.mainTexture = GameDatabase.Instance.GetTexture(data.diffuseTextureName, false);
             data.enableForced(fairingBase.rootObject.transform, true);
-            if (updateSymmetry)
-            {
-                SSTUInterstageDecoupler dc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    dc = p.GetComponent<SSTUInterstageDecoupler>();
-                    dc.setTextureFromEditor(newTexture, false);
-                }
-            }
         }
 
         #endregion ENDREGION - GUI Interaction
@@ -389,18 +321,19 @@ namespace SSTUTools.Module
         {
             base.OnStart(state);
             initialize();
-            this.updateUIFloatEditControl("currentTopDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
-            this.updateUIFloatEditControl("currentBottomDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
-            this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
-            this.updateUIFloatEditControl("currentTaperHeight", minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
-            Fields["currentTopDiameter"].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
-            Fields["currentBottomDiameter"].uiControlEditor.onFieldChanged = onBottomDiameterUpdated;
-            Fields["currentHeight"].uiControlEditor.onFieldChanged = onHeightUpdated;
-            Fields["currentTaperHeight"].uiControlEditor.onFieldChanged = onStraightUpdated;
-            Fields["editorTransparency"].uiControlEditor.onFieldChanged = onTransparencyUpdated;
-            Fields["generateColliders"].uiControlEditor.onFieldChanged = onCollidersUpdated;
-            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
-            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
+            this.updateUIFloatEditControl(nameof(currentTopDiameter), minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentTopDiameter);
+            this.updateUIFloatEditControl(nameof(currentBottomDiameter), minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
+            this.updateUIFloatEditControl(nameof(currentHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
+            this.updateUIFloatEditControl(nameof(currentTaperHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
+            Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
+            Fields[nameof(currentBottomDiameter)].uiControlEditor.onFieldChanged = onBottomDiameterUpdated;
+            Fields[nameof(currentHeight)].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields[nameof(currentTaperHeight)].uiControlEditor.onFieldChanged = onStraightUpdated;
+            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = onTransparencyUpdated;
+            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = onCollidersUpdated;
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
+            Fields[nameof(currentTextureSet)].guiActiveEditor = textureSetData.Length > 1;
+            Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = onEngineScaleUpdated;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -510,10 +443,6 @@ namespace SSTUTools.Module
 
         private void updateEditorFields()
         {
-            prevTopDiameter = currentTopDiameter;
-            prevBottomDiameter = currentBottomDiameter;
-            prevHeight = currentHeight;
-            prevTaperHeight = currentTaperHeight;
             minHeight = engineHeight * getEngineScale();
             if (currentTaperHeight < minHeight)
             {
@@ -673,7 +602,7 @@ namespace SSTUTools.Module
 
         private float getEngineScale()
         {
-            return currentBottomDiameter / defaultModelScale;
+            return currentBottomDiameter / defaultModelScale * currentEngineScale;
         }
         
         private class InterstageDecouplerEngine

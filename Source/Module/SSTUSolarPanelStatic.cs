@@ -8,7 +8,7 @@ namespace SSTUTools
 
     //Multi-panel solar panel module, each with own suncatcher and occlusion checks
     //Solar panel energy update code based loosely from stock code
-    public class SSTUSolarPanelStatic : PartModule
+    public class SSTUSolarPanelStatic : PartModule, IContractObjectiveModule
     {
 
         //config field, should contain CSV of transform names for ray cast checks
@@ -66,6 +66,16 @@ namespace SSTUTools
         {
             updatePowerStatus();
             updateGuiData();
+        }
+
+        public string GetContractObjectiveType()
+        {
+            return "Generator";
+        }
+
+        public bool CheckContractObjectiveValidity()
+        {
+            return true;
         }
 
         //update power status every tick if panels are extended (and not broken)

@@ -572,6 +572,15 @@ namespace SSTUTools
             widget.onFieldChanged = t;
         }
 
+        public static void forEachSymmetryCounterpart<T>(this T module, Action<T> action) where T : PartModule
+        {
+            foreach (Part symPart in module.part.symmetryCounterparts)
+            {
+                T otherModule = symPart.FindModuleImplementing<T>();
+                action(otherModule);
+            }
+        }
+
         #endregion
 
         #region Generic extension and Utiltiy methods

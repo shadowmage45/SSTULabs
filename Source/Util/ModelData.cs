@@ -346,7 +346,6 @@ namespace SSTUTools
 
         private void updateRenderer(Renderer r)
         {
-            MonoBehaviour.print("Updating textures for: " + r);
             SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, null);
         }
     }
@@ -716,13 +715,13 @@ namespace SSTUTools
         /// <param name="setName"></param>
         public void enableTextureSet(String setName)
         {
-            ModelTextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
-            if (String.IsNullOrEmpty(setName) || setName == "none" || setName == "default" ||  mts==null)
+            if (setName == "none" || setName == "default" || String.IsNullOrEmpty(setName))
             {
-                if (setName == "none" || setName == "default" || String.IsNullOrEmpty(setName))
-                {
-                    return;
-                }
+                return;
+            }
+            ModelTextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
+            if ( mts==null )
+            {
                 MonoBehaviour.print("ERROR: No texture set data for set by name: " + setName + "  --  for model: " + name);
                 if (String.IsNullOrEmpty(modelDefinition.defaultTextureSet))
                 {

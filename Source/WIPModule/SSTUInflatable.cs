@@ -23,6 +23,9 @@ namespace SSTUTools
         public float inflationMass = 5f;
 
         [KSPField]
+        public float inflationCost = 0f;
+
+        [KSPField]
         public string resourceName = "RocketParts";
 
         [KSPField]
@@ -65,13 +68,12 @@ namespace SSTUTools
                 updateCrewCapacity(inflatedCrew);
                 inflated = true;
 
+                BaseEvent evt = Events["inflateEvent"];
+                evt.guiActive = evt.guiActiveEditor = !inflated;
+                evt = Events["deflateEvent"];
+                evt.guiActiveEditor = true;
+                evt.guiActive = canDeflate;
             }
-            BaseEvent evt = Events["inflateEvent"];
-            evt.guiActive = evt.guiActiveEditor = false;
-
-            evt = Events["deflateEvent"];
-            evt.guiActiveEditor = true;
-            evt.guiActive = canDeflate;
         }
 
         [KSPEvent(guiName = "Deflate", guiActiveEditor = true)]
@@ -138,9 +140,7 @@ namespace SSTUTools
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            if (inflated || resourceDef == null) { return 0; }
-            float cost = (inflationMass / resourceDef.density) * resourceDef.unitCost;
-            return inflated ? 0 : -cost;
+            return inflated? 0 : -inflationCost;
         }
 
         public ModifierChangeWhen GetModuleCostChangeWhen()

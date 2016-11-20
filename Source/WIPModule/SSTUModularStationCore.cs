@@ -603,7 +603,7 @@ namespace SSTUTools
             bottomModule.setupModel(getBottomRoot(true), ModelOrientation.BOTTOM);
             bottomDockModule.setupModel(getBottomDockRoot(true), ModelOrientation.BOTTOM);
             solarModule.enable(getSolarRoot(true), 0);
-            
+
             topModule.enableTextureSet(currentTopTexture);
             coreModule.enableTextureSet(currentCoreTexture);
             bottomModule.enableTextureSet(currentBottomTexture);
@@ -635,6 +635,7 @@ namespace SSTUTools
                 bottomDockTransform = part.transform.FindRecursive(bottomDockName);
                 bottomControlTransform = part.transform.FindRecursive(bottomDockName + "Control");
             }
+            SSTUStockInterop.updatePartHighlighting(part);
         }
         
         private void updateResourceVolume()

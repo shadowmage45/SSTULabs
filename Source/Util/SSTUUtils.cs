@@ -18,8 +18,9 @@ namespace SSTUTools
                 jettisonedObject.transform.rotation = parent.rotation;
             }
             toJettison.transform.NestToParent(jettisonedObject.transform);
-            jettisonedObject.AddComponent<physicalObject>();
+            physicalObject po = jettisonedObject.AddComponent<physicalObject>();
             Rigidbody rb = jettisonedObject.AddComponent<Rigidbody>();
+            po.rb = rb;
             rb.velocity = velocity;
             rb.mass = mass;            
             rb.AddForce(force);

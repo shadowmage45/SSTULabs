@@ -109,5 +109,25 @@ namespace SSTUTools
             engine.Load(updateNode);
         }
 
+        public static void updatePartHighlighting(Part part)
+        {
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//noop on prefabs
+            if (part.HighlightRenderer != null)
+            {
+                part.HighlightRenderer = null;
+                Transform model = part.transform.FindRecursive("model");
+                if (model != null)
+                {
+                    Renderer[] renders = model.GetComponentsInChildren<Renderer>(false);
+                    part.HighlightRenderer = new List<Renderer>(renders);
+                }
+                else
+                {
+                    part.HighlightRenderer = new List<Renderer>();
+                }
+                part.RefreshHighlighter();
+            }
+        }
+
     }
 }

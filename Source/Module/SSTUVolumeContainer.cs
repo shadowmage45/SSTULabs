@@ -140,11 +140,11 @@ namespace SSTUTools
 
             //disable next fuel event button if main container does not have more than one preset type available 
             BaseField fuelSelection = Fields["guiFuelType"];
-            fuelSelection.guiActiveEditor = enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
+            fuelSelection.guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
 
             BaseEvent editContainerEvent = Events["openGUIEvent"];
-            editContainerEvent.active = enableContainerEdit;
+            editContainerEvent.active = volume > 0 && enableContainerEdit;
 
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
@@ -222,7 +222,8 @@ namespace SSTUTools
                 updatePersistentData();
                 SSTUStockInterop.fireEditorUpdate();
             }
-            Events["openGUIEvent"].guiActiveEditor = volume > 0;
+            Events["openGUIEvent"].guiActiveEditor = volume > 0 && enableContainerEdit;
+            Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length>1;
         }
 
         public int numberOfContainers { get { return containers.Length; } }

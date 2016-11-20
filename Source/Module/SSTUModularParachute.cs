@@ -743,7 +743,7 @@ namespace SSTUTools
             {
                 Vector3 force = (part.transform.up * 100) + (part.transform.forward * 10);
                 GameObject jettisoned = SSTUUtils.createJettisonedObject(tr.gameObject, part.rb.velocity, force, 0.15f);
-                //umm..nothing left to do?
+                SSTUStockInterop.updatePartHighlighting(part);
             }
             else
             {

@@ -64,18 +64,7 @@ namespace SSTUTools
         {
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//noop on prefabs
             //MonoBehaviour.print(System.Environment.StackTrace);
-            if (part.HighlightRenderer != null)
-            {
-                part.HighlightRenderer = null;
-                //part.HighlightRenderer.Clear();
-                Transform model = part.transform.FindRecursive("model");
-                if (model != null)
-                {
-                    MeshRenderer[] renders = model.GetComponentsInChildren<MeshRenderer>(false);
-                    part.HighlightRenderer = new List<Renderer>(renders);//.AddRange(renders);
-                }
-                part.RefreshHighlighter();
-            }
+            SSTUStockInterop.updatePartHighlighting(part);
             part.airlock = locateAirlock(part);
             part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
             if (isFARInstalled())
