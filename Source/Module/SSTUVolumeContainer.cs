@@ -71,9 +71,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string persistentData = string.Empty;
 
-        [KSPField]
-        public double lastBoiloffUpdate = 0d;
-
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -139,12 +136,12 @@ namespace SSTUTools
             updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
 
             //disable next fuel event button if main container does not have more than one preset type available 
-            BaseField fuelSelection = Fields["guiFuelType"];
+            BaseField fuelSelection = Fields[nameof(guiFuelType)];
             fuelSelection.guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
 
-            BaseEvent editContainerEvent = Events["openGUIEvent"];
-            editContainerEvent.active = volume > 0 && enableContainerEdit;
+            BaseEvent editContainerEvent = Events[nameof(openGUIEvent)];
+            editContainerEvent.guiActiveEditor = volume>0 && enableContainerEdit;
 
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
@@ -222,8 +219,8 @@ namespace SSTUTools
                 updatePersistentData();
                 SSTUStockInterop.fireEditorUpdate();
             }
-            Events["openGUIEvent"].guiActiveEditor = volume > 0 && enableContainerEdit;
-            Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length>1;
+            Events[nameof(openGUIEvent)].guiActiveEditor = volume > 0 && enableContainerEdit;
+            Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
         }
 
         public int numberOfContainers { get { return containers.Length; } }

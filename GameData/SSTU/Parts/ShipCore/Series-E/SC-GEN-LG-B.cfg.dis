@@ -1,0 +1,104 @@
+PART
+{
+module = Part
+name = SSTU-SC-GEN-LG-B
+author = Shadowmage
+
+TechRequired = heavyAerodynamics
+entryCost = 4000
+cost = 1000
+category = Aero
+subcategory = 0
+title = SSTU - SC-GEN-LG-B - Medium Landing Gear
+manufacturer = SSTU
+description = SSTU - ShipCore: General - Landing Gear Model B - Medium.
+tags = gear, landing, lg, wheel
+
+MODEL
+{
+	model = SSTU/Assets/SC-GEN-LG-B
+}
+rescaleFactor = 1
+
+// nodes/attachment 
+// node position specification: posX,posY,posZ,axisX,axisY,axisZ,size
+// attachment rules: stack, srfAttach, allowStack, allowSrfAttach, allowCollision
+node_stack_top = 0, 0, 0, 0, 1, 0, 2
+node_attach = 0, 0, 0, 0, 1, 0
+attachRules = 1,1,1,0,0
+
+
+// --- standard part parameters ---
+mass = 0.10
+crashTolerance = 24
+fuelCrossFeed = False
+
+// --- thermal parameters
+maxTemp = 2400
+skinMaxTemp = 2700
+
+MODULE
+{
+	name = KSPWheelBase
+	wheelColliderName = SC-GEN-LG-B-WheelCollider
+	wheelColliderOffset = 0
+	wheelPivotName = SC-GEN-LG-B-WheelMesh
+	wheelPivotAxis = 1, 0, 0
+	wheelRadius = 0.26
+	wheelMass = 0.150
+	suspensionTravel = 0.3
+	suspensionTarget = 0.2
+	suspensionSpring = 800
+	suspensionDamper = 125
+	loadRating = 8
+	minLoadRating = 1
+	maxLoadRating = 12
+}
+MODULE
+{
+	name = KSPWheelSuspension
+	suspensionName = SC-GEN-LG-B-Suspension
+	suspensionOffset = -0.3
+	suspensionAxis = 0,1,0
+}
+MODULE
+{
+	name = KSPWheelSteering
+	steeringName = SC-GEN-LG-B-Steering
+	maxSteeringAngle = 15
+	steeringAxis = 0, 1, 0
+	steeringResponse = 10
+}
+MODULE
+{
+	name = KSPWheelBrakes
+	maxBrakeTorque = 150
+	brakeResponse = 2
+}
+MODULE
+{
+	name = KSPWheelDeployment
+	animationName = SC-GEN-LG-B-WheelDeploy
+	animationLayer = 1
+}
+
+MODULE
+{
+	name = SSTUModelConstraint
+	LOCKED_CONST
+	{
+		transformName = SC-GEN-LG-B-TorqueArmLower
+		targetName = SC-GEN-LG-B-TorqueArmUpperTarget
+		lookAxis = 0, 0, -1
+		lockedAxis = 1, 0, 0
+	}
+	LOCKED_CONST
+	{
+		transformName = SC-GEN-LG-B-TorqueArmUpper
+		targetName = SC-GEN-LG-B-TorqueArmLowerTarget
+		lookAxis = 0, 0, -1
+		lockedAxis = 1, 0, 0
+	}
+}
+
+}

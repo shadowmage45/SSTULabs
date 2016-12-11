@@ -525,7 +525,7 @@ namespace SSTUTools
             Fields["currentBottomDock"].uiControlEditor.onFieldChanged = onBottomDockChanged;
             Fields["currentBottomDock"].guiActiveEditor = bottomDockModules.Length > 1;
 
-            names = SolarData.getNames(solarModules);
+            names = SolarData.getNames(solarModules, part, this);
             this.updateUIChooseOptionControl("currentSolar", names, names, true, currentSolar);
             Fields["currentSolar"].uiControlEditor.onFieldChanged = onSolarChanged;
             Fields["currentSolar"].guiActiveEditor = solarModules.Length > 1;
@@ -845,6 +845,7 @@ namespace SSTUTools
     {
         public readonly string name;
         public readonly string modelName;
+        public readonly string upgradeName;
         public readonly string animationName;
         public readonly string pivotNames;
         public readonly string secPivotNames;
@@ -862,6 +863,7 @@ namespace SSTUTools
         {
             name = node.GetStringValue("name");
             modelName = node.GetStringValue("modelName", name);
+            upgradeName = node.GetStringValue("upgrade");
             def = SSTUModelData.getModelDefinition(modelName);
             ConfigNode solarNode = def.configNode.GetNode("SOLARDATA");
             animationName = solarNode.GetStringValue("animationName");
@@ -929,15 +931,19 @@ namespace SSTUTools
             }
         }
 
-        public static string[] getNames(SolarData[] data)
+        public static string[] getNames(SolarData[] data, Part part, PartModule module)
         {
+            List<string> names = new List<string>();
             int len = data.Length;
-            string[] names = new string[len];
             for (int i = 0; i < len; i++)
             {
-                names[i] = data[i].name;
+                names.Add(data[i].name);
+                //if (string.IsNullOrEmpty(data[i].upgradeName) || module.upgradesApplied.Contains(data[i].upgradeName))
+                //{
+                //    names.Add(data[i].name);
+                //}
             }
-            return names;
+            return names.ToArray();
         }
         
         public float getCost()

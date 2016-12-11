@@ -220,7 +220,7 @@ namespace SSTUTools
         /// <param name="capacity"></param>
         private void updateCrewCapacity(int capacity)
         {
-            MonoBehaviour.print("Setting crew capacity to: " + capacity + " current: " + part.CrewCapacity);
+            MonoBehaviour.print("Setting crew capacity to: " + capacity + " from current: " + part.CrewCapacity);
             part.CrewCapacity = capacity;
 
             //if (!HighLogic.LoadedSceneIsEditor) { return; }//only run the following block in the editor; it updates the crew-assignment GUI

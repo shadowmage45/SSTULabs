@@ -17,6 +17,9 @@ namespace SSTUTools
         [GameParameters.CustomParameterUI("Use Model Select GUI?", toolTip = "Use advanced GUI for adapter selection for modular parts.")]
         public bool useModelSelectGui = true;
 
+        [GameParameters.CustomParameterUI("Override stock sandbox upgrade", toolTip = "Force-sets the stock 'apply upgrades in sandbox' to true.")]
+        public bool upgradesInSandboxOverride = true;
+
         public override string Section { get { return "SSTU"; } }
 
         public override int SectionOrder { get { return 1; } }

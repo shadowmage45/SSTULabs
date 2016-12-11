@@ -15,17 +15,23 @@ namespace SSTUTools
         private static bool fireEditorEvent = false;
 
         public static SSTUStockInterop INSTANCE;
+
+        private int tick = 0;
         
         public void Start()
         {
             INSTANCE = this;
             GameObject.DontDestroyOnLoad(this);
             MonoBehaviour.print("SSTUStockInterop Start");
+            GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));
+            GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
         }
 
         public void OnDestroy()
         {
             MonoBehaviour.print("SSTUStockInterop Destroy");
+            GameEvents.OnGameSettingsApplied.Remove(new EventVoid.OnEvent(gameSettingsApplied));
+            GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
         }
 
         public static void addDragUpdatePart(Part part)
@@ -56,6 +62,16 @@ namespace SSTUTools
                 }
                 dragCubeUpdateParts.Clear();
             }
+        }
+
+        private void gameSettingsApplied()
+        {
+            HighLogic.CurrentGame.Parameters.CustomParams<GameParameters.AdvancedParams>().PartUpgradesInSandbox = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().upgradesInSandboxOverride;
+        }
+
+        private void gameStateLoaded(ConfigNode node)
+        {
+            HighLogic.CurrentGame.Parameters.CustomParams<GameParameters.AdvancedParams>().PartUpgradesInSandbox = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().upgradesInSandboxOverride;
         }
 
         public void LateUpdate()

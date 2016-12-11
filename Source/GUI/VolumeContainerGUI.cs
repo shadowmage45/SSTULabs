@@ -41,6 +41,7 @@ namespace SSTUTools
             }
             resourceEntries = new VolumeRatioEntry[len][];
             string[] names;
+            PartResourceDefinition def;
             for (int i = 0; i < len; i++)
             {
                 names = containers[i].getResourceNames();
@@ -48,7 +49,8 @@ namespace SSTUTools
                 resourceEntries[i] = new VolumeRatioEntry[len2];
                 for (int k = 0; k < len2; k++)
                 {
-                    resourceEntries[i][k] = new VolumeRatioEntry(containers[i], names[k], containers[i].getResourceUnitRatio(names[k]));
+                    def = PartResourceLibrary.Instance.GetDefinition(names[k]);
+                    resourceEntries[i][k] = new VolumeRatioEntry(containers[i], names[k], def.title, containers[i].getResourceUnitRatio(names[k]));
                 }
             }
         }
@@ -290,6 +292,7 @@ namespace SSTUTools
     {
         ContainerDefinition container;
         public readonly string resourceName;
+        public readonly string displayName;
         private int prevRatio;
         private string textRatio;
 
@@ -300,10 +303,11 @@ namespace SSTUTools
         private float percent;
         private float fillPercent;
 
-        public VolumeRatioEntry(ContainerDefinition container, string resourceName, int startRatio)
+        public VolumeRatioEntry(ContainerDefinition container, string resourceName, string displayName, int startRatio)
         {
             this.container = container;
             this.resourceName = resourceName;
+            this.displayName = displayName;
             this.prevRatio = startRatio;
             this.textRatio = prevRatio.ToString();
             this.fillPercent = container.getResourceFillPercent(resourceName);
@@ -322,7 +326,7 @@ namespace SSTUTools
                 textRatio = prevRatio.ToString();
                 update = true;
             }
-            GUILayout.Label(resourceName, GUILayout.Width(150));
+            GUILayout.Label(displayName, GUILayout.Width(150));
             string textVal = GUILayout.TextField(textRatio, GUILayout.Width(100));
             if (textVal != textRatio)
             {

@@ -1,0 +1,103 @@
+PART
+{
+module = Part
+name = SSTU-SC-GEN-LG-A
+author = Shadowmage
+
+TechRequired = heavyAerodynamics
+entryCost = 4000
+cost = 1000
+category = Aero
+subcategory = 0
+title = SSTU - SC-GEN-LG-A - Large Landing Gear
+manufacturer = SSTU
+description = SSTU - ShipCore: General - Landing Gear Model A - Large.
+tags = gear, landing, lg, wheel
+
+MODEL
+{
+	model = SSTU/Assets/SC-GEN-LG-A
+}
+rescaleFactor = 1
+
+// nodes/attachment 
+// node position specification: posX,posY,posZ,axisX,axisY,axisZ,size
+// attachment rules: stack, srfAttach, allowStack, allowSrfAttach, allowCollision
+node_stack_top = 0, 0, 0, 0, 1, 0, 2
+node_attach = 0, 0, 0, 0, 1, 0
+attachRules = 1,1,1,0,0
+
+
+// --- standard part parameters ---
+mass = 0.15
+crashTolerance = 24
+fuelCrossFeed = False
+
+// --- thermal parameters
+maxTemp = 2400
+skinMaxTemp = 2700
+
+MODULE
+{
+	name = KSPWheelBase
+	wheelColliderName = SC-GEN-LG-A-WheelCollider
+	wheelColliderOffset = 0
+	wheelPivotName = SC-GEN-LG-A-WheelMesh
+	wheelPivotAxis = 1, 0, 0
+	wheelRadius = 0.3625
+	wheelMass = 0.150
+	suspensionTravel = 0.25
+	suspensionTarget = 0.2
+	suspensionSpring = 1000
+	suspensionDamper = 150
+	loadRating = 12
+	minLoadRating = 1
+	maxLoadRating = 20
+}
+MODULE
+{
+	name = KSPWheelSuspension
+	suspensionName = SC-GEN-LG-A-Suspension
+	suspensionOffset = -0.25
+	suspensionAxis = 0,1,0
+}
+// MODULE
+// {
+	// name = KSPWheelSteering
+	// steeringName = SC-GEN-LG-A-Steering
+	// maxSteeringAngle = 0
+	// steeringAxis = 0, 1, 0
+	// steeringResponse = 10
+// }
+MODULE
+{
+	name = KSPWheelBrakes
+	maxBrakeTorque = 150
+	brakeResponse = 2
+}
+MODULE
+{
+	name = KSPWheelDeployment
+	animationName = SC-GEN-LG-A-WheelDeploy
+	animationLayer = 1
+}
+
+MODULE
+{
+	name = SSTUModelConstraint
+	LOCKED_CONST
+	{
+		transformName = SC-GEN-LG-A-TorqueArmLower
+		targetName = SC-GEN-LG-A-TorqueArmUpperTarget
+		lookAxis = 0, 0, 1
+		lockedAxis = 1, 0, 0
+	}
+	LOCKED_CONST
+	{
+		transformName = SC-GEN-LG-A-TorqueArmUpper
+		targetName = SC-GEN-LG-A-TorqueArmLowerTarget
+		lookAxis = 0, 0, 1
+		lockedAxis = 1, 0, 0
+	}
+}
+}
