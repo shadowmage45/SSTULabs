@@ -134,14 +134,10 @@ namespace SSTUTools
             updatePersistentData();//update persistent data in case tank was just initialized
             updateFuelSelections();//update the selections for the 'FuelType' UI slider, this adds or removes the 'custom' option as needed
             updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
+            updateGUIControls();
 
-            //disable next fuel event button if main container does not have more than one preset type available 
             BaseField fuelSelection = Fields[nameof(guiFuelType)];
-            fuelSelection.guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
-
-            BaseEvent editContainerEvent = Events[nameof(openGUIEvent)];
-            editContainerEvent.guiActiveEditor = volume>0 && enableContainerEdit;
 
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
@@ -219,8 +215,7 @@ namespace SSTUTools
                 updatePersistentData();
                 SSTUStockInterop.fireEditorUpdate();
             }
-            Events[nameof(openGUIEvent)].guiActiveEditor = volume > 0 && enableContainerEdit;
-            Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
+            updateGUIControls();
         }
 
         public int numberOfContainers { get { return containers.Length; } }
@@ -362,6 +357,15 @@ namespace SSTUTools
             }
             tankageMass = modifiedMass;
             usableVolume = volume - tankageVolume;
+        }
+
+        private void updateGUIControls()
+        {
+            Events[nameof(openGUIEvent)].guiActiveEditor = volume > 0 && enableContainerEdit;
+            Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
+            Fields[nameof(volume)].guiActiveEditor = volume > 0;
+            Fields[nameof(usableVolume)].guiActiveEditor = volume > 0;
+            Fields[nameof(tankageMass)].guiActiveEditor = volume > 0;
         }
 
         #region GUI update methods with symmetry counterpart handling

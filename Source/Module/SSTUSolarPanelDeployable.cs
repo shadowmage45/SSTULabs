@@ -93,9 +93,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String savedAnimationState = "RETRACTED";
 
-        [KSPField(isPersistant = true)]
-        public bool moduleDisabled = false;
-
         //Status displayed for panel state, includes animation state and energy state;  Using in place of the three-line output from stock panels
         [KSPField(guiName = "S.P.", guiActive = true)]
         public String guiStatus = String.Empty;
@@ -153,13 +150,13 @@ namespace SSTUTools
             toggle();
         }
 
-        [KSPEvent(name = "extendEvent", guiName = "Extend Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
+        [KSPEvent(name = "extendEvent", guiName = "Extend Solar Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
         public void extendEvent()
         {
             toggle();
         }
 
-        [KSPEvent(name = "retractEvent", guiName = "Retract Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
+        [KSPEvent(name = "retractEvent", guiName = "Retract Solar Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
         public void retractEvent()
         {
             toggle();
@@ -199,7 +196,7 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            if (suncatcherData != null)
+            if (suncatcherData != null && moduleIsEnabled)
             {
                 String data = "Deployable Solar Panel\n";
                 data = data + "EC/s max: " + resourceAmount * suncatcherData.Length+"\n";
@@ -211,7 +208,7 @@ namespace SSTUTools
 
         public void FixedUpdate()
         {
-            if (moduleDisabled) { return; }
+            if (!moduleIsEnabled) { return; }
             energyFlow = 0.0f;
             occluderName = String.Empty;
             if (retractLerp > 0)
@@ -231,11 +228,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (vessel == null || pivotData==null || secondaryPivotData==null) { return; }
-            if (vessel.solarFlux < 0)
-            {
-                return;
-            }
+            if (!moduleIsEnabled || vessel == null || pivotData==null || secondaryPivotData==null || vessel.solarFlux <= 0) { return; }
             CelestialBody sun = FlightGlobals.Bodies[0];
             sunTransform = sun.transform;
             if (panelState == SSTUPanelState.EXTENDED)
@@ -266,11 +259,13 @@ namespace SSTUTools
         {
             initialized = false;
             OnStart(StartState.Flying);
+            Start();
         }
 
         public void setSuncatcherAxis(Axis axis)
         {
             suncatcherAngleAxis = axis;
+            sunAxis = axis.ToString();
         }
 
         public void onAnimationStatusChanged(AnimState state)
@@ -287,7 +282,7 @@ namespace SSTUTools
 
         public void disableModule()
         {
-            moduleDisabled = true;
+            moduleIsEnabled = false;
             energyFlow = 0;
             Events["extendEvent"].active = false;
             Events["retractEvent"].active = false;
@@ -306,7 +301,7 @@ namespace SSTUTools
 
         public void enableModule()
         {
-            moduleDisabled = false;
+            moduleIsEnabled = true;
             energyFlow = 0;
             Fields["guiStatus"].guiActive = true;
             Actions["toggleAction"].active = true;
@@ -317,7 +312,7 @@ namespace SSTUTools
 
         private void initializeState()
         {
-            if (initialized) { return; }
+            if (initialized || !moduleIsEnabled) { return; }
             initialized = true;
             findTransforms();
             animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
@@ -495,14 +490,6 @@ namespace SSTUTools
                 float panelEnergy = resourceAmount * TimeWarp.fixedDeltaTime * sunAOA * distMult * efficMult;
                 energyFlow += panelEnergy;
             }
-        }
-
-        private void debugPrint(Vector3 direction, Transform catcher)
-        {
-            float dotX = Vector3.Dot(direction, catcher.right);
-            float dotY = Vector3.Dot(direction, catcher.up);
-            float dotZ = Vector3.Dot(direction, catcher.forward);
-            MonoBehaviour.print("DOTS: " + dotX + "," + dotY + "," + dotZ);
         }
 
         //does a 'very short' raycast for vessel/part occlusion checking
@@ -736,10 +723,6 @@ namespace SSTUTools
                 {
                     guiStatus += " : " + String.Format("{0:F1}", (energyFlow * (1 / TimeWarp.fixedDeltaTime))) + " e/s";
                 }
-                else if (suncatcherData.Length <= 0)
-                {
-                    guiStatus += " : NO TRANSFORM";
-                }
             }
             if (panelState == SSTUPanelState.BROKEN)
             {
@@ -765,7 +748,7 @@ namespace SSTUTools
 
         public bool CheckContractObjectiveValidity()
         {
-            return !moduleDisabled;
+            return moduleIsEnabled;
         }
 
     }

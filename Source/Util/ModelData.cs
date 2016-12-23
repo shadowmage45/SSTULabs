@@ -61,7 +61,7 @@ namespace SSTUTools
         public readonly String title;
         public readonly String description;
         public readonly String icon;
-        public readonly String techLimit = "start";
+        public readonly string upgradeUnlockName;
         public readonly float height = 1;
         public readonly float volume = 0;
         public readonly float mass = 0;
@@ -70,6 +70,7 @@ namespace SSTUTools
         public readonly float verticalOffset = 0;
         public readonly bool invertForTop = false;
         public readonly bool invertForBottom = false;
+        public readonly Vector3 invertAxis = Vector3.forward;
         public readonly bool fairingDisabled = false;
         public readonly float fairingTopOffset = 0;
         public readonly float rcsVerticalPosition = 0;
@@ -90,7 +91,7 @@ namespace SSTUTools
             description = node.GetStringValue("description", title);
             icon = node.GetStringValue("icon");
             modelName = node.GetStringValue("modelName", String.Empty);
-            techLimit = node.GetStringValue("techLimit", techLimit);
+            upgradeUnlockName = node.GetStringValue("upgradeUnlock", upgradeUnlockName);
             height = node.GetFloatValue("height", height);
             volume = node.GetFloatValue("volume", volume);
             mass = node.GetFloatValue("mass", mass);
@@ -99,7 +100,7 @@ namespace SSTUTools
             verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
             invertForTop = node.GetBoolValue("invertForTop", invertForTop);
             invertForBottom = node.GetBoolValue("invertForBottom", invertForBottom);
-
+            invertAxis = node.GetVector3("invertAxis", invertAxis);
             fairingDisabled = node.GetBoolValue("fairingDisabled", fairingDisabled);
             fairingTopOffset = node.GetFloatValue("fairingTopOffset", fairingTopOffset);
             rcsVerticalPosition = node.GetFloatValue("rcsVerticalPosition", rcsVerticalPosition);
@@ -143,18 +144,9 @@ namespace SSTUTools
             }
         }
 
-        /// <summary>
-        /// Return true if this part should be accessible due to tech-level limitations
-        /// UNUSED
-        /// </summary>
-        /// <returns></returns>
-        public bool isAvailable()
+        public bool isAvailable(List<String> partUpgrades)
         {
-            if (String.IsNullOrEmpty(techLimit)) { return true; }
-            if (HighLogic.CurrentGame == null) { return true; }
-            if (ResearchAndDevelopment.Instance == null) { return true; }
-            if (HighLogic.CurrentGame.Mode != Game.Modes.CAREER && HighLogic.CurrentGame.Mode != Game.Modes.SCIENCE_SANDBOX) { return true; }
-            return SSTUUtils.isTechUnlocked(techLimit);
+            return String.IsNullOrEmpty(upgradeUnlockName) || partUpgrades.Contains(upgradeUnlockName);
         }
 
         public string[] getTextureSetNames()
@@ -172,12 +164,14 @@ namespace SSTUTools
 
     public class SubModelData
     {
+
         public readonly string modelURL;
         public readonly string[] modelMeshes;
         public readonly string parent;
         public readonly Vector3 rotation;
         public readonly Vector3 position;
         public readonly Vector3 scale;
+
         public SubModelData(ConfigNode node)
         {
             modelURL = node.GetStringValue("modelName");
@@ -190,23 +184,40 @@ namespace SSTUTools
 
         public void setupSubmodel(GameObject modelRoot)
         {
-            Transform[] trs = modelRoot.transform.GetAllChildren();
-            int len = trs.Length;
-            for (int i = 0; i < len; i++)
+            if (modelMeshes.Length > 0)
             {
-                if (trs[i] == null)
+                Transform[] trs = modelRoot.transform.GetAllChildren();
+                List<Transform> toKeep = new List<Transform>();
+                List<Transform> toCheck = new List<Transform>();
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    //MonoBehaviour.print("Found null mesh while traversing model: " + modelURL);
-                    continue;
+                    if (trs[i] == null)
+                    {
+                        continue;
+                    }
+                    else if (isActiveMesh(trs[i].name))
+                    {
+                        toKeep.Add(trs[i]);
+                    }
+                    else
+                    {
+                        toCheck.Add(trs[i]);
+                    }
                 }
-                if (!isActiveMesh(trs[i].name))
+                List<Transform> transformsToDelete = new List<Transform>();
+                len = toCheck.Count;
+                for (int i = 0; i < len; i++)
                 {
-                    //MonoBehaviour.print("Destroying mesh: " + trs[i]);
-                    GameObject.DestroyImmediate(trs[i].gameObject);
+                    if (!isParent(toCheck[i], toKeep))
+                    {
+                        transformsToDelete.Add(toCheck[i]);
+                    }
                 }
-                else
+                len = transformsToDelete.Count;
+                for (int i = 0; i < len; i++)
                 {
-                    //MonoBehaviour.print("Keeping mesh: " + trs[i]);
+                    GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
                 }
             }
         }
@@ -224,6 +235,16 @@ namespace SSTUTools
                 }
             }
             return found;
+        }
+
+        private bool isParent(Transform toCheck, List<Transform> children)
+        {
+            int len = children.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (children[i].isParent(toCheck)) { return true; }
+            }
+            return false;
         }
     }
 
@@ -453,11 +474,6 @@ namespace SSTUTools
             currentDiameter = newHorizontalScale * modelDefinition.diameter;
         }
 
-        public bool isAvailable()
-        {
-            return modelDefinition.isAvailable();
-        }
-
         public SSTUAnimData[] getAnimationData(Transform transform)
         {
             SSTUAnimData[] data = null;
@@ -474,6 +490,11 @@ namespace SSTUTools
         public bool hasAnimation()
         {
             return modelDefinition.configNode.HasNode("ANIMATION");
+        }
+
+        public bool isAvailable(List<String> partUpgrades)
+        {
+            return modelDefinition.isAvailable(partUpgrades);
         }
 
         /// <summary>
@@ -551,6 +572,26 @@ namespace SSTUTools
                 vals[i] = data[i].name;
             }
             return vals;
+        }
+
+        /// <summary>
+        /// Get array of model data names, taking into consideration upgrade-unlocks available on the part module
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="module"></param>
+        /// <returns></returns>
+        public static string[] getAvailableModelNames(ModelData[] data, PartModule module)
+        {
+            List<string> names = new List<string>();
+            int len = data.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (data[i].isAvailable(module.upgradesApplied))
+                {
+                    names.Add(data[i].name);
+                }
+            }
+            return names.ToArray();
         }
 
         /// <summary>
@@ -775,6 +816,7 @@ namespace SSTUTools
             {
                 constructSubModels(parent, orientation, reUse);
             }
+
         }
 
         public override void updateModel()
@@ -820,7 +862,7 @@ namespace SSTUTools
                 model.transform.NestToParent(parent);
                 if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
                 {
-                    model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
+                    model.transform.Rotate(modelDefinition.invertAxis, 180, Space.Self);
                 }
             }
             else
@@ -891,7 +933,7 @@ namespace SSTUTools
             model.transform.NestToParent(parent);
             if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
             {
-                model.transform.Rotate(new Vector3(0, 0, 1), 180, Space.Self);
+                model.transform.Rotate(modelDefinition.invertAxis, 180, Space.Self);
             }
         }
         
@@ -968,6 +1010,9 @@ namespace SSTUTools
             scale = Vector3.one;
         }
         
+        /// <summary>
+        /// Update the model's transform scale, position, and rotation based on the values for the current model configuration
+        /// </summary>
         public override void updateModel()
         {
             if (model != null)

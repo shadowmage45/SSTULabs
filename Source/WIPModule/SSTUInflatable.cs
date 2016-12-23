@@ -185,7 +185,7 @@ namespace SSTUTools
 
         private void onContainerUpdated(SSTUVolumeContainer vc)
         {
-            if (!inflated)
+            if (vc.part == part && !inflated)
             {
                 updateResourceAmounts(deflationMult);
             }            

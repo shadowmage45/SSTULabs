@@ -462,6 +462,7 @@ namespace SSTUTools
             {
                 PartResource res = part.Resources[resourceName];
                 modifiedCost = ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
+                modifiedCost += scale * (part.partInfo == null ? 0 : part.partInfo.cost);
             }            
             modifiedMass = scale * shieldMass * currentShieldTypeData.massMult;
         }

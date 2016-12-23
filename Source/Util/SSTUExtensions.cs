@@ -1,9 +1,6 @@
 using System;
-using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.Events;
 using System.Collections.Generic;
 
 namespace SSTUTools
@@ -354,6 +351,24 @@ namespace SSTUTools
             }
         }
 
+        public static bool isParent(this Transform transform, Transform isParent, bool checkUpwards = true)
+        {
+            if (isParent == null) { return false; }
+            if (isParent == transform.parent) { return true; }
+            if (checkUpwards)
+            {
+                Transform p = transform.parent;
+                if (p == null) { return false; }
+                else { p = p.parent; }
+                while (p != null)
+                {
+                    if (p == isParent) { return true; }
+                    p = p.parent;
+                }
+            }
+            return false;
+        }
+
         #endregion
 
         #region Vector3 extensionMethods
@@ -572,12 +587,31 @@ namespace SSTUTools
             widget.onFieldChanged = t;
         }
 
+        /// <summary>
+        /// Performs the input delegate onto the input part module and any modules found in symmetry counerparts.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="module"></param>
+        /// <param name="action"></param>
+        public static void actionWithSymmetry<T>(this T module, Action<T> action) where T : PartModule
+        {
+            action(module);
+            forEachSymmetryCounterpart(module, action);
+        }
+
+        /// <summary>
+        /// Performs the input delegate onto any modules found in symmetry counerparts. (does not effect this.module)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="module"></param>
+        /// <param name="action"></param>
         public static void forEachSymmetryCounterpart<T>(this T module, Action<T> action) where T : PartModule
         {
-            foreach (Part symPart in module.part.symmetryCounterparts)
+            int index = module.part.Modules.IndexOf(module);
+            int len = module.part.symmetryCounterparts.Count;
+            for (int i = 0; i < len; i++)
             {
-                T otherModule = symPart.FindModuleImplementing<T>();
-                action(otherModule);
+                action((T)module.part.symmetryCounterparts[i].Modules[index]);
             }
         }
 

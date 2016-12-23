@@ -1,6 +1,0 @@
-//Remove stock NRV engine; it is replaced by SSTU clusterable engine with same base tech-node, price, and unlock price (however, SSTU ones burn LH2)
-@PART[nuclearEngine]
-{
-	@category = none
-	@TechRequired = unresearchable
-}

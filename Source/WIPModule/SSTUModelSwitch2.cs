@@ -13,6 +13,12 @@ namespace SSTUTools
         public int containerIndex = 0;
 
         /// <summary>
+        /// Module-specific suffix added to root transform names to allow for retrieving of transform from prefab when multiple ModelSwitch modules are present on a part.
+        /// </summary>
+        [KSPField]
+        public int moduleID = 0;
+
+        /// <summary>
         /// Should this module zero out the config cost of the part, relying on the variant definition for cost, or should it add variant definition cost to the config cost?
         /// </summary>
         [KSPField]
@@ -43,21 +49,10 @@ namespace SSTUTools
 
         private void modelSelected(BaseField field, object obj)
         {
-            //TODO
-        }
-
-        private void enableModel(string model, bool updateSymmetry = false)
-        {
-            //TODO
-            if (activeModel != null) { activeModel.destroyCurrentModel(); }
-            activeModel = Array.Find(modelData, m=>m.name==model);
-            currentModel = activeModel.name;
-            Transform tr = part.transform.FindRecursive("model");
-            Transform root = tr.FindOrCreate("SSTUModelSwitchRoot-" + part.Modules.IndexOf(this));
-            activeModel.setupModel(root, ModelOrientation.TOP);
-            activeModel.updateScale(1.0f);
-            activeModel.setPosition(0f, ModelOrientation.TOP);
-            activeModel.updateModel();
+            this.actionWithSymmetry(delegate (SSTUModelSwitch2 module)
+            {
+                module.setActiveModel(this.currentModel);
+            });
         }
 
         public override void OnLoad(ConfigNode node)
@@ -84,6 +79,14 @@ namespace SSTUTools
         public void Start()
         {
             //TODO update resource volume for current setup
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            if (vc != null)
+            {
+                //TODO
+                //really, the VC needs to poll other modules for a given interface, or method, or ??
+                // and use the volume returned by that for each container index to determine
+                // actual volume for each container
+            }
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
@@ -113,8 +116,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] nodes = node.GetNodes("MODEL");
             modelData = ModelData.parseModels<PositionedModelData>(nodes, m => new PositionedModelData(m));
-            activeModel = Array.Find(modelData, m => m.name == currentModel);
-            enableModel(currentModel, false);
+            setActiveModel(currentModel);
             updateMassAndCost();
         }
 
@@ -123,6 +125,18 @@ namespace SSTUTools
             if (activeModel == null) { return; }
             modifiedMass = activeModel.getModuleMass();
             modifiedCost = activeModel.getModuleCost();
+        }
+
+        private void setActiveModel(string newModelName)
+        {
+            if (activeModel != null) { activeModel.destroyCurrentModel(); }
+            activeModel = Array.Find(modelData, m => m.name == newModelName);
+            currentModel = activeModel.name;
+            Transform root = part.transform.FindRecursive("model").FindOrCreate("SSTUModelSwitchRoot-" + moduleID);
+            activeModel.setupModel(root, ModelOrientation.TOP);
+            activeModel.updateScale(1.0f);
+            activeModel.setPosition(0f, ModelOrientation.TOP);
+            activeModel.updateModel();
         }
     }
 }

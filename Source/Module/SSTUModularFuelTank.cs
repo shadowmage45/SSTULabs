@@ -50,9 +50,6 @@ namespace SSTUTools
         public bool subtractCost = false;
 
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
-        [KSPField(isPersistant = true)]
-        public String currentFuelType = String.Empty;
-
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Length"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTankSet = String.Empty;

@@ -467,9 +467,22 @@ namespace SSTUTools
             bottomModule = SingleModelData.findModel(bottomModules, currentBottom);
             bottomDockModule = SingleModelData.findModel(bottomDockModules, currentBottomDock);
             solarModule = Array.Find(solarModules, m => m.name == currentSolar);//TODO cleanup
+
+            //validate selections for sub-modules that may require unlocks
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
+            {
+                if (!topDockModule.isAvailable(upgradesApplied)) { topDockModule = Array.Find(topDockModules, m => m.isAvailable(upgradesApplied)); }
+                if (!bottomDockModule.isAvailable(upgradesApplied)) { bottomDockModule = Array.Find(bottomDockModules, m => m.isAvailable(upgradesApplied)); }
+                if (!solarModule.isAvailable(this)) { solarModule = Array.Find(solarModules, m => m.isAvailable(this)); }
+                currentTopDock = topDockModule.name;
+                currentBottomDock = bottomDockModule.name;
+                currentSolar = solarModule.name;
+            }
+
             if (!topModule.isValidTextureSet(currentTopTexture)) { currentTopTexture = topModule.getDefaultTextureSet(); }
             if (!coreModule.isValidTextureSet(currentCoreTexture)) { currentCoreTexture = coreModule.getDefaultTextureSet(); }
             if (!bottomModule.isValidTextureSet(currentBottomTexture)) { currentBottomTexture = bottomModule.getDefaultTextureSet(); }
+
             restoreModels();
             updateModulePositions();
             updateMass();
@@ -498,10 +511,10 @@ namespace SSTUTools
         {
             bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
 
-            string[] names = SingleModelData.getModelNames(topDockModules);
+            string[] names = SingleModelData.getAvailableModelNames(topDockModules, this);
             this.updateUIChooseOptionControl("currentTopDock", names, names, true, currentTopDock);
             Fields["currentTopDock"].uiControlEditor.onFieldChanged = onTopDockChanged;
-            Fields["currentTopDock"].guiActiveEditor = topDockModules.Length > 1;
+            Fields["currentTopDock"].guiActiveEditor = names.Length > 1;
 
             names = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
             this.updateUIChooseOptionControl("currentTop", names, names, true, currentTop);
@@ -520,15 +533,15 @@ namespace SSTUTools
             Fields["currentBottom"].guiActiveEditor = !useModelSelectionGUI && names.Length > 1;
             Events["selectBottomEvent"].guiActiveEditor = useModelSelectionGUI && names.Length > 1;
 
-            names = SingleModelData.getModelNames(bottomDockModules);
+            names = SingleModelData.getAvailableModelNames(bottomDockModules, this);
             this.updateUIChooseOptionControl("currentBottomDock", names, names, true, currentBottomDock);
             Fields["currentBottomDock"].uiControlEditor.onFieldChanged = onBottomDockChanged;
-            Fields["currentBottomDock"].guiActiveEditor = bottomDockModules.Length > 1;
+            Fields["currentBottomDock"].guiActiveEditor = names.Length > 1;
 
             names = SolarData.getNames(solarModules, part, this);
             this.updateUIChooseOptionControl("currentSolar", names, names, true, currentSolar);
             Fields["currentSolar"].uiControlEditor.onFieldChanged = onSolarChanged;
-            Fields["currentSolar"].guiActiveEditor = solarModules.Length > 1;
+            Fields["currentSolar"].guiActiveEditor = names.Length > 1;
 
             names = topModule.modelDefinition.getTextureSetNames();
             this.updateUIChooseOptionControl("currentTopTexture", names, names, true, currentTopTexture);
@@ -863,17 +876,19 @@ namespace SSTUTools
         {
             name = node.GetStringValue("name");
             modelName = node.GetStringValue("modelName", name);
-            upgradeName = node.GetStringValue("upgrade");
             def = SSTUModelData.getModelDefinition(modelName);
             ConfigNode solarNode = def.configNode.GetNode("SOLARDATA");
+            //loaded from SOLARDATA from model def
             animationName = solarNode.GetStringValue("animationName");
             pivotNames = solarNode.GetStringValue("pivotNames");
             secPivotNames = solarNode.GetStringValue("secPivotNames");
             sunNames = solarNode.GetStringValue("sunNames");
-            energy = solarNode.GetFloatValue("energy");
             panelsEnabled = solarNode.GetBoolValue("enabled");
             sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
-            energy = node.GetFloatValue("energy", energy);//allow local override of energy
+            //loaded from SOLARDATA with option of per-model override (energy, tech-unlock-upgrade-name)
+            upgradeName = node.GetStringValue("upgrade", solarNode.GetStringValue("upgrade"));
+            energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
+
             ConfigNode[] posNodes = node.GetNodes("POSITION");
             int len = posNodes.Length;
             positions = new SolarPosition[len];
@@ -931,17 +946,21 @@ namespace SSTUTools
             }
         }
 
+        public bool isAvailable(PartModule module)
+        {
+            return string.IsNullOrEmpty(upgradeName) || upgradeName.Equals("none", StringComparison.InvariantCultureIgnoreCase) || module.upgradesApplied.Contains(upgradeName);
+        }
+
         public static string[] getNames(SolarData[] data, Part part, PartModule module)
         {
             List<string> names = new List<string>();
             int len = data.Length;
             for (int i = 0; i < len; i++)
             {
-                names.Add(data[i].name);
-                //if (string.IsNullOrEmpty(data[i].upgradeName) || module.upgradesApplied.Contains(data[i].upgradeName))
-                //{
-                //    names.Add(data[i].name);
-                //}
+                if (data[i].isAvailable(module))
+                {
+                    names.Add(data[i].name);
+                }
             }
             return names.ToArray();
         }
