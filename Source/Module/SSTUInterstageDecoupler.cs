@@ -358,6 +358,8 @@ namespace SSTUTools.Module
             }
             updateEngineThrust();
             updateShielding();
+            Events[nameof(ToggleStaging)].advancedTweakable = false;
+            decoupler.Events[nameof(ToggleStaging)].advancedTweakable = false;
         }
 
         public void FixedUpdate()

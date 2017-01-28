@@ -135,7 +135,7 @@ namespace SSTUTools
         public SSTUFieldManipulationData(ConfigNode node, PartModule module)
         {
             fieldName = node.GetStringValue("name");
-            newGuiName = node.GetStringValue("newGUIName");
+            newGuiName = node.GetStringValue("newGuiName");
             this.module = module;
             updateType = (UpdateType)Enum.Parse(typeof(UpdateType), node.GetStringValue("updateType", updateType.ToString()), true);
             fieldType = (FieldType)Enum.Parse(typeof(FieldType), node.GetStringValue("fieldType", fieldType.ToString()), true);
@@ -204,6 +204,14 @@ namespace SSTUTools
             bool enable = type == ActiveType.ACTIVE;
             field.guiActive = field.guiActiveEditor = enable;            
         }
+
+        public override void updateName()
+        {
+            if (!string.IsNullOrEmpty(newGuiName))
+            {
+                field.guiName = newGuiName;
+            }
+        }
     }
 
     public class SSTUEventData : SSTUFieldManipulationData
@@ -226,6 +234,14 @@ namespace SSTUTools
             bool enable = type == ActiveType.ACTIVE;
             evt.guiActive = evt.guiActiveEditor = enable;
         }
+
+        public override void updateName()
+        {
+            if (!string.IsNullOrEmpty(newGuiName))
+            {
+                evt.guiName = newGuiName;
+            }
+        }
     }
 
     public class SSTUActionData : SSTUFieldManipulationData
@@ -247,6 +263,14 @@ namespace SSTUTools
             ActiveType type = editor ? editorActiveType : flightActiveType;
             bool enable = type == ActiveType.ACTIVE;
             act.active = enable;
+        }
+
+        public override void updateName()
+        {
+            if (!string.IsNullOrEmpty(newGuiName))
+            {
+                act.guiName = newGuiName;
+            }
         }
     }
 

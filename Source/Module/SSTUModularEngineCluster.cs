@@ -77,6 +77,18 @@ namespace SSTUTools
         [KSPField]
         public float diameterIncrement = 0.625f;
 
+        [KSPField]
+        public float minVerticalOffset = -2f;
+
+        [KSPField]
+        public float maxVerticalOffset = 2f;
+
+        [KSPField]
+        public float minSpacing = -2f;
+
+        [KSPField]
+        public float maxSpacing = 2f;
+
         /// <summary>
         /// CSV list of transform names
         /// transforms of these names are removed from the model after it is cloned
@@ -435,6 +447,8 @@ namespace SSTUTools
             Fields["editorEngineSpacingAdjust"].uiControlEditor.onFieldChanged = onSpacingUpdated;
             Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
             editorEngineSpacingAdjust = currentEngineSpacing - currentEngineLayout.getEngineSpacing(engineScale, currentMountData);
+            this.updateUIFloatEditControl(nameof(editorEngineHeightAdjust), minVerticalOffset, maxVerticalOffset, 0.5f, 0.25f, 0.05f, true, editorEngineHeightAdjust);
+            this.updateUIFloatEditControl(nameof(editorEngineSpacingAdjust), minSpacing, maxSpacing, 0.5f, 0.25f, 0.05f, true, editorEngineSpacingAdjust);
         }
 
         public override void OnLoad(ConfigNode node)
