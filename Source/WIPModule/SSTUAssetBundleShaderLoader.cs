@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace SSTUTools
-{    
+{
     public class SSTUAssetBundleShaderLoader
     {
 
@@ -14,12 +15,12 @@ namespace SSTUTools
             if (Application.platform == RuntimePlatform.WindowsPlayer) { assetBundleName += "-x64"; }
             else if (Application.platform == RuntimePlatform.LinuxPlayer) { assetBundleName += "-lin"; }
             else if (Application.platform == RuntimePlatform.OSXPlayer) { assetBundleName += "-osx"; }
-            assetBundleName += ".ssf";            
+            assetBundleName += ".ssf";
             // KSP-PartTools built AssetBunldes are in the Web format, 
             // and must be loaded using a WWW reference; you cannot use the 
             // AssetBundle.CreateFromFile/LoadFromFile methods unless you 
             // manually compiled your bundles for stand-alone use
-            WWW www = CreateWWW(shadersPath+"/"+ assetBundleName);
+            WWW www = CreateWWW(shadersPath + "/" + assetBundleName);
 
             if (!string.IsNullOrEmpty(www.error))
             {
@@ -33,7 +34,7 @@ namespace SSTUTools
             }
 
             AssetBundle bundle = www.assetBundle;
-            
+
             string[] assetNames = bundle.GetAllAssetNames();
             int len = assetNames.Length;
             Shader shader;
@@ -91,15 +92,15 @@ namespace SSTUTools
                 excludeMeshes = textureNode.GetStringValues("excludeMesh");
                 meshes = textureNode.GetStringValues("mesh");
                 props = ShaderProperty.parse(textureNode);
-                                
+
                 GameObject go = GameDatabase.Instance.GetModelPrefab(name);
                 if (go == null)
                 {
-                    MonoBehaviour.print("ERROR: Could not locate game object for model: " + name+".  Could not update shader or textures for model");
+                    MonoBehaviour.print("ERROR: Could not locate game object for model: " + name + ".  Could not update shader or textures for model");
                     continue;
                 }
                 MonoBehaviour.print("Updating shader for model: " + name);
-                updateModelMaterial(go.transform, excludeMeshes, meshes, shader, diff, nrm, spec, glow, ao, props);                
+                updateModelMaterial(go.transform, excludeMeshes, meshes, shader, diff, nrm, spec, glow, ao, props);
             }
         }
 
@@ -108,7 +109,15 @@ namespace SSTUTools
             //black-list, do everything not specified in excludeMeshes array
             if (excludeMeshes != null && excludeMeshes.Length > 0)
             {
-                //TODO
+                Renderer[] allRends = root.GetComponentsInChildren<Renderer>();
+                int len = allRends.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (!excludeMeshes.Contains(allRends[i].name))
+                    {
+                        updateRenderer(allRends[i], shader, diffuse, normal, specular, emissive, occlusion, props);
+                    }
+                }
             }
             else if (meshes == null || meshes.Length <= 0)//no validation, do them all
             {
@@ -156,7 +165,6 @@ namespace SSTUTools
                 props[i].apply(m);
             }
         }
-
     }
 
     public class ShaderProperty
@@ -196,13 +204,20 @@ namespace SSTUTools
 
         public void apply(Material mat)
         {
-            if (fVal)
+            if (mat.HasProperty(name))
             {
-                mat.SetFloat(name, floatVal);
+                if (fVal)
+                {
+                    mat.SetFloat(name, floatVal);
+                }
+                else
+                {
+                    mat.SetColor(name, colorVal);
+                }
             }
             else
             {
-                mat.SetColor(name, colorVal);
+                MonoBehaviour.print("Shader: " + mat.shader + " did not have property: " + name);
             }
         }
     }

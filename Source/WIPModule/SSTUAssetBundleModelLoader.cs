@@ -82,8 +82,10 @@ namespace SSTUTools
                 else { adjustedMaterials.Add(m); }
                 replaceShader(m, m.shader.name);
                 replaceTexture(m, "_MainTex", false);
+                replaceTexture(m, "_SpecMap", false);
                 replaceTexture(m, "_BumpMap", true);
                 replaceTexture(m, "_Emissive", false);
+                replaceTexture(m, "_AOMap", false);
             }
         }
 
