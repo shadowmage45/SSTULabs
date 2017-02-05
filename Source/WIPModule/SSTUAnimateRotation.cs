@@ -11,7 +11,7 @@ namespace SSTUTools
         [KSPField]
         public string secondaryTransformName;
 
-        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Rotation"),
+        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Rotation", isPersistant = true),
          UI_FloatEdit(suppressEditorShipModified = true, minValue = 0, maxValue = 10, incrementLarge = 5, incrementSmall = 1, incrementSlide = 0.1f, sigFigs = 2, unit = "rpm")]
         public float rpm = 1;
 
@@ -25,7 +25,7 @@ namespace SSTUTools
         public float minRPM = 0f;
 
         [KSPField]
-        public float maxRPM = 0f;
+        public float maxRPM = 10f;
 
         [KSPField(guiActive = true, guiActiveEditor = true, guiUnits = "g", guiName = "ArtificialGravity")]
         public float displayGravity = 0.0f;
@@ -40,7 +40,7 @@ namespace SSTUTools
         public bool autoRotate = true;
 
         [KSPField]
-        public bool showGravityDisplay = false;
+        public bool showGravityDisplay = true;
 
         /// <summary>
         /// If this is >=0, interaction buttons will only display when the dependent animation is in the deployed state
@@ -95,10 +95,6 @@ namespace SSTUTools
             {
                 animController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChange);
                 state = animController.getAnimationState();
-                if (state == AnimState.STOPPED_END && autoRotate)
-                {
-                    rotating = true;
-                }
             }
             bool uiEnabled = state == AnimState.STOPPED_END && !autoRotate;
             if (state == AnimState.STOPPED_END && autoRotate) { rotating = true; }
