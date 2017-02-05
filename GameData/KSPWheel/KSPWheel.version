@@ -1,0 +1,31 @@
+{
+	"NAME":"KSPWheel",
+	"URL":"http://ksp-avc.cybutek.net/version.php?id=429",
+	"DOWNLOAD":"https://github.com/shadowmage45/KSPWheel/releases/tag/0.9.2.11",
+	"CHANGE_LOG_URL":"https://github.com/shadowmage45/KSPWheel/releases/tag/0.9.2.11",
+	"VERSION":
+	{
+		"MAJOR":0,
+		"MINOR":9,
+		"PATCH":2,
+		"BUILD":11
+	},
+	"KSP_VERSION":
+	{
+		"MAJOR":1,
+		"MINOR":2,
+		"PATCH":2
+	},
+	"KSP_VERSION_MIN":
+	{
+		"MAJOR":1,
+		"MINOR":2,
+		"PATCH":2
+	},
+	"KSP_VERSION_MAX":
+	{
+		"MAJOR":1,
+		"MINOR":2,
+		"PATCH":2
+	}
+}
