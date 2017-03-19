@@ -76,6 +76,10 @@ namespace SSTUTools
             {
                 SSTUStockInterop.addDragUpdatePart(part);
             }
+            if (HighLogic.LoadedSceneIsEditor && part.parent==null && part!=EditorLogic.RootPart)//likely the part under the cursor; this fixes problems with modular parts not wanting to attach to stuff
+            {
+                part.gameObject.SetLayerRecursive(1, 2097152);//1<<21 = Part Triggers
+            }
         }
 
         private static Transform locateAirlock(Part part)

@@ -136,6 +136,10 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs =3, suppressEditorShipModified = true)]
         public float currentTankHeight = 0f;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Support Tank %"),
+         UI_FloatRange(suppressEditorShipModified = true, minValue = 0, maxValue = 100, stepIncrement = 1)]
+        public float supportPercent = 5f;
+
         /// <summary>
         /// The currently selected/enabled intertank option (if any).
         /// </summary>
@@ -291,6 +295,18 @@ namespace SSTUTools
                 SSTUModInterop.onPartGeometryUpdate(part, true);
                 SSTUStockInterop.fireEditorUpdate();
             }
+        }
+
+        public void onSupportPercentUpdated(BaseField field, object obj)
+        {
+            this.actionWithSymmetry(m =>
+            {
+                if (m != this) { m.supportPercent = supportPercent; }//else it conflicts with stock slider functionality
+                m.updateContainerVolume();
+                m.updateGuiState();
+            });
+            SSTUStockInterop.fireEditorUpdate();
+            //huh... sometheing else here is also interfering with slider control, could be one of the volume/resource updating methods as they likely refresh the context window...
         }
 
         public void onMountUpdated(BaseField field, object obj)
@@ -531,6 +547,8 @@ namespace SSTUTools
             Fields["currentIntertankTextureSet"].uiControlEditor.onFieldChanged = onIntertankTextureUpdated;
             Fields["currentLowerTextureSet"].uiControlEditor.onFieldChanged = onLowerTextureUpdated;
             Fields["currentMountTexture"].uiControlEditor.onFieldChanged = onMountTextureUpdated;
+
+            Fields[nameof(supportPercent)].uiControlEditor.onFieldChanged = onSupportPercentUpdated;
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
@@ -1070,10 +1088,22 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume * 1000f);
-        }        
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            if (vc != null)
+            {
+                float tankPercent = 100 - supportPercent;
+                float monoPercent = supportPercent;
+                float[] pcts = new float[2];
+                pcts[0] = tankPercent * 0.01f;
+                pcts[1] = monoPercent * 0.01f;
+                vc.setContainerPercents(pcts, totalTankVolume * 1000f);
+            }
+            else
+            {
+                SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume * 1000f);
+            }
+        }
         #endregion
-
     }
 
     public class SSTUCustomUpperStageRCS : ModelData

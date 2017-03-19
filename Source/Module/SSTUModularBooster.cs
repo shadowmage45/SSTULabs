@@ -254,6 +254,20 @@ namespace SSTUTools
             presetCurveName = preset;
             updateThrustOutput();
             updateCurvePersistentData();
+
+            this.forEachSymmetryCounterpart(m =>
+            {
+                ConfigNode n = new ConfigNode();
+                thrustCurveCache.Save(n);
+                m.presetCurveName = preset;
+                if (m.thrustCurveCache == null)
+                {
+                    m.thrustCurveCache = new FloatCurve();
+                }
+                m.thrustCurveCache.Load(n);
+                m.updateThrustOutput();
+                m.updateCurvePersistentData();
+            });
         }
         
         /// <summary>
@@ -815,11 +829,11 @@ namespace SSTUTools
                 string prop = engineModule.propellants[0].name;
                 PartResource res = part.Resources[prop];
                 double propMass = res.info.density * res.amount;
-                guiThrust = engineModule.maxThrust * engineModule.thrustPercentage * 0.01f;
-                float isp = 220f;
-                float g = 9.81f;
-                float flowRate = guiThrust / (g * isp);
-                guiBurnTime = (float)(propMass / flowRate);
+                float delta = engineModule.maxThrust - engineModule.minThrust;
+                float limiter = engineModule.thrustPercentage * 0.01f;
+                guiThrust = engineModule.minThrust + delta * limiter;
+                float limit = guiThrust / engineModule.maxThrust;
+                guiBurnTime = (float)(propMass / engineModule.maxFuelFlow) / limit;
             }
         }
 
