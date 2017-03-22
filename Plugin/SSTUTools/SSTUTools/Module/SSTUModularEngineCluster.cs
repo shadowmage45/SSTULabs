@@ -959,8 +959,8 @@ namespace SSTUTools
                 {
                     engineNode.AddNode(getSplitThrustNode(trsMults[i], positions));
                 }
-                engines[i].Load(engineNode);
-                engines[i].OnStart(state);
+                engines[i].OnLoad(engineNode);//update min/max thrust, ISP/mass-flow, thrust-transform shares
+                engines[i].OnStart(state);//re-initialize the effects
             }
             SSTUModInterop.onEngineConfigChange(part, null, positions);//this forces ModuleEngineConfigs to reload the config, with the # of engines as the 'scale'
 

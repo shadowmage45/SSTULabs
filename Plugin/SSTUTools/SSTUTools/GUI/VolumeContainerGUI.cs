@@ -50,7 +50,7 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     def = PartResourceLibrary.Instance.GetDefinition(names[k]);
-                    resourceEntries[i][k] = new VolumeRatioEntry(containers[i], names[k], def.displayName, containers[i].getResourceUnitRatio(names[k]));
+                    resourceEntries[i][k] = new VolumeRatioEntry(containers[i], names[k], def.title, containers[i].getResourceUnitRatio(names[k]));
                 }
             }
         }

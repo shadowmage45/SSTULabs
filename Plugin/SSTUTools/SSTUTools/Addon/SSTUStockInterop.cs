@@ -122,7 +122,7 @@ namespace SSTUTools
             ConfigNode updateNode = new ConfigNode("MODULE");
             updateNode.AddValue("maxThrust", engine.maxThrust);
             updateNode.AddValue("minThrust", engine.minThrust);
-            engine.Load(updateNode);
+            engine.OnLoad(updateNode);
         }
 
         public static void updatePartHighlighting(Part part)

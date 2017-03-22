@@ -263,13 +263,10 @@ namespace SSTUTools.Module
             float thrustScalar = Mathf.Pow(currentScale, thrustScalePower);
             float maxThrust = engineThrust * thrustScalar;
             guiEngineThrust = maxThrust;
-            ConfigNode updateNode = new ConfigNode("MODULE");
-            updateNode.AddValue("maxThrust", maxThrust);
             ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
             foreach (ModuleEngines engine in engines)
             {
-                engine.maxThrust = maxThrust;
-                engine.Load(updateNode);
+                SSTUStockInterop.updateEngineThrust(engine, engine.minThrust, maxThrust);
             }
         }
 
