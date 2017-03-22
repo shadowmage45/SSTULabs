@@ -145,7 +145,6 @@
     <Compile Include="WIPModule\SSTUUpgradeTest.cs" />
     <Compile Include="WIPModule\SSTUVesselStats.cs" />
     <Compile Include="WIPModule\SSTUWeldingDockingPort.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util\AnimState.cs" />
     <Compile Include="Util\SSTUExtensions.cs" />
     <Compile Include="Util\FuelType.cs" />
@@ -153,6 +152,9 @@
     <Compile Include="Util\TechLimit.cs" />
     <Compile Include="Util\TextureSet.cs" />
     <Compile Include="Util\SSTUUtils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
