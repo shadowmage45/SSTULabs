@@ -137,7 +137,7 @@ namespace SSTUTools
         public float currentTankHeight = 0f;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Support Tank %"),
-         UI_FloatRange(suppressEditorShipModified = true, minValue = 0, maxValue = 100, stepIncrement = 1)]
+         UI_FloatRange(suppressEditorShipModified = true, minValue = 0, maxValue = 20, stepIncrement = 0.25f)]
         public float supportPercent = 5f;
 
         /// <summary>
