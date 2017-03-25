@@ -187,6 +187,20 @@ namespace SSTUTools
             return props;
         }
 
+        public ShaderProperty(string name, Color cVal)
+        {
+            this.name = name;
+            this.colorVal = cVal;
+            this.fVal = false;
+        }
+
+        public ShaderProperty(string name, float fVal)
+        {
+            this.name = name;
+            this.floatVal = fVal;
+            this.fVal = true;
+        }
+
         public ShaderProperty(ConfigNode node)
         {
             name = node.GetStringValue("name");
