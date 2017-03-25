@@ -265,11 +265,11 @@ namespace SSTUTools
             }
         }
 
-        public void enable(GameObject root)
+        public void enable(GameObject root, Color userColor)
         {
             foreach (ModelTextureData mtd in textureData)
             {
-                mtd.enable(root);
+                mtd.enable(root, userColor);
             }
         }
     }
@@ -313,7 +313,7 @@ namespace SSTUTools
             excludedMeshes = node.GetStringValues("excludeMesh");
         }
 
-        public void enable(GameObject root)
+        public void enable(GameObject root, Color userColor)
         {
             Renderer r;
             Transform tr;
@@ -326,7 +326,7 @@ namespace SSTUTools
                 {
                     r = rs[i];                    
                     if (Array.Exists(excludedMeshes, m => m == r.name)) { continue; }
-                    updateRenderer(r);
+                    updateRenderer(r, userColor);
                 }
             }
             else
@@ -344,30 +344,31 @@ namespace SSTUTools
                         if (tr == null) { continue; }
                         if (recurse)
                         {
-                            updateRendererRecursive(tr);
+                            updateRendererRecursive(tr, userColor);
                         }
                         else if ((r = tr.GetComponent<Renderer>()) != null)
                         {
-                            updateRenderer(r);
+                            updateRenderer(r, userColor);
                         }
                     }
                 }
             }
         }
 
-        private void updateRendererRecursive(Transform root)
+        private void updateRendererRecursive(Transform root, Color color)
         {
             Renderer[] renders = root.GetComponentsInChildren<Renderer>(true);
             int len = renders.Length;
             for (int i = 0; i < len; i++)
             {
-                updateRenderer(renders[i]);
+                updateRenderer(renders[i], color);
             }
         }
 
-        private void updateRenderer(Renderer r)
+        private void updateRenderer(Renderer r, Color color)
         {
-            SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, null);
+            ShaderProperty prop = new ShaderProperty("_MaskColor", color);
+            SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, new ShaderProperty[] { prop });
         }
     }
 
@@ -754,7 +755,7 @@ namespace SSTUTools
         /// Enables the input texture set name, or default texture for the model if 'none' or 'default' is input for the set name
         /// </summary>
         /// <param name="setName"></param>
-        public void enableTextureSet(String setName)
+        public void enableTextureSet(String setName, Color userColor)
         {
             if (setName == "none" || setName == "default" || String.IsNullOrEmpty(setName))
             {
@@ -779,7 +780,7 @@ namespace SSTUTools
             }
             else if(model!=null)
             {
-                mts.enable(model);
+                mts.enable(model, userColor);
             }
         }
 

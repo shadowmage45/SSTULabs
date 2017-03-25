@@ -174,6 +174,21 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
+        [KSPField(isPersistant = true)]
+        public Color domeColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color upperColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color intertankColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color lowerColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color mountColor = Color.white;
+
         /// <summary>
         /// The current RCS thrust; this value will be 'set' into the RCS module (if found/present)
         /// </summary>
@@ -381,7 +396,7 @@ namespace SSTUTools
             updateContainerVolume();
             updateGuiState();
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
-            currentMountModule.enableTextureSet(currentMountTexture);
+            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
             currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             if (updateSymmetry)
             {
@@ -406,7 +421,7 @@ namespace SSTUTools
             {
                 currentIntertankTextureSet = currentIntertankModule.getDefaultTextureSet();
             }
-            currentIntertankModule.enableTextureSet(currentIntertankTextureSet);
+            currentIntertankModule.enableTextureSet(currentIntertankTextureSet, intertankColor);
             currentIntertankModule.updateTextureUIControl(this, "currentIntertankTextureSet", currentIntertankTextureSet);
             updateModules(true);
             updateModels();
@@ -425,7 +440,7 @@ namespace SSTUTools
         private void setMountTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentMountTexture = newSet;
-            currentMountModule.enableTextureSet(newSet);
+            currentMountModule.enableTextureSet(newSet, mountColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -438,7 +453,7 @@ namespace SSTUTools
         private void setTankDomeTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentDomeTextureSet = newSet;
-            upperDomeModule.enableTextureSet(newSet);
+            upperDomeModule.enableTextureSet(newSet, domeColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -451,9 +466,9 @@ namespace SSTUTools
         private void setTankUpperTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentUpperTextureSet = newSet;
-            upperTopCapModule.enableTextureSet(newSet);
-            upperModule.enableTextureSet(newSet);
-            upperBottomCapModule.enableTextureSet(newSet);
+            upperTopCapModule.enableTextureSet(newSet, upperColor);
+            upperModule.enableTextureSet(newSet, upperColor);
+            upperBottomCapModule.enableTextureSet(newSet, upperColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -466,7 +481,7 @@ namespace SSTUTools
         private void setIntertankTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentIntertankTextureSet = newSet;
-            currentIntertankModule.enableTextureSet(newSet);
+            currentIntertankModule.enableTextureSet(newSet, intertankColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -479,9 +494,9 @@ namespace SSTUTools
         private void setTankLowerTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentLowerTextureSet = newSet;
-            lowerTopCapModule.enableTextureSet(newSet);
-            lowerModule.enableTextureSet(newSet);
-            lowerBottomCapModule.enableTextureSet(newSet);
+            lowerTopCapModule.enableTextureSet(newSet, lowerColor);
+            lowerModule.enableTextureSet(newSet, lowerColor);
+            lowerBottomCapModule.enableTextureSet(newSet, lowerColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -882,18 +897,18 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
-            upperDomeModule.enableTextureSet(currentDomeTextureSet);
-            upperTopCapModule.enableTextureSet(currentUpperTextureSet);
-            upperModule.enableTextureSet(currentUpperTextureSet);
-            upperBottomCapModule.enableTextureSet(currentUpperTextureSet);
+            upperDomeModule.enableTextureSet(currentDomeTextureSet, domeColor);
+            upperTopCapModule.enableTextureSet(currentUpperTextureSet, upperColor);
+            upperModule.enableTextureSet(currentUpperTextureSet, upperColor);
+            upperBottomCapModule.enableTextureSet(currentUpperTextureSet, upperColor);
             if (splitTank)
             {
-                currentIntertankModule.enableTextureSet(currentIntertankTextureSet);
-                lowerTopCapModule.enableTextureSet(currentLowerTextureSet);
-                lowerModule.enableTextureSet(currentLowerTextureSet);
-                lowerBottomCapModule.enableTextureSet(currentLowerTextureSet);
+                currentIntertankModule.enableTextureSet(currentIntertankTextureSet, intertankColor);
+                lowerTopCapModule.enableTextureSet(currentLowerTextureSet, lowerColor);
+                lowerModule.enableTextureSet(currentLowerTextureSet, lowerColor);
+                lowerBottomCapModule.enableTextureSet(currentLowerTextureSet, lowerColor);
             }
-            currentMountModule.enableTextureSet(currentMountTexture);
+            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)

@@ -179,6 +179,9 @@ namespace SSTUTools
         public String currentMountTexture = String.Empty;
 
         [KSPField(isPersistant = true)]
+        public Color mountColor = Color.white;
+
+        [KSPField(isPersistant = true)]
         public bool fairingInitialized = false;
 
         [Persistent]
@@ -413,7 +416,7 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountData.getDefaultTextureSet();
             }
-            currentMountData.enableTextureSet(currentMountTexture);
+            currentMountData.enableTextureSet(currentMountTexture, mountColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -758,7 +761,7 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountData.getDefaultTextureSet();
             }
-            currentMountData.enableTextureSet(currentMountTexture);
+            currentMountData.enableTextureSet(currentMountTexture, mountColor);
         }
 
         #endregion ENDREGION - Model Setup

@@ -86,6 +86,15 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
+        [KSPField(isPersistant = true)]
+        public Color noseColor = Color.white;
+                
+        [KSPField(isPersistant = true)]
+        public Color bodyColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color mountColor = Color.white;
+
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
         /// checked and updated during OnStart, and should generally only run in the editor the first
@@ -269,7 +278,7 @@ namespace SSTUTools
             newModule.setupModel(getNoseRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
-            currentNoseModule.enableTextureSet(currentNoseTexture);
+            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateEditorStats(true);
             if (updateSymmetry)
@@ -314,7 +323,7 @@ namespace SSTUTools
             currentMainTankModule.setupModel(getTankRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.getDefaultTextureSet(); }
-            currentMainTankModule.enableTextureSet(currentTankTexture);
+            currentMainTankModule.enableTextureSet(currentTankTexture, bodyColor);
             currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
             updateUIScaleControls();
             updateEditorStats(true);
@@ -340,7 +349,7 @@ namespace SSTUTools
             newModule.setupModel(getMountRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
-            currentMountModule.enableTextureSet(currentMountTexture);
+            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
             currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             updateEditorStats(true);
 
@@ -394,7 +403,7 @@ namespace SSTUTools
         private void setNoseTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentNoseTexture = newSet;
-            currentNoseModule.enableTextureSet(newSet);
+            currentNoseModule.enableTextureSet(newSet, noseColor);
 
             if (updateSymmetry)
             {
@@ -408,7 +417,7 @@ namespace SSTUTools
         private void setTankTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentTankTexture = newSet;
-            currentMainTankModule.enableTextureSet(newSet);
+            currentMainTankModule.enableTextureSet(newSet, bodyColor);
 
             if (updateSymmetry)
             {
@@ -422,7 +431,7 @@ namespace SSTUTools
         private void setMountTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentMountTexture = newSet;
-            currentMountModule.enableTextureSet(newSet);
+            currentMountModule.enableTextureSet(newSet, mountColor);
 
             if (updateSymmetry)
             {
@@ -770,9 +779,9 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
-            currentNoseModule.enableTextureSet(currentNoseTexture);
-            currentMainTankModule.enableTextureSet(currentTankTexture);
-            currentMountModule.enableTextureSet(currentMountTexture);
+            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
+            currentMainTankModule.enableTextureSet(currentTankTexture, bodyColor);
+            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
 
             if (updateSymmetry)
             {

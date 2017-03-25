@@ -106,6 +106,15 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNozzleTexture;
 
+        [KSPField(isPersistant = true)]
+        public Color noseColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color bodyColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color nozzleColor = Color.white;
+
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
@@ -318,7 +327,7 @@ namespace SSTUTools
             {
                 currentMainTexture = currentMainModule.getDefaultTextureSet();            
             }
-            currentMainModule.enableTextureSet(currentMainTexture);
+            currentMainModule.enableTextureSet(currentMainTexture, bodyColor);
             currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -359,7 +368,7 @@ namespace SSTUTools
             {
                 currentNoseTexture = currentNoseModule.getDefaultTextureSet();
             }
-            currentNoseModule.enableTextureSet(currentNoseTexture);
+            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -403,7 +412,7 @@ namespace SSTUTools
             {
                 currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
             }
-            currentNozzleModule.enableTextureSet(currentNozzleTexture);
+            currentNozzleModule.enableTextureSet(currentNozzleTexture, nozzleColor);
             currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -458,7 +467,7 @@ namespace SSTUTools
         private void updateMainTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentMainTexture = newTex;
-            currentMainModule.enableTextureSet(newTex);
+            currentMainModule.enableTextureSet(newTex, bodyColor);
             if (updateSymmetry)
             {
                 foreach(Part p in part.symmetryCounterparts)
@@ -471,7 +480,7 @@ namespace SSTUTools
         private void updateNoseTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentNoseTexture = newTex;
-            currentNoseModule.enableTextureSet(newTex);
+            currentNoseModule.enableTextureSet(newTex, noseColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -484,7 +493,7 @@ namespace SSTUTools
         private void updateNozzleTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentNozzleTexture = newTex;
-            currentNozzleModule.enableTextureSet(newTex);
+            currentNozzleModule.enableTextureSet(newTex, nozzleColor);
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -1064,9 +1073,9 @@ namespace SSTUTools
 
         private void updateTextureSets()
         {
-            currentNoseModule.enableTextureSet(currentNoseTexture);
-            currentMainModule.enableTextureSet(currentMainTexture);
-            currentNozzleModule.enableTextureSet(currentNozzleTexture);
+            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
+            currentMainModule.enableTextureSet(currentMainTexture, bodyColor);
+            currentNozzleModule.enableTextureSet(currentNozzleTexture, nozzleColor);
         }
 
         #endregion ENDREGION - Update Methods

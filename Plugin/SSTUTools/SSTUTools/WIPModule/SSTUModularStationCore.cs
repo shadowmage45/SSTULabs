@@ -94,6 +94,15 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentBottomTexture = "default";
 
+        [KSPField(isPersistant = true)]
+        public Color noseColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color bodyColor = Color.white;
+
+        [KSPField(isPersistant = true)]
+        public Color mountColor = Color.white;
+
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
@@ -189,7 +198,7 @@ namespace SSTUTools
             {
                 currentTopTexture = topModule.getDefaultTextureSet();
             }
-            topModule.enableTextureSet(currentTopTexture);
+            topModule.enableTextureSet(currentTopTexture, noseColor);
             topModule.updateTextureUIControl(this, "currentTopTexture", currentTopTexture);
             if (updateSymmetry)
             {
@@ -217,7 +226,7 @@ namespace SSTUTools
             {
                 currentCoreTexture = coreModule.getDefaultTextureSet();
             }
-            coreModule.enableTextureSet(currentCoreTexture);
+            coreModule.enableTextureSet(currentCoreTexture, bodyColor);
             coreModule.updateTextureUIControl(this, "currentCoreTexture", currentCoreTexture);
             if (updateSymmetry)
             {
@@ -245,7 +254,7 @@ namespace SSTUTools
             {
                 currentBottomTexture = bottomModule.getDefaultTextureSet();
             }
-            bottomModule.enableTextureSet(currentBottomTexture);
+            bottomModule.enableTextureSet(currentBottomTexture, mountColor);
             bottomModule.updateTextureUIControl(this, "currentBottomTexture", currentBottomTexture);
             if (updateSymmetry)
             {
@@ -320,7 +329,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentTopTexture)
             {
-                topModule.enableTextureSet(currentTopTexture);
+                topModule.enableTextureSet(currentTopTexture, noseColor);
             }
         }
         
@@ -328,7 +337,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentCoreTexture)
             {
-                coreModule.enableTextureSet(currentCoreTexture);
+                coreModule.enableTextureSet(currentCoreTexture, bodyColor);
             }
         }
         
@@ -336,7 +345,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentBottomTexture)
             {
-                bottomModule.enableTextureSet(currentBottomTexture);
+                bottomModule.enableTextureSet(currentBottomTexture, mountColor);
             }
         }
         
@@ -617,9 +626,9 @@ namespace SSTUTools
             bottomDockModule.setupModel(getBottomDockRoot(true), ModelOrientation.BOTTOM);
             solarModule.enable(getSolarRoot(true), 0);
 
-            topModule.enableTextureSet(currentTopTexture);
-            coreModule.enableTextureSet(currentCoreTexture);
-            bottomModule.enableTextureSet(currentBottomTexture);
+            topModule.enableTextureSet(currentTopTexture, noseColor);
+            coreModule.enableTextureSet(currentCoreTexture, bodyColor);
+            bottomModule.enableTextureSet(currentBottomTexture, mountColor);
 
             //control transforms need to exist during part initialization
             //else things will explode if one of those transforms is the reference transform when a vessel is reloaded
