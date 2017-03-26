@@ -5,7 +5,7 @@ using UnityEngine;
 namespace SSTUTools
 {
 
-    public class SSTUModularFuelTank : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModularFuelTank : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
 
         #region REGION - Config Fields
@@ -570,6 +570,23 @@ namespace SSTUTools
             // really we only care about parts being attached to the nodes on the mount/nose
             // but have to update available variants regardless of whatever caused the editor event callback
             updateAvailableVariants();
+        }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "Top", "Body", "Bottom" };
+        }
+
+        public Color[] getSectionColors()
+        {
+            return new Color[] { noseColor, bodyColor, mountColor };
+        }
+
+        public void setSectionColors(Color[] colors)
+        {
+            noseColor = colors[0];
+            bodyColor = colors[1];
+            mountColor = colors[2];
         }
 
         #endregion ENDREGION - Standard KSP Overrides

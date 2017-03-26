@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace SSTUTools
 {
-    public class SSTUModularEngineCluster : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModularEngineCluster : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
 
         #region REGION - Standard KSPField variables
@@ -515,6 +515,21 @@ namespace SSTUTools
         }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public string[] getSectionNames()
+        {
+            return new string[] {"Mount",};
+        }
+
+        public Color[] getSectionColors()
+        {
+            return new Color[] { mountColor };
+        }
+
+        public void setSectionColors(Color[] colors)
+        {
+            mountColor = colors[0];
+        }
 
         #endregion ENDREGION - Standard KSP Overrides
 

@@ -9,7 +9,7 @@ namespace SSTUTools
     public interface IRecolorable
     {
         string[] getSectionNames();
-        Color getSectionColors();
+        Color[] getSectionColors();
         void setSectionColors(Color[] colors);
     }
 }

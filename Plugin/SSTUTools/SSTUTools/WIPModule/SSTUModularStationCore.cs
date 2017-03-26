@@ -5,7 +5,7 @@ using UnityEngine;
 namespace SSTUTools
 {
 
-    public class SSTUModularStationCore : PartModule, IPartMassModifier, IPartCostModifier
+    public class SSTUModularStationCore : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
     {
 
         #region REGION - Standard Part Config Fields
@@ -858,6 +858,23 @@ namespace SSTUTools
         private Transform getBottomRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-BottomRoot", recreate); }
         private Transform getBottomDockRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-BottomDock", recreate); }
         private Transform getSolarRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-SolarRoot", recreate); }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "Top", "Body", "Bottom"};
+        }
+
+        public Color[] getSectionColors()
+        {
+            return new Color[] { noseColor, bodyColor, mountColor };
+        }
+
+        public void setSectionColors(Color[] colors)
+        {
+            noseColor = colors[0];
+            bodyColor = colors[1];
+            mountColor = colors[2];
+        }
 
         #endregion ENDREGION - Custom Update Methods
 

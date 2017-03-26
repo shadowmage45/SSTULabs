@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
         #region REGION - KSP Config Variables
 
@@ -606,6 +606,23 @@ namespace SSTUTools
             {
                 ThrustCurveEditorGUI.updateGUI();
             }
+        }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "Top", "Body", "Bottom" };
+        }
+
+        public Color[] getSectionColors()
+        {
+            return new Color[] { noseColor, bodyColor, nozzleColor };
+        }
+
+        public void setSectionColors(Color[] colors)
+        {
+            noseColor = colors[0];
+            bodyColor = colors[1];
+            nozzleColor = colors[2];
         }
 
         #endregion ENDREGION - Standard KSP Overrides
