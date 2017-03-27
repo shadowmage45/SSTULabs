@@ -1,3 +1,5 @@
+#include "SSTUColoredSpecularLighting.cginc"
+
 Shader "SSTU/SolarShader"
 {
 	Properties 
@@ -29,53 +31,6 @@ Shader "SSTU/SolarShader"
 
 		#pragma surface surf ColoredSolar
 		#pragma target 3.0
-		
-		struct CustomSurfaceOutput {
-			half3 Albedo;
-			half3 Normal;
-			half3 Emission;
-			half Specular;
-			half3 GlossColor;
-			half Alpha;
-			half3 BackLight;
-			half BackClamp;
-		};
-		
-		inline half4 LightingColoredSolar (CustomSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
-		{
-			//diffuse light intensity, from surface normal and light direction
-			half diff = max (0, dot (s.Normal, lightDir));
-			//specular light calculations
-			half3 h = normalize (lightDir + viewDir);
-			float nh = max (0, dot (s.Normal, h));
-			float spec = pow (nh, s.Specular * 128);
-			half3 specCol = spec * s.GlossColor;
-			
-			//output fragment color; Unity adds Emission to it through some other method
-			half4 c;
-			
-			//half clamp = min(0.001, s.BackClamp);
-			half norm = s.BackClamp==0? 1 : 1 / (1 - s.BackClamp);
-			//half backLight = max(0, (-dot(viewDir, lightDir) - s.BackClamp) * norm);
-			half backLight = max(0, -dot(s.Normal, lightDir));
-			//backLight *= (max(0, -dot(viewDir,  lightDir))+0.25)*0.8;
-			backLight *= (max(0, -dot(s.Normal, -viewDir))+0.25)*0.8;
-			half3 backColor = backLight * s.GlossColor * _LightColor0.rgb * s.BackLight;
-			c.rgb = ((s.Albedo * _LightColor0.rgb * diff + _LightColor0.rgb * specCol) + backColor) * atten;
-			c.a = s.Alpha;
-			return c;
-		}
-		 
-		inline half4 LightingColoredSpecular_PrePass (CustomSurfaceOutput s, half4 light)
-		{
-			half3 spec = light.a * s.GlossColor;
-		   
-			half4 c;
-			c.rgb = (s.Albedo * light.rgb + light.rgb * spec) * 0.5;
-			c.a = s.Alpha + spec * _SpecColor.a;
-			return c;
-		}
-		
 
 		sampler2D _MainTex;
 		sampler2D _SpecMap;
@@ -102,7 +57,7 @@ Shader "SSTU/SolarShader"
 			float3 viewDir;
 		};
 
-		void surf (Input IN, inout CustomSurfaceOutput o)
+		void surf (Input IN, inout SolarSurfaceOutput o)
 		{
 			float4 color = tex2D(_MainTex,(IN.uv_MainTex)) * _BurnColor;
 			float3 spec = tex2D(_SpecMap, (IN.uv_SpecMap));

@@ -1,4 +1,4 @@
-Shader "SSTU/Masked"
+Shader "SSTU/MaskedEmissive"
 {
 	Properties 
 	{
@@ -7,6 +7,7 @@ Shader "SSTU/Masked"
 		_SpecMap("_SpecMap (RGB)", 2D) = "white" {}
 		_BumpMap("_BumpMap (NRM)", 2D) = "bump" {}
 		_AOMap("_AOMap (Grayscale)", 2D) = "white" {}
+		_EmissiveMap("_EmissiveMap (RGB)", 2D) = "black" {}
 		_Color ("Diffuse Color", Color) = (1,1,1,1)
 		_MaskColor ("Mask Color", Color) = (1,1,1,1)
 		_Shininess ("Specular Shininess", Range (0.03, 1)) = 0.078125
@@ -70,6 +71,7 @@ Shader "SSTU/Masked"
 		sampler2D _SpecMap;
 		sampler2D _BumpMap;		
 		sampler2D _AOMap;
+		sampler2D _EmissiveMap;
 
 		half _Shininess;
 		float _Opacity;
@@ -83,9 +85,11 @@ Shader "SSTU/Masked"
 		struct Input
 		{
 			float2 uv_MainTex;
+			float2 uv_MaskTex;
 			float2 uv_SpecMap;
 			float2 uv_BumpMap;
 			float2 uv_AOMap;
+			float2 uv_EmissiveMap
 			float3 viewDir;
 		};
 
@@ -96,9 +100,10 @@ Shader "SSTU/Masked"
 			float4 spec = tex2D(_SpecMap, (IN.uv_SpecMap));
 			float3 normal = UnpackNormal(tex2D(_BumpMap, IN.uv_BumpMap));
 			float3 ao = tex2D(_AOMap, (IN.uv_AOMap));
+			float3 emit = tex2D(_EmissiveMap, (IN.uv_EmissiveMap));
 			
 			half rim = 1.0 - saturate(dot (normalize(IN.viewDir), normal));			
-			float3 emission = _RimColor.rgb * pow(rim, _RimFalloff) * _RimColor.a + _TemperatureColor.rgb * _TemperatureColor.a;
+			float3 emission = _RimColor.rgb * pow(rim, _RimFalloff) * _RimColor.a + _TemperatureColor.rgb * _TemperatureColor.a + emit;
 
 			o.Albedo = ((1 - maskColor.rbg) * color.rgb + maskColor.rbg * _MaskColor.rgb) * ao.rgb * _Color.rgb;
 			o.GlossColor = spec.rgb;
