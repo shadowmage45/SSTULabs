@@ -22,6 +22,13 @@ namespace SSTUTools
 
         private bool open = false;
 
+        internal Action guiCloseAction;
+
+        public void Awake()
+        {
+            id = GetInstanceID();
+        }
+
         internal void openGui()
         {
             //TODO populate module data for parts on editor craft
@@ -64,7 +71,7 @@ namespace SSTUTools
         internal void closeGui()
         {
             open = false;
-            closeSectionGUI();//just in case it was open
+            closeSectionGUI();
             moduleRecolorData.Clear();
         }
 
@@ -99,6 +106,11 @@ namespace SSTUTools
                 }
             }
             GUILayout.EndScrollView();
+            if (GUILayout.Button("Close"))
+            {
+                open = false;
+                guiCloseAction();//call the method in SSTULauncher to close this GUI
+            }
             GUILayout.EndVertical();
             GUI.DragWindow();
         }
@@ -112,7 +124,7 @@ namespace SSTUTools
 
         private void closeSectionGUI()
         {
-            Component.DestroyImmediate(sectionGUI);
+            Component.Destroy(sectionGUI);
         }
 
     }
@@ -122,12 +134,15 @@ namespace SSTUTools
         private static int graphWidth = 320;
         private static int graphHeight = 240;
         private int id = 1;
-        private Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth, graphHeight);
+        private Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth, graphHeight);
+
+        //TODO load the preset colors from a config defined list of presets
+        private Color[] presetColors = new Color[12];
 
         internal SectionRecolorData sectionData;
         internal Action onCloseAction;
 
-        float r, g, b;
+        private float r, g, b;
 
         public void Awake()
         {
@@ -143,40 +158,67 @@ namespace SSTUTools
         {
             GUILayout.BeginVertical();
 
-            //red
+            //red slider
             GUILayout.BeginHorizontal();
             GUILayout.Label("Red", GUILayout.Width(100));
-            r = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            r = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
             if (r != sectionData.color.r)
             {
                 sectionData.color.r = r;
                 sectionData.updateColor();
             }
+            GUILayout.TextField(sectionData.color.r.ToString(), GUILayout.Width(100));
             GUILayout.EndHorizontal();
 
             //green
             GUILayout.BeginHorizontal();
             GUILayout.Label("Green", GUILayout.Width(100));
-            g = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            g = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
             if (g != sectionData.color.g)
             {
                 sectionData.color.g = g;
                 sectionData.updateColor();
             }
+            GUILayout.TextField(sectionData.color.g.ToString(), GUILayout.Width(100));
             GUILayout.EndHorizontal();
 
             //blue
             GUILayout.BeginHorizontal();
             GUILayout.Label("Blue", GUILayout.Width(100));
-            b = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            b = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
             if (b != sectionData.color.b)
             {
                 sectionData.color.b = b;
                 sectionData.updateColor();
             }
+            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(100));
             GUILayout.EndHorizontal();
 
-            //TODO color selection presets, one button per preset.  Should possibly make a small white texture to be shared by each button and use the GUI.color to tint it to the preset color.
+            GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
+
+            Color old = GUI.color;
+            int len = presetColors.Length;
+            int row = 0, column = 0;
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < len; i++)
+            {
+                GUI.color = presetColors[i];
+                if(GUILayout.Button("Preset", GUILayout.Width(50)))
+                {
+                    sectionData.color = presetColors[i];
+                    sectionData.updateColor();
+                }
+                column++;
+                if (column >= 4)
+                {
+                    column = 0;
+                    row++;
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                }
+            }
+            GUILayout.EndHorizontal();
+            GUI.color = old;
 
             bool shouldClose = false;
             if (GUILayout.Button("Close"))
