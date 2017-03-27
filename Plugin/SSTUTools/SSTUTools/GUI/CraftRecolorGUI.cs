@@ -64,6 +64,7 @@ namespace SSTUTools
         internal void closeGui()
         {
             open = false;
+            closeSectionGUI();//just in case it was open
             moduleRecolorData.Clear();
         }
 
@@ -118,16 +119,20 @@ namespace SSTUTools
 
     public class SectionRecolorGUI : MonoBehaviour
     {
-        private static int graphWidth = 640;
-        private static int graphHeight = 250;
-        private static int scrollHeight = 480;
-        private static int margin = 20;
+        private static int graphWidth = 320;
+        private static int graphHeight = 240;
         private int id = 1;
-        private Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + scrollHeight + margin);
-        private Vector2 scrollPos;
+        private Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth, graphHeight);
 
         internal SectionRecolorData sectionData;
         internal Action onCloseAction;
+
+        float r, g, b;
+
+        public void Awake()
+        {
+            id = GetInstanceID();
+        }
 
         public void OnGUI()
         {
@@ -137,11 +142,55 @@ namespace SSTUTools
         private void drawWindow(int id)
         {
             GUILayout.BeginVertical();
-            scrollPos = GUILayout.BeginScrollView(scrollPos);
-           
-            GUILayout.EndScrollView();
+
+            //red
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Red", GUILayout.Width(100));
+            r = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            if (r != sectionData.color.r)
+            {
+                sectionData.color.r = r;
+                sectionData.updateColor();
+            }
+            GUILayout.EndHorizontal();
+
+            //green
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Green", GUILayout.Width(100));
+            g = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            if (g != sectionData.color.g)
+            {
+                sectionData.color.g = g;
+                sectionData.updateColor();
+            }
+            GUILayout.EndHorizontal();
+
+            //blue
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Blue", GUILayout.Width(100));
+            b = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(200));
+            if (b != sectionData.color.b)
+            {
+                sectionData.color.b = b;
+                sectionData.updateColor();
+            }
+            GUILayout.EndHorizontal();
+
+            //TODO color selection presets, one button per preset.  Should possibly make a small white texture to be shared by each button and use the GUI.color to tint it to the preset color.
+
+            bool shouldClose = false;
+            if (GUILayout.Button("Close"))
+            {
+                shouldClose = true;
+            }
+
             GUILayout.EndVertical();
             GUI.DragWindow();
+
+            if (shouldClose)
+            {
+                onCloseAction();
+            }
         }
     }
 
@@ -161,19 +210,36 @@ namespace SSTUTools
             sectionData = new SectionRecolorData[len];
             for (int i = 0; i < len; i++)
             {
-                sectionData[i] = new SectionRecolorData(names[i], colors[i]);
+                sectionData[i] = new SectionRecolorData(iModule, names[i], colors[i]);
+            }
+        }
+
+        public void updateColors()
+        {
+            int len = sectionData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                iModule.setSectionColor(sectionData[i].sectionName, sectionData[i].color);
             }
         }
     }
 
     public class SectionRecolorData
     {
+        public readonly IRecolorable owner;
         public readonly string sectionName;
         public Color color;
-        public SectionRecolorData(string name, Color color)
+
+        public SectionRecolorData(IRecolorable owner, string name, Color color)
         {
+            this.owner = owner;
             this.sectionName = name;
             this.color = color;
+        }
+
+        public void updateColor()
+        {
+            owner.setSectionColor(sectionName, color);
         }
     }
 
