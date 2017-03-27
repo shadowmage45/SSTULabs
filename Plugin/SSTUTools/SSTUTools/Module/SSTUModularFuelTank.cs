@@ -87,13 +87,13 @@ namespace SSTUTools
         public String currentMountTexture = String.Empty;
 
         [KSPField(isPersistant = true)]
-        public Color noseColor = Color.white;
+        public Vector4 noseColor = Color.white;
                 
         [KSPField(isPersistant = true)]
-        public Color bodyColor = Color.white;
+        public Vector4 bodyColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color mountColor = Color.white;
+        public Vector4 mountColor = Color.white;
 
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
@@ -582,11 +582,21 @@ namespace SSTUTools
             return new Color[] { noseColor, bodyColor, mountColor };
         }
 
-        public void setSectionColors(Color[] colors)
+        public void setSectionColor(string section, Color color)
         {
-            noseColor = colors[0];
-            bodyColor = colors[1];
-            mountColor = colors[2];
+            if (section == "Top")
+            {
+                noseColor = color;
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color;
+            }
+            else if (section == "Bottom")
+            {
+                mountColor = color;
+            }
+            updateTextureSet(true);
         }
 
         #endregion ENDREGION - Standard KSP Overrides

@@ -95,13 +95,13 @@ namespace SSTUTools
         public string currentBottomTexture = "default";
 
         [KSPField(isPersistant = true)]
-        public Color noseColor = Color.white;
+        public Vector4 noseColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color bodyColor = Color.white;
+        public Vector4 bodyColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color mountColor = Color.white;
+        public Vector4 mountColor = Color.white;
 
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
@@ -415,6 +415,35 @@ namespace SSTUTools
         private void onEditorVesselModified(ShipConstruct ship)
         {
             updateGUI();
+        }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "Top", "Body", "Bottom" };
+        }
+
+        public Color[] getSectionColors()
+        {
+            return new Color[] { noseColor, bodyColor, mountColor };
+        }
+
+        public void setSectionColor(string section, Color color)
+        {
+            if (section == "Top")
+            {
+                noseColor = color;
+                topModule.enableTextureSet(currentTopTexture, noseColor);
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color;
+                coreModule.enableTextureSet(currentCoreTexture, bodyColor);
+            }
+            else if (section == "Bottom")
+            {
+                mountColor = color;
+                bottomModule.enableTextureSet(currentBottomTexture, mountColor);
+            }
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -858,23 +887,6 @@ namespace SSTUTools
         private Transform getBottomRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-BottomRoot", recreate); }
         private Transform getBottomDockRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-BottomDock", recreate); }
         private Transform getSolarRoot(bool recreate) { return getRootTransformFor("SSTU-ST-MSC-SolarRoot", recreate); }
-
-        public string[] getSectionNames()
-        {
-            return new string[] { "Top", "Body", "Bottom"};
-        }
-
-        public Color[] getSectionColors()
-        {
-            return new Color[] { noseColor, bodyColor, mountColor };
-        }
-
-        public void setSectionColors(Color[] colors)
-        {
-            noseColor = colors[0];
-            bodyColor = colors[1];
-            mountColor = colors[2];
-        }
 
         #endregion ENDREGION - Custom Update Methods
 

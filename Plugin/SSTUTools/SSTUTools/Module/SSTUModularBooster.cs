@@ -107,13 +107,13 @@ namespace SSTUTools
         public String currentNozzleTexture;
 
         [KSPField(isPersistant = true)]
-        public Color noseColor = Color.white;
+        public Vector4 noseColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color bodyColor = Color.white;
+        public Vector4 bodyColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color nozzleColor = Color.white;
+        public Vector4 nozzleColor = Color.white;
 
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
         [KSPField(isPersistant = true)]
@@ -618,11 +618,21 @@ namespace SSTUTools
             return new Color[] { noseColor, bodyColor, nozzleColor };
         }
 
-        public void setSectionColors(Color[] colors)
+        public void setSectionColor(string section, Color color)
         {
-            noseColor = colors[0];
-            bodyColor = colors[1];
-            nozzleColor = colors[2];
+            if (section == "Top")
+            {
+                noseColor = color;
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color;
+            }
+            else if (section == "Bottom")
+            {
+                nozzleColor = color;
+            }
+            updateTextureSets();
         }
 
         #endregion ENDREGION - Standard KSP Overrides

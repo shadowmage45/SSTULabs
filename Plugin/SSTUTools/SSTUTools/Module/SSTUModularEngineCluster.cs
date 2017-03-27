@@ -179,7 +179,7 @@ namespace SSTUTools
         public String currentMountTexture = String.Empty;
 
         [KSPField(isPersistant = true)]
-        public Color mountColor = Color.white;
+        public Vector4 mountColor = Color.white;
 
         [KSPField(isPersistant = true)]
         public bool fairingInitialized = false;
@@ -526,9 +526,13 @@ namespace SSTUTools
             return new Color[] { mountColor };
         }
 
-        public void setSectionColors(Color[] colors)
+        public void setSectionColor(string section, Color color)
         {
-            mountColor = colors[0];
+            if (section == "Mount")
+            {
+                mountColor = color;
+                currentMountData.enableTextureSet(currentMountTexture, mountColor);
+            }
         }
 
         #endregion ENDREGION - Standard KSP Overrides

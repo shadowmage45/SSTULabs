@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUCustomUpperStage : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUCustomUpperStage : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
 
         #region ----------------- REGION - Standard KSP-accessible config fields -----------------
@@ -175,19 +175,19 @@ namespace SSTUTools
         public String currentMountTexture = String.Empty;
 
         [KSPField(isPersistant = true)]
-        public Color domeColor = Color.white;
+        public Vector4 domeColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color upperColor = Color.white;
+        public Vector4 upperColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color intertankColor = Color.white;
+        public Vector4 intertankColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color lowerColor = Color.white;
+        public Vector4 lowerColor = Color.white;
 
         [KSPField(isPersistant = true)]
-        public Color mountColor = Color.white;
+        public Vector4 mountColor = Color.white;
 
         /// <summary>
         /// The current RCS thrust; this value will be 'set' into the RCS module (if found/present)
@@ -611,6 +611,49 @@ namespace SSTUTools
 
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public string[] getSectionNames()
+        {
+            if (splitTank)
+            {
+                return new string[] { "Dome", "Upper", "Intertank", "Lower", "Mount" };
+            }
+            return new string[] { "Dome", "Upper", "Mount" };
+        }
+
+        public Color[] getSectionColors()
+        {
+            if (splitTank)
+            {
+                return new Color[] { domeColor, upperColor, intertankColor, lowerColor, mountColor };
+            }
+            return new Color[] { domeColor, upperColor, mountColor };
+        }
+
+        public void setSectionColor(string section, Color color)
+        {
+            if (section == "Dome")
+            {
+                domeColor = color;
+            }
+            else if (section == "Upper")
+            {
+                upperColor = color;
+            }
+            else if (section == "Intertank")
+            {
+                intertankColor = color;
+            }
+            else if (section == "Lower")
+            {
+                lowerColor = color;
+            }
+            else if (section == "Mount")
+            {
+                mountColor = color;
+            }
+            updateTextureSet(true);
+        }
 
         #endregion
 
