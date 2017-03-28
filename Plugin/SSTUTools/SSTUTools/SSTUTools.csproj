@@ -154,7 +154,6 @@
     <Compile Include="Util\FuelType.cs" />
     <Compile Include="Util\SSTUConfigNodeUtils.cs" />
     <Compile Include="Util\TechLimit.cs" />
-    <Compile Include="Util\TextureSet.cs" />
     <Compile Include="Util\SSTUUtils.cs" />
   </ItemGroup>
   <ItemGroup>
