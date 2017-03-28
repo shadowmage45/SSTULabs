@@ -147,6 +147,10 @@ namespace SSTUTools
         public void Awake()
         {
             id = GetInstanceID();
+            presetColors[0] = Color.black;
+            presetColors[1] = Color.blue;
+            presetColors[2] = Color.red;
+            presetColors[3] = Color.white;
         }
 
         public void OnGUI()
@@ -173,7 +177,7 @@ namespace SSTUTools
             //green
             GUILayout.BeginHorizontal();
             GUILayout.Label("Green", GUILayout.Width(100));
-            g = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
+            g = GUILayout.HorizontalSlider(sectionData.color.g, 0, 1, GUILayout.Width(100));
             if (g != sectionData.color.g)
             {
                 sectionData.color.g = g;
@@ -185,7 +189,7 @@ namespace SSTUTools
             //blue
             GUILayout.BeginHorizontal();
             GUILayout.Label("Blue", GUILayout.Width(100));
-            b = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
+            b = GUILayout.HorizontalSlider(sectionData.color.b, 0, 1, GUILayout.Width(100));
             if (b != sectionData.color.b)
             {
                 sectionData.color.b = b;
