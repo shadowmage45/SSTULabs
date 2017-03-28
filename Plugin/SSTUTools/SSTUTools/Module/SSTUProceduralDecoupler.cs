@@ -192,16 +192,14 @@ namespace SSTUTools
         private void setTextureFromEditor(String newTexture, bool updateSymmetry)
         {
             currentTextureSet = newTexture;
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == newTexture);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
                 newTexture = currentTextureSet;
             }
-            TextureData data = currentTextureSetData.textureDatas[0];
-            model.setMainTexture(data.diffuseTextureName);
-            model.setNormalTexture(data.normalTextureName);
+            currentTextureSetData.enable(model.root, Color.clear);
             if (updateSymmetry)
             {
                 SSTUProceduralDecoupler dc;
@@ -260,22 +258,18 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            int len = textureNodes.Length;
-            textureSetData = new TextureSet[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureSetData[i] = new TextureSet(textureNodes[i]);
-            }
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            textureSetData = TextureSet.load(textureNodes);
+            int len = textureSetData.Length;
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
             }
             string[] textureSetNames = new string[len];
             for (int i = 0; i < len; i++)
             {
-                textureSetNames[i] = textureSetData[i].setName;
+                textureSetNames[i] = textureSetData[i].name;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
         }
@@ -333,8 +327,7 @@ namespace SSTUTools
             model.topUV = uvs.getArea("top");
             model.bottomUV = uvs.getArea("top");
             setModelParameters();
-            TextureData data = currentTextureSetData.textureDatas[0];
-            model.setMaterial(SSTUUtils.loadMaterial(data.diffuseTextureName, data.normalTextureName));
+            model.setMaterial(currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial"));
             model.createModel();
             model.setParent(modelBase);
             updatePhysicalAttributes();

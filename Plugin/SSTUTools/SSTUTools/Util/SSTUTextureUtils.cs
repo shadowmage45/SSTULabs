@@ -73,6 +73,125 @@ namespace SSTUTools
         }
     }
 
+    public class TextureSet
+    {
+        public readonly String name;
+        public readonly TextureSetMaterialData[] textureData;
+
+        public TextureSet(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            ConfigNode[] texNodes = node.GetNodes("TEXTURE");
+            int len = texNodes.Length;
+            textureData = new TextureSetMaterialData[len];
+            for (int i = 0; i < len; i++)
+            {
+                textureData[i] = new TextureSetMaterialData(texNodes[i]);
+            }
+        }
+
+        public void enable(GameObject root, Color userColor)
+        {
+            foreach (TextureSetMaterialData mtd in textureData)
+            {
+                mtd.enable(root, userColor);
+            }
+        }
+
+        public static TextureSet[] parse(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            TextureSet[] sets = new TextureSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                sets[i] = new TextureSet(nodes[i]);
+            }
+            return sets;
+        }
+
+        /// <summary>
+        /// Loads full texture sets from a TEXTURESET node containing only the set name
+        /// the full set is loaded from the global set of SSTU_TEXTURESETs
+        /// </summary>
+        /// <param name="nodes"></param>
+        /// <returns></returns>
+        public static TextureSet[] load(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            TextureSet[] sets = new TextureSet[len];
+            for (int i = 0; i < len; i++)
+            {
+                sets[i] = getGlobalTextureSet(nodes[i].GetStringValue("name"));
+            }
+            return sets;
+        }
+
+        /// <summary>
+        /// Retrieve a single SSTU_TEXTURESET by name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static TextureSet getGlobalTextureSet(string name)
+        {
+            ConfigNode[] setNodes = GameDatabase.Instance.GetConfigNodes("SSTU_TEXTURESET");
+            ConfigNode setNode = Array.Find(setNodes, m => m.GetStringValue("name") == name);
+            return new TextureSet(setNode);
+        }
+    }
+
+    public class TextureSetMaterialData
+    {
+        public readonly String shader;
+        public readonly String[] meshNames;
+        public readonly String[] excludedMeshes;
+        public readonly ShaderProperty[] props;
+
+        public TextureSetMaterialData(ConfigNode node)
+        {
+            shader = node.GetStringValue("shader");
+            meshNames = node.GetStringValues("mesh");
+            excludedMeshes = node.GetStringValues("excludeMesh");
+            props = ShaderProperty.parse(node);
+            List<ShaderProperty> ps = new List<ShaderProperty>();
+            ps.AddRange(props);
+            if (node.HasValue("diffuseTexture")) { ps.Add(new ShaderPropertyTexture("_MainTex", node.GetStringValue("diffuseTexture"), true, false)); }
+            if (node.HasValue("normalTexture")) { ps.Add(new ShaderPropertyTexture("_BumpMap", node.GetStringValue("normalTexture"), false, true)); }
+            if (node.HasValue("specularTexture")) { ps.Add(new ShaderPropertyTexture("_SpecMap", node.GetStringValue("specularTexture"), false, false)); }
+            if (node.HasValue("aoTexture")) { ps.Add(new ShaderPropertyTexture("_AOMap", node.GetStringValue("aoTexture"), false, false)); }
+            if (node.HasValue("emissiveTexture")) { ps.Add(new ShaderPropertyTexture("_Emissive", node.GetStringValue("emissiveTexture"), false, false)); }
+            props = ps.ToArray();
+        }
+
+        public void enable(GameObject root, Color userColor)
+        {
+            List<ShaderProperty> ps = new List<ShaderProperty>();
+            ps.AddRange(props);
+            ps.Add(new ShaderPropertyColor("_MaskColor", userColor));
+            SSTUTextureUtils.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
+        }
+
+        public string getPropertyValue(string name)
+        {
+            ShaderProperty prop = Array.Find(props, m => m.name == name);
+            if (prop == null) { return string.Empty; }
+            if (prop is ShaderPropertyTexture) { return ((ShaderPropertyTexture)prop).textureName; }
+            if (prop is ShaderPropertyFloat) { return ((ShaderPropertyFloat)prop).val.ToString(); }
+            if (prop is ShaderPropertyColor) { return ((ShaderPropertyColor)prop).color.ToString(); }
+            return string.Empty;
+        }
+
+        public Material createMaterial(string name)
+        {
+            string shdName = string.IsNullOrEmpty(this.shader) ? "KSP/Diffuse" : this.shader;
+            Shader shd = SSTUDatabase.getShader(shdName);
+            Material mat = new Material(shd);
+            mat.name = name;
+            SSTUTextureUtils.updateMaterialProperties(mat, props);
+            return mat;
+        }
+    }
+
+
     public abstract class ShaderProperty
     {
         public readonly string name;
@@ -133,6 +252,8 @@ namespace SSTUTools
 
         protected abstract void applyInternal(Material mat);
 
+        //protected abstract string getStringValue();
+
         protected bool checkApply(Material mat)
         {
             if (mat.HasProperty(name))
@@ -150,7 +271,7 @@ namespace SSTUTools
 
     public class ShaderPropertyColor : ShaderProperty
     {
-        readonly Color color;
+        public readonly Color color;
 
         public ShaderPropertyColor(ConfigNode node) : base(node)
         {
@@ -170,7 +291,7 @@ namespace SSTUTools
 
     public class ShaderPropertyFloat : ShaderProperty
     {
-        readonly float val;
+        public readonly float val;
 
         public ShaderPropertyFloat(ConfigNode node) : base(node)
         {
@@ -193,9 +314,9 @@ namespace SSTUTools
 
     public class ShaderPropertyTexture : ShaderProperty
     {
-        readonly string textureName;
-        readonly bool main;
-        readonly bool normal;
+        public readonly string textureName;
+        public readonly bool main;
+        public readonly bool normal;
 
         public ShaderPropertyTexture(ConfigNode node) : base(node)
         {

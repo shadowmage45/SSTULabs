@@ -11,13 +11,6 @@ namespace SSTUTools
     public class SSTUNodeFairing : PartModule
     {
         #region REGION - Standard KSP Config Fields
-        
-        [KSPField]
-        public String diffuseTextureName = "SSTU/Assets/SC-GEN-Fairing-White-DIFF";
-
-        [KSPField]
-        public String normalTextureName = "SSTU/Assets/SC-GEN-Fairing-White-NRM";
-
         /// <summary>
         /// CSV List of transforms to remove from the model, to be used to override stock engine fairing configuration
         /// </summary>
@@ -204,7 +197,7 @@ namespace SSTUTools
         private bool enableBottomDiameterControls;
         private bool enableTopDiameterControls;
         
-        //material used for procedural fairing, created from the texture references above
+        //material used for procedural fairing, created from the texture references in the texture set definitions
         private Material fairingMaterial;
 
         private TextureSet[] textureSets;
@@ -258,8 +251,8 @@ namespace SSTUTools
         {
             if (textureSets != null && textureSets.Length > 0)
             {
-                TextureSet s = SSTUUtils.findNext(textureSets, m => m.setName == currentTextureSet, false);
-                currentTextureSet = s.setName;
+                TextureSet s = SSTUUtils.findNext(textureSets, m => m.name == currentTextureSet, false);
+                currentTextureSet = s.name;
                 updateTextureSet();
             }
             SSTUNodeFairing f;
@@ -406,7 +399,7 @@ namespace SSTUTools
                 if (textureSets.Length > 0 && String.IsNullOrEmpty(currentTextureSet))
                 {
                     TextureSet s = textureSets[0];
-                    currentTextureSet = textureSets[0].setName;
+                    currentTextureSet = textureSets[0].name;
                 }
             }
         }
@@ -590,8 +583,6 @@ namespace SSTUTools
                     fairingParts[i].loadPersistence(datas[i]);
                 }
             }
-            
-            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
 
             if (fairingMaterial != null)
             {
@@ -599,20 +590,9 @@ namespace SSTUTools
                 fairingMaterial = null;
             }
 
-            if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
-            {
-                TextureSet t = Array.Find(textureSets, m => m.setName == currentTextureSet);
-                if (t != null)
-                {
-                    TextureData d = t.textureDatas[0];
-                    if (d != null)
-                    {
-                        diffuseTextureName = d.diffuseTextureName;
-                        normalTextureName = d.normalTextureName;
-                    }
-                }
-            }
-            fairingMaterial = SSTUUtils.loadMaterial(diffuseTextureName, normalTextureName, "KSP/Bumped Specular");
+            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
+            TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
+            fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
 
         /// <summary>
@@ -825,26 +805,13 @@ namespace SSTUTools
         {
             if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
             {
-                TextureSet t = Array.Find(textureSets, m => m.setName == currentTextureSet);
+                TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
                 if (t != null)
                 {
-                    TextureData d = t.textureDatas[0];
-                    if (d != null)
+                    TextureSetMaterialData d = t.textureData[0];
+                    foreach (SSTUNodeFairingData f in fairingParts)
                     {
-                        diffuseTextureName = d.diffuseTextureName;
-                        normalTextureName = d.normalTextureName;
-                        Texture diffuseTex = SSTUUtils.findTexture(diffuseTextureName, false);
-                        Texture normalTex = String.IsNullOrEmpty(normalTextureName) ? null : SSTUUtils.findTexture(normalTextureName, true);
-                        fairingMaterial.mainTexture = diffuseTex;
-                        fairingMaterial.SetTexture("_BumpMap", normalTex);                        
-                        foreach (SSTUNodeFairingData f in fairingParts)
-                        {
-                            f.setMaterial(fairingMaterial);
-                        }
-                    }
-                    else
-                    {
-                        MonoBehaviour.print("ERROR: Could not locate fairing texture data for set name: " + t.setName);
+                        d.enable(f.fairingBase.rootObject, Color.clear);
                     }
                 }
             }

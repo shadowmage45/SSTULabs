@@ -107,12 +107,12 @@ namespace SSTUTools
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
+            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
             int len = textureSets.Length;
             string[] textureSetNames = new string[len];
             for (int i = 0; i < len; i++)
             {
-                textureSetNames[i] = textureSets[i].setName;
+                textureSetNames[i] = textureSets[i].name;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
             
@@ -194,12 +194,12 @@ namespace SSTUTools
             currentTextureSet = name;
             if (mpf != null)
             {
-                TextureSet set = Array.Find(textureSets, m => m.setName == currentTextureSet);
+                TextureSet set = Array.Find(textureSets, m => m.name == currentTextureSet);
                 if (set != null)
                 {
-                    TextureData data = set.textureDatas[0];//TODO cleanup this hack
-                    mpf.TextureURL = data.diffuseTextureName;
-                    Texture t = SSTUUtils.findTexture(data.diffuseTextureName, false);
+                    TextureSetMaterialData data = set.textureData[0];
+                    mpf.TextureURL = data.getPropertyValue("_MainTex");
+                    Texture t = SSTUUtils.findTexture(mpf.TextureURL, false);
                     
                     mpf.FairingMaterial.mainTexture = t;
                     foreach (var f in mpf.Panels)

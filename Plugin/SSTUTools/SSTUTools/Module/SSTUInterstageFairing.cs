@@ -355,15 +355,14 @@ namespace SSTUTools
         private void setTextureFromEditor(String newTexture, bool updateSymmetry)
         {
             currentTextureSet = newTexture;
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == newTexture);
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == newTexture);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
                 newTexture = currentTextureSet;
             }
-            TextureData data = currentTextureSetData.textureDatas[0];
-            data.enableForced(fairingBase.rootObject.transform, true);
+            currentTextureSetData.enable(fairingBase.rootObject, Color.clear);
             if (updateSymmetry)
             {
                 SSTUInterstageFairing dc;
@@ -673,25 +672,22 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            textureSetData = TextureSet.loadTextureSets(textureNodes);
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            textureSetData = TextureSet.load(textureNodes);
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
             }
 
             int len = textureSetData.Length;
             string[] textureSetNames = new string[len];
             for (int i = 0; i < len; i++)
             {
-                textureSetNames[i] = textureSetData[i].setName;
+                textureSetNames[i] = textureSetData[i].name;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
-
-            TextureData data = currentTextureSetData.textureDatas[0];
-            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
-
+            
             loadMaterial();
 
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
@@ -731,8 +727,7 @@ namespace SSTUTools
                 Material.Destroy(fairingMaterial);
                 fairingMaterial = null;
             }
-            TextureData data = currentTextureSetData.textureDatas[0];
-            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
+            fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
         }
 
         private void updateNodePositions(bool userInput)

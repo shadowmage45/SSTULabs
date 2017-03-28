@@ -194,8 +194,8 @@ namespace SSTUTools.Module
         [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
         public void nextTextureEvent()
         {
-            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.setName == currentTextureSet, false);
-            currentTextureSet = next?.setName;
+            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.name == currentTextureSet, false);
+            currentTextureSet = next.name;
             onTextureUpdated(null, null);
         }
 
@@ -297,15 +297,13 @@ namespace SSTUTools.Module
 
         private void textureWasUpdated()
         {
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
             }
-            TextureData data = currentTextureSetData.textureDatas[0];
-            fairingMaterial.mainTexture = GameDatabase.Instance.GetTexture(data.diffuseTextureName, false);
-            data.enableForced(fairingBase.rootObject.transform, true);
+            currentTextureSetData.enable(fairingBase.rootObject, Color.clear);
         }
 
         #endregion ENDREGION - GUI Interaction
@@ -405,23 +403,23 @@ namespace SSTUTools.Module
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            textureSetData = TextureSet.loadTextureSets(textureNodes);
-            currentTextureSetData = Array.Find(textureSetData, m => m.setName == currentTextureSet);
+            textureSetData = TextureSet.load(textureNodes);
+            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.setName;
+                currentTextureSet = currentTextureSetData.name;
             }
             int len = textureSetData.Length;
             string[] textureSetNames = new string[len];
             for (int i = 0; i < len; i++)
             {
-                textureSetNames[i] = textureSetData[i].setName;
+                textureSetNames[i] = textureSetData[i].name;
             }
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
 
-            TextureData data = currentTextureSetData.textureDatas[0];
-            fairingMaterial = SSTUUtils.loadMaterial(data.diffuseTextureName, null, "KSP/Specular");
+            TextureSetMaterialData data = currentTextureSetData.textureData[0];
+            fairingMaterial = data.createMaterial("SSTUFairingMaterial");
 
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 

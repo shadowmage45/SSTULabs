@@ -26,7 +26,7 @@ namespace SSTUTools
         [KSPEvent(guiActiveEditor = true, guiActive = false, guiName = "Next Texture Set")]
         public void nextTextureSetEvent()
         {
-            enableTextureSet(SSTUUtils.findNext(textureSets, m=>m.setName==currentTextureSet, false).setName);
+            enableTextureSet(SSTUUtils.findNext(textureSets, m=>m.name==currentTextureSet, false).name);
             int index = part.Modules.IndexOf(this);
             foreach (Part p in part.symmetryCounterparts)
             {
@@ -51,23 +51,22 @@ namespace SSTUTools
         private void initialize()
         {
             loadConfigData();
-            TextureSet currentSet = Array.Find(textureSets, m => m.setName == currentTextureSet);
-            currentSet.enableFromMeshes(part);
+            enableTextureSet(currentTextureSet);
         }
 
         private void loadConfigData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.loadTextureSets(node.GetNodes("TEXTURESET"));
+            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
         }
         
         //enables a specific texture set, by name
         public void enableTextureSet(String name)
         {
-            TextureSet ts = Array.Find(textureSets, m => m.setName == name);
-            if (ts != null)
+            TextureSet currentSet = Array.Find(textureSets, m => m.name == currentTextureSet);
+            if (currentSet != null)
             {
-                ts.enableFromMeshes(part);
+                currentSet.enable(part.gameObject, Color.clear);
                 currentTextureSet = name;
             } 
         }

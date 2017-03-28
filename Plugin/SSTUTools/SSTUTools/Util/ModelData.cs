@@ -81,7 +81,7 @@ namespace SSTUTools
         public readonly AttachNodeBaseData[] attachNodeData;
         public readonly AttachNodeBaseData surfaceNode;
         public readonly String defaultTextureSet;
-        public readonly ModelTextureSet[] textureSets;
+        public readonly TextureSet[] textureSets;
 
         public ModelDefinition(ConfigNode node)
         {
@@ -128,10 +128,10 @@ namespace SSTUTools
 
             ConfigNode[] textureSetNodes = node.GetNodes("TEXTURESET");
             len = textureSetNodes.Length;
-            textureSets = new ModelTextureSet[len];
+            textureSets = new TextureSet[len];
             for (int i = 0; i < len; i++)
             {
-                textureSets[i] = new ModelTextureSet(textureSetNodes[i]);
+                textureSets[i] = new TextureSet(textureSetNodes[i]);
             }
             if (node.HasValue("surface"))
             {
@@ -248,64 +248,6 @@ namespace SSTUTools
         }
     }
 
-    public class ModelTextureSet
-    {
-        public readonly String name;
-        public readonly ModelTextureData[] textureData;
-
-        public ModelTextureSet(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            ConfigNode[] texNodes = node.GetNodes("TEXTURE");
-            int len = texNodes.Length;
-            textureData = new ModelTextureData[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureData[i] = new ModelTextureData(texNodes[i]);
-            }
-        }
-
-        public void enable(GameObject root, Color userColor)
-        {
-            foreach (ModelTextureData mtd in textureData)
-            {
-                mtd.enable(root, userColor);
-            }
-        }
-    }
-
-    public class ModelTextureData
-    {
-        public readonly String shader;
-        public readonly String[] meshNames;
-        public readonly String[] excludedMeshes;
-        public readonly ShaderProperty[] props;
-
-        public ModelTextureData(ConfigNode node)
-        {
-            shader = node.GetStringValue("shader");
-            meshNames = node.GetStringValues("mesh");            
-            excludedMeshes = node.GetStringValues("excludeMesh");
-            props = ShaderProperty.parse(node);
-            List<ShaderProperty> ps = new List<ShaderProperty>();
-            ps.AddRange(props);
-            if (node.HasValue("diffuseTexture")) { ps.Add(new ShaderPropertyTexture("_MainTex", node.GetStringValue("diffuseTexture"), true, false)); }
-            if (node.HasValue("normalTexture")) { ps.Add(new ShaderPropertyTexture("_BumpMap", node.GetStringValue("normalTexture"), false, true)); }
-            if (node.HasValue("specularTexture")) { ps.Add(new ShaderPropertyTexture("_SpecMap", node.GetStringValue("specularTexture"), false, false)); }
-            if (node.HasValue("aoTexture")) { ps.Add(new ShaderPropertyTexture("_AOMap", node.GetStringValue("aoTexture"), false, false)); }
-            if (node.HasValue("emissiveTexture")) { ps.Add(new ShaderPropertyTexture("_Emissive", node.GetStringValue("emissiveTexture"), false, false)); }
-            props = ps.ToArray();
-        }
-
-        public void enable(GameObject root, Color userColor)
-        {
-            List<ShaderProperty> ps = new List<ShaderProperty>();
-            ps.AddRange(props);
-            ps.Add(new ShaderPropertyColor("_MaskColor", userColor));
-            SSTUTextureUtils.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
-        }
-    }
-
     public enum ModelOrientation
     {
         TOP,
@@ -376,7 +318,7 @@ namespace SSTUTools
                 return noTextures;
             }
             if (val == modelDefinition.defaultTextureSet) { return true; }
-            foreach (ModelTextureSet set in modelDefinition.textureSets)
+            foreach (TextureSet set in modelDefinition.textureSets)
             {
                 if (set.name == val) { return true; }
             }
@@ -695,7 +637,7 @@ namespace SSTUTools
             {
                 return;
             }
-            ModelTextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
+            TextureSet mts = Array.Find(modelDefinition.textureSets, m => m.name == setName);
             if ( mts==null )
             {
                 MonoBehaviour.print("ERROR: No texture set data for set by name: " + setName + "  --  for model: " + name);

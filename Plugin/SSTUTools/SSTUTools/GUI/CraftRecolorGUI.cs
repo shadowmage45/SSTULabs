@@ -131,26 +131,31 @@ namespace SSTUTools
 
     public class SectionRecolorGUI : MonoBehaviour
     {
-        private static int graphWidth = 320;
-        private static int graphHeight = 240;
+        private static int windowWidth = 320;
+        private static int windowHeight = 240;
         private int id = 1;
-        private Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth, graphHeight);
+        private Rect windowRect = new Rect(Screen.width - 600, 40, windowWidth, windowHeight);
 
         //TODO load the preset colors from a config defined list of presets
-        private Color[] presetColors = new Color[12];
+        private Color[] presetColors;
 
         internal SectionRecolorData sectionData;
         internal Action onCloseAction;
 
-        private float r, g, b;
+        private float r, g, b, a;
 
         public void Awake()
         {
             id = GetInstanceID();
-            presetColors[0] = Color.black;
-            presetColors[1] = Color.blue;
-            presetColors[2] = Color.red;
-            presetColors[3] = Color.white;
+
+            ConfigNode node = GameDatabase.Instance.GetConfigNodes("SSTU_COLOR_PRESETS")[0];
+            string[] colors = node.GetStringValues("color");
+            int len = colors.Length;
+            presetColors = new Color[len];
+            for (int i = 0; i < len; i++)
+            {
+                presetColors[i] = colorFromString(colors[i]);
+            }
         }
 
         public void OnGUI()
@@ -164,38 +169,50 @@ namespace SSTUTools
 
             //red slider
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Red", GUILayout.Width(100));
+            GUILayout.Label("Red", GUILayout.Width(80));
             r = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
             if (r != sectionData.color.r)
             {
                 sectionData.color.r = r;
                 sectionData.updateColor();
             }
-            GUILayout.TextField(sectionData.color.r.ToString(), GUILayout.Width(100));
+            GUILayout.TextField(sectionData.color.r.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             //green
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Green", GUILayout.Width(100));
+            GUILayout.Label("Green", GUILayout.Width(80));
             g = GUILayout.HorizontalSlider(sectionData.color.g, 0, 1, GUILayout.Width(100));
             if (g != sectionData.color.g)
             {
                 sectionData.color.g = g;
                 sectionData.updateColor();
             }
-            GUILayout.TextField(sectionData.color.g.ToString(), GUILayout.Width(100));
+            GUILayout.TextField(sectionData.color.g.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             //blue
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Blue", GUILayout.Width(100));
+            GUILayout.Label("Blue", GUILayout.Width(80));
             b = GUILayout.HorizontalSlider(sectionData.color.b, 0, 1, GUILayout.Width(100));
             if (b != sectionData.color.b)
             {
                 sectionData.color.b = b;
                 sectionData.updateColor();
             }
-            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(100));
+            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(80));
+            GUILayout.EndHorizontal();
+
+            //alpha
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Alpha", GUILayout.Width(80));
+            a = GUILayout.HorizontalSlider(sectionData.color.a, 0, 1, GUILayout.Width(100));
+            if (a != sectionData.color.a)
+            {
+                sectionData.color.a = a;
+                sectionData.updateColor();
+            }
+            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
@@ -237,6 +254,21 @@ namespace SSTUTools
             {
                 onCloseAction();
             }
+        }
+
+        private static Color colorFromBytes(int r, int g, int b, int a)
+        {
+            return new Color(r / 255f, g / 255f, b / 255f, a / 255f);
+        }
+
+        private static Color colorFromString(string val)
+        {
+            string[] split = val.Split(',');
+            int r = int.Parse(split[0]);
+            int g = int.Parse(split[1]);
+            int b = int.Parse(split[2]);
+            int a = int.Parse(split[3]);
+            return colorFromBytes(r, g, b, a);
         }
     }
 
