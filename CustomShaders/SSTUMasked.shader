@@ -3,7 +3,7 @@ Shader "SSTU/Masked"
 	Properties 
 	{
 		_MainTex("_MainTex (RGB)", 2D) = "white" {}
-		_MaskTex("_MaskTex (Grayscale)", 2D) = "white" {}
+		_MaskTex("_MaskTex (Grayscale)", 2D) = "black" {}
 		_SpecMap("_SpecMap (RGB)", 2D) = "white" {}
 		_BumpMap("_BumpMap (NRM)", 2D) = "bump" {}
 		_AOMap("_AOMap (Grayscale)", 2D) = "white" {}

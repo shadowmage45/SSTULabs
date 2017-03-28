@@ -7,7 +7,6 @@ Shader "SSTU/SolarShader"
 		_BumpMap("_BumpMap", 2D) = "bump" {}
 		_Emissive("_Emissive", 2D) = "black" {}
 		_AOMap("_AOMap Grayscale", 2D) = "white" {}
-		
 		_Color ("Main Color", Color) = (1,1,1,1)
 		_Shininess ("Shininess", Range (0.03, 1)) = 0.078125		
 		_Opacity("Opacity", Range(0,1) ) = 1

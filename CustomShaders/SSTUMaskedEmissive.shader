@@ -7,7 +7,7 @@ Shader "SSTU/MaskedEmissive"
 		_SpecMap("_SpecMap (RGB)", 2D) = "white" {}
 		_BumpMap("_BumpMap (NRM)", 2D) = "bump" {}
 		_AOMap("_AOMap (Grayscale)", 2D) = "white" {}
-		_EmissiveMap("_EmissiveMap (RGB)", 2D) = "black" {}
+		_Emissive("_Emissive (RGB)", 2D) = "black" {}
 		_Color ("Diffuse Color", Color) = (1,1,1,1)
 		_MaskColor ("Mask Color", Color) = (1,1,1,1)
 		_Shininess ("Specular Shininess", Range (0.03, 1)) = 0.078125
@@ -36,7 +36,7 @@ Shader "SSTU/MaskedEmissive"
 		sampler2D _SpecMap;
 		sampler2D _BumpMap;		
 		sampler2D _AOMap;
-		sampler2D _EmissiveMap;
+		sampler2D _Emissive;
 
 		half _Shininess;
 		float _Opacity;
@@ -54,7 +54,7 @@ Shader "SSTU/MaskedEmissive"
 			float2 uv_SpecMap;
 			float2 uv_BumpMap;
 			float2 uv_AOMap;
-			float2 uv_EmissiveMap;
+			float2 uv_Emissive;
 			float3 viewDir;
 		};
 
@@ -74,8 +74,7 @@ Shader "SSTU/MaskedEmissive"
 			o.GlossColor = spec.rgb;
 			o.Specular = _Shininess;
 			o.Normal = normal;
-			o.Emission = emission;
-			o.Emission *= _Opacity;
+			o.Emission = emission * _Opacity;
 		}
 		ENDCG
 	}

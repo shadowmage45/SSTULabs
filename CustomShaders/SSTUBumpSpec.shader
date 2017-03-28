@@ -1,5 +1,3 @@
-#include "SSTUColoredSpecularLighting.cginc"
-
 Shader "SSTU/Bumped Specular AO"
 {
 	Properties 
@@ -28,6 +26,7 @@ Shader "SSTU/Bumped Specular AO"
 
 		#pragma surface surf ColoredSpecular
 		#pragma target 3.0
+		#include "SSTUShaders.cginc"
 
 		sampler2D _MainTex;
 		sampler2D _SpecMap;
