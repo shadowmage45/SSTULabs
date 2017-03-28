@@ -276,99 +276,33 @@ namespace SSTUTools
 
     public class ModelTextureData
     {
-        public readonly String diffuseTextureName;
-        public readonly String normalTextureName;
-        public readonly String emissiveTextureName;
-        public readonly String specularTextureName;
-        public readonly String aoTextureName;
         public readonly String shader;
         public readonly String[] meshNames;
-        public readonly bool[] meshRecurse;
         public readonly String[] excludedMeshes;
+        public readonly ShaderProperty[] props;
 
         public ModelTextureData(ConfigNode node)
         {
-            diffuseTextureName = node.GetStringValue("diffuseTexture");
-            normalTextureName = node.GetStringValue("normalTexture");
-            emissiveTextureName = node.GetStringValue("emissiveTexture");
-            specularTextureName = node.GetStringValue("specularTexture");
-            aoTextureName = node.GetStringValue("aoTexture");
             shader = node.GetStringValue("shader");
-            string[] meshNamesRaw = node.GetStringValues("mesh");
-            
-            int len = meshNamesRaw.Length;
-            meshRecurse = new bool[len];
-            meshNames = new string[len];
-            string[] splits;
-            string name;
-            bool recurse;
-            for (int i = 0; i < len; i++)
-            {
-                splits = meshNamesRaw[i].Split(new char[] { ',' });
-                name = splits[0];
-                recurse = splits.Length > 1 ? SSTUUtils.safeParseBool(splits[1]) : false;
-                meshNames[i] = name;
-                meshRecurse[i] = recurse;
-            }
+            meshNames = node.GetStringValues("mesh");            
             excludedMeshes = node.GetStringValues("excludeMesh");
+            props = ShaderProperty.parse(node);
+            List<ShaderProperty> ps = new List<ShaderProperty>();
+            ps.AddRange(props);
+            if (node.HasValue("diffuseTexture")) { ps.Add(new ShaderPropertyTexture("_MainTex", node.GetStringValue("diffuseTexture"), true, false)); }
+            if (node.HasValue("normalTexture")) { ps.Add(new ShaderPropertyTexture("_BumpMap", node.GetStringValue("normalTexture"), false, true)); }
+            if (node.HasValue("specularTexture")) { ps.Add(new ShaderPropertyTexture("_SpecMap", node.GetStringValue("specularTexture"), false, false)); }
+            if (node.HasValue("aoTexture")) { ps.Add(new ShaderPropertyTexture("_AOMap", node.GetStringValue("aoTexture"), false, false)); }
+            if (node.HasValue("emissiveTexture")) { ps.Add(new ShaderPropertyTexture("_Emissive", node.GetStringValue("emissiveTexture"), false, false)); }
+            props = ps.ToArray();
         }
 
         public void enable(GameObject root, Color userColor)
         {
-            Renderer r;
-            Transform tr;
-            Transform[] trs;
-            if (meshNames.Length == 0)
-            {
-                Renderer[] rs = root.GetComponentsInChildren<Renderer>(false);
-                int len = rs.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    r = rs[i];                    
-                    if (Array.Exists(excludedMeshes, m => m == r.name)) { continue; }
-                    updateRenderer(r, userColor);
-                }
-            }
-            else
-            {
-                int len = meshNames.Length;
-                bool recurse = false;
-                for (int i = 0; i < len; i++)
-                {
-                    trs = root.transform.FindChildren(meshNames[i]);
-                    recurse = meshRecurse[i];
-                    int len2 = trs.Length;
-                    for (int k = 0; k < len2; k++)
-                    {
-                        tr = trs[k];
-                        if (tr == null) { continue; }
-                        if (recurse)
-                        {
-                            updateRendererRecursive(tr, userColor);
-                        }
-                        else if ((r = tr.GetComponent<Renderer>()) != null)
-                        {
-                            updateRenderer(r, userColor);
-                        }
-                    }
-                }
-            }
-        }
-
-        private void updateRendererRecursive(Transform root, Color color)
-        {
-            Renderer[] renders = root.GetComponentsInChildren<Renderer>(true);
-            int len = renders.Length;
-            for (int i = 0; i < len; i++)
-            {
-                updateRenderer(renders[i], color);
-            }
-        }
-
-        private void updateRenderer(Renderer r, Color color)
-        {
-            ShaderProperty prop = new ShaderProperty("_MaskColor", color);
-            SSTUAssetBundleShaderLoader.updateRenderer(r, shader, diffuseTextureName, normalTextureName, specularTextureName, emissiveTextureName, aoTextureName, new ShaderProperty[] { prop });
+            List<ShaderProperty> ps = new List<ShaderProperty>();
+            ps.AddRange(props);
+            ps.Add(new ShaderPropertyColor("_MaskColor", userColor));
+            SSTUTextureUtils.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
         }
     }
 

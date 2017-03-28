@@ -102,6 +102,7 @@
     <Compile Include="Module\SSTUModelSwitch.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
     <Compile Include="Util\IRecolorable.cs" />
+    <Compile Include="Util\SSTUTextureUtils.cs" />
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
     <Compile Include="Module\SSTUModularFuelTank.cs" />
