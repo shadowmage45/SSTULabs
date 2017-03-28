@@ -3,28 +3,40 @@ using UnityEditor;
 using System.Collections;
 
 public class AssetBundleCompiler
-{
-    [MenuItem ("Assets/Build AssetBundles OSX")]
-    static void BuildAllAssetBundlesOSX ()
+{	
+	[MenuItem ("Assets/Build Selected AssetBundle Win64")]
+    static void BuildAssetBundleWin64 ()
     {
-        BuildPipeline.BuildAssetBundles ("Assets/AssetBundles", BuildAssetBundleOptions.None, BuildTarget.StandaloneOSXUniversal);
+        exportAssetBundle(BuildTarget.StandaloneWindows64);
     }
-	
-	[MenuItem ("Assets/Build AssetBundles Lin")]
-    static void BuildAllAssetBundlesLin ()
+
+    [MenuItem("Assets/Build Selected AssetBundle OSX")]
+    static void BuildAssetBundleOSX()
     {
-        BuildPipeline.BuildAssetBundles ("Assets/AssetBundles", BuildAssetBundleOptions.None, BuildTarget.StandaloneLinux);
+        exportAssetBundle(BuildTarget.StandaloneOSXUniversal);
     }
-	
-	[MenuItem ("Assets/Build AssetBundles Win32")]
-    static void BuildAllAssetBundlesWin32 ()
+
+    [MenuItem("Assets/Build Selected AssetBundle Linux")]
+    static void BuildAssetBundleLinux()
     {
-        BuildPipeline.BuildAssetBundles ("Assets/AssetBundles", BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows);
+        exportAssetBundle(BuildTarget.StandaloneLinux);
     }
-	
-	[MenuItem ("Assets/Build AssetBundles Win64")]
-    static void BuildAllAssetBundlesWin64 ()
+
+    private static void exportAssetBundle(BuildTarget target)
     {
-        BuildPipeline.BuildAssetBundles ("Assets/AssetBundles", BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);
+        string path = EditorUtility.SaveFilePanel("Build Asset Bundle", "Assets", "NewAssetBundle", "assetbundle");
+        string directory = path.Substring(0, path.LastIndexOf('/'));
+        string name = path.Substring(path.LastIndexOf('/') + 1);
+        Object[] selection = Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets);
+        AssetBundleBuild build = new AssetBundleBuild();
+        build.assetBundleName = name;
+        build.assetNames = new string[selection.Length];
+        int len = selection.Length;
+        for (int i = 0; i < len; i++)
+        {
+            build.assetNames[i] = AssetDatabase.GetAssetPath((UnityEngine.Object)selection[i]);
+        }
+        BuildPipeline.BuildAssetBundles(directory, new AssetBundleBuild[] { build }, BuildAssetBundleOptions.None, target);
     }
+
 }

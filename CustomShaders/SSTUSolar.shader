@@ -1,5 +1,3 @@
-#include "SSTUColoredSpecularLighting.cginc"
-
 Shader "SSTU/SolarShader"
 {
 	Properties 
@@ -31,6 +29,7 @@ Shader "SSTU/SolarShader"
 
 		#pragma surface surf ColoredSolar
 		#pragma target 3.0
+		#include "SSTUShaders.cginc"
 
 		sampler2D _MainTex;
 		sampler2D _SpecMap;

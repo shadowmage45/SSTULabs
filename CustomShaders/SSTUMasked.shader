@@ -1,5 +1,3 @@
-#include "SSTUColoredSpecularLighting.cginc"
-
 Shader "SSTU/Masked"
 {
 	Properties 
@@ -30,8 +28,9 @@ Shader "SSTU/Masked"
 
 		#pragma surface surf ColoredSpecular
 		#pragma target 3.0
+		#include "SSTUShaders.cginc"
 		
-		//colored specular lighting model found in SSTUColoredSpecularLighting.cginc
+		//ColoredSpecular lighting model and surface data struct found in SSTUShaders.cginc
 		
 		sampler2D _MainTex;
 		sampler2D _MaskTex;
