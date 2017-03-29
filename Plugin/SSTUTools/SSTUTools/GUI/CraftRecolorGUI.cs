@@ -132,9 +132,10 @@ namespace SSTUTools
     public class SectionRecolorGUI : MonoBehaviour
     {
         private static int windowWidth = 320;
-        private static int windowHeight = 240;
+        private static int windowHeight = 480;
         private int id = 1;
         private Rect windowRect = new Rect(Screen.width - 600, 40, windowWidth, windowHeight);
+        private Vector2 scrollPos;
 
         //TODO load the preset colors from a config defined list of presets
         private Color[] presetColors;
@@ -212,11 +213,11 @@ namespace SSTUTools
                 sectionData.color.a = a;
                 sectionData.updateColor();
             }
-            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(80));
+            GUILayout.TextField(sectionData.color.a.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
-
+            scrollPos = GUILayout.BeginScrollView(scrollPos, false, true);
             Color old = GUI.color;
             int len = presetColors.Length;
             int row = 0, column = 0;
@@ -224,7 +225,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 GUI.color = presetColors[i];
-                if(GUILayout.Button("Preset", GUILayout.Width(50)))
+                if(GUILayout.Button("Preset", GUILayout.Width(60)))
                 {
                     sectionData.color = presetColors[i];
                     sectionData.updateColor();
@@ -240,6 +241,7 @@ namespace SSTUTools
             }
             GUILayout.EndHorizontal();
             GUI.color = old;
+            GUILayout.EndScrollView();
 
             bool shouldClose = false;
             if (GUILayout.Button("Close"))
