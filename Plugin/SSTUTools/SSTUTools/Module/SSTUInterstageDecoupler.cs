@@ -403,7 +403,7 @@ namespace SSTUTools.Module
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            textureSetData = TextureSet.load(textureNodes);
+            textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
             currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {

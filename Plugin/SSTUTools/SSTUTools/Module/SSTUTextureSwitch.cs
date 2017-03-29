@@ -57,7 +57,7 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
+            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
         }
         
         //enables a specific texture set, by name

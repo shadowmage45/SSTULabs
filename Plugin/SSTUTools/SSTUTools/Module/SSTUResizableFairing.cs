@@ -107,7 +107,7 @@ namespace SSTUTools
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
+            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
             int len = textureSets.Length;
             string[] textureSetNames = new string[len];
             for (int i = 0; i < len; i++)

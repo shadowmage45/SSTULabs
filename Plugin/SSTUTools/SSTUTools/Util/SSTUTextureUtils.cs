@@ -110,12 +110,12 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Loads full texture sets from a TEXTURESET node containing only the set name
+        /// Loads full texture sets from a config node containing only the set name
         /// the full set is loaded from the global set of SSTU_TEXTURESETs
         /// </summary>
         /// <param name="nodes"></param>
         /// <returns></returns>
-        public static TextureSet[] load(ConfigNode[] nodes)
+        public static TextureSet[] loadGlobalTextureSets(ConfigNode[] nodes)
         {
             int len = nodes.Length;
             TextureSet[] sets = new TextureSet[len];

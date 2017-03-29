@@ -590,7 +590,7 @@ namespace SSTUTools
                 fairingMaterial = null;
             }
 
-            textureSets = TextureSet.load(node.GetNodes("TEXTURESET"));
+            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
             TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
