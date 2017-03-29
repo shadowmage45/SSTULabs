@@ -80,7 +80,7 @@ namespace SSTUTools
             string name, shader;
             string[] modelNames;
             string[] excludeMeshes, meshes;
-            GameObject go;
+            GameObject model;
             for (int i = 0; i < len; i++)
             {
                 textureNode = textureNodes[i];
@@ -94,13 +94,13 @@ namespace SSTUTools
                 int len2 = modelNames.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    go = GameDatabase.Instance.GetModelPrefab(modelNames[k]);
-                    if (go == null)
+                    model = GameDatabase.Instance.GetModelPrefab(modelNames[k]);
+                    if (model == null)
                     {
                         MonoBehaviour.print("ERROR: Could not locate model: " + modelNames[k] + ".  Could not update shader or textures for model for shader assignment set: "+name);
                         continue;
                     }
-                    SSTUTextureUtils.updateModelMaterial(go.transform, excludeMeshes, meshes, shader, props);
+                    SSTUTextureUtils.updateModelMaterial(model.transform, excludeMeshes, meshes, shader, props);
                 }
             }
         }
