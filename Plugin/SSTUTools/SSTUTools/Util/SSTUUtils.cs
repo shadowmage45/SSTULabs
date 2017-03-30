@@ -65,7 +65,7 @@ namespace SSTUTools
             return interfacesList.ToArray();
         }
 
-        public static string[] getNames<T>(T[] input, Func<T, string> alg)
+        public static string[] getNames<T>(IEnumerable<T> input, Func<T, string> alg)
         {
             return input.Select(alg).ToArray();
         }
