@@ -199,7 +199,7 @@ namespace SSTUTools
                 currentTextureSet = currentTextureSetData.name;
                 newTexture = currentTextureSet;
             }
-            currentTextureSetData.enable(model.root, Color.clear);
+            currentTextureSetData.enable(model.root, new Color[] { Color.clear, Color.clear, Color.clear });
             if (updateSymmetry)
             {
                 SSTUProceduralDecoupler dc;

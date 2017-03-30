@@ -198,7 +198,7 @@ namespace SSTUTools
             {
                 currentTopTexture = topModule.getDefaultTextureSet();
             }
-            topModule.enableTextureSet(currentTopTexture, noseColor);
+            topModule.enableTextureSet(currentTopTexture, new Color[] { noseColor, noseColor, noseColor });
             topModule.updateTextureUIControl(this, "currentTopTexture", currentTopTexture);
             if (updateSymmetry)
             {
@@ -226,7 +226,7 @@ namespace SSTUTools
             {
                 currentCoreTexture = coreModule.getDefaultTextureSet();
             }
-            coreModule.enableTextureSet(currentCoreTexture, bodyColor);
+            coreModule.enableTextureSet(currentCoreTexture, new Color[] { bodyColor, bodyColor, bodyColor });
             coreModule.updateTextureUIControl(this, "currentCoreTexture", currentCoreTexture);
             if (updateSymmetry)
             {
@@ -254,7 +254,7 @@ namespace SSTUTools
             {
                 currentBottomTexture = bottomModule.getDefaultTextureSet();
             }
-            bottomModule.enableTextureSet(currentBottomTexture, mountColor);
+            bottomModule.enableTextureSet(currentBottomTexture, new Color[] { mountColor, mountColor, mountColor });
             bottomModule.updateTextureUIControl(this, "currentBottomTexture", currentBottomTexture);
             if (updateSymmetry)
             {
@@ -329,7 +329,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentTopTexture)
             {
-                topModule.enableTextureSet(currentTopTexture, noseColor);
+                topModule.enableTextureSet(currentTopTexture, new Color[] { noseColor, noseColor, noseColor });
             }
         }
         
@@ -337,7 +337,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentCoreTexture)
             {
-                coreModule.enableTextureSet(currentCoreTexture, bodyColor);
+                coreModule.enableTextureSet(currentCoreTexture, new Color[] { bodyColor, bodyColor, bodyColor });
             }
         }
         
@@ -345,7 +345,7 @@ namespace SSTUTools
         {
             if ((String)obj != currentBottomTexture)
             {
-                bottomModule.enableTextureSet(currentBottomTexture, mountColor);
+                bottomModule.enableTextureSet(currentBottomTexture, new Color[] { mountColor, mountColor, mountColor });
             }
         }
         
@@ -422,27 +422,39 @@ namespace SSTUTools
             return new string[] { "Top", "Body", "Bottom" };
         }
 
-        public Color[] getSectionColors()
-        {
-            return new Color[] { noseColor, bodyColor, mountColor };
-        }
-
-        public void setSectionColor(string section, Color color)
+        public Color[] getSectionColors(string section)
         {
             if (section == "Top")
             {
-                noseColor = color;
-                topModule.enableTextureSet(currentTopTexture, noseColor);
+                return new Color[] { noseColor, noseColor, noseColor };
             }
             else if (section == "Body")
             {
-                bodyColor = color;
-                coreModule.enableTextureSet(currentCoreTexture, bodyColor);
+                return new Color[] { bodyColor, bodyColor, bodyColor };
             }
             else if (section == "Bottom")
             {
-                mountColor = color;
-                bottomModule.enableTextureSet(currentBottomTexture, mountColor);
+                return new Color[] { mountColor, mountColor, mountColor };
+            }
+            return new Color[] { bodyColor, bodyColor, bodyColor };
+        }
+
+        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        {
+            if (section == "Top")
+            {
+                noseColor = color1;
+                topModule.enableTextureSet(currentTopTexture, new Color[] { noseColor, noseColor, noseColor });
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color1;
+                coreModule.enableTextureSet(currentCoreTexture, new Color[] { bodyColor, bodyColor, bodyColor });
+            }
+            else if (section == "Bottom")
+            {
+                mountColor = color1;
+                bottomModule.enableTextureSet(currentBottomTexture, new Color[] { mountColor, mountColor, mountColor });
             }
         }
 
@@ -655,9 +667,9 @@ namespace SSTUTools
             bottomDockModule.setupModel(getBottomDockRoot(true), ModelOrientation.BOTTOM);
             solarModule.enable(getSolarRoot(true), 0);
 
-            topModule.enableTextureSet(currentTopTexture, noseColor);
-            coreModule.enableTextureSet(currentCoreTexture, bodyColor);
-            bottomModule.enableTextureSet(currentBottomTexture, mountColor);
+            topModule.enableTextureSet(currentTopTexture, new Color[] { noseColor, noseColor, noseColor });
+            coreModule.enableTextureSet(currentCoreTexture, new Color[] { bodyColor, bodyColor, bodyColor });
+            bottomModule.enableTextureSet(currentBottomTexture, new Color[] { mountColor, mountColor, mountColor });
 
             //control transforms need to exist during part initialization
             //else things will explode if one of those transforms is the reference transform when a vessel is reloaded

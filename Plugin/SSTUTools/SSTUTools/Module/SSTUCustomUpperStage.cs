@@ -396,7 +396,7 @@ namespace SSTUTools
             updateContainerVolume();
             updateGuiState();
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
-            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
+            currentMountModule.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor, mountColor });
             currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             if (updateSymmetry)
             {
@@ -421,7 +421,7 @@ namespace SSTUTools
             {
                 currentIntertankTextureSet = currentIntertankModule.getDefaultTextureSet();
             }
-            currentIntertankModule.enableTextureSet(currentIntertankTextureSet, intertankColor);
+            currentIntertankModule.enableTextureSet(currentIntertankTextureSet, new Color[] { intertankColor, intertankColor, intertankColor });
             currentIntertankModule.updateTextureUIControl(this, "currentIntertankTextureSet", currentIntertankTextureSet);
             updateModules(true);
             updateModels();
@@ -440,7 +440,7 @@ namespace SSTUTools
         private void setMountTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentMountTexture = newSet;
-            currentMountModule.enableTextureSet(newSet, mountColor);
+            currentMountModule.enableTextureSet(newSet, new Color[] { mountColor, mountColor, mountColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -453,7 +453,7 @@ namespace SSTUTools
         private void setTankDomeTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentDomeTextureSet = newSet;
-            upperDomeModule.enableTextureSet(newSet, domeColor);
+            upperDomeModule.enableTextureSet(newSet, new Color[] { domeColor, domeColor, domeColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -466,9 +466,9 @@ namespace SSTUTools
         private void setTankUpperTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentUpperTextureSet = newSet;
-            upperTopCapModule.enableTextureSet(newSet, upperColor);
-            upperModule.enableTextureSet(newSet, upperColor);
-            upperBottomCapModule.enableTextureSet(newSet, upperColor);
+            upperTopCapModule.enableTextureSet(newSet, new Color[] { upperColor, upperColor, upperColor });
+            upperModule.enableTextureSet(newSet, new Color[] { upperColor, upperColor, upperColor });
+            upperBottomCapModule.enableTextureSet(newSet, new Color[] { upperColor, upperColor, upperColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -481,7 +481,7 @@ namespace SSTUTools
         private void setIntertankTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentIntertankTextureSet = newSet;
-            currentIntertankModule.enableTextureSet(newSet, intertankColor);
+            currentIntertankModule.enableTextureSet(newSet, new Color[] { intertankColor, intertankColor, intertankColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -494,9 +494,9 @@ namespace SSTUTools
         private void setTankLowerTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentLowerTextureSet = newSet;
-            lowerTopCapModule.enableTextureSet(newSet, lowerColor);
-            lowerModule.enableTextureSet(newSet, lowerColor);
-            lowerBottomCapModule.enableTextureSet(newSet, lowerColor);
+            lowerTopCapModule.enableTextureSet(newSet, new Color[] { lowerColor, lowerColor, lowerColor });
+            lowerModule.enableTextureSet(newSet, new Color[] { lowerColor, lowerColor, lowerColor });
+            lowerBottomCapModule.enableTextureSet(newSet, new Color[] { lowerColor, lowerColor, lowerColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -621,36 +621,52 @@ namespace SSTUTools
             return new string[] { "Dome", "Upper", "Mount" };
         }
 
-        public Color[] getSectionColors()
-        {
-            if (splitTank)
-            {
-                return new Color[] { domeColor, upperColor, intertankColor, lowerColor, mountColor };
-            }
-            return new Color[] { domeColor, upperColor, mountColor };
-        }
-
-        public void setSectionColor(string section, Color color)
+        public Color[] getSectionColors(string section)
         {
             if (section == "Dome")
             {
-                domeColor = color;
+                return new Color[] { domeColor, domeColor, domeColor };
             }
             else if (section == "Upper")
             {
-                upperColor = color;
+                return new Color[] { upperColor, upperColor, upperColor };
             }
             else if (section == "Intertank")
             {
-                intertankColor = color;
+                return new Color[] { intertankColor, intertankColor, intertankColor };
             }
             else if (section == "Lower")
             {
-                lowerColor = color;
+                return new Color[] { lowerColor, lowerColor, lowerColor };
             }
             else if (section == "Mount")
             {
-                mountColor = color;
+                return new Color[] { mountColor, mountColor, mountColor };
+            }
+            return new Color[] { domeColor, domeColor, domeColor };
+        }
+
+        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        {
+            if (section == "Dome")
+            {
+                domeColor = color1;
+            }
+            else if (section == "Upper")
+            {
+                upperColor = color1;
+            }
+            else if (section == "Intertank")
+            {
+                intertankColor = color1;
+            }
+            else if (section == "Lower")
+            {
+                lowerColor = color1;
+            }
+            else if (section == "Mount")
+            {
+                mountColor = color1;
             }
             updateTextureSet(true);
         }
@@ -940,18 +956,18 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
-            upperDomeModule.enableTextureSet(currentDomeTextureSet, domeColor);
-            upperTopCapModule.enableTextureSet(currentUpperTextureSet, upperColor);
-            upperModule.enableTextureSet(currentUpperTextureSet, upperColor);
-            upperBottomCapModule.enableTextureSet(currentUpperTextureSet, upperColor);
+            upperDomeModule.enableTextureSet(currentDomeTextureSet, new Color[] { domeColor, domeColor, domeColor });
+            upperTopCapModule.enableTextureSet(currentUpperTextureSet, new Color[] { upperColor, upperColor, upperColor });
+            upperModule.enableTextureSet(currentUpperTextureSet, new Color[] { upperColor, upperColor, upperColor });
+            upperBottomCapModule.enableTextureSet(currentUpperTextureSet, new Color[] { upperColor, upperColor, upperColor });
             if (splitTank)
             {
-                currentIntertankModule.enableTextureSet(currentIntertankTextureSet, intertankColor);
-                lowerTopCapModule.enableTextureSet(currentLowerTextureSet, lowerColor);
-                lowerModule.enableTextureSet(currentLowerTextureSet, lowerColor);
-                lowerBottomCapModule.enableTextureSet(currentLowerTextureSet, lowerColor);
+                currentIntertankModule.enableTextureSet(currentIntertankTextureSet, new Color[] { intertankColor, intertankColor, intertankColor });
+                lowerTopCapModule.enableTextureSet(currentLowerTextureSet, new Color[] { lowerColor, lowerColor, lowerColor });
+                lowerModule.enableTextureSet(currentLowerTextureSet, new Color[] { lowerColor, lowerColor, lowerColor });
+                lowerBottomCapModule.enableTextureSet(currentLowerTextureSet, new Color[] { lowerColor, lowerColor, lowerColor });
             }
-            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
+            currentMountModule.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor, mountColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)

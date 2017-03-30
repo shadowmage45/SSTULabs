@@ -416,7 +416,7 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountData.getDefaultTextureSet();
             }
-            currentMountData.enableTextureSet(currentMountTexture, mountColor);
+            currentMountData.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor, mountColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -518,20 +518,20 @@ namespace SSTUTools
 
         public string[] getSectionNames()
         {
-            return new string[] {"Mount",};
+            return new string[] {"Mount"};
         }
 
-        public Color[] getSectionColors()
+        public Color[] getSectionColors(string section)
         {
-            return new Color[] { mountColor };
+            return new Color[] { mountColor, mountColor, mountColor };
         }
 
-        public void setSectionColor(string section, Color color)
+        public void setSectionColors(string section, Color color1, Color color2, Color color3)
         {
             if (section == "Mount")
             {
-                mountColor = color;
-                currentMountData.enableTextureSet(currentMountTexture, mountColor);
+                mountColor = color1;
+                updateMountTexture();
             }
         }
 
@@ -780,7 +780,7 @@ namespace SSTUTools
             {
                 currentMountTexture = currentMountData.getDefaultTextureSet();
             }
-            currentMountData.enableTextureSet(currentMountTexture, mountColor);
+            currentMountData.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor, mountColor });
         }
 
         #endregion ENDREGION - Model Setup

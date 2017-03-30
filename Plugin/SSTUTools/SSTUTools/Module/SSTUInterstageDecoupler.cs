@@ -303,7 +303,7 @@ namespace SSTUTools.Module
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.name;
             }
-            currentTextureSetData.enable(fairingBase.rootObject, Color.clear);
+            currentTextureSetData.enable(fairingBase.rootObject, new Color[] { Color.clear, Color.clear, Color.clear });
         }
 
         #endregion ENDREGION - GUI Interaction

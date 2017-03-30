@@ -362,7 +362,7 @@ namespace SSTUTools
                 currentTextureSet = currentTextureSetData.name;
                 newTexture = currentTextureSet;
             }
-            currentTextureSetData.enable(fairingBase.rootObject, Color.clear);
+            currentTextureSetData.enable(fairingBase.rootObject, new Color[] { Color.clear, Color.clear, Color.clear });
             if (updateSymmetry)
             {
                 SSTUInterstageFairing dc;

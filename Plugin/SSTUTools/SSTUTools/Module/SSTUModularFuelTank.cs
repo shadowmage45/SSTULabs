@@ -88,12 +88,20 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public Vector4 noseColor = Color.white;
-                
+        
         [KSPField(isPersistant = true)]
         public Vector4 bodyColor = Color.white;
+        [KSPField(isPersistant = true)]
+        public Vector4 bodyColor2 = Color.white;
+        [KSPField(isPersistant = true)]
+        public Vector4 bodyColor3 = Color.white;
 
         [KSPField(isPersistant = true)]
         public Vector4 mountColor = Color.white;
+        [KSPField(isPersistant = true)]
+        public Vector4 mountColor2 = Color.white;
+        [KSPField(isPersistant = true)]
+        public Vector4 mountColor3 = Color.white;
 
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
@@ -278,7 +286,7 @@ namespace SSTUTools
             newModule.setupModel(getNoseRootTransform(false), ModelOrientation.TOP);
             currentNoseType = newModule.name;
             if (!currentNoseModule.isValidTextureSet(currentNoseTexture)) { currentNoseTexture = currentNoseModule.getDefaultTextureSet(); }
-            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
+            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateEditorStats(true);
             if (updateSymmetry)
@@ -323,7 +331,7 @@ namespace SSTUTools
             currentMainTankModule.setupModel(getTankRootTransform(false), ModelOrientation.CENTRAL);
             currentTankType = newModule.name;
             if (!currentMainTankModule.isValidTextureSet(currentTankTexture)) { currentTankTexture = currentMainTankModule.getDefaultTextureSet(); }
-            currentMainTankModule.enableTextureSet(currentTankTexture, bodyColor);
+            currentMainTankModule.enableTextureSet(currentTankTexture, new Color[] { bodyColor, bodyColor2, bodyColor3 });
             currentMainTankModule.updateTextureUIControl(this, "currentTankTexture", currentTankTexture);
             updateUIScaleControls();
             updateEditorStats(true);
@@ -349,7 +357,7 @@ namespace SSTUTools
             newModule.setupModel(getMountRootTransform(false), ModelOrientation.BOTTOM);
             currentMountType = newModule.name;
             if (!currentMountModule.isValidTextureSet(currentMountTexture)) { currentMountTexture = currentMountModule.getDefaultTextureSet(); }
-            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
+            currentMountModule.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor2, mountColor3 });
             currentMountModule.updateTextureUIControl(this, "currentMountTexture", currentMountTexture);
             updateEditorStats(true);
 
@@ -403,7 +411,7 @@ namespace SSTUTools
         private void setNoseTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentNoseTexture = newSet;
-            currentNoseModule.enableTextureSet(newSet, noseColor);
+            currentNoseModule.enableTextureSet(newSet, new Color[] { noseColor, noseColor, noseColor });
 
             if (updateSymmetry)
             {
@@ -417,7 +425,7 @@ namespace SSTUTools
         private void setTankTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentTankTexture = newSet;
-            currentMainTankModule.enableTextureSet(newSet, bodyColor);
+            currentMainTankModule.enableTextureSet(newSet, new Color[] { bodyColor, bodyColor2, bodyColor3 });
 
             if (updateSymmetry)
             {
@@ -431,7 +439,7 @@ namespace SSTUTools
         private void setMountTextureFromEditor(String newSet, bool updateSymmetry)
         {
             currentMountTexture = newSet;
-            currentMountModule.enableTextureSet(newSet, mountColor);
+            currentMountModule.enableTextureSet(newSet, new Color[] { mountColor, mountColor2, mountColor3 });
 
             if (updateSymmetry)
             {
@@ -571,30 +579,46 @@ namespace SSTUTools
             // but have to update available variants regardless of whatever caused the editor event callback
             updateAvailableVariants();
         }
-
+        
         public string[] getSectionNames()
         {
             return new string[] { "Top", "Body", "Bottom" };
         }
-
-        public Color[] getSectionColors()
-        {
-            return new Color[] { noseColor, bodyColor, mountColor };
-        }
-
-        public void setSectionColor(string section, Color color)
+        
+        public Color[] getSectionColors(string section)
         {
             if (section == "Top")
             {
-                noseColor = color;
+                return new Color[] { noseColor, noseColor, noseColor };
             }
             else if (section == "Body")
             {
-                bodyColor = color;
+                return new Color[] { bodyColor, bodyColor2, bodyColor3 };
             }
             else if (section == "Bottom")
             {
-                mountColor = color;
+                return new Color[] { mountColor, mountColor2, mountColor3 };
+            }
+            return new Color[] { bodyColor, bodyColor2, bodyColor3 };
+        }
+
+        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        {
+            if (section == "Top")
+            {
+                noseColor = color1;
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color1;
+                bodyColor2 = color2;
+                bodyColor3 = color3;
+            }
+            else if (section == "Bottom")
+            {
+                mountColor = color1;
+                mountColor2 = color2;
+                mountColor3 = color3;
             }
             updateTextureSet(true);
         }
@@ -806,9 +830,9 @@ namespace SSTUTools
 
         private void updateTextureSet(bool updateSymmetry)
         {
-            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
-            currentMainTankModule.enableTextureSet(currentTankTexture, bodyColor);
-            currentMountModule.enableTextureSet(currentMountTexture, mountColor);
+            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
+            currentMainTankModule.enableTextureSet(currentTankTexture, new Color[] { bodyColor, bodyColor2, bodyColor3 });
+            currentMountModule.enableTextureSet(currentMountTexture, new Color[] { mountColor, mountColor2, mountColor3 });
 
             if (updateSymmetry)
             {

@@ -811,7 +811,7 @@ namespace SSTUTools
                     TextureSetMaterialData d = t.textureData[0];
                     foreach (SSTUNodeFairingData f in fairingParts)
                     {
-                        d.enable(f.fairingBase.rootObject, Color.clear);
+                        d.enable(f.fairingBase.rootObject, new Color[] { Color.clear, Color.clear, Color.clear });
                     }
                 }
             }

@@ -327,7 +327,7 @@ namespace SSTUTools
             {
                 currentMainTexture = currentMainModule.getDefaultTextureSet();            
             }
-            currentMainModule.enableTextureSet(currentMainTexture, bodyColor);
+            currentMainModule.enableTextureSet(currentMainTexture, new Color[] { bodyColor, bodyColor, bodyColor});
             currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -368,7 +368,7 @@ namespace SSTUTools
             {
                 currentNoseTexture = currentNoseModule.getDefaultTextureSet();
             }
-            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
+            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
             currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -412,7 +412,7 @@ namespace SSTUTools
             {
                 currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
             }
-            currentNozzleModule.enableTextureSet(currentNozzleTexture, nozzleColor);
+            currentNozzleModule.enableTextureSet(currentNozzleTexture, new Color[] { nozzleColor, nozzleColor, nozzleColor });
             currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
             updateModelScaleAndPosition();
             updateEffectsScale();
@@ -467,7 +467,7 @@ namespace SSTUTools
         private void updateMainTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentMainTexture = newTex;
-            currentMainModule.enableTextureSet(newTex, bodyColor);
+            currentMainModule.enableTextureSet(newTex, new Color[] { bodyColor, bodyColor, bodyColor });
             if (updateSymmetry)
             {
                 foreach(Part p in part.symmetryCounterparts)
@@ -480,7 +480,7 @@ namespace SSTUTools
         private void updateNoseTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentNoseTexture = newTex;
-            currentNoseModule.enableTextureSet(newTex, noseColor);
+            currentNoseModule.enableTextureSet(newTex, new Color[] { noseColor, noseColor, noseColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -493,7 +493,7 @@ namespace SSTUTools
         private void updateNozzleTextureFromEditor(String newTex, bool updateSymmetry)
         {
             currentNozzleTexture = newTex;
-            currentNozzleModule.enableTextureSet(newTex, nozzleColor);
+            currentNozzleModule.enableTextureSet(newTex, new Color[] { nozzleColor, nozzleColor, nozzleColor });
             if (updateSymmetry)
             {
                 foreach (Part p in part.symmetryCounterparts)
@@ -608,29 +608,42 @@ namespace SSTUTools
             }
         }
 
+        //IRecolorable interface methods
         public string[] getSectionNames()
         {
             return new string[] { "Top", "Body", "Bottom" };
         }
 
-        public Color[] getSectionColors()
-        {
-            return new Color[] { noseColor, bodyColor, nozzleColor };
-        }
-
-        public void setSectionColor(string section, Color color)
+        public Color[] getSectionColors(string section)
         {
             if (section == "Top")
             {
-                noseColor = color;
+                return new Color[] { noseColor, noseColor, noseColor };
             }
             else if (section == "Body")
             {
-                bodyColor = color;
+                return new Color[] { bodyColor, bodyColor, bodyColor };
             }
             else if (section == "Bottom")
             {
-                nozzleColor = color;
+                return new Color[] { nozzleColor, nozzleColor, nozzleColor };
+            }
+            return new Color[] { noseColor, noseColor, noseColor };
+        }
+
+        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        {
+            if (section == "Top")
+            {
+                noseColor = color1;
+            }
+            else if (section == "Body")
+            {
+                bodyColor = color1;
+            }
+            else if (section == "Bottom")
+            {
+                nozzleColor = color1;
             }
             updateTextureSets();
         }
@@ -1100,9 +1113,9 @@ namespace SSTUTools
 
         private void updateTextureSets()
         {
-            currentNoseModule.enableTextureSet(currentNoseTexture, noseColor);
-            currentMainModule.enableTextureSet(currentMainTexture, bodyColor);
-            currentNozzleModule.enableTextureSet(currentNozzleTexture, nozzleColor);
+            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
+            currentMainModule.enableTextureSet(currentMainTexture, new Color[] { bodyColor, bodyColor, bodyColor });
+            currentNozzleModule.enableTextureSet(currentNozzleTexture, new Color[] { nozzleColor, nozzleColor, nozzleColor });
         }
 
         #endregion ENDREGION - Update Methods

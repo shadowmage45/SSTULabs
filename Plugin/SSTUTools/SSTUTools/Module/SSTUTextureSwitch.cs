@@ -66,7 +66,7 @@ namespace SSTUTools
             TextureSet currentSet = Array.Find(textureSets, m => m.name == currentTextureSet);
             if (currentSet != null)
             {
-                currentSet.enable(part.gameObject, Color.clear);
+                currentSet.enable(part.gameObject, new Color[] { Color.clear, Color.clear, Color.clear });
                 currentTextureSet = name;
             } 
         }

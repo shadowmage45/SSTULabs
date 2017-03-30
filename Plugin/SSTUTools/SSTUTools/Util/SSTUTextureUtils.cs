@@ -90,11 +90,11 @@ namespace SSTUTools
             }
         }
 
-        public void enable(GameObject root, Color userColor)
+        public void enable(GameObject root, Color[] userColors)
         {
             foreach (TextureSetMaterialData mtd in textureData)
             {
-                mtd.enable(root, userColor);
+                mtd.enable(root, userColors);
             }
         }
 
@@ -162,11 +162,15 @@ namespace SSTUTools
             props = ps.ToArray();
         }
 
-        public void enable(GameObject root, Color userColor)
+        public void enable(GameObject root, Color[] userColors)
         {
             List<ShaderProperty> ps = new List<ShaderProperty>();
             ps.AddRange(props);
-            ps.Add(new ShaderPropertyColor("_MaskColor", userColor));
+            int len = userColors.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ps.Add(new ShaderPropertyColor("_MaskColor"+(i+1), userColors[i]));
+            }            
             SSTUTextureUtils.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
         }
 

@@ -95,10 +95,13 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     GUILayout.BeginHorizontal();
-                    GUI.color = moduleRecolorData[i].sectionData[k].color;
-                    if (GUILayout.Button("Recolor") && sectionGUI == null)
+                    for (int m = 0; m < 3; m++)
                     {
-                        openSectionGUI(moduleRecolorData[i].sectionData[k]);
+                        GUI.color = moduleRecolorData[i].sectionData[k].colors[m];
+                        if (GUILayout.Button("Recolor", GUILayout.Width(70)))
+                        {
+                            openSectionGUI(moduleRecolorData[i].sectionData[k], m);
+                        }
                     }
                     GUI.color = old;
                     GUILayout.Label(moduleRecolorData[i].module + "-" + moduleRecolorData[i].sectionData[k].sectionName);
@@ -115,16 +118,19 @@ namespace SSTUTools
             GUI.DragWindow();
         }
 
-        private void openSectionGUI(SectionRecolorData section)
+        private void openSectionGUI(SectionRecolorData section, int colorIndex)
         {
+            if (sectionGUI != null) { closeSectionGUI(); }
             sectionGUI = gameObject.AddComponent<SectionRecolorGUI>();
             sectionGUI.sectionData = section;
+            sectionGUI.colorIndex = colorIndex;
             sectionGUI.onCloseAction = closeSectionGUI;
         }
 
         private void closeSectionGUI()
         {
             Component.Destroy(sectionGUI);
+            sectionGUI = null;
         }
 
     }
@@ -141,6 +147,7 @@ namespace SSTUTools
         private Color[] presetColors;
 
         internal SectionRecolorData sectionData;
+        internal int colorIndex;
         internal Action onCloseAction;
 
         private float r, g, b, a;
@@ -168,53 +175,57 @@ namespace SSTUTools
         {
             GUILayout.BeginVertical();
 
+            Color color = sectionData.colors[colorIndex];
+            bool update = false;
+
             //red slider
             GUILayout.BeginHorizontal();
             GUILayout.Label("Red", GUILayout.Width(80));
-            r = GUILayout.HorizontalSlider(sectionData.color.r, 0, 1, GUILayout.Width(100));
-            if (r != sectionData.color.r)
+            r = GUILayout.HorizontalSlider(color.r, 0, 1, GUILayout.Width(100));
+            if (r != color.r)
             {
-                sectionData.color.r = r;
-                sectionData.updateColor();
+                color.r = r;
+                update = true;
             }
-            GUILayout.TextField(sectionData.color.r.ToString(), GUILayout.Width(80));
+            GUILayout.TextField(color.r.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             //green
             GUILayout.BeginHorizontal();
             GUILayout.Label("Green", GUILayout.Width(80));
-            g = GUILayout.HorizontalSlider(sectionData.color.g, 0, 1, GUILayout.Width(100));
-            if (g != sectionData.color.g)
+            g = GUILayout.HorizontalSlider(color.g, 0, 1, GUILayout.Width(100));
+            if (g != color.g)
             {
-                sectionData.color.g = g;
-                sectionData.updateColor();
+                color.g = g;
+                update = true;
             }
-            GUILayout.TextField(sectionData.color.g.ToString(), GUILayout.Width(80));
+            GUILayout.TextField(color.g.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             //blue
             GUILayout.BeginHorizontal();
             GUILayout.Label("Blue", GUILayout.Width(80));
-            b = GUILayout.HorizontalSlider(sectionData.color.b, 0, 1, GUILayout.Width(100));
-            if (b != sectionData.color.b)
+            b = GUILayout.HorizontalSlider(color.b, 0, 1, GUILayout.Width(100));
+            if (b != color.b)
             {
-                sectionData.color.b = b;
-                sectionData.updateColor();
+                color.b = b;
+                update = true;
             }
-            GUILayout.TextField(sectionData.color.b.ToString(), GUILayout.Width(80));
+            GUILayout.TextField(color.b.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
 
             //alpha
             GUILayout.BeginHorizontal();
             GUILayout.Label("Alpha", GUILayout.Width(80));
-            a = GUILayout.HorizontalSlider(sectionData.color.a, 0, 1, GUILayout.Width(100));
-            if (a != sectionData.color.a)
+            a = GUILayout.HorizontalSlider(color.a, 0, 1, GUILayout.Width(100));
+            if (a != color.a)
             {
-                sectionData.color.a = a;
-                sectionData.updateColor();
+                color.a = a;
+                update = true;
             }
-            GUILayout.TextField(sectionData.color.a.ToString(), GUILayout.Width(80));
+            GUILayout.TextField(color.a.ToString(), GUILayout.Width(80));
             GUILayout.EndHorizontal();
+
 
             GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
             scrollPos = GUILayout.BeginScrollView(scrollPos, false, true);
@@ -227,8 +238,8 @@ namespace SSTUTools
                 GUI.color = presetColors[i];
                 if(GUILayout.Button("Preset", GUILayout.Width(60)))
                 {
-                    sectionData.color = presetColors[i];
-                    sectionData.updateColor();
+                    color = presetColors[i];
+                    update = true;
                 }
                 column++;
                 if (column >= 4)
@@ -251,6 +262,9 @@ namespace SSTUTools
 
             GUILayout.EndVertical();
             GUI.DragWindow();
+
+            sectionData.colors[colorIndex] = color;
+            if (update) { sectionData.updateColors(); }
 
             if (shouldClose)
             {
@@ -285,12 +299,11 @@ namespace SSTUTools
             this.module = module;
             this.iModule = iModule;
             string[] names = iModule.getSectionNames();
-            Color[] colors = iModule.getSectionColors();
             int len = names.Length;
             sectionData = new SectionRecolorData[len];
             for (int i = 0; i < len; i++)
             {
-                sectionData[i] = new SectionRecolorData(iModule, names[i], colors[i]);
+                sectionData[i] = new SectionRecolorData(iModule, names[i], iModule.getSectionColors(names[i]));
             }
         }
 
@@ -299,7 +312,7 @@ namespace SSTUTools
             int len = sectionData.Length;
             for (int i = 0; i < len; i++)
             {
-                iModule.setSectionColor(sectionData[i].sectionName, sectionData[i].color);
+                iModule.setSectionColors(sectionData[i].sectionName, sectionData[i].colors[0], sectionData[i].colors[1], sectionData[i].colors[2]);
             }
         }
     }
@@ -308,18 +321,18 @@ namespace SSTUTools
     {
         public readonly IRecolorable owner;
         public readonly string sectionName;
-        public Color color;
+        public Color[] colors = new Color[3];
 
-        public SectionRecolorData(IRecolorable owner, string name, Color color)
+        public SectionRecolorData(IRecolorable owner, string name, Color[] colors)
         {
             this.owner = owner;
             this.sectionName = name;
-            this.color = color;
+            this.colors = colors;
         }
 
-        public void updateColor()
+        public void updateColors()
         {
-            owner.setSectionColor(sectionName, color);
+            owner.setSectionColors(sectionName, colors[0], colors[1], colors[2]);
         }
     }
 
