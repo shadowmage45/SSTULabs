@@ -190,6 +190,8 @@ namespace SSTUTools
         #endregion ENDREGION - persistent save-data values, should not be edited in config
 
         #region REGION - Private working variables
+
+        private ModelModule<EngineClusterLayoutMountData> mountModule;
         
         private EngineClusterLayoutMountData currentMountData = null;
         private EngineClusterLayoutData[] engineLayouts;     
