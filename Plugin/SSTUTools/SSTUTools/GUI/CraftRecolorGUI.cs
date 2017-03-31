@@ -122,8 +122,7 @@ namespace SSTUTools
         {
             if (sectionGUI != null) { closeSectionGUI(); }
             sectionGUI = gameObject.AddComponent<SectionRecolorGUI>();
-            sectionGUI.sectionData = section;
-            sectionGUI.colorIndex = colorIndex;
+            sectionGUI.setColorData(section, colorIndex);
             sectionGUI.onCloseAction = closeSectionGUI;
         }
 
@@ -140,17 +139,14 @@ namespace SSTUTools
         private static int windowWidth = 320;
         private static int windowHeight = 480;
         private int id = 1;
-        private Rect windowRect = new Rect(Screen.width - 600, 40, windowWidth, windowHeight);
+        private Rect windowRect = new Rect(Screen.width - 900 - 320, 40, windowWidth, windowHeight);
         private Vector2 scrollPos;
-
-        //TODO load the preset colors from a config defined list of presets
         private Color[] presetColors;
+        private SectionRecolorData sectionData;
+        private int colorIndex;
+        private string rStr, gStr, bStr, aStr;
 
-        internal SectionRecolorData sectionData;
-        internal int colorIndex;
         internal Action onCloseAction;
-
-        private float r, g, b, a;
 
         public void Awake()
         {
@@ -171,6 +167,16 @@ namespace SSTUTools
             windowRect = GUI.Window(id, windowRect, drawWindow, "Section Recoloring");
         }
 
+        internal void setColorData(SectionRecolorData data, int index)
+        {
+            this.sectionData = data;
+            this.colorIndex = index;
+            this.rStr = (data.colors[index].r * 255f).ToString("F0");
+            this.gStr = (data.colors[index].g * 255f).ToString("F0");
+            this.bStr = (data.colors[index].b * 255f).ToString("F0");
+            this.aStr = (data.colors[index].a * 255f).ToString("F0");
+        }
+
         private void drawWindow(int id)
         {
             GUILayout.BeginVertical();
@@ -178,54 +184,17 @@ namespace SSTUTools
             Color color = sectionData.colors[colorIndex];
             bool update = false;
 
-            //red slider
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Red", GUILayout.Width(80));
-            r = GUILayout.HorizontalSlider(color.r, 0, 1, GUILayout.Width(100));
-            if (r != color.r)
-            {
-                color.r = r;
-                update = true;
-            }
-            GUILayout.TextField(color.r.ToString(), GUILayout.Width(80));
-            GUILayout.EndHorizontal();
+            //red slider and input box
+            if (drawColorInputs("Red", ref color.r, ref rStr)) { update = true; }
 
-            //green
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Green", GUILayout.Width(80));
-            g = GUILayout.HorizontalSlider(color.g, 0, 1, GUILayout.Width(100));
-            if (g != color.g)
-            {
-                color.g = g;
-                update = true;
-            }
-            GUILayout.TextField(color.g.ToString(), GUILayout.Width(80));
-            GUILayout.EndHorizontal();
+            //green slider and input box
+            if (drawColorInputs("Green", ref color.g, ref gStr)) { update = true; }
 
-            //blue
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Blue", GUILayout.Width(80));
-            b = GUILayout.HorizontalSlider(color.b, 0, 1, GUILayout.Width(100));
-            if (b != color.b)
-            {
-                color.b = b;
-                update = true;
-            }
-            GUILayout.TextField(color.b.ToString(), GUILayout.Width(80));
-            GUILayout.EndHorizontal();
+            //blue slider and input box
+            if (drawColorInputs("Blue", ref color.b, ref bStr)) { update = true; }
 
-            //alpha
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Alpha", GUILayout.Width(80));
-            a = GUILayout.HorizontalSlider(color.a, 0, 1, GUILayout.Width(100));
-            if (a != color.a)
-            {
-                color.a = a;
-                update = true;
-            }
-            GUILayout.TextField(color.a.ToString(), GUILayout.Width(80));
-            GUILayout.EndHorizontal();
-
+            //alpha slider and input box
+            if (drawColorInputs("Specular", ref color.a, ref aStr)) { update = true; }
 
             GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
             scrollPos = GUILayout.BeginScrollView(scrollPos, false, true);
@@ -264,12 +233,44 @@ namespace SSTUTools
             GUI.DragWindow();
 
             sectionData.colors[colorIndex] = color;
-            if (update) { sectionData.updateColors(); }
+            if (update)
+            {
+                sectionData.updateColors();
+            }
 
             if (shouldClose)
             {
                 onCloseAction();
             }
+        }
+
+        private bool drawColorInputs(string label, ref float val, ref string sVal)
+        {
+            //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
+            // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(80));
+            bool updated = false;
+            float result = val;
+            result = GUILayout.HorizontalSlider(val, 0, 1, GUILayout.Width(120));
+            if (result != val)
+            {
+                val = result;
+                sVal = (val * 255f).ToString("F0");
+                updated = true;
+            }
+            string textOutput = GUILayout.TextField(sVal, 3, GUILayout.Width(60));
+            if (sVal != textOutput)
+            {
+                sVal = textOutput;
+                int iVal;
+                if (int.TryParse(textOutput, out iVal))
+                {
+                    val = iVal / 255f;
+                }
+            }
+            GUILayout.EndHorizontal();
+            return updated;
         }
 
         private static Color colorFromBytes(int r, int g, int b, int a)
@@ -304,15 +305,6 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 sectionData[i] = new SectionRecolorData(iModule, names[i], iModule.getSectionColors(names[i]));
-            }
-        }
-
-        public void updateColors()
-        {
-            int len = sectionData.Length;
-            for (int i = 0; i < len; i++)
-            {
-                iModule.setSectionColors(sectionData[i].sectionName, sectionData[i].colors);
             }
         }
     }
