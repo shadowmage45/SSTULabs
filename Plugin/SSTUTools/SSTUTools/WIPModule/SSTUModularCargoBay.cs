@@ -200,22 +200,12 @@ namespace SSTUTools.WIPModule
             updateAirstreamShield();
         }
 
-        protected override void setMountModuleFromEditor(string newMountType, bool updateSymmetry)
+        public override void OnStart(StartState state)
         {
-            base.setMountModuleFromEditor(newMountType, updateSymmetry);
-            updateTailAnimControl();
-        }
-
-        protected override void setMainTankModuleFromEditor(string newMainTank, bool updateSymmetry)
-        {
-            base.setMainTankModuleFromEditor(newMainTank, updateSymmetry);
-            updateBodyAnimControl();
-        }
-
-        protected override void setNoseModuleFromEditor(string newNoseType, bool updateSymmetry)
-        {
-            base.setNoseModuleFromEditor(newNoseType, updateSymmetry);
-            updateNoseAnimControl();
+            base.OnStart(state);
+            Fields[nameof(currentNoseType)].uiControlEditor.onFieldChanged += delegate (BaseField a, object b) { updateNoseAnimControl(); };
+            Fields[nameof(currentTankType)].uiControlEditor.onFieldChanged += delegate (BaseField a, object b) { updateBodyAnimControl(); };
+            Fields[nameof(currentMountType)].uiControlEditor.onFieldChanged += delegate (BaseField a, object b) { updateTailAnimControl(); };
         }
 
         /// <summary>
@@ -227,16 +217,16 @@ namespace SSTUTools.WIPModule
             //handle cap/mount/surface attach nodes through base code
             base.updateAttachNodes(userInput);
             //internal dorsal node
-            if (currentMainTankModule.modelDefinition.attachNodeData.Length > 0)
+            if (tankModule.model.modelDefinition.attachNodeData.Length > 0)
             {                
                 AttachNode node = part.FindAttachNode("dorsal");
                 if (node == null) { return; }
-                AttachNodeBaseData d = currentMainTankModule.modelDefinition.attachNodeData[0];
-                Vector3 pos = d.position * currentMainTankModule.currentDiameterScale;
+                AttachNodeBaseData d = tankModule.model.modelDefinition.attachNodeData[0];
+                Vector3 pos = d.position * tankModule.model.currentDiameterScale;
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, d.orientation, userInput);
             }
             //internal front/rear nodes
-            float height = currentMainTankModule.currentHeight + (currentMainTankModule.modelDefinition.fairingTopOffset * 2f * currentMainTankModule.currentHeightScale);
+            float height = tankModule.model.currentHeight + (tankModule.model.modelDefinition.fairingTopOffset * 2f * tankModule.model.currentHeightScale);
             height *= 0.5f;
             AttachNode front = part.FindAttachNode("front");
             if (front != null)
@@ -255,7 +245,7 @@ namespace SSTUTools.WIPModule
         private void updateNoseAnimControl()
         {
             noseAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = currentNoseModule.getAnimationData(getNoseRootTransform(false));
+            SSTUAnimData[] datas = noseModule.model.getAnimationData(getRootTransform(rootNoseTransformName, false));
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
@@ -277,7 +267,7 @@ namespace SSTUTools.WIPModule
         private void updateBodyAnimControl()
         {
             bodyAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = currentMainTankModule.getAnimationData(getTankRootTransform(false));
+            SSTUAnimData[] datas = tankModule.model.getAnimationData(getRootTransform(rootTransformName, false));
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
@@ -299,7 +289,7 @@ namespace SSTUTools.WIPModule
         private void updateTailAnimControl()
         {
             tailAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = currentMountModule.getAnimationData(getMountRootTransform(false));
+            SSTUAnimData[] datas = mountModule.model.getAnimationData(getRootTransform(rootMountTransformName, false));
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
@@ -378,21 +368,21 @@ namespace SSTUTools.WIPModule
             //only care about the cargo-bay models for this setup
             //the fairing module should take care of its own airstream shielding setup
             //TODO - set the fairing module to auto-set the shielding dimensions on fairing dimension changes...
-            if (currentNoseModule.hasAnimation() && noseAnimControl.animationState==AnimState.STOPPED_START)
+            if (noseModule.model.hasAnimation() && noseAnimControl.animationState==AnimState.STOPPED_START)
             {
-                float rad = currentNoseModule.currentDiameter * 0.5f;
-                float bottom = currentMainTankModule.currentHeight * 0.5f;
-                float top = bottom + currentNoseModule.currentHeight;
+                float rad = noseModule.model.currentDiameter * 0.5f;
+                float bottom = tankModule.model.currentHeight * 0.5f;
+                float top = bottom + noseModule.model.currentHeight;
                 shield.addShieldArea("MCB-Nose", rad, rad, top, bottom, false, false);
             }
             else
             {
                 shield.removeShieldArea("MCB-Nose");
             }
-            if (currentMainTankModule.hasAnimation() && bodyAnimControl.animationState == AnimState.STOPPED_START)
+            if (tankModule.model.hasAnimation() && bodyAnimControl.animationState == AnimState.STOPPED_START)
             {
-                float rad = currentMainTankModule.currentDiameter * 0.5f;
-                float bottom = -currentMainTankModule.currentHeight * 0.5f;
+                float rad = tankModule.model.currentDiameter * 0.5f;
+                float bottom = -tankModule.model.currentHeight * 0.5f;
                 float top = -bottom;
                 shield.addShieldArea("MCB-Body", rad, rad, top, bottom, false, false);
             }
@@ -400,11 +390,11 @@ namespace SSTUTools.WIPModule
             {
                 shield.removeShieldArea("MCB-Body");
             }
-            if (currentMountModule.hasAnimation() && tailAnimControl.animationState == AnimState.STOPPED_START)
+            if (mountModule.model.hasAnimation() && tailAnimControl.animationState == AnimState.STOPPED_START)
             {
-                float rad = currentMainTankModule.currentDiameter * 0.5f;
-                float top = -currentMainTankModule.currentHeight * 0.5f;
-                float bottom = top - currentMountModule.currentHeight;
+                float rad = tankModule.model.currentDiameter * 0.5f;
+                float top = -tankModule.model.currentHeight * 0.5f;
+                float bottom = top - mountModule.model.currentHeight;
                 shield.addShieldArea("MCB-Tail", rad, rad, top, bottom, false, false);
             }
             else
@@ -412,5 +402,6 @@ namespace SSTUTools.WIPModule
                 shield.removeShieldArea("MCB-Tail");
             }
         }
+
     }
 }

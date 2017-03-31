@@ -12,11 +12,17 @@ namespace SSTUTools
         //apparently these are like a class declaration.... the delegate name becomes a new type that can be referenced
         public delegate ModelModule<T> SymmetryModule(PartModule m);
 
+        public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
+
         public readonly Part part;
         public readonly PartModule partModule;
         public readonly Transform root;
         public readonly ModelOrientation orientation;
         public SymmetryModule getSymmetryModule;
+        public ValidSelections getValidSelections = delegate (IEnumerable<T> allSelections)
+        {
+            return allSelections;
+        };
 
         public List<T> models = new List<T>();
         public T model;
@@ -27,8 +33,6 @@ namespace SSTUTools
         private string dataFieldName;
         private string textureFieldName;
         private string modelFieldName;
-        private string diameterFieldName;
-        private string vScaleFieldName;
 
         private string textureSet
         {
@@ -40,12 +44,6 @@ namespace SSTUTools
         {
             get { return partModule.Fields[modelFieldName].GetValue<string>(partModule); }
             set { partModule.Fields[modelFieldName].SetValue(value, partModule); }
-        }
-
-        private float diameter
-        {
-            get { return partModule.Fields[diameterFieldName].GetValue<float>(partModule); }
-            set { partModule.Fields[diameterFieldName].SetValue(value, partModule); }
         }
 
         private string persistentData
@@ -67,12 +65,6 @@ namespace SSTUTools
             this.textureFieldName = textureFieldName;
         }
 
-        public void setupOptionalFields(string diameterFieldName, string vScaleFieldName)
-        {
-            this.diameterFieldName = diameterFieldName;
-            this.vScaleFieldName = vScaleFieldName;
-        }
-
         /// <summary>
         /// Initialization method.  May be called to update the available mount list later, but the model must be re-setup afterwards
         /// </summary>
@@ -83,7 +75,7 @@ namespace SSTUTools
             this.models.AddUniqueRange(models);
             if (model != null) { model.destroyCurrentModel(); }
             model = this.models.Find(m => m.name == modelName);
-            partModule.updateUIChooseOptionControl(modelFieldName, SSTUUtils.getNames(models, s => s.name), SSTUUtils.getNames(models, s => s.name), true, modelName);
+            updateSelections();
         }
 
         /// <summary>
@@ -135,21 +127,6 @@ namespace SSTUTools
             modelSelected(null, null);//chain to symmetry enabled method
         }
 
-        public void diameterUpdated(BaseField field, System.Object oldValue)
-        {
-            actionWithSymmetry(m => 
-            {
-                m.diameter = diameter;
-                m.model.updateScaleForDiameter(m.diameter);
-            });
-        }
-
-        public void diameterUpdated(float newDiameter)
-        {
-            diameter = newDiameter;
-            diameterUpdated(null, null);//chain to symmetry enabled method
-        }
-
         public void setSectionColors(Color[] colors)
         {
             actionWithSymmetry(m => 
@@ -157,6 +134,16 @@ namespace SSTUTools
                 m.textureSet = textureSet;
                 m.customColors = colors;
                 m.model.enableTextureSet(m.textureSet, m.customColors);
+            });
+        }
+
+        public void updateSelections()
+        {
+            actionWithSymmetry(m =>
+            {
+                IEnumerable<T> validSelections = m.getValidSelections(models);
+                string[] names = SSTUUtils.getNames(validSelections, s => s.name);
+                m.partModule.updateUIChooseOptionControl(m.modelFieldName, names, names, true, m.modelName);
             });
         }
 
