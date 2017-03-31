@@ -417,9 +417,9 @@ namespace SSTUTools
             return mountModule.customColors;
         }
 
-        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        public void setSectionColors(string section, Color[] colors)
         {
-            mountModule.setSectionColors(new Color[] { color1, color2, color3 });
+            mountModule.setSectionColors(colors);
         }
 
         #endregion ENDREGION - Standard KSP Overrides

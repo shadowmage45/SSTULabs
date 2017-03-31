@@ -631,19 +631,20 @@ namespace SSTUTools
             return new Color[] { noseColor, noseColor, noseColor };
         }
 
-        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        public void setSectionColors(string section, Color[] colors)
         {
+            //TODO
             if (section == "Top")
             {
-                noseColor = color1;
+                //noseColor = color1;
             }
             else if (section == "Body")
             {
-                bodyColor = color1;
+                //bodyColor = color1;
             }
             else if (section == "Bottom")
             {
-                nozzleColor = color1;
+                //nozzleColor = color1;
             }
             updateTextureSets();
         }

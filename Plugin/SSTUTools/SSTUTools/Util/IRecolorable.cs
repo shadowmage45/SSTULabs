@@ -10,6 +10,6 @@ namespace SSTUTools
     {
         string[] getSectionNames();
         Color[] getSectionColors(string name);
-        void setSectionColors(string name, Color color1, Color color2, Color color3);
+        void setSectionColors(string name, Color[] colors);
     }
 }

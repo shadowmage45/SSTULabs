@@ -439,21 +439,22 @@ namespace SSTUTools
             return new Color[] { bodyColor, bodyColor, bodyColor };
         }
 
-        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        public void setSectionColors(string section, Color[] colors)
         {
+            //TODO
             if (section == "Top")
             {
-                noseColor = color1;
+                //noseColor = color1;
                 topModule.enableTextureSet(currentTopTexture, new Color[] { noseColor, noseColor, noseColor });
             }
             else if (section == "Body")
             {
-                bodyColor = color1;
+                //bodyColor = color1;
                 coreModule.enableTextureSet(currentCoreTexture, new Color[] { bodyColor, bodyColor, bodyColor });
             }
             else if (section == "Bottom")
             {
-                mountColor = color1;
+                //mountColor = color1;
                 bottomModule.enableTextureSet(currentBottomTexture, new Color[] { mountColor, mountColor, mountColor });
             }
         }

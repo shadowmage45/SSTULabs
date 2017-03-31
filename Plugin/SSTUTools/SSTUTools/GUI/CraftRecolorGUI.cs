@@ -312,7 +312,7 @@ namespace SSTUTools
             int len = sectionData.Length;
             for (int i = 0; i < len; i++)
             {
-                iModule.setSectionColors(sectionData[i].sectionName, sectionData[i].colors[0], sectionData[i].colors[1], sectionData[i].colors[2]);
+                iModule.setSectionColors(sectionData[i].sectionName, sectionData[i].colors);
             }
         }
     }
@@ -332,7 +332,7 @@ namespace SSTUTools
 
         public void updateColors()
         {
-            owner.setSectionColors(sectionName, colors[0], colors[1], colors[2]);
+            owner.setSectionColors(sectionName, colors);
         }
     }
 

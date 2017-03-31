@@ -623,6 +623,7 @@ namespace SSTUTools
 
         public Color[] getSectionColors(string section)
         {
+            //TODO
             if (section == "Dome")
             {
                 return new Color[] { domeColor, domeColor, domeColor };
@@ -646,27 +647,28 @@ namespace SSTUTools
             return new Color[] { domeColor, domeColor, domeColor };
         }
 
-        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        public void setSectionColors(string section, Color[] colors)
         {
+            //TODO
             if (section == "Dome")
             {
-                domeColor = color1;
+                //domeColor = color1;
             }
             else if (section == "Upper")
             {
-                upperColor = color1;
+                //upperColor = color1;
             }
             else if (section == "Intertank")
             {
-                intertankColor = color1;
+                //intertankColor = color1;
             }
             else if (section == "Lower")
             {
-                lowerColor = color1;
+                //lowerColor = color1;
             }
             else if (section == "Mount")
             {
-                mountColor = color1;
+                //mountColor = color1;
             }
             updateTextureSet(true);
         }

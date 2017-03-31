@@ -602,23 +602,23 @@ namespace SSTUTools
             return new Color[] { bodyColor, bodyColor2, bodyColor3 };
         }
 
-        public void setSectionColors(string section, Color color1, Color color2, Color color3)
+        public void setSectionColors(string section, Color[] colors)
         {
             if (section == "Top")
             {
-                noseColor = color1;
+                //noseColor = color1;
             }
             else if (section == "Body")
             {
-                bodyColor = color1;
-                bodyColor2 = color2;
-                bodyColor3 = color3;
+                //bodyColor = color1;
+                //bodyColor2 = color2;
+                //bodyColor3 = color3;
             }
             else if (section == "Bottom")
             {
-                mountColor = color1;
-                mountColor2 = color2;
-                mountColor3 = color3;
+                //mountColor = color1;
+                //mountColor2 = color2;
+                //mountColor3 = color3;
             }
             updateTextureSet(true);
         }
