@@ -40,16 +40,23 @@ namespace SSTUTools
         public float engineScale = 1f;
 
         /// <summary>
-        /// This field determines how much vertical offset should be given to the engine model (to correct for the default-COM positioning of stock/other mods engine models).        
+        /// This field determines how much vertical offset should be given to the engine model, to correct for the default-COM-based positioning of stock-configured engine models in their model file.
         /// A positive value will move the model up, a negative value moves it down.
+        /// COM Offset is handled through the partTopY config value.
         /// Should be the value of the distance between part origin and the top mounting plane of the part, as a negative value (as you are moving the engine model downward to place the mounting plane at COM/origin)
         /// </summary>
         [KSPField]
         public float engineYOffset = 0f;
 
+        /// <summary>
+        /// Should this engine load and use the upper stage mounts.
+        /// </summary>
         [KSPField]
         public bool upperStageMounts = true;
 
+        /// <summary>
+        /// Should this engine load and use the lower stage mounts.
+        /// </summary>
         [KSPField]
         public bool lowerStageMounts = true;
 
@@ -100,9 +107,15 @@ namespace SSTUTools
         [KSPField]
         public String interstageNodeName = "interstage";
         
+        /// <summary>
+        /// The engine mount model will be childed to a transform of this name.  The transform will be created by the plugin on the prefab model.
+        /// </summary>
         [KSPField]
         public String mountTransformName = "SSTEngineClusterMounts";
 
+        /// <summary>
+        /// The engine models will be be childed to a transform of this name.  The transform will be created by the plugin on the prefab model.
+        /// </summary>
         [KSPField]
         public String engineTransformName = "SSTEngineClusterEngines";
 
@@ -141,8 +154,8 @@ namespace SSTUTools
         /// User selection and persistent value for the current engine mount.
         /// </summary>
         [KSPField(guiName = "Mount", guiActive = false, guiActiveEditor = true, isPersistant = true),
-         UI_ChooseOption(display = new string[] { "Mount-None"}, options = new string[] { "Mount-None"}, suppressEditorShipModified = true)]
-        public string currentMountName = "Mount-None";
+         UI_ChooseOption(display = new string[] { "Mount-None"}, options = new string[] { "Mount-None" }, suppressEditorShipModified = true)]
+        public string currentMountName = string.Empty;
 
         /// <summary>
         /// User selection and persistent value for the engine mount diameter.
@@ -153,6 +166,7 @@ namespace SSTUTools
 
         /// <summary>
         /// User selection and persistent value for the current engine mount texture set.
+        /// If left blank in config file, initialized to the default texture set for the current mount.
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -162,12 +176,22 @@ namespace SSTUTools
 
         #region REGION - persistent save-data values, should not be edited in config
 
+        /// <summary>
+        /// Persistent data for the mount module.  Used to store custom color data or any other module-specific data that needs to be persistent.
+        /// Should be passed to the module upon initialization, and it will handle updating the field internally.
+        /// </summary>
         [KSPField(isPersistant = true)]
         public string mountModuleData = string.Empty;
 
+        /// <summary>
+        /// //TODO -- move this into the fairing module as an 'extInitialized' field.
+        /// </summary>
         [KSPField(isPersistant = true)]
         public bool fairingInitialized = false;
 
+        /// <summary>
+        /// Used to persist the custom config node data from the modules' config node from the prefab parts into the child parts.  
+        /// </summary>
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -176,19 +200,21 @@ namespace SSTUTools
         #region REGION - Private working variables
 
         private ModelModule<EngineClusterLayoutMountData> mountModule;
-        
-        //private EngineClusterLayoutMountData currentMountData = null;
         private EngineClusterLayoutData[] engineLayouts;     
         private EngineClusterLayoutData currentEngineLayout = null;
 
         private bool initialized = false;
 
+        //cached posiion values used to update attach nodes and fairing parameters.
         private float engineMountingY = 0;
         private float fairingTopY = 0;
         private float fairingBottomY = 0;
-        
-        private float modifiedCost = -1f;
-        private float modifiedMass = -1f;
+
+        //cached modifiedCost/modifiedMass values, updated on initialization and whenever engine layout changes
+        //both of these use cubic scaling, and use the config-specified mass/cost as the base values
+        private float modifiedCost = 0;
+        private float modifiedMass = 0;
+        private int positions = 1;//used as a multiplier to the default cost and mass, set during layout updating
 
         // cached thrust values, to remove the need to query the part config for the engine module config node
         // are initialized the first time the engines stats are updated (during Start())
@@ -225,12 +251,24 @@ namespace SSTUTools
                 initialize();
             }
 
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            Fields[nameof(currentMountName)].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
-            Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
-            Events[nameof(clearMountEvent)].guiActiveEditor = currentEngineLayout.mountData.Length > 1;
+            bool useModelSelectionGUI = false;// HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
 
             //setup the delegate methods for UI field interaction events/callbacks
+
+            Fields[nameof(currentMountName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b) 
+            {
+                mountModule.modelSelected(a, b);
+                this.actionWithSymmetry(m => 
+                {
+                    m.positionMountModel();
+                    m.positionEngineModels();
+                    m.updateNodePositions(true);
+                    m.updateFairing(true);
+                    m.updatePartCostAndMass();//model-data optionally supports module masses and costs
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
             Fields[nameof(currentMountDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
             {
@@ -239,13 +277,11 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.currentMountDiameter = currentMountDiameter;
-                    m.mountModule.diameterUpdated(m.Fields[nameof(currentMountDiameter)], b);
                     m.positionMountModel();
                     m.positionEngineModels();
                     m.updateNodePositions(true);
                     m.updateFairing(true);
-                    m.updateMountSizeGuiControl(false);
-                    m.updatePartCostAndMass();
+                    m.updatePartCostAndMass();//model-data optionally supports module masses and costs
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -266,19 +302,16 @@ namespace SSTUTools
                     {
                         m.currentMountName = m.currentEngineLayout.defaultMount;
                     }
-
-                    useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
                     m.Fields[nameof(currentMountName)].guiActiveEditor = !useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;
-                    m.Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;
-                    m.mountModule.setup(m.currentEngineLayout.mountData, nameof(m.currentMountName), nameof(m.currentMountTexture), nameof(m.currentMountDiameter));
-                    m.mountModule.diameterUpdated(mountModule.model.initialDiameter);
+                    m.Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;                    
+                    m.setupMountModel();
+                    m.currentMountDiameter = m.mountModule.model.initialDiameter;
                     m.positionMountModel();
                     m.setupEngineModels();
                     m.positionEngineModels();
                     m.reInitEngineModule();
                     m.updateNodePositions(true);
                     m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
-                    m.updateMountOptionsGuiControl();
                     m.updatePartCostAndMass();
                     m.updateGuiState();
                     m.updateFairing(true);
@@ -313,28 +346,28 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            //mapped directly to the modules update fields
             Fields[nameof(currentMountTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
-            Fields[nameof(currentMountName)].uiControlEditor.onFieldChanged = mountModule.modelSelected;
 
-            //TODO wtf is this?
-            //currentEngineSpacing = currentEngineSpacing - currentEngineLayout.getEngineSpacing(engineScale, currentMountData);
+            //update config specified min/max on the spacing and offset controls
+            //TODO -- clamp current to min/max
+            //TODO -- if min/max == same, disable UI field
             this.updateUIFloatEditControl(nameof(currentEngineVerticalOffset), minVerticalOffset, maxVerticalOffset, 0.5f, 0.25f, 0.05f, true, currentEngineVerticalOffset);
             this.updateUIFloatEditControl(nameof(currentEngineSpacing), minSpacing, maxSpacing, 0.5f, 0.25f, 0.05f, true, currentEngineSpacing);
+
+            string[] optionsArray = SSTUUtils.getNames(engineLayouts, m => m.layoutName);
+            this.updateUIChooseOptionControl(nameof(currentEngineLayoutName), optionsArray, optionsArray, false);
+
+            Fields[nameof(currentMountName)].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Events[nameof(clearMountEvent)].guiActiveEditor = currentEngineLayout.mountData.Length > 1;
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight)
-            {
-                //prefab init... do not do init during OnLoad for editor or flight... trying for some consistent loading sequences this time around
-                initializePrefab(node);
-            }
-            else
-            {
-                initialize();
-            }            
+            initialize();
         }
 
         public void Start()
@@ -350,39 +383,31 @@ namespace SSTUTools
             }
         }
 
-        /// <summary>
-        /// Overriden to provide an opportunity to remove any existing models from the prefab part, so they do not get cloned into live parts
-        /// as for some reason they cause issues when cloned in that fashion.
-        /// </summary>
-        /// <returns></returns>
         public override string GetInfo()
-        {            
-            return "This part may have multiple mount variants, right click for more info.";
+        {
+            //TODO -- add list of layouts and mounting options
+            //TODO -- how to specify custom module title; IModuleInfo interface or etc? -- Check KSPWheels
+            return "This part may have multiple mount variants in the editor, right click for more info.";
         }
 
         //IModuleCostModifier Override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             if (!adjustCost) { return 0; }
-            if (currentEngineLayout != null && mountModule!=null && mountModule.model != null)
-            {
-                modifiedCost = defaultCost * (float)currentEngineLayout.getLayoutData().positions.Count;
-                modifiedCost += mountModule.model.getModuleCost();
-            }
-            else { return 0f; }
-            return -defaultCost + modifiedCost;
+            return -defaultCost + positions * defaultCost + modifiedCost;
         }
 
         //IModuleMassModifier Override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             if (!adjustMass) { return 0; }
-            if (modifiedMass < 0) { return 0; }
-            return -defaultMass + modifiedMass;
+            return -defaultMass + positions * defaultMass + modifiedMass;
         }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
+        //IRecolorable interaction methods.
         public string[] getSectionNames()
         {
             return new string[] { "Mount" };
@@ -405,62 +430,34 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
-            loadConfigNodeData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
-            removeStockTransforms();
-            initializeSmokeTransform();
-            positionMountModel();
-            setupEngineModels();
-            positionEngineModels();
-            updateNodePositions(false);
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-            updateLayoutOptionsGuiControl(false);
-            updateMountSizeGuiControl(false);
-            updateMountOptionsGuiControl();
-            updatePartCostAndMass();
-            updateGuiState();
-        }
-
-        private void initializePrefab(ConfigNode node)
-        {
-            loadConfigNodeData(node);
-            //TODO -- fix all the spacing calcs, they are fubard
-            //currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, mountModule.model) + editorEngineSpacingAdjust;
-            removeStockTransforms();
-            initializeSmokeTransform();
-            positionMountModel();
-            setupEngineModels();
-            positionEngineModels();
-            updatePartCostAndMass();
-        }
-
-        private void loadConfigNodeData(ConfigNode node)
-        {            
-            ConfigNode[] layoutNodes = node.GetNodes("LAYOUT");
+            ConfigNode[] layoutNodes = SSTUConfigNodeUtils.parseConfigNode(configNodeData).GetNodes("LAYOUT");
             loadEngineLayouts(layoutNodes);
-
             if (String.IsNullOrEmpty(currentEngineLayoutName))
             {
                 currentEngineLayoutName = engineLayouts[0].layoutName;
             }
             currentEngineLayout = Array.Find(engineLayouts, m => m.layoutName == currentEngineLayoutName);
-            
+
             if (currentEngineLayout == null)
             {
                 currentEngineLayout = engineLayouts[0];
                 currentEngineLayoutName = currentEngineLayout.layoutName;
             }
             if (!currentEngineLayout.isValidMount(currentMountName))//catches the case of an uninitilized part and those where mount data has been removed from the config.
-            {                
+            {
                 currentMountName = currentEngineLayout.defaultMount;
                 currentMountDiameter = currentEngineLayout.getMountData(currentMountName).initialDiameter;
-                currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, currentEngineLayout.getMountData(currentMountName));
             }
-            //TODO
-            //mountModule = new ModelModule<EngineClusterLayoutMountData>(part, this, null, Fields[nameof(mountModuleData)]);
-            mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularEngineCluster)m).mountModule; };
-            mountModule.setup(new List<EngineClusterLayoutMountData>(currentEngineLayout.mountData), nameof(currentMountName), nameof(currentMountTexture), nameof(currentMountDiameter));
-            if (currentMountDiameter > mountModule.model.maxDiameter) { currentMountDiameter = mountModule.model.maxDiameter; }
-            if (currentMountDiameter < mountModule.model.minDiameter) { currentMountDiameter = mountModule.model.minDiameter; }
+            initializeSmokeTransform();
+            setupMountModule();
+            setupMountModel();
+            positionMountModel();
+            setupEngineModels();
+            positionEngineModels();
+            updateNodePositions(false);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+            updatePartCostAndMass();
+            updateGuiState();
         }
 
         private void loadEngineLayouts(ConfigNode[] moduleLayoutNodes)
@@ -505,37 +502,43 @@ namespace SSTUTools
         {
             //add the smoke transform point, parented to the model base transform ('model')
             Transform modelBase = part.transform.FindRecursive("model");
-            GameObject smokeObject = modelBase.FindOrCreate(smokeTransformName).gameObject;
-            smokeObject.name = smokeTransformName;
-            smokeObject.transform.name = smokeTransformName;
-            Transform smokeTransform = smokeObject.transform;
+            Transform smokeTransform = modelBase.FindOrCreate(smokeTransformName);
             smokeTransform.NestToParent(modelBase);
             smokeTransform.localRotation = Quaternion.AngleAxis(90, new Vector3(1, 0, 0));//set it to default pointing downwards, as-per a thrust transform
+        }
+        
+        /// <summary>
+        /// Initialization method.
+        /// Sets up the mount module and mount transform
+        /// </summary>
+        private void setupMountModule()
+        {
+            Transform mountTransform = part.transform.FindRecursive("model").FindRecursive(mountTransformName);
+            if (mountTransform == null)
+            {
+                mountTransform = new GameObject(mountTransformName).transform;
+                mountTransform.NestToParent(part.transform.FindRecursive("model"));
+            }
+            mountModule = new ModelModule<EngineClusterLayoutMountData>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
+            mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularEngineCluster)m).mountModule; };
+            //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }
 
         #endregion ENDREGION - Initialization
 
-        #region REGION - Model Setup
+        #region REGION - Model Setup and Updating
 
-        //TODO replace this code into the model setup/part init stuff
-        ///// <summary>
-        ///// Sets up the actual models for the mount(s), but does not position or scale the models
-        ///// </summary>
-        //private void setupMountModel()
-        //{
-        //    Transform modelBase = part.transform.FindRecursive("model");
-        //    Transform mountBaseTransform = modelBase.FindRecursive(mountTransformName);
-        //    if (mountBaseTransform != null)
-        //    {
-        //        GameObject.DestroyImmediate(mountBaseTransform.gameObject);
-        //    }
-
-        //    GameObject newMountBaseGO = new GameObject(mountTransformName);
-        //    mountBaseTransform = newMountBaseGO.transform;
-        //    mountBaseTransform.NestToParent(modelBase);
-                        
-        //    currentMountData.setupModel(mountBaseTransform, ModelOrientation.BOTTOM);
-        //}
+        /// <summary>
+        /// Sets up the mount model and update GUI controls for min/max size.
+        /// </summary>
+        private void setupMountModel()
+        {
+            mountModule.setupModelList(currentEngineLayout.mountData);
+            updateMountSizeGuiControl(false);
+            if (currentMountDiameter > mountModule.model.maxDiameter) { currentMountDiameter = mountModule.model.maxDiameter; }
+            if (currentMountDiameter < mountModule.model.minDiameter) { currentMountDiameter = mountModule.model.minDiameter; }
+            mountModule.setupModel();
+        }
 
         /// <summary>
         /// Position the mount model according to its current scale and model position/offset parameters.<para/>
@@ -546,13 +549,9 @@ namespace SSTUTools
             EngineClusterLayoutMountData currentMountData = mountModule.model;
             float currentMountScale = getCurrentMountScale();
             float mountY = partTopY + (currentMountScale * currentMountData.modelDefinition.verticalOffset);
-            if (currentMountData.model != null)
-            {
-                Transform mountModel = currentMountData.model.transform;
-                mountModel.transform.localPosition = new Vector3(0, mountY, 0);
-                mountModel.transform.localRotation = currentMountData.modelDefinition.invertForBottom ? Quaternion.AngleAxis(180, Vector3.forward) : Quaternion.AngleAxis(0, Vector3.up);
-                mountModel.transform.localScale = new Vector3(currentMountScale, currentMountScale, currentMountScale);
-            }            
+            currentMountData.currentVerticalPosition = mountY;
+            currentMountData.updateScaleForDiameter(currentMountDiameter);
+            currentMountData.updateModel();
             //set up fairing/engine/node positions
             float mountScaledHeight = currentMountData.modelDefinition.height * currentMountScale;
             fairingTopY = partTopY + (currentMountData.modelDefinition.fairingTopOffset * currentMountScale);
@@ -561,7 +560,7 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Removes existing engine models and create new models, but does not position or scale them
+        /// Removes existing engine models and create new models, but does not position or rotate them
         /// </summary>
         private void setupEngineModels()
         {
@@ -569,6 +568,7 @@ namespace SSTUTools
             Transform engineBaseTransform = modelBase.FindRecursive(engineTransformName);
             if (engineBaseTransform != null)
             {
+                //using destroy immediate as otherwise it leaves ghost transforms that will be picked up by the stock engine/gimbal/effects modules when they initialize
                 GameObject.DestroyImmediate(engineBaseTransform.gameObject);
             }
 
@@ -589,7 +589,13 @@ namespace SSTUTools
                 engineClone.transform.localScale = new Vector3(engineScale, engineScale, engineScale);
                 engineClone.SetActive(true);
             }
-            removeStockTransforms();
+
+            //remove stock transforms
+            if (!String.IsNullOrEmpty(transformsToRemove))
+            {
+                String[] names = SSTUUtils.parseCSV(transformsToRemove);
+                SSTUUtils.removeTransforms(part, names);
+            }
         }
 
         /// <summary>
@@ -606,6 +612,7 @@ namespace SSTUTools
 
             float engineRotation;
             Transform[] models = part.transform.FindRecursive(engineTransformName).FindChildren(engineModelName);
+            float currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, mountModule.model) + this.currentEngineSpacing;
             for (int i = 0; i < length; i++)
             {
                 position = layout.positions[i];
@@ -631,17 +638,25 @@ namespace SSTUTools
         #endregion ENDREGION - Model Setup
 
         #region REGION - Update Methods
-                
+
+        /// <summary>
+        /// Updates the cached positions, mass, and cost values for the current configuration
+        /// </summary>
         private void updatePartCostAndMass()
-        {            
-            SSTUEngineLayout layout = currentEngineLayout.getLayoutData();
-            modifiedMass = part.prefabMass * (float)layout.positions.Count;
-            modifiedMass += mountModule.model.getModuleMass();
+        {
+            positions = currentEngineLayout.getLayoutData().positions.Count;
+            modifiedMass = mountModule.model.getModuleMass();
+            modifiedCost = mountModule.model.getModuleCost();
         }
 
+        /// <summary>
+        /// Updates the min/max value for the mount diameter GUI control for the current engine layout
+        /// </summary>
+        /// <param name="forceUpdate"></param>
+        /// <param name="forceVal"></param>
         private void updateMountSizeGuiControl(bool forceUpdate, float forceVal = 0)
         {
-            bool active = mountModule.model.minDiameter != mountModule.model.maxDiameter;
+            bool active = mountModule.model.minDiameter < mountModule.model.maxDiameter;
             Fields[nameof(currentMountDiameter)].guiActiveEditor = active;
             if (active)
             {
@@ -649,20 +664,8 @@ namespace SSTUTools
             }
         }
 
-        private void updateMountOptionsGuiControl()
-        {
-            string[] optionsArray = SSTUUtils.getNames(currentEngineLayout.mountData, m => m.name);
-            this.updateUIChooseOptionControl(nameof(currentMountName), optionsArray, optionsArray, true, currentMountName);
-        }
-
-        private void updateLayoutOptionsGuiControl(bool forceUpdate)
-        {
-            string[] optionsArray = SSTUUtils.getNames(engineLayouts, m => m.layoutName);
-            this.updateUIChooseOptionControl(nameof(currentEngineLayoutName), optionsArray, optionsArray, forceUpdate, currentEngineLayoutName);
-        }
-
         /// <summary>
-        /// Updates the context-menu GUI buttons/etc as the config of the part changes.
+        /// Updates the clear mount and engine spacing enable/disable states based on mount availability and engine count
         /// </summary>
         private void updateGuiState()
         {
@@ -865,18 +868,6 @@ namespace SSTUTools
             return currentMountDiameter / mountModule.model.modelDefinition.diameter;
         }
 
-        /// <summary>
-        /// Removes the named transforms from the model hierarchy. Removes the entire branch of the tree starting at the named transform.<para/>
-        /// This is intended to be used to remove stock ModuleJettison engine fairing transforms,
-        /// but may have other use cases as well.  Should function as intended for any model transforms.
-        /// </summary>
-        private void removeStockTransforms()
-        {
-            if (String.IsNullOrEmpty(transformsToRemove)) { return; }
-            String[] names = SSTUUtils.parseCSV(transformsToRemove);
-            SSTUUtils.removeTransforms(part, names);
-        }
-        
         #endregion ENDREGION - Utility Methods
     }
 

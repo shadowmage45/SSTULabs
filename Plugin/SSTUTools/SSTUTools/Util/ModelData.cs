@@ -696,6 +696,9 @@ namespace SSTUTools
 
         }
 
+        /// <summary>
+        /// Applies the scale and position values to the model.
+        /// </summary>
         public override void updateModel()
         {
             if (model != null)

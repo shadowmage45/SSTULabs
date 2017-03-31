@@ -14,14 +14,16 @@ namespace SSTUTools
 
         public readonly Part part;
         public readonly PartModule partModule;
-        public SymmetryModule getSymmetryModule;
         public readonly Transform root;
+        public readonly ModelOrientation orientation;
+        public SymmetryModule getSymmetryModule;
 
         public List<T> models = new List<T>();
         public T model;
-        public Color[] customColors;
-        public Vector3 scale;
+        public Color[] customColors = new Color[] { Color.clear, Color.clear, Color.clear };
 
+        //string names used to hook into the KSPField data for module fields
+        //workaround to needing those exact fields for persistence and UI interaction functions
         private string dataFieldName;
         private string textureFieldName;
         private string modelFieldName;
@@ -54,29 +56,50 @@ namespace SSTUTools
 
         #region REGION - Constructors and Init Methods
 
-        public ModelModule(Part part, PartModule partModule, Transform root, string dataFieldName)
+        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, string dataFieldName, string modelFieldName, string textureFieldName)
         {
             this.part = part;
             this.partModule = partModule;
             this.root = root;
+            this.orientation = orientation;
             this.dataFieldName = dataFieldName;
+            this.modelFieldName = modelFieldName;
+            this.textureFieldName = textureFieldName;
         }
 
-        public void setup(List<T> models, string modelNameField, string modelTextureField, string modelDiameterField)
+        public void setupOptionalFields(string diameterFieldName, string vScaleFieldName)
+        {
+            this.diameterFieldName = diameterFieldName;
+            this.vScaleFieldName = vScaleFieldName;
+        }
+
+        /// <summary>
+        /// Initialization method.  May be called to update the available mount list later, but the model must be re-setup afterwards
+        /// </summary>
+        /// <param name="models"></param>
+        public void setupModelList(IEnumerable<T> models)
         {
             this.models.Clear();
             this.models.AddUniqueRange(models);
-            this.modelFieldName = modelNameField;
-            this.textureFieldName = modelTextureField;
-            this.diameterFieldName = modelDiameterField;
-            this.model = this.models.Find(m => m.name == modelName);
-            this.setupModel();
-            //external code can then position the model as desired, or call diameter/scale updating code, or w/e
+            if (model != null) { model.destroyCurrentModel(); }
+            model = this.models.Find(m => m.name == modelName);
+            partModule.updateUIChooseOptionControl(modelFieldName, SSTUUtils.getNames(models, s => s.name), SSTUUtils.getNames(models, s => s.name), true, modelName);
         }
 
-        public void setup(T[] models, string modelNameField, string modelTextureField, string modelDiameterField)
+        /// <summary>
+        /// Initialization method.  Subsequent changes to model should call the modelSelectedXXX methods below.
+        /// </summary>
+        public void setupModel()
         {
-            this.setup(new List<T>(models), modelNameField, modelTextureField, modelDiameterField);
+            SSTUUtils.destroyChildrenImmediate(root);
+            model = models.Find(m => m.name == modelName);
+            model.setupModel(root, orientation);
+            if (!model.isValidTextureSet(textureSet))
+            {
+                textureSet = model.getDefaultTextureSet();
+            }
+            model.enableTextureSet(textureSet, customColors);
+            model.updateTextureUIControl(partModule, textureFieldName, textureSet);
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -103,7 +126,6 @@ namespace SSTUTools
                 m.model.destroyCurrentModel();
                 m.model = m.models.Find(s => s.name == m.modelName);
                 m.setupModel();
-                m.partModule.updateUIChooseOptionControl(modelFieldName, SSTUUtils.getNames(models, s => s.name), SSTUUtils.getNames(models, s=>s.name), true, m.modelName);
             });
         }
 
@@ -118,7 +140,6 @@ namespace SSTUTools
             actionWithSymmetry(m => 
             {
                 m.diameter = diameter;
-                m.diameterUpdated(m.diameter);
                 m.model.updateScaleForDiameter(m.diameter);
             });
         }
@@ -143,24 +164,13 @@ namespace SSTUTools
 
         #region REGION - Private/Internal methods
 
-        private void setupModel()
-        {
-            //TODO clone model, or if useExisting, check for existing model before cloning
-            if (!model.isValidTextureSet(textureSet))
-            {
-                textureSet = model.getDefaultTextureSet();
-            }
-            model.enableTextureSet(textureSet, customColors);
-        }
-
         private void actionWithSymmetry(Action<ModelModule<T>> action)
         {
             action(this);
             int index = part.Modules.IndexOf(partModule);
             foreach (Part p in part.symmetryCounterparts)
             {
-                ModelModule<T> module = getSymmetryModule(p.Modules[index]);
-                action(module);
+                action(getSymmetryModule(p.Modules[index]));
             }
         }
 
