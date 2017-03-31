@@ -229,8 +229,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
         public void selectMountEvent()
         {
-            //TODO figure out best setup for module selection GUI interfacing
-            //ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, updateMountFromEditor);
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, delegate(string a, bool b) { mountModule.modelSelected(a); });
         }
 
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
@@ -251,7 +250,7 @@ namespace SSTUTools
                 initialize();
             }
 
-            bool useModelSelectionGUI = false;// HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
+            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
 
             //setup the delegate methods for UI field interaction events/callbacks
 
