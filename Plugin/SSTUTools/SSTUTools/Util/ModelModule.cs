@@ -63,6 +63,7 @@ namespace SSTUTools
             this.dataFieldName = dataFieldName;
             this.modelFieldName = modelFieldName;
             this.textureFieldName = textureFieldName;
+            loadPersistentData(persistentData);
         }
 
         /// <summary>
@@ -134,6 +135,7 @@ namespace SSTUTools
                 m.textureSet = textureSet;
                 m.customColors = colors;
                 m.model.enableTextureSet(m.textureSet, m.customColors);
+                m.saveColors(m.customColors);
             });
         }
 
@@ -159,6 +161,38 @@ namespace SSTUTools
             {
                 action(getSymmetryModule(p.Modules[index]));
             }
+        }
+
+        private void loadPersistentData(string data)
+        {
+            string[] colorSplits = data.Split(';');
+            string[] dataSplits;
+            int len = colorSplits.Length;
+            customColors = new Color[len];
+            float r, g, b, a;
+            for (int i = 0; i < len; i++)
+            {
+                dataSplits = colorSplits[i].Split(',');
+                r = SSTUUtils.safeParseFloat(dataSplits[0]);
+                g = SSTUUtils.safeParseFloat(dataSplits[1]);
+                b = SSTUUtils.safeParseFloat(dataSplits[2]);
+                a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]): 1f;
+            }
+        }
+
+        private void saveColors(Color[] colors)
+        {
+            int len = colors.Length;
+            string data = string.Empty;
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0) { data = data + ";"; }
+                data = data + colors[i].r + ",";
+                data = data + colors[i].g + ",";
+                data = data + colors[i].b + ",";
+                data = data + colors[i].a;
+            }
+            persistentData = data;
         }
 
         #endregion ENDREGION - Private/Internal methods

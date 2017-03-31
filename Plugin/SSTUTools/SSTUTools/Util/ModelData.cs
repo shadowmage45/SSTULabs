@@ -595,15 +595,14 @@ namespace SSTUTools
             return names.ToArray();
         }
 
-        public static T[] getValidSelections<T>(Part part, T[] models, string[] nodeNames) where T : SingleModelData
+        public static T[] getValidSelections<T>(Part part, IEnumerable<T> models, string[] nodeNames) where T : SingleModelData
         {
             List<T> validModels = new List<T>();
-            int len = models.Length;
-            for (int i = 0; i < len; i++)
+            foreach (T t in models)
             {
-                if (models[i].canSwitchTo(part, nodeNames))
+                if(t.canSwitchTo(part, nodeNames))
                 {
-                    validModels.Add(models[i]);
+                    validModels.Add(t);
                 }
             }
             return validModels.ToArray();

@@ -120,20 +120,12 @@ namespace SSTUTools
         private TankSet[] tankSets;
         private TankSet currentTankSetModule;
         
-        protected TankModelData[] mainTankModules;
         protected ModelModule<TankModelData> tankModule;
-
-        //protected SingleModelData[] noseModules;
         protected ModelModule<SingleModelData> noseModule;
-
-        //protected SingleModelData[] mountModules;
         protected ModelModule<SingleModelData> mountModule;
                 
-        private String[] topNodeNames;
-        private String[] bottomNodeNames;
-
-        private string[] noseVariants;
-        private string[] mountVariants;
+        protected String[] topNodeNames;
+        protected String[] bottomNodeNames;
 
         //populated during init to the variant type of the currently selected model data
         private string lastSelectedVariant;
@@ -147,13 +139,13 @@ namespace SSTUTools
         [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
         public void selectNoseEvent()
         {
-            //ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModules, topNodeNames), currentTankDiameter, setNoseModuleFromEditor);
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, topNodeNames), currentTankDiameter, delegate (string a, bool b) { noseModule.modelSelected(a); });
         }
 
         [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
         public void selectMountEvent()
         {
-            //ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModules, bottomNodeNames), currentTankDiameter, setMountModuleFromEditor);
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModule.models, bottomNodeNames), currentTankDiameter, delegate (string a, bool b) { mountModule.modelSelected(a); });
         }
 
         private void updateAvailableVariants()
@@ -161,8 +153,8 @@ namespace SSTUTools
             noseModule.updateSelections();
             mountModule.updateSelections();
             bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            Fields[nameof(currentNoseType)].guiActiveEditor = !useModelSelectionGUI && noseVariants.Length>1;
-            Fields[nameof(currentMountType)].guiActiveEditor = !useModelSelectionGUI && mountVariants.Length>1;
+            Fields[nameof(currentNoseType)].guiActiveEditor = !useModelSelectionGUI && noseModule.models.Count > 1;
+            Fields[nameof(currentMountType)].guiActiveEditor = !useModelSelectionGUI && mountModule.models.Count > 1;
         }
 
         private void updateUIScaleControls()
@@ -444,7 +436,7 @@ namespace SSTUTools
                 defaultSetNode.AddValue("name", "default");
                 tankSets[0] = new TankSet(defaultSetNode);
             }
-            mainTankModules = ModelData.parseModels<TankModelData>(tankNodes, m => new TankModelData(m));
+            TankModelData[] mainTankModules = ModelData.parseModels<TankModelData>(tankNodes, m => new TankModelData(m));
 
             int len = mainTankModules.Length;
             TankSet set;
@@ -462,18 +454,14 @@ namespace SSTUTools
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
 
-            //TODO - null root transform, null model list
-            tankModule = new ModelModule<TankModelData>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, bodyModuleData, currentTankType, currentTankTexture);
-            tankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).tankModule; };
-            tankModule.getValidSelections = delegate (IEnumerable<TankModelData> data)
-            {
-                return System.Linq.Enumerable.Where(data, s => s.setName == currentTankSet);
-            };
-            tankModule.setupModelList(null);//TODO
-
             currentTankSetModule = Array.Find(tankSets, m => m.name == tankModule.model.setName);
             currentTankSet = currentTankSetModule.name;
             lastSelectedVariant = tankModule.model.variantName;
+
+            tankModule = new ModelModule<TankModelData>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, bodyModuleData, currentTankType, currentTankTexture);
+            tankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).tankModule; };
+            tankModule.getValidSelections = delegate (IEnumerable<TankModelData> data) { return System.Linq.Enumerable.Where(data, s => s.setName == currentTankSet); };
+            tankModule.setupModelList(mainTankModules);
             
             len = mountNodes.Length;
             ConfigNode mountNode;
