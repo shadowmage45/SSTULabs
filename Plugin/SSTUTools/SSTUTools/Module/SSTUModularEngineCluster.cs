@@ -151,6 +151,13 @@ namespace SSTUTools
         public string currentEngineLayoutName = "Single";
 
         /// <summary>
+        /// User selection and persistent value for the engine rotation offset
+        /// </summary>
+        [KSPField(isPersistant = true, guiName = "Engine Rotation", guiActive = false, guiActiveEditor = true),
+         UI_FloatEdit(sigFigs = 1, suppressEditorShipModified = true, minValue = -180, maxValue = 180, incrementSlide = 0.5f, incrementLarge = 90f, incrementSmall = 45f)]
+        public float currentEngineRotation = 0;
+
+        /// <summary>
         /// User selection and persistent value for the current engine mount.
         /// </summary>
         [KSPField(guiName = "Mount", guiActive = false, guiActiveEditor = true, isPersistant = true),
@@ -281,6 +288,17 @@ namespace SSTUTools
                     m.updateNodePositions(true);
                     m.updateFairing(true);
                     m.updatePartCostAndMass();//model-data optionally supports module masses and costs
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentEngineRotation)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentEngineRotation = currentEngineRotation;
+                    m.positionEngineModels();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -620,7 +638,7 @@ namespace SSTUTools
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
                 engineRotation = currentEngineLayout.getEngineRotation(mountModule.model, i);
-                rot += engineRotation;
+                rot += engineRotation + (currentEngineRotation * position.rotationDirection);
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
             }

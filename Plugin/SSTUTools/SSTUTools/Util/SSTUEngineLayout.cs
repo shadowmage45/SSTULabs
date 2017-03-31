@@ -102,12 +102,14 @@ namespace SSTUTools
         public readonly float x;
         public readonly float z;
         public readonly float rotation;
+        public readonly float rotationDirection = 1f;
 
         public SSTUEnginePosition(ConfigNode node)
         {
             x = node.GetFloatValue("x");
             z = node.GetFloatValue("z");
-            rotation = node.GetFloatValue("rotation");
+            rotation = node.GetFloatValue("rotation", 0f);
+            rotationDirection = node.GetFloatValue("direction", 1f);
         }
 
         public float scaledX(float scale)
