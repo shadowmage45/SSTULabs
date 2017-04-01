@@ -139,13 +139,27 @@ namespace SSTUTools
         [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
         public void selectNoseEvent()
         {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, topNodeNames), currentTankDiameter, delegate (string a, bool b) { noseModule.modelSelected(a); });
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, topNodeNames), currentTankDiameter, delegate (string a, bool b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.noseModule.modelSelected(a);
+                    m.updateEditorStats(true);
+                });
+            });
         }
 
         [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
         public void selectMountEvent()
         {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModule.models, bottomNodeNames), currentTankDiameter, delegate (string a, bool b) { mountModule.modelSelected(a); });
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModule.models, bottomNodeNames), currentTankDiameter, delegate (string a, bool b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.mountModule.modelSelected(a);
+                    m.updateEditorStats(true);
+                });
+            });
         }
 
         private void updateAvailableVariants()
@@ -247,7 +261,10 @@ namespace SSTUTools
                     //persist the variant if the newly selected set did not contain the selected variant
                     //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
                     if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
+                    m.updateEditorStats(true);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
+                SSTUStockInterop.fireEditorUpdate();
             };
 
             Fields[nameof(currentTankType)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b) 
@@ -454,15 +471,18 @@ namespace SSTUTools
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
 
+            tankModule = new ModelModule<TankModelData>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
+            tankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).tankModule; };
+            tankModule.setupModelList(mainTankModules);
+
             currentTankSetModule = Array.Find(tankSets, m => m.name == tankModule.model.setName);
             currentTankSet = currentTankSetModule.name;
             lastSelectedVariant = tankModule.model.variantName;
 
-            tankModule = new ModelModule<TankModelData>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, bodyModuleData, currentTankType, currentTankTexture);
-            tankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).tankModule; };
             tankModule.getValidSelections = delegate (IEnumerable<TankModelData> data) { return System.Linq.Enumerable.Where(data, s => s.setName == currentTankSet); };
-            tankModule.setupModelList(mainTankModules);
-            
+            tankModule.updateSelections();
+            tankModule.setupModel();
+
             len = mountNodes.Length;
             ConfigNode mountNode;
             List<SingleModelData> noses = new List<SingleModelData>();
@@ -482,13 +502,13 @@ namespace SSTUTools
                 }
             }
             
-            noseModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, noseModuleData, currentNoseType, currentNoseTexture);
+            noseModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseType), nameof(currentNoseTexture));
             noseModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).noseModule; };
             noseModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, topNodeNames)); };
             noseModule.setupModelList(noses);
             noseModule.setupModel();
 
-            mountModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, mountModuleData, currentMountType, currentMountTexture);
+            mountModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountType), nameof(currentMountTexture));
             mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).mountModule; };
             mountModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, bottomNodeNames)); };
             mountModule.setupModelList(mounts);
