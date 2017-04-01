@@ -236,13 +236,27 @@ namespace SSTUTools
         [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
         public void selectMountEvent()
         {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, delegate(string a, bool b) { mountModule.modelSelected(a); });
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, delegate(string a, bool b) 
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentMountName = a;
+                    m.mountModule.modelSelected(a);
+                    m.updateEditorStats(true);
+                    m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
+                });
+            });
         }
 
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            mountModule.modelSelected("Mount-None");
+            this.actionWithSymmetry(m =>
+            {
+                m.mountModule.modelSelected("Mount-None");
+                m.updateEditorStats(true);
+                m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
+            });
         }
 
         #endregion ENDREGION - GUI Interaction Methods
@@ -266,11 +280,7 @@ namespace SSTUTools
                 mountModule.modelSelected(a, b);
                 this.actionWithSymmetry(m => 
                 {
-                    m.positionMountModel();
-                    m.positionEngineModels();
-                    m.updateNodePositions(true);
-                    m.updateFairing(true);
-                    m.updatePartCostAndMass();//model-data optionally supports module masses and costs
+                    m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -283,11 +293,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.currentMountDiameter = currentMountDiameter;
-                    m.positionMountModel();
-                    m.positionEngineModels();
-                    m.updateNodePositions(true);
-                    m.updateFairing(true);
-                    m.updatePartCostAndMass();//model-data optionally supports module masses and costs
+                    m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -323,15 +329,11 @@ namespace SSTUTools
                     m.Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;                    
                     m.setupMountModel();
                     m.currentMountDiameter = m.mountModule.model.initialDiameter;
-                    m.positionMountModel();
                     m.setupEngineModels();
-                    m.positionEngineModels();
+                    m.updateEditorStats(true);
                     m.reInitEngineModule();
-                    m.updateNodePositions(true);
                     m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
-                    m.updatePartCostAndMass();
                     m.updateGuiState();
-                    m.updateFairing(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -468,13 +470,10 @@ namespace SSTUTools
             initializeSmokeTransform();
             setupMountModule();
             setupMountModel();
-            positionMountModel();
             setupEngineModels();
-            positionEngineModels();
-            updateNodePositions(false);
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-            updatePartCostAndMass();
+            updateEditorStats(false);
             updateGuiState();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         private void loadEngineLayouts(ConfigNode[] moduleLayoutNodes)
@@ -655,6 +654,15 @@ namespace SSTUTools
         #endregion ENDREGION - Model Setup
 
         #region REGION - Update Methods
+
+        private void updateEditorStats(bool userInput)
+        {
+            positionMountModel();
+            positionEngineModels();
+            updatePartCostAndMass();
+            updateFairing(userInput);
+            updateNodePositions(userInput);
+        }
 
         /// <summary>
         /// Updates the cached positions, mass, and cost values for the current configuration
