@@ -124,8 +124,15 @@ namespace SSTUTools
 
         public void modelSelected(string newModel)
         {
-            modelName = newModel;
-            modelSelected(null, null);//chain to symmetry enabled method
+            if (models.Find(m => m.name == newModel) != null)
+            {
+                modelName = newModel;
+                modelSelected(null, null);//chain to symmetry enabled method
+            }
+            else
+            {
+                MonoBehaviour.print("ERROR: Attempt to set model to invalid value, model not found for name: " + newModel);
+            }
         }
 
         public void setSectionColors(Color[] colors)
@@ -165,18 +172,26 @@ namespace SSTUTools
 
         private void loadPersistentData(string data)
         {
-            string[] colorSplits = data.Split(';');
-            string[] dataSplits;
-            int len = colorSplits.Length;
-            customColors = new Color[len];
-            float r, g, b, a;
-            for (int i = 0; i < len; i++)
+            if (!string.IsNullOrEmpty(data))
             {
-                dataSplits = colorSplits[i].Split(',');
-                r = SSTUUtils.safeParseFloat(dataSplits[0]);
-                g = SSTUUtils.safeParseFloat(dataSplits[1]);
-                b = SSTUUtils.safeParseFloat(dataSplits[2]);
-                a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]): 1f;
+                string[] colorSplits = data.Split(';');
+                string[] dataSplits;
+                int len = colorSplits.Length;
+                customColors = new Color[len];
+                float r, g, b, a;
+                for (int i = 0; i < len; i++)
+                {
+                    dataSplits = colorSplits[i].Split(',');
+                    r = SSTUUtils.safeParseFloat(dataSplits[0]);
+                    g = SSTUUtils.safeParseFloat(dataSplits[1]);
+                    b = SSTUUtils.safeParseFloat(dataSplits[2]);
+                    a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]) : 1f;
+                    customColors[i] = new Color(r, g, b, a);
+                }
+            }
+            else
+            {
+                customColors = new Color[] { Color.white, Color.white, Color.white };
             }
         }
 
