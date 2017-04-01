@@ -208,6 +208,10 @@ namespace SSTUTools
                 if(GUILayout.Button("Preset", GUILayout.Width(60)))
                 {
                     color = presetColors[i];
+                    rStr = (color.r * 255f).ToString("F0");
+                    gStr = (color.g * 255f).ToString("F0");
+                    bStr = (color.b * 255f).ToString("F0");
+                    aStr = (color.a * 255f).ToString("F0");
                     update = true;
                 }
                 column++;
