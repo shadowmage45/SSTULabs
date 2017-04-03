@@ -615,7 +615,7 @@ namespace SSTUTools
                 Vector3 pos = currentMainTankModule.modelDefinition.surfaceNode.position * currentMainTankModule.currentDiameterScale;
                 Vector3 rot = currentMainTankModule.modelDefinition.surfaceNode.orientation;
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);                
-            }            
+            }
             
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
