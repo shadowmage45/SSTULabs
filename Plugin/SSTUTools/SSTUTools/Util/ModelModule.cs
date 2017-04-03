@@ -26,7 +26,7 @@ namespace SSTUTools
 
         public List<T> models = new List<T>();
         public T model;
-        public Color[] customColors = new Color[] { Color.clear, Color.clear, Color.clear };
+        public Color[] customColors = new Color[0];//zero-length array triggers default color assignment from texture set colors (if present)
 
         //string names used to hook into the KSPField data for module fields
         //workaround to needing those exact fields for persistence and UI interaction functions
@@ -87,12 +87,17 @@ namespace SSTUTools
             SSTUUtils.destroyChildrenImmediate(root);
             model = models.Find(m => m.name == modelName);
             model.setupModel(root, orientation);
+            bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet))
             {
                 textureSet = model.getDefaultTextureSet();
+                useDefaultTextureColors = true;
             }
-            model.enableTextureSet(textureSet, customColors);
-            model.updateTextureUIControl(partModule, textureFieldName, textureSet);
+            if (customColors == null || customColors.Length == 0)
+            {
+                useDefaultTextureColors = true;
+            }
+            applyTextureSet(textureSet, useDefaultTextureColors);
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -105,7 +110,7 @@ namespace SSTUTools
             {
                 m.textureSet = textureSet;
                 m.customColors = customColors;
-                m.model.enableTextureSet(m.textureSet, m.customColors);
+                m.applyTextureSet(m.textureSet, true);
                 m.partModule.updateUIChooseOptionControl(textureFieldName, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetNames(), true, m.textureSet);
                 m.partModule.Fields[textureFieldName].guiActiveEditor = m.model.modelDefinition.textureSets.Length > 1;
             });
@@ -118,6 +123,7 @@ namespace SSTUTools
                 m.modelName = modelName;
                 m.model.destroyCurrentModel();
                 m.model = m.models.Find(s => s.name == m.modelName);
+                m.customColors = new Color[0];
                 m.setupModel();
             });
         }
@@ -160,6 +166,28 @@ namespace SSTUTools
 
         #region REGION - Private/Internal methods
 
+        private void applyTextureSet(string setName, bool useDefaultColors)
+        {
+            if (useDefaultColors)
+            {
+                TextureSet ts = Array.Find(model.modelDefinition.textureSets, m => m.name == setName);
+                if (ts.maskColors != null && ts.maskColors.Length > 0)
+                {
+                    customColors = new Color[3];
+                    customColors[0] = ts.maskColors[0];
+                    customColors[1] = ts.maskColors[1];
+                    customColors[2] = ts.maskColors[2];
+                }
+                else
+                {
+                    customColors = new Color[] { Color.white, Color.white, Color.white };
+                }
+                saveColors(customColors);
+            }
+            model.enableTextureSet(textureSet, customColors);
+            model.updateTextureUIControl(partModule, textureFieldName, textureSet);
+        }
+
         private void actionWithSymmetry(Action<ModelModule<T>> action)
         {
             action(this);
@@ -197,6 +225,7 @@ namespace SSTUTools
 
         private void saveColors(Color[] colors)
         {
+            if (colors == null || colors.Length == 0) { return; }
             int len = colors.Length;
             string data = string.Empty;
             for (int i = 0; i < len; i++)

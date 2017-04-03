@@ -77,6 +77,7 @@ namespace SSTUTools
     {
         public readonly String name;
         public readonly TextureSetMaterialData[] textureData;
+        public readonly Color[] maskColors;
 
         public TextureSet(ConfigNode node)
         {
@@ -87,6 +88,19 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 textureData[i] = new TextureSetMaterialData(texNodes[i]);
+            }
+            if (node.HasNode("COLORS"))
+            {
+                ConfigNode colorsNode = node.GetNode("COLORS");
+                Color c1 = colorsNode.getColor("mainColor");
+                Color c2 = colorsNode.getColor("secondColor");
+                Color c3 = colorsNode.getColor("detailColor");
+                maskColors = new Color[] { c1, c2, c3 };
+            }
+            else
+            {
+                //TODO -- what should the default value for 'no default colors' be?
+                maskColors = new Color[0];
             }
         }
 
