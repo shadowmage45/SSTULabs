@@ -7,13 +7,14 @@ namespace SSTUTools
 {
     public class SSTUModularBooster : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
+
         #region REGION - KSP Config Variables
 
         /// <summary>
         /// Models will be added to this transform
         /// </summary>
         [KSPField]
-        public string baseTransformName = "SSTU-MRB-BaseTransform";
+        public string baseTransformName = "SSTU-MSRB-BaseTransform";
 
         /// <summary>
         /// If not empty, a transform by this name will be added to the base part model.<para></para>
@@ -66,9 +67,6 @@ namespace SSTUTools
 
         [KSPField]
         public float diameterForThrustScaling = -1;
-        
-        [KSPField]
-        public String techLimitSet = "Default";
 
         #endregion REGION - KSP Config Variables
 
@@ -107,13 +105,13 @@ namespace SSTUTools
         public String currentNozzleTexture;
 
         [KSPField(isPersistant = true)]
-        public Vector4 noseColor = Color.white;
+        public string noseModuleData = string.Empty;
 
         [KSPField(isPersistant = true)]
-        public Vector4 bodyColor = Color.white;
+        public string bodyModuleData = string.Empty;
 
         [KSPField(isPersistant = true)]
-        public Vector4 nozzleColor = Color.white;
+        public string mountModuleData = string.Empty;
 
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
         [KSPField(isPersistant = true)]
@@ -132,9 +130,6 @@ namespace SSTUTools
 
         #region REGION - GUI Display Variables
 
-        [KSPField(guiName = "Height", guiActiveEditor = true)]
-        public float guiHeight = 0f;
-
         [KSPField(guiName = "Thrust", guiActiveEditor = true)]
         public float guiThrust = 0f;
 
@@ -147,19 +142,9 @@ namespace SSTUTools
 
         private bool initialized = false;
 
-        private float prevDiameter;
-        private float prevGimbal;
-        private string prevNose;
-        private string prevBody;
-        private string prevNozzle;
-                
-        private SingleModelData[] noseModules;
-        private SRBNozzleData[] nozzleModules;
-        private SRBModelData[] mainModules;
-
-        private SingleModelData currentNoseModule;
-        private SRBNozzleData currentNozzleModule;
-        private SRBModelData currentMainModule;
+        private ModelModule<SingleModelData> noseModule;
+        private ModelModule<SRBModelData> bodyModule;
+        private ModelModule<SRBNozzleData> mountModule;
 
         private float modifiedCost = -1;
         private float modifiedMass = -1;
@@ -177,72 +162,16 @@ namespace SSTUTools
         [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
         public void selectNoseEvent()
         {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModules, new string[] { "top"}), currentDiameter, updateNoseFromEditor);
-        }
-
-        public void onDiameterUpdated(BaseField field, object obj)
-        {
-            if (currentDiameter != prevDiameter)
+            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, new string[] { "top"}), currentDiameter, delegate(string s, bool b)
             {
-                updateDiameterFromEditor(currentDiameter, true);
-            }
-        }
-        
-        public void onNoseUpdated(BaseField field, object obj)
-        {
-            if (currentNoseName != prevNose)
-            {
-                updateNoseFromEditor(currentNoseName, true);
-            }
-        }
-
-        public void onBodyUpdated(BaseField field, object obj)
-        {
-            if (currentMainName != prevBody)
-            {
-                updateMainModelFromEditor(currentMainName, true);
-            }
-        }
-
-        public void onNozzleUpdated(BaseField field, object obj)
-        {
-            if (currentNozzleName != prevNozzle)
-            {
-                updateMountFromEditor(currentNozzleName, true);
-            }
-        }
-
-        public void onGimbalUpdated(BaseField field, object obj)
-        {
-            if (currentGimbalOffset != prevGimbal)
-            {
-                updateGimbalOffsetFromEditor(currentGimbalOffset, true);
-                prevGimbal = currentGimbalOffset;
-            }
-        }
-
-        public void onNoseTextureUpdated(BaseField field, object obj)
-        {
-            if ((string)obj != currentNoseTexture)
-            {
-                updateNoseTextureFromEditor(currentNoseTexture, true);
-            }
-        }
-
-        public void onMainTextureUpdated(BaseField field, object obj)
-        {
-            if ((string)obj != currentMainTexture)
-            {
-                updateMainTextureFromEditor(currentMainTexture, true);
-            }
-        }
-
-        public void onNozzleTextureUpdated(BaseField field, object obj)
-        {
-            if ((string)obj != currentNozzleTexture)
-            {
-                updateNozzleTextureFromEditor(currentNozzleTexture, true);
-            }
+                noseModule.modelSelected(s);
+                this.actionWithSymmetry(m =>
+                {
+                    updateEditorStats(true);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            });
         }
 
         [KSPEvent(guiName = "Adjust Thrust Curve", guiActiveEditor = true, guiActive = false)]
@@ -259,248 +188,13 @@ namespace SSTUTools
             guiOpen = false;
             EditorLogic editor = EditorLogic.fetch;
             if (editor != null) { editor.Unlock("SSTUThrustCurveEditorLock"); }
-            thrustCurveCache = editorCurve;
-            presetCurveName = preset;
-            updateThrustOutput();
-            updateCurvePersistentData();
-
-            this.forEachSymmetryCounterpart(m =>
+            this.actionWithSymmetry(m =>
             {
-                ConfigNode n = new ConfigNode();
-                thrustCurveCache.Save(n);
+                m.thrustCurveCache = editorCurve;
                 m.presetCurveName = preset;
-                if (m.thrustCurveCache == null)
-                {
-                    m.thrustCurveCache = new FloatCurve();
-                }
-                m.thrustCurveCache.Load(n);
                 m.updateThrustOutput();
                 m.updateCurvePersistentData();
             });
-        }
-        
-        /// <summary>
-        /// Updates the current model scales from user input in the editor
-        /// </summary>
-        /// <param name="newDiameter"></param>
-        /// <param name="updateSymmetry"></param>
-        private void updateDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            currentDiameter = newDiameter;
-            updateModelScaleAndPosition();
-            updateEffectsScale();
-            updateContainerVolume();
-            updatePartMass();
-            updatePartCost();
-            updateAttachnodes(true);
-            SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, prevDiameter, currentDiameter);
-            updateEditorValues();
-            updateThrustOutput();
-            updateGui();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateDiameterFromEditor(newDiameter, false);
-                }
-            }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        /// <summary>
-        /// Updates the main-segment model from user input in the editor
-        /// </summary>
-        /// <param name="newModel"></param>
-        /// <param name="updateSymmetry"></param>
-        private void updateMainModelFromEditor(String newModel, bool updateSymmetry)
-        {
-            SRBModelData mod = Array.Find(mainModules, m => m.name == newModel);
-            if (mod != null && mod != currentMainModule)
-            {
-                currentMainModule.destroyCurrentModel();
-                currentMainModule = mod;
-                currentMainModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.CENTRAL);
-            }
-            currentMainName = currentMainModule.name;
-            if (!currentMainModule.isValidTextureSet(currentMainTexture))
-            {
-                currentMainTexture = currentMainModule.getDefaultTextureSet();            
-            }
-            currentMainModule.enableTextureSet(currentMainTexture, new Color[] { bodyColor, bodyColor, bodyColor});
-            currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
-            updateModelScaleAndPosition();
-            updateEffectsScale();
-            updateContainerVolume();
-            updatePartMass();
-            updatePartCost();
-            updateAttachnodes(true);
-            updateEditorValues();
-            updateThrustOutput();
-            updateGui();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateMainModelFromEditor(newModel, false);
-                }
-            }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        /// <summary>
-        /// Update the nose module from user input in the editor
-        /// </summary>
-        /// <param name="newNose"></param>
-        /// <param name="updateSymmetry"></param>
-        private void updateNoseFromEditor(String newNose, bool updateSymmetry)
-        {
-            SingleModelData mod = Array.Find(noseModules, m => m.name == newNose);
-            if (mod != null && mod != currentNoseModule)
-            {
-                currentNoseModule.destroyCurrentModel();
-                mod.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.TOP);
-                currentNoseModule = mod;
-            }
-            currentNoseName = currentNoseModule.name;
-            if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
-            {
-                currentNoseTexture = currentNoseModule.getDefaultTextureSet();
-            }
-            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
-            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
-            updateModelScaleAndPosition();
-            updateEffectsScale();
-            updateContainerVolume();
-            updatePartMass();
-            updatePartCost();
-            updateAttachnodes(true);
-            updateEditorValues();
-            updateGui();
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateNoseFromEditor(newNose, false);
-                }
-            }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        /// <summary>
-        /// Updates the mount module from user input in the editor
-        /// </summary>
-        /// <param name="newMount"></param>
-        /// <param name="updateSymmetry"></param>
-        private void updateMountFromEditor(String newMount, bool updateSymmetry)
-        {
-            SRBNozzleData mod = Array.Find(nozzleModules, m => m.name == newMount);
-            if (mod != null && mod != currentNozzleModule)
-            {
-                //finally, clear any existing models from prefab, and initialize the currently configured models
-                resetTransformParents();
-
-                currentNozzleModule.destroyCurrentModel();
-                currentNozzleModule = mod;
-                currentNozzleModule.setupModel(part.transform.FindRecursive(baseTransformName), ModelOrientation.BOTTOM);
-                currentGimbalOffset = 0;
-            }
-            currentNozzleName = currentNozzleModule.name;
-            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
-            {
-                currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
-            }
-            currentNozzleModule.enableTextureSet(currentNozzleTexture, new Color[] { nozzleColor, nozzleColor, nozzleColor });
-            currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
-            updateModelScaleAndPosition();
-            updateEffectsScale();
-            updateContainerVolume();
-            updatePartMass();
-            updatePartCost();
-            updateAttachnodes(true);
-            currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
-            updateGimbalOffset();
-            updateEngineISP();
-            updateEditorValues();
-            updateThrustOutput();
-            float val = currentNozzleModule.gimbalAdjustmentRange;
-            this.updateUIFloatEditControl("currentGimbalOffset", -val, val, 2f, 1f, 0.1f, true, currentGimbalOffset);
-            updateGui();
-
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateMountFromEditor(newMount, false);
-                }
-            }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        private void updateGimbalOffsetFromEditor(float newOffset, bool updateSymmetry)
-        {
-            if (newOffset < -currentNozzleModule.gimbalAdjustmentRange)
-            {
-                newOffset = -currentNozzleModule.gimbalAdjustmentRange;
-            }
-            if (newOffset > currentNozzleModule.gimbalAdjustmentRange)
-            {
-                newOffset = currentNozzleModule.gimbalAdjustmentRange;
-            }
-            currentGimbalOffset = newOffset;
-            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
-
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateGimbalOffsetFromEditor(newOffset, false);
-                }
-            }
-            SSTUStockInterop.fireEditorUpdate();
-            SSTUModInterop.onPartGeometryUpdate(part, true);
-        }
-
-        private void updateMainTextureFromEditor(String newTex, bool updateSymmetry)
-        {
-            currentMainTexture = newTex;
-            currentMainModule.enableTextureSet(newTex, new Color[] { bodyColor, bodyColor, bodyColor });
-            if (updateSymmetry)
-            {
-                foreach(Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateMainTextureFromEditor(newTex, false);
-                }
-            }
-        }
-
-        private void updateNoseTextureFromEditor(String newTex, bool updateSymmetry)
-        {
-            currentNoseTexture = newTex;
-            currentNoseModule.enableTextureSet(newTex, new Color[] { noseColor, noseColor, noseColor });
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateNoseTextureFromEditor(newTex, false);
-                }
-            }
-        }
-
-        private void updateNozzleTextureFromEditor(String newTex, bool updateSymmetry)
-        {
-            currentNozzleTexture = newTex;
-            currentNozzleModule.enableTextureSet(newTex, new Color[] { nozzleColor, nozzleColor, nozzleColor });
-            if (updateSymmetry)
-            {
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    p.GetComponent<SSTUModularBooster>().updateNozzleTextureFromEditor(newTex, false);
-                }
-            }
         }
 
         #endregion ENDREGION - KSP GUI Interaction Methods
@@ -511,38 +205,81 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
-            this.updateUIFloatEditControl("currentGimbalOffset", -currentNozzleModule.gimbalAdjustmentRange, currentNozzleModule.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
 
-            currentNoseModule.updateTextureUIControl(this, "currentNoseTexture", currentNoseTexture);
-            currentMainModule.updateTextureUIControl(this, "currentMainTexture", currentMainTexture);
-            currentNozzleModule.updateTextureUIControl(this, "currentNozzleTexture", currentNozzleTexture);
-
-            string[] names = SSTUUtils.getNames(noseModules, m => m.name);
-            this.updateUIChooseOptionControl("currentNoseName", names, names, true, currentNoseName);
-            names = SSTUUtils.getNames(mainModules, m => m.name);
-            this.updateUIChooseOptionControl("currentMainName", names, names, true, currentMainName);
-            names = SSTUUtils.getNames(nozzleModules, m => m.name);
-            this.updateUIChooseOptionControl("currentNozzleName", names, names, true, currentNozzleName);
-            
             bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            Events["selectNoseEvent"].guiActiveEditor = useModelSelectionGUI;
+            Events[nameof(selectNoseEvent)].guiActiveEditor = useModelSelectionGUI;
 
-            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
-            Fields["currentGimbalOffset"].uiControlEditor.onFieldChanged = onGimbalUpdated;
-            Fields["currentNoseName"].uiControlEditor.onFieldChanged = onNoseUpdated;
-            Fields["currentMainName"].uiControlEditor.onFieldChanged = onBodyUpdated;
-            Fields["currentNozzleName"].uiControlEditor.onFieldChanged = onNozzleUpdated;
+            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentDiameter = currentDiameter;
+                    m.updateEditorStats(true);
+                    m.updateThrustOutput();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
-            Fields["currentNoseName"].guiActiveEditor = !useModelSelectionGUI && noseModules.Length>1;
-            Fields["currentNozzleName"].guiActiveEditor = nozzleModules.Length > 1;
-            Fields["currentMainName"].guiActiveEditor = mainModules.Length > 1;
-            Fields["currentGimbalOffset"].guiActiveEditor = currentNozzleModule.gimbalAdjustmentRange > 0;
-            Fields["currentDiameter"].guiActiveEditor = maxDiameter > minDiameter;
+            Fields[nameof(currentGimbalOffset)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentGimbalOffset = Mathf.Clamp(currentGimbalOffset, -m.mountModule.model.gimbalAdjustmentRange, m.mountModule.model.gimbalAdjustmentRange);
+                    m.mountModule.model.updateGimbalRotation(m.part.transform.forward, m.currentGimbalOffset);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
-            Fields["currentNoseTexture"].uiControlEditor.onFieldChanged = onNoseTextureUpdated;
-            Fields["currentMainTexture"].uiControlEditor.onFieldChanged = onMainTextureUpdated;
-            Fields["currentNozzleTexture"].uiControlEditor.onFieldChanged = onNozzleTextureUpdated;
+            Fields[nameof(currentNoseName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                noseModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentMainName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                bodyModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    m.updateThrustOutput();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentNozzleName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.resetTransformParents();
+                });
+                mountModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    m.updateGimbalOffset();
+                    m.updateThrustOutput();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentNoseTexture)].uiControlEditor.onFieldChanged = noseModule.textureSetSelected;
+            Fields[nameof(currentMainTexture)].uiControlEditor.onFieldChanged = bodyModule.textureSetSelected;
+            Fields[nameof(currentNozzleTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
+
+            this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
+            this.updateUIFloatEditControl(nameof(currentGimbalOffset), -mountModule.model.gimbalAdjustmentRange, mountModule.model.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
+            Fields[nameof(currentGimbalOffset)].guiActiveEditor = mountModule.model.gimbalAdjustmentRange > 0;
+            Fields[nameof(currentDiameter)].guiActiveEditor = maxDiameter > minDiameter;
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
@@ -570,7 +307,6 @@ namespace SSTUTools
         {            
             updateGimbalOffset();
             updateThrustOutput();
-            updateGui();
             if (!initializedResources && HighLogic.LoadedSceneIsEditor)
             {
                 initializedResources = true;
@@ -618,35 +354,33 @@ namespace SSTUTools
         {
             if (section == "Top")
             {
-                return new Color[] { noseColor, noseColor, noseColor };
+                return noseModule.customColors;
             }
             else if (section == "Body")
             {
-                return new Color[] { bodyColor, bodyColor, bodyColor };
+                return bodyModule.customColors;
             }
             else if (section == "Bottom")
             {
-                return new Color[] { nozzleColor, nozzleColor, nozzleColor };
+                return mountModule.customColors;
             }
-            return new Color[] { noseColor, noseColor, noseColor };
+            return bodyModule.customColors;
         }
 
         public void setSectionColors(string section, Color[] colors)
         {
-            //TODO
             if (section == "Top")
             {
-                //noseColor = color1;
+                noseModule.setSectionColors(colors);
             }
             else if (section == "Body")
             {
-                //bodyColor = color1;
+                bodyModule.setSectionColors(colors);
             }
             else if (section == "Bottom")
             {
-                //nozzleColor = color1;
+                mountModule.setSectionColors(colors);
             }
-            updateTextureSets();
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -660,33 +394,29 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor) { initiaizePrefab(); }//init thrust transforms and/or other persistent models            
+            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
+            {
+                //init thrust transforms and/or other persistent models
+                //these transforms need to be present on the part at all times or the stock modules will error out during loading
+                //as such these transform are left on the model even when resetting all the other model-module data
+                initiaizePrefab();
+            }
             loadConfigNodeData();
-            updateEditorValues();
-            updateModelScaleAndPosition();
-            updateEffectsScale();
-            updateAttachnodes(false);
-            updateEngineISP();
-            updateGimbalOffset();
-            updatePartCost();
-            updatePartMass();
-            updateGui();
-            updateTextureSets();
+            updateEditorStats(false);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
-        /// <summary>
-        /// Update the editor values for whole and partial increments based on the current setup parameters.
-        /// Ensures that pressing the ++/-- buttom with a parital increment selected will carry that increment over or zero it out if is out of bounds.
-        /// Also allows for non-whole increments to be used for min and max values for the adjusted parameters
-        /// </summary>
-        private void updateEditorValues()
+        private void updateEditorStats(bool userInput)
         {
-            prevDiameter = currentDiameter;
-            prevNose = currentNoseName;
-            prevBody = currentMainName;
-            prevNozzle = currentNozzleName;
-            prevGimbal = currentGimbalOffset;
+            updateModelScaleAndPosition();
+            updateEffectsScale();
+            updateAttachnodes(userInput);
+            updateGimbalOffset();
+            updatePartCostAndMass();
+            if (userInput)
+            {
+                updateContainerVolume();
+            }
         }
 
         /// <summary>
@@ -710,75 +440,28 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigNodeData()
         {
+            //reset existing gimbal/thrust transforms, remove them from the model hierarchy so they do not get deleted when setting up models
+            resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
+
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            
-            //load all main tank model datas
-            mainModules = SRBModelData.parseSRBModels(node.GetNodes("MAINMODEL"));
-            currentMainModule = Array.Find(mainModules, m => m.name == currentMainName);
-            if (currentMainModule == null)
-            {
-                currentMainModule = mainModules[0];
-                currentMainName = currentMainModule.name;
-            }
-            if (!currentMainModule.isValidTextureSet(currentMainTexture))
-            {
-                currentMainTexture = currentMainModule.getDefaultTextureSet();
-            }
+
+            //load all main modules from MAINMODEL nodes
+            bodyModule = new ModelModule<SRBModelData>(part, this, createRootTransform(baseTransformName + "Root"), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentMainName), nameof(currentMainTexture));
+            bodyModule.setupModelList(SingleModelData.parseModels<SRBModelData>(node.GetNodes("MAINMODEL"), m=>new SRBModelData(m)));
+            bodyModule.setupModel();
 
             //load nose modules from NOSE nodes
-            ConfigNode[] noseNodes = node.GetNodes("NOSE");
-            ConfigNode noseNode;
-            int length = noseNodes.Length;
-            List<SingleModelData> noseModulesTemp = new List<SingleModelData>();
-            for (int i = 0; i < length; i++)
-            {
-                noseNode = noseNodes[i];
-                noseModulesTemp.Add(new SingleModelData(noseNode));
-            }
-            this.noseModules = noseModulesTemp.ToArray();
-            currentNoseModule = Array.Find(this.noseModules, m => m.name == currentNoseName);
-            if (currentNoseModule == null)
-            {
-                currentNoseModule = this.noseModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
-                currentNoseName = currentNoseModule.name;
-            }
-            if (!currentNoseModule.isValidTextureSet(currentNoseTexture))
-            {
-                currentNoseTexture = currentNoseModule.getDefaultTextureSet();
-            }
+            noseModule = new ModelModule<SingleModelData>(part, this, createRootTransform(baseTransformName + "Nose"), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseName), nameof(currentNoseTexture));
+            noseModule.setupModelList(SingleModelData.parseModels(node.GetNodes("NOSE")));
+            noseModule.setupModel();
 
             //load nose modules from NOZZLE nodes
-            ConfigNode[] nozzleNodes = node.GetNodes("NOZZLE");
-            ConfigNode nozzleNode;
-            length = nozzleNodes.Length;            
-            List<SRBNozzleData> nozzleModulesTemp = new List<SRBNozzleData>();
-            for (int i = 0; i < length; i++)
-            {
-                nozzleNode = nozzleNodes[i];
-                nozzleModulesTemp.Add(new SRBNozzleData(nozzleNode));
-            }
-            this.nozzleModules = nozzleModulesTemp.ToArray();
-            currentNozzleModule = Array.Find(this.nozzleModules, m => m.name == currentNozzleName);
-            if (currentNozzleModule == null)
-            {
-                currentNozzleModule = this.nozzleModules[0];//not having a mount defined is an error, at least one mount must be defined, crashing at this point is acceptable
-                currentNozzleName = currentNozzleModule.name;
-            }
-            if (!currentNozzleModule.isValidTextureSet(currentNozzleTexture))
-            {
-                currentNozzleTexture = currentNozzleModule.getDefaultTextureSet();
-            }
-            
-            //reset existing gimbal/thrust transforms, remove them from the model hierarchy
-            resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
-            Transform parentTransform = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
-            //finally, clear any existing models from prefab, and initialize the currently configured models
-            SSTUUtils.destroyChildren(parentTransform);
-            currentNoseModule.setupModel(parentTransform, ModelOrientation.TOP);
-            currentNozzleModule.setupModel(parentTransform, ModelOrientation.BOTTOM);
-            currentMainModule.setupModel(parentTransform, ModelOrientation.CENTRAL);
+            mountModule = new ModelModule<SRBNozzleData>(part, this, createRootTransform(baseTransformName + "Mount"), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentNozzleName), nameof(currentNozzleTexture));
+            mountModule.setupModelList(SingleModelData.parseModels<SRBNozzleData>(node.GetNodes("NOZZLE"), m => new SRBNozzleData(m)));
+            mountModule.setupModel();
+
             //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
-            currentNozzleModule.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
+            mountModule.model.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
 
             //if had custom thrust curve data, reload it now (else it will default to whatever is on the engine)
             if (!string.IsNullOrEmpty(thrustCurveData))
@@ -841,15 +524,17 @@ namespace SSTUTools
         /// </summary>
         private void updateModelScaleAndPosition()
         {
-            currentNoseModule.updateScaleForDiameter(currentDiameter);
-            currentMainModule.updateScaleForDiameter(currentDiameter);
-            currentNozzleModule.updateScaleForDiameter(currentDiameter);
-            currentNoseModule.currentVerticalPosition = currentMainModule.currentHeight * 0.5f;
-            currentMainModule.currentVerticalPosition = 0f;
-            currentNozzleModule.currentVerticalPosition = -currentMainModule.currentHeight * 0.5f;
-            currentNoseModule.updateModel();
-            currentMainModule.updateModel();
-            currentNozzleModule.updateModel();
+            noseModule.model.updateScaleForDiameter(currentDiameter);
+            bodyModule.model.updateScaleForDiameter(currentDiameter);
+            mountModule.model.updateScaleForDiameter(currentDiameter);
+
+            noseModule.model.currentVerticalPosition = bodyModule.model.currentHeight * 0.5f;
+            bodyModule.model.currentVerticalPosition = 0f;
+            mountModule.model.currentVerticalPosition = -bodyModule.model.currentHeight * 0.5f;
+
+            noseModule.model.updateModel();
+            bodyModule.model.updateModel();
+            mountModule.model.updateModel();
         }
 
         /// <summary>
@@ -857,13 +542,13 @@ namespace SSTUTools
         /// </summary>
         private void updateThrustOutput()
         {
-            float scale = diameterForThrustScaling == -1 ? currentMainModule.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
+            float scale = diameterForThrustScaling == -1 ? bodyModule.model.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
             scale = Mathf.Pow(scale, thrustScalePower);
             if (engineModule == null) { engineModule = part.GetComponent<ModuleEnginesFX>(); }
             if (engineModule != null)
             {
-                float minThrust = scale * currentMainModule.minThrust;
-                float maxThrust = scale * currentMainModule.maxThrust;
+                float minThrust = scale * bodyModule.model.minThrust;
+                float maxThrust = scale * bodyModule.model.maxThrust;
                 if (thrustCurveCache == null) { thrustCurveCache = engineModule.thrustCurve; }
                 SSTUStockInterop.updateEngineThrust(engineModule, minThrust, maxThrust);
                 engineModule.thrustCurve = thrustCurveCache;
@@ -893,7 +578,7 @@ namespace SSTUTools
         private void updateGimbalOffset()
         {
             //update the transform orientation for the gimbal so that the moduleGimbal gets the correct 'defaultOrientation'
-            currentNozzleModule.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
+            mountModule.model.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
 
             //update the ModuleGimbals transform and orientation data
             ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
@@ -909,7 +594,7 @@ namespace SSTUTools
                     //MonoBehaviour.print("Updating gimbal module data...");
                     //set gimbal actuation range
                     gimbal.gimbalTransformName = gimbalTransformName;
-                    gimbal.gimbalRange = currentNozzleModule.gimbalFlightRange;
+                    gimbal.gimbalRange = mountModule.model.gimbalFlightRange;
                     gimbal.OnStart(StartState.Flying);//forces gimbal to re-init its transform and default orientation data
                 }
             }
@@ -940,26 +625,13 @@ namespace SSTUTools
             }
         }
 
-        //TODO
-        /// <summary>
-        /// Update the engine ISP based on the currently selected nozzle mode (atmo or vacuum specialized)
-        /// </summary>
-        private void updateEngineISP()
-        {
-            // pull ISP from nozzle
-            // set ISP to engine
-            // will need to find out if I can directly adjust the curve (it is probably public)
-            // or if I need to create a fake config node and feed that back through the OnLoad setup
-            // in theory it -should- accept just chaning of the curve, as I believe the curve is queried directly for the resultant ISP output.
-        }
-
         private void updateEffectsScale()
         {
             if (part.fxGroups == null)
             {
                 return;
             }
-            float diameterScale = currentMainModule.currentDiameterScale;
+            float diameterScale = bodyModule.model.currentDiameterScale;
             //foreach (FXGroup group in part.fxGroups)
             //{
             //    if (group.fxEmitters == null)
@@ -1058,25 +730,14 @@ namespace SSTUTools
         /// <param name="userInput"></param>
         private void updateAttachnodes(bool userInput)
         {
-            Vector3 pos;
-            AttachNode topNode = part.FindAttachNode("top");
-            if (topNode != null)
-            {
-                pos = new Vector3(0, currentMainModule.currentHeight * 0.5f + currentNoseModule.currentHeight, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
-            }
-            AttachNode bottomNode = part.FindAttachNode("bottom");
-            if (bottomNode != null)
-            {
-                pos = new Vector3(0, -currentMainModule.currentHeight * 0.5f - currentNozzleModule.currentHeight, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
-            }
+            noseModule.model.updateAttachNodes(part, new string[] { "top" }, userInput, ModelOrientation.TOP);
+            mountModule.model.updateAttachNodes(part, new string[] { "bottom" }, userInput, ModelOrientation.BOTTOM);
             AttachNode surface = part.srfAttachNode;
             if (surface != null)
             {
-                pos = new Vector3(currentDiameter * 0.5f, 0, 0);
-                Vector3 orientation = new Vector3(1, 0, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, orientation, userInput);
+                Vector3 pos = bodyModule.model.modelDefinition.surfaceNode.position * bodyModule.model.currentDiameterScale;
+                Vector3 rot = bodyModule.model.modelDefinition.surfaceNode.orientation;
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);
             }
         }
 
@@ -1085,38 +746,22 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            SSTUModInterop.onPartFuelVolumeUpdate(part, currentMainModule.getModuleVolume() * 1000f);
+            SSTUModInterop.onPartFuelVolumeUpdate(part, bodyModule.model.getModuleVolume() * 1000f);
         }
 
-        /// <summary>
-        /// Update the mass of the part (and real-fuels/MFT volume) based on the currently selected models and scales
-        /// </summary>
-        private void updatePartMass()
+        private void updatePartCostAndMass()
         {
-            modifiedMass = currentMainModule.getModuleMass() + currentNozzleModule.getModuleMass() + currentNoseModule.getModuleMass();
+            modifiedCost = bodyModule.model.getModuleCost() + noseModule.model.getModuleCost() + mountModule.model.getModuleCost();
+            modifiedMass = bodyModule.model.getModuleMass() + noseModule.model.getModuleMass() + mountModule.model.getModuleMass();
         }
 
-        private void updatePartCost()
+        private Transform createRootTransform(string name)
         {
-            modifiedCost = currentMainModule.getModuleCost() + currentNoseModule.getModuleCost() + currentNozzleModule.getModuleCost();
-        }
-        
-        /// <summary>
-        /// Updates GUI fields for diameter/height/etc
-        /// </summary>
-        private void updateGui()
-        {
-            guiHeight = currentMainModule.currentHeight;
-            Fields["currentNoseTexture"].guiActiveEditor = currentNoseModule.modelDefinition.textureSets.Length > 1;
-            Fields["currentMainTexture"].guiActiveEditor = currentMainModule.modelDefinition.textureSets.Length > 1;
-            Fields["currentNozzleTexture"].guiActiveEditor = currentNozzleModule.modelDefinition.textureSets.Length > 1;
-        }
-
-        private void updateTextureSets()
-        {
-            currentNoseModule.enableTextureSet(currentNoseTexture, new Color[] { noseColor, noseColor, noseColor });
-            currentMainModule.enableTextureSet(currentMainTexture, new Color[] { bodyColor, bodyColor, bodyColor });
-            currentNozzleModule.enableTextureSet(currentNozzleTexture, new Color[] { nozzleColor, nozzleColor, nozzleColor });
+            Transform tr = part.transform.FindRecursive(name);
+            if (tr != null) { GameObject.DestroyImmediate(tr); }
+            tr = new GameObject(name).transform;
+            tr.NestToParent(part.transform.FindRecursive("model"));
+            return tr;
         }
 
         #endregion ENDREGION - Update Methods
@@ -1135,17 +780,6 @@ namespace SSTUTools
             minThrust = node.GetFloatValue("minThrust");
             maxThrust = node.GetFloatValue("maxThrust");
             engineConfig = node.GetStringValue("engineConfig");            
-        }
-
-        public static SRBModelData[] parseSRBModels(ConfigNode[] modelNodes)
-        {
-            int len = modelNodes.Length;
-            SRBModelData[] datas = new SRBModelData[len];
-            for (int i = 0; i < len; i++)
-            {
-                datas[i] = new SRBModelData(modelNodes[i]);
-            }
-            return datas;
         }
     }
 
@@ -1222,6 +856,6 @@ namespace SSTUTools
             modelGimbalTransform.localRotation = gimbalDefaultOrientation;
             modelGimbalTransform.Rotate(worldAxis, -newRotation, Space.World);
         }
-
     }
+
 }
