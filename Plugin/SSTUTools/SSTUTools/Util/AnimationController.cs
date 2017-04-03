@@ -25,6 +25,12 @@ namespace SSTUTools
             animationData.Add(data);
         }
 
+        public void addAnimationData(IEnumerable<SSTUAnimData> data)
+        {
+            animationData.Clear();
+            animationData.AddRange(data);
+        }
+
         public void clearAnimationData() { animationData.Clear(); }
 
         public void updateAnimationState()

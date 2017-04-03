@@ -8,6 +8,8 @@ namespace SSTUTools
     /// Generic animation module intended to be controlled by other PartModules.
     /// <para>Does not include any GUI or direct-user-interactivity; all state changes
     /// must be initiated from external sources</para>
+    /// Includes provisions for the animation data to be supplied entirely by external modules as well, to be used
+    /// by MFT or other modules that want optional animation support.
     /// </summary>
     public class SSTUAnimateControlled : PartModule
     {
@@ -27,6 +29,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public String persistentState = AnimState.STOPPED_START.ToString();
 
+        [KSPField]
+        public bool externalInit = false;
+
         [Persistent]
         public string configNodeData = string.Empty;
         
@@ -35,7 +40,7 @@ namespace SSTUTools
         private List<Action<AnimState>> callbacks = new List<Action<AnimState>>();
         
         //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
-        public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<AnimState> callback)
+        public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<AnimState> callback = null)
         {
             if (id < 0)
             {
@@ -46,7 +51,10 @@ namespace SSTUTools
             {
                 if (ac.animationID == id)
                 {
-                    ac.addCallback(callback);
+                    if (callback != null)
+                    {
+                        ac.addCallback(callback);
+                    }
                     return ac;
                 }
             }
@@ -56,11 +64,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
-            {
-                return;//should never happen, onStart not called for prefabs
-            }
-            if (controller == null)
+            if (controller == null && !externalInit)
             {
                 initialize();
             }
@@ -79,12 +83,29 @@ namespace SSTUTools
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
-            initialize();
+            if (!externalInit)
+            {
+                initialize();
+            }
+        }
+
+        public void initializeExternal(SSTUAnimData[] animData)
+        {
+            if (controller != null)
+            {
+                controller.clearAnimationData();
+                controller = null;
+            }
+            controller = new AnimationController();
+            controller.addAnimationData(animData);
+            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
+            controller.restorePreviousAnimationState(prevState);
+            controller.setStateChangeCallback(onAnimationStateChange);
         }
 
         private void initialize()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);// SSTUStockInterop.getPartModuleConfig(part, this);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] animNodes = node.GetNodes("ANIMATION");
             int len = animNodes.Length;
             ConfigNode[] allNodes=null;

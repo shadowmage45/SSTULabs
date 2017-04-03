@@ -49,6 +49,15 @@ namespace SSTUTools
         [KSPField]
         public bool subtractCost = false;
 
+        [KSPField]
+        public int noseAnimationID = -1;
+
+        [KSPField]
+        public int bodyAnimationID = -1;
+
+        [KSPField]
+        public int mountAnimationID = -1;
+
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Length"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -119,11 +128,11 @@ namespace SSTUTools
         
         private TankSet[] tankSets;
         private TankSet currentTankSetModule;
-        
+
         protected ModelModule<TankModelData> tankModule;
         protected ModelModule<SingleModelData> noseModule;
         protected ModelModule<SingleModelData> mountModule;
-                
+
         protected String[] topNodeNames;
         protected String[] bottomNodeNames;
 
@@ -267,24 +276,26 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
-            Fields[nameof(currentTankType)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b) 
-            {
-                tankModule.modelSelected(a, b);
-                this.actionWithSymmetry(m => 
-                {
-                    m.updateEditorStats(true);
-                    m.lastSelectedVariant = tankModule.model.variantName;
-                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
             Fields[nameof(currentNoseType)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
             {
                 noseModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
+                    m.updateAnimationControl(m.noseAnimationID, m.noseModule.model);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentTankType)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                tankModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    m.lastSelectedVariant = tankModule.model.variantName;
+                    m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -296,6 +307,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
+                    m.updateAnimationControl(m.mountAnimationID, m.mountModule.model);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -325,6 +337,9 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
+            updateAnimationControl(noseAnimationID, noseModule.model);
+            updateAnimationControl(bodyAnimationID, tankModule.model);
+            updateAnimationControl(mountAnimationID, mountModule.model);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
@@ -645,6 +660,16 @@ namespace SSTUTools
             }
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
+        }
+
+        private void updateAnimationControl(int id, SingleModelData model)
+        {
+            if (id < 0) { return; }
+            SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
+            if (module != null)
+            {
+                module.initializeExternal(model.getAnimationData(model.model.transform));
+            }
         }
 
         #endregion ENDREGION - Updating methods
