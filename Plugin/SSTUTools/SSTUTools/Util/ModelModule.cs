@@ -109,7 +109,6 @@ namespace SSTUTools
             actionWithSymmetry(m => 
             {
                 m.textureSet = textureSet;
-                m.customColors = customColors;
                 m.applyTextureSet(m.textureSet, true);
                 m.partModule.updateUIChooseOptionControl(textureFieldName, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetNames(), true, m.textureSet);
                 m.partModule.Fields[textureFieldName].guiActiveEditor = m.model.modelDefinition.textureSets.Length > 1;
@@ -123,7 +122,9 @@ namespace SSTUTools
                 m.modelName = modelName;
                 m.model.destroyCurrentModel();
                 m.model = m.models.Find(s => s.name == m.modelName);
-                m.customColors = new Color[0];
+                // don't clear custom colors on new model selected, unless it has an invalid texture set, which is handled in the setupModel() method
+                //m.customColors = new Color[0];
+                //MonoBehaviour.print("New Model Selected.  Clearing custom color data.");
                 m.setupModel();
             });
         }
@@ -182,6 +183,7 @@ namespace SSTUTools
                 {
                     customColors = new Color[] { Color.white, Color.white, Color.white };
                 }
+                MonoBehaviour.print("New Model Selected.  Clearing custom color data.");
                 saveColors(customColors);
             }
             model.enableTextureSet(textureSet, customColors);
