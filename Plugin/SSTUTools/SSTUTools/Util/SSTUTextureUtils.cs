@@ -92,9 +92,9 @@ namespace SSTUTools
             if (node.HasNode("COLORS"))
             {
                 ConfigNode colorsNode = node.GetNode("COLORS");
-                Color c1 = colorsNode.getColor("mainColor");
-                Color c2 = colorsNode.getColor("secondColor");
-                Color c3 = colorsNode.getColor("detailColor");
+                Color c1 = colorsNode.getColorFromByteValues("mainColor");
+                Color c2 = colorsNode.getColorFromByteValues("secondColor");
+                Color c3 = colorsNode.getColorFromByteValues("detailColor");
                 maskColors = new Color[] { c1, c2, c3 };
             }
             else

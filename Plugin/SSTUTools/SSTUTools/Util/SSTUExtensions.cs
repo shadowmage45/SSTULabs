@@ -259,6 +259,17 @@ namespace SSTUTools
             return color;
         }
 
+        public static Color getColorFromByteValues(this ConfigNode node, String name)
+        {
+            Color color = new Color();
+            float[] vals = node.GetFloatValuesCSV(name);
+            color.r = vals[0]/255f;
+            color.g = vals[1]/255f;
+            color.b = vals[2]/255f;
+            color.a = vals[3]/255f;
+            return color;
+        }
+
         #endregion
 
         #region Transform extensionMethods
