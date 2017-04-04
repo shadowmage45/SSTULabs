@@ -90,11 +90,13 @@ namespace SSTUTools
             bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet))
             {
+                MonoBehaviour.print("Current texture set invalid, clearing colors");
                 textureSet = model.getDefaultTextureSet();
                 useDefaultTextureColors = true;
             }
             if (customColors == null || customColors.Length == 0)
             {
+                MonoBehaviour.print("Current custom colors invalid, clearing colors " + SSTUUtils.printArray(customColors, ""));
                 useDefaultTextureColors = true;
             }
             applyTextureSet(textureSet, useDefaultTextureColors);
@@ -171,8 +173,9 @@ namespace SSTUTools
         {
             if (useDefaultColors)
             {
+                MonoBehaviour.print("Apply texture set called with useDefaultColors==true");
                 TextureSet ts = Array.Find(model.modelDefinition.textureSets, m => m.name == setName);
-                if (ts.maskColors != null && ts.maskColors.Length > 0)
+                if (ts!=null && ts.maskColors != null && ts.maskColors.Length > 0)
                 {
                     customColors = new Color[3];
                     customColors[0] = ts.maskColors[0];
@@ -183,8 +186,8 @@ namespace SSTUTools
                 {
                     customColors = new Color[] { Color.white, Color.white, Color.white };
                 }
-                MonoBehaviour.print("New Model Selected.  Clearing custom color data.");
                 saveColors(customColors);
+                MonoBehaviour.print("Updated custom colors to: " + persistentData);
             }
             model.enableTextureSet(textureSet, customColors);
             model.updateTextureUIControl(partModule, textureFieldName, textureSet);
