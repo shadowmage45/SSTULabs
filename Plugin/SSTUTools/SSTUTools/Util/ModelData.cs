@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using SSTUTools;
 
 namespace SSTUTools
 {
@@ -908,14 +909,93 @@ namespace SSTUTools
     /// </summary>
     public class CompoundModelData
     {
-        //array is sorted by order; 
+        /*
+            Compound Model Definition and Manipulation
+
+            Compound Model defines the following information for all transforms in the model that need position/scale updated:
+            * total model height - combined height of the model at its default diameter.
+            * height - of the meshes of the transform at default scale
+            * canScaleHeight - if this particular transform is allowed to scale its height
+            * index - index of the transform in the model, working from origin outward.
+            * v-scale axis -- in case it differs from Y axis
+
+            Updating the height on a Compound Model will do the following:
+            * Inputs - vertical scale, horizontal scale
+            * Calculate the desired height from the total model height and input vertical scale factor
+            * Apply horizontal scaling directly to all transforms.  
+            * Apply horizontal scale factor to the vertical scale for non-v-scale enabled meshes (keep aspect ratio of those meshes).
+            * From total desired height, subtract the height of non-scaleable meshes.
+            * The 'remainderTotalHeight' is then divided proportionately between all remaining scale-able meshes.
+            * Calculate needed v-scale for the portion of height needed for each v-scale-able mesh.
+         */
         CompoundTransformData[] compoundTransformData;
 
-        public void setHeight(float totalHeight, ModelOrientation orientation)
+        public void setHeightExplicit(ModelDefinition def, GameObject root, float dScale, float height)
         {
-            float staticHeight = 0;//sum height of non-scaleable meshes
-            float additionalHeight = totalHeight - staticHeight;//the height that needs to be made up from scaling
-            //loop through transform datas by 'order', setting positions and scales linearly up/down the stack.
+            float vScale = height / def.height;
+            setHeightFromScale(def, root, dScale, vScale);
+        }
+
+        public void setHeightFromScale(ModelDefinition def, GameObject root, float dScale, float vScale)
+        {
+            float desiredHeight = def.height * vScale;
+            float staticHeight = getStaticHeight() * dScale;
+            float neededScaleheight = desiredHeight - staticHeight;
+
+            int len = compoundTransformData.Length;
+            float totalShare = 0f;
+            float[] shares = new float[len];
+            float[] heights = new float[len];
+            float[] scales = new float[len];
+            for (int i = 0; i < len; i++)
+            {
+                totalShare += compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height : 0f;
+            }
+            for (int i = 0; i < len; i++)
+            {
+                shares[i] = compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height / totalShare : 0f;
+                heights[i] = shares[i] * totalShare;
+                scales[i] = heights[i] / compoundTransformData[i].height;
+            }
+            //at this point all of the heights and scale values are known, now to iterate through model transforms and set them up appropriately.
+            //As the compoundTransformData array should be ordered by transform order/index, it should be able to be iterated across directly
+            float pos = 0f;//pos starts at origin, is incremented according to transform height along 'dir'
+            float dir = 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
+            float sHoriz = dScale, sVert = 1f;
+            Transform[] trs;
+            int len2;
+            for (int i = 0; i < len; i++)
+            {
+                trs = root.transform.FindChildren(compoundTransformData[i].name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    if (compoundTransformData[i].canScaleHeight)
+                    {
+                        pos += dir * heights[i];
+                        sVert = scales[i];
+                    }
+                    else
+                    {
+                        pos += dir * dScale * compoundTransformData[i].height;
+                        sVert = sHoriz;
+                    }
+                    //TODO -- scale needs to be applied according to scale axis, as well as translation
+                    trs[i].localScale = new Vector3(sHoriz, sVert, sHoriz);
+                    trs[i].localPosition = compoundTransformData[i].vScaleAxis * pos;
+                }
+            }
+        }
+
+        private float getStaticHeight()
+        {
+            float val = 0f;
+            int len = compoundTransformData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (!compoundTransformData[i].canScaleHeight) { val += compoundTransformData[i].height; }
+            }
+            return 0f;
         }
     }
 
@@ -923,9 +1003,10 @@ namespace SSTUTools
     {
         public readonly string name;
         public readonly bool canScaleHeight = false;//can this transform scale its height
-        public readonly float height;//the height of the meshes attached to this transform
+        public readonly float height;//the height of the meshes attached to this transform, at scale = 1
         public readonly float offset;//the vertical offset of the meshes attached to this transform, when translated this amount the top/botom of the meshes will be at transform origin.
         public readonly int order;//the linear index of this transform in a vertical model setup stack
+        public readonly Vector3 vScaleAxis = Vector3.up;
 
         public CompoundTransformData(ConfigNode node)
         {
