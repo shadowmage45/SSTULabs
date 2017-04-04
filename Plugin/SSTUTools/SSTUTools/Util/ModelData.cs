@@ -902,4 +902,39 @@ namespace SSTUTools
             }
         }
     }
+
+    /// <summary>
+    /// Data that defines how a compound model scales and updates its height with scale changes.
+    /// </summary>
+    public class CompoundModelData
+    {
+        //array is sorted by order; 
+        CompoundTransformData[] compoundTransformData;
+
+        public void setHeight(float totalHeight, ModelOrientation orientation)
+        {
+            float staticHeight = 0;//sum height of non-scaleable meshes
+            float additionalHeight = totalHeight - staticHeight;//the height that needs to be made up from scaling
+            //loop through transform datas by 'order', setting positions and scales linearly up/down the stack.
+        }
+    }
+
+    public class CompoundTransformData
+    {
+        public readonly string name;
+        public readonly bool canScaleHeight = false;//can this transform scale its height
+        public readonly float height;//the height of the meshes attached to this transform
+        public readonly float offset;//the vertical offset of the meshes attached to this transform, when translated this amount the top/botom of the meshes will be at transform origin.
+        public readonly int order;//the linear index of this transform in a vertical model setup stack
+
+        public CompoundTransformData(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            canScaleHeight = node.GetBoolValue("canScale");
+            height = node.GetFloatValue("height");
+            offset = node.GetFloatValue("offset");
+            order = node.GetIntValue("order");
+        }
+    }
+
 }
