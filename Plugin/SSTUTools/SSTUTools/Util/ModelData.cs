@@ -1004,6 +1004,7 @@ namespace SSTUTools
                 len2 = trs.Length;
                 for (int k = 0; k < len2; k++)
                 {
+                    trs[k].localPosition = compoundTransformData[i].vScaleAxis * pos;
                     if (compoundTransformData[i].canScaleHeight)
                     {
                         pos += dir * heights[i];
@@ -1014,14 +1015,16 @@ namespace SSTUTools
                         pos += dir * sHoriz * compoundTransformData[i].height;
                         sVert = sHoriz;
                     }
-                    trs[i].localScale = getScaleVector(sHoriz, sVert, compoundTransformData[i].vScaleAxis);
-                    trs[i].localPosition = compoundTransformData[i].vScaleAxis * pos;
+                    trs[k].localScale = getScaleVector(sHoriz, sVert, compoundTransformData[i].vScaleAxis);
                 }
             }
         }
 
         private Vector3 getScaleVector(float sHoriz, float sVert, Vector3 axis)
         {
+            if (axis.x < 0) { axis.x = 1; }
+            if (axis.y < 0) { axis.y = 1; }
+            if (axis.z < 0) { axis.z = 1; }
             return (axis * sVert) + (getAntiVector(axis) * sHoriz);
         }
 
