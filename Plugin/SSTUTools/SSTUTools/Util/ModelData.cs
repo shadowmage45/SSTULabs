@@ -974,32 +974,29 @@ namespace SSTUTools
         {
             float desiredHeight = def.height * vScale;
             float staticHeight = getStaticHeight() * dScale;
-            float neededScaleheight = desiredHeight - staticHeight;
+            float neededScaleHeight = desiredHeight - staticHeight;
 
+            //iterate through scaleable transforms, calculate total height of scaleable transforms; use this height to determine 'percent share' of needed scale height for each transform
             int len = compoundTransformData.Length;
-            float totalShare = 0f;
-            float[] shares = new float[len];
-            float[] heights = new float[len];
-            float[] scales = new float[len];
+            float totalScaleableHeight = 0f;
             for (int i = 0; i < len; i++)
             {
-                totalShare += compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height : 0f;
+                totalScaleableHeight += compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height : 0f;
             }
-            for (int i = 0; i < len; i++)
-            {
-                shares[i] = compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height / totalShare : 0f;
-                heights[i] = shares[i] * totalShare;
-                scales[i] = heights[i] / compoundTransformData[i].height;
-            }
-            //at this point all of the heights and scale values are known, now to iterate through model transforms and set them up appropriately.
-            //As the compoundTransformData array should be ordered by transform order/index, it should be able to be iterated across directly
+
             float pos = 0f;//pos starts at origin, is incremented according to transform height along 'dir'
-            float dir = orientation==ModelOrientation.BOTTOM? -1f : 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
-            float sHoriz = dScale, sVert = 1f;
+            float dir = orientation == ModelOrientation.BOTTOM ? -1f : 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
+            float localVerticalScale = 1f;
             Transform[] trs;
             int len2;
+            float percent, scale, height;
+
             for (int i = 0; i < len; i++)
             {
+                percent = compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height / totalScaleableHeight : 0f;
+                height = percent * neededScaleHeight;
+                scale = height / compoundTransformData[i].height;
+
                 trs = root.transform.FindChildren(compoundTransformData[i].name);
                 len2 = trs.Length;
                 for (int k = 0; k < len2; k++)
@@ -1007,28 +1004,43 @@ namespace SSTUTools
                     trs[k].localPosition = compoundTransformData[i].vScaleAxis * pos;
                     if (compoundTransformData[i].canScaleHeight)
                     {
-                        pos += dir * heights[i];
-                        sVert = scales[i];
+                        pos += dir * height;
+                        localVerticalScale = scale;
                     }
                     else
                     {
-                        pos += dir * sHoriz * compoundTransformData[i].height;
-                        sVert = sHoriz;
+                        pos += dir * dScale * compoundTransformData[i].height;
+                        localVerticalScale = dScale;
                     }
-                    trs[k].localScale = getScaleVector(sHoriz, sVert, compoundTransformData[i].vScaleAxis);
+                    trs[k].localScale = getScaleVector(dScale, localVerticalScale, compoundTransformData[i].vScaleAxis);
                 }
             }
         }
 
+        /// <summary>
+        /// Returns a vector representing the 'localScale' of a transform, using the input 'axis' as the vertical-scale axis.
+        /// Essentially returns axis*vScale + ~axis*hScale
+        /// </summary>
+        /// <param name="sHoriz"></param>
+        /// <param name="sVert"></param>
+        /// <param name="axis"></param>
+        /// <returns></returns>
         private Vector3 getScaleVector(float sHoriz, float sVert, Vector3 axis)
         {
             if (axis.x < 0) { axis.x = 1; }
             if (axis.y < 0) { axis.y = 1; }
             if (axis.z < 0) { axis.z = 1; }
-            return (axis * sVert) + (getAntiVector(axis) * sHoriz);
+            return (axis * sVert) + (getInverseVector(axis) * sHoriz);
         }
 
-        private Vector3 getAntiVector(Vector3 axis)
+        /// <summary>
+        /// Kind of like a bitwise inversion for a vector.
+        /// If the input has any value for x/y/z, the output will have zero for that variable.
+        /// If the input has zero for x/y/z, the output will have a one for that variable.
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        private Vector3 getInverseVector(Vector3 axis)
         {
             Vector3 val = Vector3.one;
             if (axis.x != 0) { val.x = 0; }
@@ -1037,6 +1049,10 @@ namespace SSTUTools
             return val;
         }
 
+        /// <summary>
+        /// Returns the sum of non-scaleable transform heights from the compound model data.
+        /// </summary>
+        /// <returns></returns>
         private float getStaticHeight()
         {
             float val = 0f;
