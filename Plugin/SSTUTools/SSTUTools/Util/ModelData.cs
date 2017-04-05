@@ -69,8 +69,7 @@ namespace SSTUTools
         public readonly float cost = 0;
         public readonly float diameter = 5;
         public readonly float verticalOffset = 0;
-        public readonly bool invertForTop = false;
-        public readonly bool invertForBottom = false;
+        public readonly ModelOrientation orientation = ModelOrientation.CENTRAL;
         public readonly Vector3 invertAxis = Vector3.forward;
         public readonly bool fairingDisabled = false;
         public readonly float fairingTopOffset = 0;
@@ -83,6 +82,7 @@ namespace SSTUTools
         public readonly AttachNodeBaseData surfaceNode;
         public readonly String defaultTextureSet;
         public readonly TextureSet[] textureSets;
+        public readonly CompoundModelData compoundModelData;
 
         public ModelDefinition(ConfigNode node)
         {
@@ -99,8 +99,14 @@ namespace SSTUTools
             cost = node.GetFloatValue("cost", cost);
             diameter = node.GetFloatValue("diameter", diameter);
             verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
-            invertForTop = node.GetBoolValue("invertForTop", invertForTop);
-            invertForBottom = node.GetBoolValue("invertForBottom", invertForBottom);
+            if (node.GetBoolValue("invertForTop", false))
+            {
+                orientation = ModelOrientation.BOTTOM;
+            }
+            else if (node.GetBoolValue("invertForBottom", false))
+            {
+                orientation = ModelOrientation.TOP;
+            }
             invertAxis = node.GetVector3("invertAxis", invertAxis);
             fairingDisabled = node.GetBoolValue("fairingDisabled", fairingDisabled);
             fairingTopOffset = node.GetFloatValue("fairingTopOffset", fairingTopOffset);
@@ -143,6 +149,11 @@ namespace SSTUTools
                 String val = (diameter*0.5f) + ",0,0,1,0,0,2";
                 surfaceNode = new AttachNodeBaseData(val);
             }
+
+            if (node.HasNode("COMPOUNDMODEL"))
+            {
+                compoundModelData = new CompoundModelData(node.GetNode("COMPOUNDMODEL"));
+            }
         }
 
         public bool isAvailable(List<String> partUpgrades)
@@ -160,7 +171,12 @@ namespace SSTUTools
             }
             return names;
         }
-        
+
+        internal bool shouldInvert(ModelOrientation orientation)
+        {
+            return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
+        }
+
     }
 
     public class SubModelData
@@ -517,7 +533,7 @@ namespace SSTUTools
             Vector3 orient = Vector3.up;
             int size = 2;
 
-            bool invert = (orientation == ModelOrientation.BOTTOM && modelDefinition.invertForBottom) || (orientation == ModelOrientation.TOP && modelDefinition.invertForTop);
+            bool invert = modelDefinition.shouldInvert(orientation);
             for (int i = 0; i < len; i++)
             {
                 node = part.FindAttachNode(nodeNames[i]);
@@ -703,7 +719,14 @@ namespace SSTUTools
         {
             if (model != null)
             {
-                model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
+                if (modelDefinition.compoundModelData != null)
+                {
+                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale, currentHeightScale * baseScale, modelDefinition.orientation);
+                }
+                else
+                {
+                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
+                }
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
             }
         }
@@ -740,7 +763,7 @@ namespace SSTUTools
             if (model != null)
             {
                 model.transform.NestToParent(parent);
-                if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
+                if (modelDefinition.shouldInvert(orientation))
                 {
                     model.transform.Rotate(modelDefinition.invertAxis, 180, Space.Self);
                 }
@@ -811,7 +834,7 @@ namespace SSTUTools
             }
             //regardless of if it was new or re-used, reset its position and orientation
             model.transform.NestToParent(parent);
-            if ((modelDefinition.invertForTop && orientation == ModelOrientation.TOP) || (modelDefinition.invertForBottom && orientation == ModelOrientation.BOTTOM))
+            if (modelDefinition.shouldInvert(orientation))
             {
                 model.transform.Rotate(modelDefinition.invertAxis, 180, Space.Self);
             }
@@ -928,15 +951,26 @@ namespace SSTUTools
             * The 'remainderTotalHeight' is then divided proportionately between all remaining scale-able meshes.
             * Calculate needed v-scale for the portion of height needed for each v-scale-able mesh.
          */
-        CompoundTransformData[] compoundTransformData;
+        CompoundModelTransformData[] compoundTransformData;
 
-        public void setHeightExplicit(ModelDefinition def, GameObject root, float dScale, float height)
+        public CompoundModelData(ConfigNode node)
         {
-            float vScale = height / def.height;
-            setHeightFromScale(def, root, dScale, vScale);
+            ConfigNode[] trNodes = node.GetNodes("TRANSFORM");
+            int len = trNodes.Length;
+            compoundTransformData = new CompoundModelTransformData[len];
+            for (int i = 0; i < len; i++)
+            {
+                compoundTransformData[i] = new CompoundModelTransformData(trNodes[i]);
+            }
         }
 
-        public void setHeightFromScale(ModelDefinition def, GameObject root, float dScale, float vScale)
+        public void setHeightExplicit(ModelDefinition def, GameObject root, float dScale, float height, ModelOrientation orientation)
+        {
+            float vScale = height / def.height;
+            setHeightFromScale(def, root, dScale, vScale, orientation);
+        }
+
+        public void setHeightFromScale(ModelDefinition def, GameObject root, float dScale, float vScale, ModelOrientation orientation)
         {
             float desiredHeight = def.height * vScale;
             float staticHeight = getStaticHeight() * dScale;
@@ -960,7 +994,7 @@ namespace SSTUTools
             //at this point all of the heights and scale values are known, now to iterate through model transforms and set them up appropriately.
             //As the compoundTransformData array should be ordered by transform order/index, it should be able to be iterated across directly
             float pos = 0f;//pos starts at origin, is incremented according to transform height along 'dir'
-            float dir = 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
+            float dir = orientation==ModelOrientation.BOTTOM? -1f : 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
             float sHoriz = dScale, sVert = 1f;
             Transform[] trs;
             int len2;
@@ -977,14 +1011,27 @@ namespace SSTUTools
                     }
                     else
                     {
-                        pos += dir * dScale * compoundTransformData[i].height;
+                        pos += dir * sHoriz * compoundTransformData[i].height;
                         sVert = sHoriz;
                     }
-                    //TODO -- scale needs to be applied according to scale axis, as well as translation
-                    trs[i].localScale = new Vector3(sHoriz, sVert, sHoriz);
+                    trs[i].localScale = getScaleVector(sHoriz, sVert, compoundTransformData[i].vScaleAxis);
                     trs[i].localPosition = compoundTransformData[i].vScaleAxis * pos;
                 }
             }
+        }
+
+        private Vector3 getScaleVector(float sHoriz, float sVert, Vector3 axis)
+        {
+            return (axis * sVert) + (getAntiVector(axis) * sHoriz);
+        }
+
+        private Vector3 getAntiVector(Vector3 axis)
+        {
+            Vector3 val = Vector3.one;
+            if (axis.x != 0) { val.x = 0; }
+            if (axis.y != 0) { val.y = 0; }
+            if (axis.z != 0) { val.z = 0; }
+            return val;
         }
 
         private float getStaticHeight()
@@ -997,9 +1044,10 @@ namespace SSTUTools
             }
             return 0f;
         }
+
     }
 
-    public class CompoundTransformData
+    public class CompoundModelTransformData
     {
         public readonly string name;
         public readonly bool canScaleHeight = false;//can this transform scale its height
@@ -1008,13 +1056,14 @@ namespace SSTUTools
         public readonly int order;//the linear index of this transform in a vertical model setup stack
         public readonly Vector3 vScaleAxis = Vector3.up;
 
-        public CompoundTransformData(ConfigNode node)
+        public CompoundModelTransformData(ConfigNode node)
         {
             name = node.GetStringValue("name");
             canScaleHeight = node.GetBoolValue("canScale");
             height = node.GetFloatValue("height");
             offset = node.GetFloatValue("offset");
             order = node.GetIntValue("order");
+            vScaleAxis = node.GetVector3("axis", Vector3.up);
         }
     }
 

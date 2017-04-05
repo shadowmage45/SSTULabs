@@ -1,0 +1,28 @@
+Recoloring Shader Rework TODO
+Code
+	Need to handle cases of persistent data containing invalid texture set.
+	Double check cases of texture set proper handling for 'none'/'default' texture set assignments
+Adapter Textures
+Adapter Configs
+	Need to rename default texture set along with finding good names for the various mask-based sets
+Tank Models
+	MFT-D - Need to remap onto MFT-A texture sheets, use custom AO and NRM maps for the detailing.
+Tank Textures
+	A/B/C/CF/SF
+		White-S
+		White-P
+		Silver
+		Gold
+		Orange1/2/3
+		Mask1/2/3/4
+	D
+	L?
+Tank Configs
+	A/B/C/CF/SF
+	D
+	L?
+Mount Models
+	Need to re-UV many of them in order to allow for all stripe patterns.
+Mount Textures
+DOS Configs
+DOS Textures
