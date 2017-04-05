@@ -1001,7 +1001,7 @@ namespace SSTUTools
                 len2 = trs.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    trs[k].localPosition = compoundTransformData[i].vScaleAxis * pos;
+                    trs[k].localPosition = compoundTransformData[i].vScaleAxis * (pos + compoundTransformData[i].offset * dScale);
                     if (compoundTransformData[i].canScaleHeight)
                     {
                         pos += dir * height;
