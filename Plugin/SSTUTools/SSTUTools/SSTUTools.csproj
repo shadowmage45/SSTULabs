@@ -100,6 +100,7 @@
     <Compile Include="Module\SSTUDragCubeRenderer.cs" />
     <Compile Include="Module\SSTUModelFix.cs" />
     <Compile Include="Module\SSTUModelSwitch.cs" />
+    <Compile Include="Module\SSTUModularFuelTankRCS.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
     <Compile Include="Util\IRecolorable.cs" />
     <Compile Include="Util\ModelModule.cs" />
