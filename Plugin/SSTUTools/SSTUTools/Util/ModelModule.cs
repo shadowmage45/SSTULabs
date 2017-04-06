@@ -157,12 +157,9 @@ namespace SSTUTools
 
         public void updateSelections()
         {
-            actionWithSymmetry(m =>
-            {
-                IEnumerable<T> validSelections = m.getValidSelections(models);
-                string[] names = SSTUUtils.getNames(validSelections, s => s.name);
-                m.partModule.updateUIChooseOptionControl(m.modelFieldName, names, names, true, m.modelName);
-            });
+            IEnumerable<T> validSelections = getValidSelections(models);
+            string[] names = SSTUUtils.getNames(validSelections, s => s.name);
+            partModule.updateUIChooseOptionControl(modelFieldName, names, names, true, modelName);
         }
 
         #endregion ENDREGION - GUI Interaction Methods

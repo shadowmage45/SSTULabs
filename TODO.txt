@@ -2,6 +2,8 @@ Recoloring Shader Rework TODO
 Code
 	Need to handle cases of persistent data containing invalid texture set.
 	Double check cases of texture set proper handling for 'none'/'default' texture set assignments
+	MFT-V-scale UI min/max updating and validation code is not called in all places / properly
+	MFT variant name not updated properly -- is being updated to model name
 Adapter Textures
 Adapter Configs
 	Need to rename default texture set along with finding good names for the various mask-based sets
