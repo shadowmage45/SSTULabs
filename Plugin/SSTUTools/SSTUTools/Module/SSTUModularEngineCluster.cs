@@ -238,9 +238,9 @@ namespace SSTUTools
         {
             ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, delegate(string a, bool b)
             {
-                mountModule.modelSelected(a);
                 this.actionWithSymmetry(m =>
                 {
+                    m.mountModule.modelSelected(a);
                     m.updateEditorStats(true);
                     m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
                 });
@@ -250,9 +250,9 @@ namespace SSTUTools
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            mountModule.modelSelected("Mount-None");
             this.actionWithSymmetry(m =>
             {
+                m.mountModule.modelSelected("Mount-None");
                 m.updateEditorStats(true);
                 m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
             });

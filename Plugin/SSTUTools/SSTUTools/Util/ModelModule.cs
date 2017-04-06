@@ -90,13 +90,12 @@ namespace SSTUTools
             bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet))
             {
-                MonoBehaviour.print("Current texture set invalid, clearing colors");
+                MonoBehaviour.print("Current texture set for model "+model.name+" invalid: "+textureSet+", clearing colors and assigning default texture set.");
                 textureSet = model.getDefaultTextureSet();
                 useDefaultTextureColors = true;
             }
             if (customColors == null || customColors.Length == 0)
             {
-                MonoBehaviour.print("Current custom colors invalid, clearing colors " + SSTUUtils.printArray(customColors, ""));
                 useDefaultTextureColors = true;
             }
             applyTextureSet(textureSet, useDefaultTextureColors);
@@ -106,6 +105,11 @@ namespace SSTUTools
 
         #region REGION - GUI Interaction Methods - With symmetry updating
 
+        /// <summary>
+        /// Symmetry-enabled method.  Should only be called when symmetry updates are desired.
+        /// </summary>
+        /// <param name="field"></param>
+        /// <param name="oldValue"></param>
         public void textureSetSelected(BaseField field, System.Object oldValue)
         {
             actionWithSymmetry(m => 
@@ -117,36 +121,27 @@ namespace SSTUTools
             });
         }
 
+        /// <summary>
+        /// Symmetry-enabled method.  Should only be called when symmetry updates are desired.
+        /// </summary>
+        /// <param name="field"></param>
+        /// <param name="oldValue"></param>
         public void modelSelected(BaseField field, System.Object oldValue)
         {
             actionWithSymmetry(m => 
             {
-                m.modelName = modelName;
-                m.model.destroyCurrentModel();
-                m.model = m.models.Find(s => s.name == m.modelName);
-                // don't clear custom colors on new model selected, unless it has an invalid texture set, which is handled in the setupModel() method
-                //m.customColors = new Color[0];
-                //MonoBehaviour.print("New Model Selected.  Clearing custom color data.");
+                m.loadModel(modelName);
                 m.setupModel();
             });
         }
 
-        public void modelSelected(string newModel)
-        {
-            if (models.Find(m => m.name == newModel) != null)
-            {
-                modelName = newModel;
-                modelSelected(null, null);//chain to symmetry enabled method
-            }
-            else
-            {
-                MonoBehaviour.print("ERROR: Attempt to set model to invalid value, model not found for name: " + newModel);
-            }
-        }
-
+        /// <summary>
+        /// Symmetry enabled
+        /// </summary>
+        /// <param name="colors"></param>
         public void setSectionColors(Color[] colors)
         {
-            actionWithSymmetry(m => 
+            actionWithSymmetry(m =>
             {
                 m.textureSet = textureSet;
                 m.customColors = colors;
@@ -155,6 +150,19 @@ namespace SSTUTools
             });
         }
 
+        /// <summary>
+        /// NON-Symmetry enabled method.
+        /// </summary>
+        /// <param name="newModel"></param>
+        public void modelSelected(string newModel)
+        {
+            loadModel(newModel);
+            setupModel();
+        }
+
+        /// <summary>
+        /// NON-Symmetry enabled method
+        /// </summary>
         public void updateSelections()
         {
             IEnumerable<T> validSelections = getValidSelections(models);
@@ -168,6 +176,11 @@ namespace SSTUTools
 
         private void applyTextureSet(string setName, bool useDefaultColors)
         {
+            if (!model.isValidTextureSet(setName))
+            {
+                setName = model.getDefaultTextureSet();
+                textureSet = setName;
+            }
             if (useDefaultColors)
             {
                 MonoBehaviour.print("Apply texture set called with useDefaultColors==true");
@@ -239,6 +252,31 @@ namespace SSTUTools
                 data = data + colors[i].a;
             }
             persistentData = data;
+        }
+
+        private void loadModel(string name)
+        {
+            modelName = name;
+            if (model != null)
+            {
+                model.destroyCurrentModel();
+            }
+            model = models.Find(s => s.name == modelName);
+            if (model == null)
+            {
+                loadDefaultModel();
+            }
+            setupModel();
+        }
+
+        private void loadDefaultModel()
+        {
+            model = getValidSelections(models).First();
+            modelName = model.name;
+            if (!model.isValidTextureSet(textureSet))
+            {
+                textureSet = model.getDefaultTextureSet();
+            }
         }
 
         #endregion ENDREGION - Private/Internal methods

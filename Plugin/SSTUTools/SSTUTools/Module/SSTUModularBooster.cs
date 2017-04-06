@@ -164,10 +164,10 @@ namespace SSTUTools
         {
             ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, new string[] { "top"}), currentDiameter, delegate(string s, bool b)
             {
-                noseModule.modelSelected(s);
                 this.actionWithSymmetry(m =>
                 {
-                    updateEditorStats(true);
+                    m.noseModule.modelSelected(s);
+                    m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
