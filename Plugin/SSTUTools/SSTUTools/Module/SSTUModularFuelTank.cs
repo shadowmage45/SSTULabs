@@ -271,6 +271,7 @@ namespace SSTUTools
                     //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
                     if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
                     m.updateEditorStats(true);
+                    m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -296,6 +297,7 @@ namespace SSTUTools
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
                     m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model);
+                    m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
