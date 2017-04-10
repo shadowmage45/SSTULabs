@@ -51,8 +51,8 @@ namespace SSTUTools.Module
         {
             base.initialize();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            RCSModelData[] rcsModelData = SingleModelData.parseModels<RCSModelData>(node.GetNodes("RCS"), m => new RCSModelData(m));
             rcsModule = new ModelModule<RCSModelData>(part, this, getRootTransform("MFT-RCS", true), ModelOrientation.CENTRAL, nameof(rcsModuleData), nameof(currentRCSModule), nameof(currentRCSTexture));
+            rcsModule.setupModelList(SingleModelData.parseModels<RCSModelData>(node.GetNodes("RCS"), m => new RCSModelData(m)));
             rcsModule.setupModel();
         }
 
