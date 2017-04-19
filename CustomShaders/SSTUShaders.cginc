@@ -22,11 +22,13 @@ struct SolarSurfaceOutput
 		
 inline half4 LightingColoredSpecular (ColoredSpecularSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
 {
+    //fixed normal, as Unity de-normalizes it somewhere between the lighting functions
+	fixed3 fN = normalize(s.Normal);
 	//diffuse light intensity, from surface normal and light direction
-	half diff = max (0, dot (s.Normal, lightDir));
+	half diff = max (0, dot (fN, lightDir));
 	//specular light calculations
 	half3 h = normalize (lightDir + viewDir);
-	float nh = max (0, dot (s.Normal, h));
+	float nh = max (0, dot (fN, h));
 	float spec = pow (nh, s.Specular * 128);
 	half3 specCol = spec * s.GlossColor;
 	
@@ -49,11 +51,13 @@ inline half4 LightingColoredSpecular_PrePass (ColoredSpecularSurfaceOutput s, ha
 
 inline half4 LightingColoredSolar (SolarSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
 {
+    //fixed normal, as Unity de-normalizes it somewhere between the lighting functions
+	fixed3 fN = normalize(s.Normal);
 	//diffuse light intensity, from surface normal and light direction
-	half diff = max (0, dot (s.Normal, lightDir));
+	half diff = max (0, dot (fN, lightDir));
 	//specular light calculations
 	half3 h = normalize (lightDir + viewDir);
-	float nh = max (0, dot (s.Normal, h));
+	float nh = max (0, dot (fN, h));
 	float spec = pow (nh, s.Specular * 128);
 	half3 specCol = spec * s.GlossColor;
 	

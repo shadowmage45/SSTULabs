@@ -1,35 +1,24 @@
 Recoloring Shader Rework TODO
 Code
 	MFT variant name not updated properly -- is being updated to model name
+	Flag Decal not working properly on MFTs -- is the shader being set to an improper shader, or the flag-updating code simply not called?
 Adapter Textures
 	First pass done.  Textures exist.  Need seam cleanup on diff/spec for painted textures.  Need diff/spec/nrm cleanup for gold/orange textures.
 Adapter Configs
 	Need to rename default texture set along with finding good names for the various mask-based sets
 Tank Models
-	MFT-A/B - Need to re-export models for UV changes for the piping bits.
-	MFT-D - Need to finish geometry detail additions both for tanks and for adapters.  Rebake.
-	MFT-S - Need to finish geometry and UV layouts.  I think the problem was lack of available space for all of the AO's needed, combined with needing to hide the seam along the circumference of the tank.
-	MFT-L - Need complete model rework.  Will likely hold off on doing anything on these until the upcoming scheduled LC reworking.
 Tank Textures
-	A/B/C/CF/SF
-		White-S
-		White-P
-		Silver
-		Gold
-		Orange1/2/3
-		Mask1/2/3/4
-	D - AO, NRM.  Need to add shading details to the AOmap rather than diffuse texture.
-	L?
-	All - figure out mapping for detail bits.  What parts will be silver, what will be gray.  What will be masked for each channel.
-	Piping AO is not showing up on models -- texture set error, shader error, or ??
+	Re-export textures for 'white' on the detail area, for use of detail mask
+	Finish stripes3 texture
+	Update 'NONE' mask to include detail area on detail channel
 Tank Configs
-	A/B/C/CF/SF
-	D
-	L?
 Mount Models
-	Need to re-UV many of them in order to allow for all stripe patterns.
+	Need to re-UV many of them in order to allow for all stripe patterns.  May or may not be doable depending on the mount, if it was unwrapped in 1/2 or 1/4, etc.
 Mount Textures
 	Need masks for all
 	Need re-export for all using separate AO bake
 DOS Configs
 DOS Textures
+DSP Models
+	Increase mounting depth on skylab style solar panels
+	Figure out symmetry model system.
