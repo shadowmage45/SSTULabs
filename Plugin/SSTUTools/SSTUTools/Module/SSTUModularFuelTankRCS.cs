@@ -15,21 +15,27 @@ namespace SSTUTools.Module
         /// </summary>
         [KSPField]
         public bool rcsOnMount = true;
-        //TODO -- add choose option UI control
-        [KSPField(isPersistant =true)]
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Model"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentRCSModule = string.Empty;
-        //TODO -- add choose option UI control
-        [KSPField(isPersistant = true)]
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentRCSTexture = string.Empty;
-        //TODO -- add float edit UI control
-        [KSPField(isPersistant = true)]
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Pos"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentRCSVert = 0f;
-        //TODO -- add float edit UI control
-        [KSPField(isPersistant = true)]
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Rot"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentRCSRot = 0f;
-        //TODO -- add float edit UI control
-        [KSPField(isPersistant = true)]
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Size"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentRCSScale = 1f;
+
         //persistent data field for RCS module, saves texture set custom colors
         [KSPField(isPersistant =true)]
         public string rcsModuleData = string.Empty;
@@ -51,9 +57,19 @@ namespace SSTUTools.Module
         {
             base.initialize();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            RCSModelData[] rcsModelData = SingleModelData.parseModels<RCSModelData>(node.GetNodes("RCS"), m => new RCSModelData(m));
             rcsModule = new ModelModule<RCSModelData>(part, this, getRootTransform("MFT-RCS", true), ModelOrientation.CENTRAL, nameof(rcsModuleData), nameof(currentRCSModule), nameof(currentRCSTexture));
+            rcsModule.setupModelList(SingleModelData.parseModels<RCSModelData>(node.GetNodes("RCS"), m => new RCSModelData(m)));
+            updateRCSModule();
             rcsModule.setupModel();
+        }
+
+        private void updateRCSModule()
+        {
+            //TODO -- adapt all of these for 'rcsOnMount=true' functionality -- use parameters from mount module and model definition
+            rcsModule.model.symmetry = 2;//TODO
+            rcsModule.model.rotationOffset = currentRCSRot;
+            rcsModule.model.setPosition(currentRCSVert, ModelOrientation.CENTRAL);
+            rcsModule.model.spacingRadius = currentTankDiameter * 0.5f;
         }
 
     }
@@ -71,6 +87,8 @@ namespace SSTUTools.Module
 
         public float spacingRadius = 1f;
 
+        public float rotationOffset = 0f;
+
         public RCSModelData(ConfigNode node) : base(node)
         {
             rcsThrustTransformName = node.GetStringValue("thrustTransform");
@@ -80,10 +98,11 @@ namespace SSTUTools.Module
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
             if (symmetry < 2) { symmetry = 2; }
-            SSTUUtils.destroyChildrenImmediate(parent);
+            SSTUUtils.destroyChildrenImmediate(parent);            
             model = new GameObject("RCSModels");
             model.transform.NestToParent(parent);
             int len = symmetry;
+            rcsModels = new GameObject[len];
             for (int i = 0; i < len; i++)
             {
                 rcsModels[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
@@ -93,15 +112,16 @@ namespace SSTUTools.Module
 
         public override void updateModel()
         {
-            //TODO -- where in external module should this information be specified?
-            //setup models at current diameter scale, in specified symmetry, at specified radius spacing
             float spacingRotation = 360f / symmetry;
             float x, z;
+            float angle = 0;
             for (int i = 0; i < symmetry; i++)
             {
-                x = Mathf.Cos(i * Mathf.Deg2Rad) * spacingRotation;
-                z = Mathf.Sin(i * Mathf.Deg2Rad) * spacingRotation;
+                angle = (i * spacingRotation + rotationOffset) * Mathf.Deg2Rad;
+                x = Mathf.Cos(angle) * spacingRadius;
+                z = Mathf.Sin(angle) * spacingRadius;
                 rcsModels[i].transform.localPosition = new Vector3(x, currentVerticalPosition, z);
+                rcsModels[i].transform.Rotate(0, i * spacingRotation + modelDefinition.rcsVerticalRotation, 0, Space.Self);
             }
         }
 
