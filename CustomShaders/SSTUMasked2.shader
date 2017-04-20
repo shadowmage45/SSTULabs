@@ -72,9 +72,9 @@ Shader "SSTU/Masked"
 			half rim = 1.0 - saturate(dot (normalize(IN.viewDir), normal));			
 			float3 emission = _RimColor.rgb * pow(rim, _RimFalloff) * _RimColor.a + _TemperatureColor.rgb * _TemperatureColor.a;
 			float m = 1 - (mask.r + mask.g + mask.b);
-			o.Albedo.r = (mask.r * _MaskColor1.r * _MaskColor1.a + mask.g * _MaskColor2.r * _MaskColor2.a + mask.b * _MaskColor3.r * _MaskColor3.a) * color.r + color.r * m * _Color.r;
-			o.Albedo.g = (mask.r * _MaskColor1.g * _MaskColor1.a + mask.g * _MaskColor2.g * _MaskColor2.a + mask.b * _MaskColor3.g * _MaskColor3.a) * color.g + color.g * m * _Color.g;
-			o.Albedo.b = (mask.r * _MaskColor1.b * _MaskColor1.a + mask.g * _MaskColor2.b * _MaskColor2.a + mask.b * _MaskColor3.b * _MaskColor3.a) * color.b + color.b * m * _Color.b;
+			o.Albedo.r = (mask.r * _MaskColor1.r * _MaskColor1.a + mask.g * _MaskColor2.r * _MaskColor2.a + mask.b * _MaskColor3.r * _MaskColor3.a) * color.r * ao.r + color.r * m * _Color.r * ao.r;
+			o.Albedo.g = (mask.r * _MaskColor1.g * _MaskColor1.a + mask.g * _MaskColor2.g * _MaskColor2.a + mask.b * _MaskColor3.g * _MaskColor3.a) * color.g * ao.g + color.g * m * _Color.g * ao.g;
+			o.Albedo.b = (mask.r * _MaskColor1.b * _MaskColor1.a + mask.g * _MaskColor2.b * _MaskColor2.a + mask.b * _MaskColor3.b * _MaskColor3.a) * color.b * ao.b + color.b * m * _Color.b * ao.b;
 			o.GlossColor = spec.rgb;
 			o.Specular = _Shininess;
 			o.Normal = normal;
