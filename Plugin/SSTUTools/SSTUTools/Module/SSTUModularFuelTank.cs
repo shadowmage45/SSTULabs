@@ -150,9 +150,9 @@ namespace SSTUTools
         {
             ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, topNodeNames), currentTankDiameter, delegate (string a, bool b)
             {
+                noseModule.modelSelected(a);
                 this.actionWithSymmetry(m =>
                 {
-                    m.noseModule.modelSelected(a);
                     m.updateEditorStats(true);
                 });
             });
@@ -163,9 +163,9 @@ namespace SSTUTools
         {
             ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModule.models, bottomNodeNames), currentTankDiameter, delegate (string a, bool b)
             {
+                mountModule.modelSelected(a);
                 this.actionWithSymmetry(m =>
                 {
-                    m.mountModule.modelSelected(a);
                     m.updateEditorStats(true);
                 });
             });
