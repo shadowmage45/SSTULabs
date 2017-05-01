@@ -92,9 +92,9 @@ namespace SSTUTools
             if (node.HasNode("COLORS"))
             {
                 ConfigNode colorsNode = node.GetNode("COLORS");
-                Color c1 = colorsNode.getColorFromByteValues("mainColor");
-                Color c2 = colorsNode.getColorFromByteValues("secondColor");
-                Color c3 = colorsNode.getColorFromByteValues("detailColor");
+                Color c1 = loadColor(colorsNode.GetStringValue("mainColor"));
+                Color c2 = loadColor(colorsNode.GetStringValue("secondColor"));
+                Color c3 = loadColor(colorsNode.GetStringValue("detailColor"));
                 maskColors = new Color[] { c1, c2, c3 };
             }
             else
@@ -102,6 +102,17 @@ namespace SSTUTools
                 //TODO -- what should the default value for 'no default colors' be?
                 maskColors = new Color[0];
             }
+        }
+
+        private static Color loadColor(string value)
+        {
+            if (value.Contains(","))
+            {
+                return SSTUUtils.parseColorFromBytes(value);
+            }
+            PresetColor color = PresetColor.getColor(value);
+            if (color != null) { return color.color; }
+            return Color.white;
         }
 
         public void enable(GameObject root, Color[] userColors)

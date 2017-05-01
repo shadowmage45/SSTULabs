@@ -217,6 +217,29 @@ namespace SSTUTools
             return vals;
         }
 
+        public static float[] parseFloatArray(string input)
+        {
+            string[] strs = parseCSV(input);
+            int len = strs.Length;
+            float[] flts = new float[len];
+            for (int i = 0; i < len; i++)
+            {
+                flts[i] = safeParseFloat(strs[i]);
+            }
+            return flts;
+        }
+
+        public static Color parseColorFromBytes(string input)
+        {
+            Color color = new Color();
+            float[] vals = parseFloatArray(input);
+            color.r = vals[0] / 255f;
+            color.g = vals[1] / 255f;
+            color.b = vals[2] / 255f;
+            color.a = vals[3] / 255f;
+            return color;
+        }
+
         public static String concatArray(float[] array)
         {
             String val = "";

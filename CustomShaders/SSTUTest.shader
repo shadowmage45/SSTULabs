@@ -1,4 +1,4 @@
-Shader "SSTU/Masked"
+Shader "SSTU/Test"
 {
 	Properties 
 	{
@@ -12,10 +12,9 @@ Shader "SSTU/Masked"
 		_MaskColor3 ("Mask Color 3", Color) = (1,1,1,1)
 		_Shininess ("Specular Shininess", Range (0.03, 1)) = 0.078125
 		_Opacity("Emission Opacity", Range(0,1) ) = 1
-		_RimFalloff("_RimFalloff", Range(0.01,5) ) = 0.1
 		_RimColor("_RimColor", Color) = (0,0,0,0)
+		_RimFalloff("_RimFalloff", Range(0.01,5) ) = 0.1
 		_TemperatureColor("_TemperatureColor", Color) = (0,0,0,0)
-		_BurnColor ("Burn Color", Color) = (1,1,1,1)
 	}
 	
 	SubShader
@@ -29,8 +28,7 @@ Shader "SSTU/Masked"
 
 		#pragma surface surf ColoredSpecular
 		#pragma target 3.0
-		#include "SSTUShaders.cginc"
-		
+		#include "SSTUShaders.cginc"		
 		//ColoredSpecular lighting model and surface data struct found in SSTUShaders.cginc
 		
 		sampler2D _MainTex;
@@ -39,18 +37,19 @@ Shader "SSTU/Masked"
 		sampler2D _BumpMap;		
 		sampler2D _AOMap;
 
-		half _Shininess;
-		float _Opacity;
-		float4 _MaskColor1;
-		float4 _MaskColor2;
-		float4 _MaskColor3;
-		float4 _TemperatureColor;
-		float4 _RimColor;
-		float _RimFalloff;
+		float4 _MaskColor1;//user color1
+		float4 _MaskColor2;//user color2
+		float4 _MaskColor3;//user color3
+		half _Shininess;//standard specular shininess control
+		float _Opacity;//stock part highlighting/editor functions
+		float4 _RimColor;//part highlighting
+		float _RimFalloff;//uhh.. part highlighting?
+		float4 _TemperatureColor;//blackbody glow
 		
 		struct Input
 		{
 			float2 uv_MainTex;
+			//other UVs omitted as they are the same as on maintex; all use UV0
 			float3 viewDir;
 		};
 
@@ -61,22 +60,19 @@ Shader "SSTU/Masked"
 			float4 spec = tex2D(_SpecMap, (IN.uv_MainTex));
 			float3 normal = UnpackNormal(tex2D(_BumpMap, IN.uv_MainTex));
 			float3 ao = tex2D(_AOMap, (IN.uv_MainTex));
-						
-			float m = saturate(1 - (mask.r + mask.g + mask.b));
+			
+			float m = clamp(1 - (mask.r + mask.g + mask.b), 0, 1);//influence of the base diffuse color
 			half3 userColor = mask.rrr * _MaskColor1.rgb + mask.ggg * _MaskColor2.rgb + mask.bbb * _MaskColor3.rgb;
 			half3 diffuseColor = color * m;
-			half3 detailColor = (color - 0.5) * (1 - m);			
-			
-			half3 userSpec = mask.r * _MaskColor1.a + mask.g * _MaskColor2.a + mask.b * _MaskColor3.a;
-			half3 baseSpec = spec * m;
-			half3 detailSpec = (spec - 0.5) * (1 - m);
-			
-			o.Albedo = saturate(userColor + diffuseColor + detailColor) * ao;			
-			o.GlossColor = saturate(userSpec + baseSpec + detailSpec);
+			half3 detailColor = (color * 2 - 1) * (1 - m);
+			o.Albedo = saturate(userColor + diffuseColor + detailColor);
+			//o.Albedo = userColor + diffuseColor + detailColor;
+			o.Albedo *= ao;
+			o.GlossColor = spec.rgb;
 			o.Specular = _Shininess;
 			o.Normal = normal;
 			o.Emission = stockEmit(IN.viewDir, normal, _RimColor, _RimFalloff, _TemperatureColor) * _Opacity;
-			o.Alpha = _Opacity;
+			o.Alpha = _Opacity;//stock part highlighting
 		}
 		ENDCG
 	}

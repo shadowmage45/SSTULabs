@@ -346,12 +346,35 @@ namespace SSTUTools
         }
         
         /// <summary>
-        /// Cleans up the 'default' assignments from the prefab part (put here due to lack of multi-pass loading).  
-        /// Also adds a quick blurb to the right-click menu regarding possible additional part functionality.
+        /// Adds a quick blurb to the right-click menu regarding possible additional part functionality.
         /// </summary>
         /// <returns></returns>
         public override string GetInfo()
         {
+            //Shader maskedIconShader = SSTUDatabase.getShader("SSTU/MaskedIcon");
+            //Transform modelMesh;
+            //Transform modelRoot;
+            //Renderer iconRenderer;
+            //Renderer modelRenderer;
+            //if (part.partInfo != null && part.partInfo.iconPrefab != null)
+            //{
+            //    modelRoot = part.transform.FindRecursive("model");
+            //    Renderer[] rs = part.partInfo.iconPrefab.GetComponentsInChildren<Renderer>();
+            //    int len = rs.Length;
+            //    for (int i = 0; i < len; i++)
+            //    {
+            //        iconRenderer = rs[i];
+            //        modelMesh = modelRoot.FindRecursive(iconRenderer.name);
+            //        if (modelMesh != null)
+            //        {
+            //            modelRenderer = modelMesh.GetComponent<Renderer>();
+            //            if (modelRenderer.sharedMaterial.shader.name.Equals("SSTU/Masked"))
+            //            {
+            //                iconRenderer.sharedMaterial.shader = maskedIconShader;
+            //            }
+            //        }                    
+            //    }
+            //}
             return "This fuel tank has configurable height, diameter, mount, and nosecone.";
         }
 

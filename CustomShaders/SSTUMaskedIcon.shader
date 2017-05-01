@@ -71,6 +71,7 @@ Shader "SSTU/MaskedIcon"
 			o.Normal = normal;
 			
 			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
+			screenUV.y = 1 - screenUV.y;
 			if(screenUV.x < _MinX || screenUV.y < _MinY || screenUV.x > _MaxX || screenUV.y > _MaxY)
 			{
 				clip(-1);

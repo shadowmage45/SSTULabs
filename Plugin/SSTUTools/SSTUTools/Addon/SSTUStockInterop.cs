@@ -88,8 +88,8 @@ namespace SSTUTools
             MonoBehaviour.print("Reloading config databases (fuel types, model data, etc...)");
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
+            SSTUDatabase.loadConfigData();//needs to load prior to model-data, as model-data uses colors from DB
             SSTUModelData.loadConfigData();
-            SSTUDatabase.loadConfigData();
         }
 
         private static void seatFirstCollider(Part part)

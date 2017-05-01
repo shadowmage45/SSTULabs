@@ -141,7 +141,6 @@ namespace SSTUTools
         private int id = 1;
         private Rect windowRect = new Rect(Screen.width - 900 - 320, 40, windowWidth, windowHeight);
         private Vector2 scrollPos;
-        private Color[] presetColors;
         private SectionRecolorData sectionData;
         private int colorIndex;
         private string rStr, gStr, bStr, aStr;
@@ -151,15 +150,6 @@ namespace SSTUTools
         public void Awake()
         {
             id = GetInstanceID();
-
-            ConfigNode node = GameDatabase.Instance.GetConfigNodes("SSTU_COLOR_PRESETS")[0];
-            string[] colors = node.GetStringValues("color");
-            int len = colors.Length;
-            presetColors = new Color[len];
-            for (int i = 0; i < len; i++)
-            {
-                presetColors[i] = colorFromString(colors[i]);
-            }
         }
 
         public void OnGUI()
@@ -199,31 +189,28 @@ namespace SSTUTools
             GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
             scrollPos = GUILayout.BeginScrollView(scrollPos, false, true);
             Color old = GUI.color;
-            int len = presetColors.Length;
-            int row = 0, column = 0;
-            GUILayout.BeginHorizontal();
+            Color guiColor = old;
+            List<PresetColor> presetColors = PresetColor.getColorList();
+            int len = presetColors.Count;
             for (int i = 0; i < len; i++)
             {
-                GUI.color = presetColors[i];
-                if(GUILayout.Button("Preset", GUILayout.Width(60)))
+                GUILayout.BeginHorizontal();
+                guiColor = presetColors[i].color;
+                guiColor.a = 1f;
+                GUI.color = guiColor;
+                if(GUILayout.Button("Select", GUILayout.Width(60)))
                 {
-                    color = presetColors[i];
+                    color = presetColors[i].color;
                     rStr = (color.r * 255f).ToString("F0");
                     gStr = (color.g * 255f).ToString("F0");
                     bStr = (color.b * 255f).ToString("F0");
                     aStr = (color.a * 255f).ToString("F0");
                     update = true;
                 }
-                column++;
-                if (column >= 4)
-                {
-                    column = 0;
-                    row++;
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal();
-                }
+                GUI.color = old;
+                GUILayout.Label(presetColors[i].title);
+                GUILayout.EndHorizontal();
             }
-            GUILayout.EndHorizontal();
             GUI.color = old;
             GUILayout.EndScrollView();
 
@@ -271,6 +258,7 @@ namespace SSTUTools
                 if (int.TryParse(textOutput, out iVal))
                 {
                     val = iVal / 255f;
+                    updated = true;
                 }
             }
             GUILayout.EndHorizontal();

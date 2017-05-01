@@ -85,4 +85,10 @@ inline half4 LightingColoredSolar_PrePass (SolarSurfaceOutput s, half4 light)
 	c.a = s.Alpha + spec * _SpecColor.a;
 	return c;
 }
+		
+inline half3 stockEmit (float3 viewDir, float3 normal, half4 rimColor, half rimFalloff, half4 tempColor)
+{
+	half rim = 1.0 - saturate(dot (normalize(viewDir), normal));
+	return rimColor.rgb * pow(rim, rimFalloff) * rimColor.a + tempColor.rgb * tempColor.a;
+}
 
