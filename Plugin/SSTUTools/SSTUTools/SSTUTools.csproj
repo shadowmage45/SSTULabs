@@ -93,7 +93,7 @@
     <Compile Include="MeshGenerator\MeshBuilder.cs" />
     <Compile Include="MeshGenerator\ProceduralCylinderModel.cs" />
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
-    <Compile Include="Module\ModuleRecolorGUI.cs" />
+    <Compile Include="Module\SSTURecolorGUI.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />
     <Compile Include="Module\SSTUControlTransform.cs" />
