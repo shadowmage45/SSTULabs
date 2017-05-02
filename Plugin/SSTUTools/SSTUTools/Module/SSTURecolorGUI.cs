@@ -19,7 +19,7 @@ namespace SSTUTools
             {
                 guiObject = new GameObject("SSTURecolorGUI");
                 gui = guiObject.AddComponent<CraftRecolorGUI>();
-                gui.openGuiEditorCraft(EditorLogic.fetch);
+                gui.openGUIPart(EditorLogic.fetch, part);
                 gui.guiCloseAction = recolorClose;
             }
         }

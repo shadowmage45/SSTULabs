@@ -7,7 +7,7 @@ using KSP.UI.Screens;
 
 namespace SSTUTools
 {
-    [KSPAddon(KSPAddon.Startup.AllGameScenes, true)]
+    //[KSPAddon(KSPAddon.Startup.AllGameScenes, true)]
     public class SSTULauncher : MonoBehaviour
     {
         private ApplicationLauncherButton recolorButton;

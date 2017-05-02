@@ -86,6 +86,7 @@ namespace SSTUTools
                 ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
                 moduleRecolorData.Add(data);
             }
+            open = true;
         }
 
         internal void closeGui()
@@ -112,6 +113,11 @@ namespace SSTUTools
         private void drawWindow(int id)
         {
             GUILayout.BeginVertical();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Main", GUILayout.Width(70));
+            GUILayout.Label("Second", GUILayout.Width(70));
+            GUILayout.Label("Detail", GUILayout.Width(70));
+            GUILayout.EndHorizontal();
             scrollPos = GUILayout.BeginScrollView(scrollPos);
             int len = moduleRecolorData.Count;
             Color old = GUI.contentColor;
