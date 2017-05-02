@@ -21,7 +21,7 @@ namespace SSTUTools
             Texture2D tex;
             if (recolorButton == null)
             {
-                tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
+                tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDicon_miniaturization", false);
                 recolorButton = ApplicationLauncher.Instance.AddModApplication(recolorOpen, recolorClose, null, null, null, null, ApplicationLauncher.AppScenes.SPH|ApplicationLauncher.AppScenes.VAB, tex);
             }
         }

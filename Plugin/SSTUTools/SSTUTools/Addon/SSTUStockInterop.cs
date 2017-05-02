@@ -81,6 +81,21 @@ namespace SSTUTools
                 GameEvents.onEditorShipModified.Fire(EditorLogic.fetch.ship);
             }
             fireEditorEvent = false;
+
+            //if (HighLogic.LoadedSceneIsEditor && Input.GetKey(KeyCode.U))
+            //{
+            //    MonoBehaviour.print("Recolor part pick!");
+            //    EditorLogic el = EditorLogic.fetch;
+            //    Camera c = el.editorCamera;
+            //    Ray ray = c.ScreenPointToRay(Input.mousePosition);
+            //    RaycastHit hit;
+            //    int layerMask = 0 | 1 | 1<<2;
+            //    if (Physics.Raycast(ray, out hit, 1000f, layerMask))
+            //    {
+            //        Part p = hit.collider.gameObject.GetComponentUpwards<Part>();
+            //        MonoBehaviour.print("Picked Part: " + p);
+            //    }
+            //}
         }
         
         public void ModuleManagerPostLoad()

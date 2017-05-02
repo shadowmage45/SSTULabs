@@ -20,6 +20,8 @@ namespace SSTUTools
 
         private SectionRecolorGUI sectionGUI;
 
+        private Part highlightedPart = null;
+
         private bool open = false;
 
         internal Action guiCloseAction;
@@ -31,7 +33,8 @@ namespace SSTUTools
 
         internal void openGui()
         {
-            //TODO populate module data for parts on editor craft
+            EditorLogic editor = EditorLogic.fetch;
+            if (editor != null) { editor.Lock(true, true, true, "SSTURecolorGUILock"); }
             List<Part> uniqueParts = new List<Part>();
             foreach (Part p in EditorLogic.fetch.ship.Parts)
             {
@@ -72,7 +75,13 @@ namespace SSTUTools
         {
             open = false;
             closeSectionGUI();
+            if (highlightedPart != null)
+            {
+                highlightedPart.Highlight(false);
+            }
             moduleRecolorData.Clear();
+            EditorLogic editor = EditorLogic.fetch;
+            if (editor != null) { editor.Unlock("SSTURecolorGUILock"); }
         }
 
         public void OnGUI()
@@ -89,22 +98,47 @@ namespace SSTUTools
             scrollPos = GUILayout.BeginScrollView(scrollPos);
             int len = moduleRecolorData.Count;
             Color old = GUI.contentColor;
+            Color guiColor = old;
+            Part hp;
             for (int i = 0; i < len; i++)
             {
                 int len2 = moduleRecolorData[i].sectionData.Length;
                 for (int k = 0; k < len2; k++)
                 {
                     GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Highlight", GUILayout.Width(70)))
+                    {
+                        hp = moduleRecolorData[i].module.part;
+                        if (highlightedPart == hp)
+                        {
+                            MonoBehaviour.print("Disabling highlighting on: " + highlightedPart);
+                            highlightedPart.Highlight(false);
+                            highlightedPart = null;
+                        }
+                        else
+                        {
+                            if (highlightedPart != null)
+                            {
+                                MonoBehaviour.print("Disabling highlighting on: " + highlightedPart);
+                                highlightedPart.Highlight(false);
+                            }
+                            MonoBehaviour.print("Enabling highlighting on: " + highlightedPart);
+                            highlightedPart = hp;
+                            highlightedPart.Highlight(Color.green);
+                        }
+                    }
                     for (int m = 0; m < 3; m++)
                     {
-                        GUI.color = moduleRecolorData[i].sectionData[k].colors[m];
+                        guiColor = moduleRecolorData[i].sectionData[k].colors[m];
+                        guiColor.a = 1;
+                        GUI.color = guiColor;
                         if (GUILayout.Button("Recolor", GUILayout.Width(70)))
                         {
                             openSectionGUI(moduleRecolorData[i].sectionData[k], m);
                         }
                     }
                     GUI.color = old;
-                    GUILayout.Label(moduleRecolorData[i].module + "-" + moduleRecolorData[i].sectionData[k].sectionName);
+                    GUILayout.Label(moduleRecolorData[i].module.part.name + "-" + moduleRecolorData[i].sectionData[k].sectionName);
                     GUILayout.EndHorizontal();
                 }
             }
@@ -131,6 +165,34 @@ namespace SSTUTools
             Component.Destroy(sectionGUI);
             sectionGUI = null;
         }
+
+    }
+
+    public class PartRecolorGUI : MonoBehaviour
+    {
+        private static int graphWidth = 640;
+        private static int graphHeight = 250;
+        private static int scrollHeight = 480;
+        private static int margin = 20;
+        private static int id;
+        private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + scrollHeight + margin);
+        private static Vector2 scrollPos;
+
+        private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
+
+        private SectionRecolorGUI sectionGUI;
+
+        private Part highlightedPart = null;
+
+        private bool open = false;
+
+        internal Action guiCloseAction;
+
+        public void Awake()
+        {
+            id = GetInstanceID();
+        }
+
 
     }
 

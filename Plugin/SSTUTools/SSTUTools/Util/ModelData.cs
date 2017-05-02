@@ -454,6 +454,7 @@ namespace SSTUTools
         {
             float offset = getVerticalOffset();
             if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
             currentVerticalPosition = positionOfBottomOfModel + offset;
         }
 
@@ -1061,7 +1062,7 @@ namespace SSTUTools
             {
                 if (!compoundTransformData[i].canScaleHeight) { val += compoundTransformData[i].height; }
             }
-            return 0f;
+            return val;
         }
 
     }

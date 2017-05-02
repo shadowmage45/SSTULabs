@@ -189,7 +189,7 @@ namespace SSTUTools
             float diff = max - min;
             if (diff > 0)
             {
-                this.updateUIFloatEditControl(nameof(currentTankVerticalScale), min, max, diff * 0.5f, diff * 0.25f, diff * 0.05f, true, currentTankVerticalScale);
+                this.updateUIFloatEditControl(nameof(currentTankVerticalScale), min, max, diff * 0.5f, diff * 0.25f, diff * 0.01f, true, currentTankVerticalScale);
             }
             Fields[nameof(currentTankVerticalScale)].guiActiveEditor = min != 1 || max != 1;
         }
@@ -590,15 +590,15 @@ namespace SSTUTools
             mountModule.model.updateScaleForDiameter(currentTankDiameter * bottomAdapterRatio);
 
             float totalHeight = tankModule.model.currentHeight + noseModule.model.currentHeight + mountModule.model.currentHeight;
-            float startY = totalHeight * 0.5f;//start at the top of the first tank
-            startY -= noseModule.model.currentHeight;
-            noseModule.model.setPosition(startY, ModelOrientation.TOP);
+            float nosePosition = totalHeight * 0.5f;//start at the top of the first tank
+            nosePosition -= noseModule.model.currentHeight;
+            noseModule.model.setPosition(nosePosition, ModelOrientation.TOP);
 
-            startY -= tankModule.model.currentHeight * 0.5f;
-            tankModule.model.currentVerticalPosition = startY;
+            float tankPosition = nosePosition - tankModule.model.currentHeight;
+            tankModule.model.setPosition(tankPosition, tankModule.model.modelDefinition.orientation);
 
-            startY -= tankModule.model.currentHeight * 0.5f;
-            mountModule.model.setPosition(startY, ModelOrientation.BOTTOM);
+            //mount uses same position as tank, as it uses 'bottom' orientation setup for positioning
+            mountModule.model.setPosition(tankPosition, ModelOrientation.BOTTOM);
         }
 
         /// <summary>
