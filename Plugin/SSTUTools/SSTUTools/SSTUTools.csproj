@@ -80,7 +80,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Addon\SSTUDatabase.cs" />
-    <Compile Include="Addon\SSTULauncher.cs" />
     <Compile Include="Addon\SSTUStockInterop.cs" />
     <Compile Include="Fairing\FairingContainer.cs" />
     <Compile Include="Fairing\FairingData.cs" />

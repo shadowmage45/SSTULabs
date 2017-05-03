@@ -9,72 +9,28 @@ namespace SSTUTools
     public class CraftRecolorGUI : MonoBehaviour
     {
         private static int graphWidth = 640;
-        private static int graphHeight = 250;
-        private static int scrollHeight = 480;
+        private static int graphHeight = 800;
         private static int margin = 20;
         private static int id;
-        private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + scrollHeight + margin);
+        private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + margin);
         private static Vector2 scrollPos;
 
         private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
-
-        private SectionRecolorGUI sectionGUI;
-
-        private Part highlightedPart = null;
-
+        
         private bool open = false;
 
         internal Action guiCloseAction;
 
-        private bool craftGUI = false;
+        private SectionRecolorData sectionData;
+        private int colorIndex;
+        private string rStr, gStr, bStr, aStr;//string caches of color values//TODO -- set initial state when a section color is selected
+        private static Color editingColor;
+        private static Color[] storedPattern;
+        private static Color storedColor;
 
         public void Awake()
         {
             id = GetInstanceID();
-        }
-
-        internal void openGuiEditorCraft(EditorLogic editor)
-        {
-            if (editor == null)
-            {
-
-            }
-            craftGUI = true;
-            editor.Lock(true, true, true, "SSTURecolorGUILock");
-            List<Part> uniqueParts = new List<Part>();
-            foreach (Part p in editor.ship.Parts)
-            {
-                if (p.symmetryCounterparts == null || p.symmetryCounterparts.Count == 0)
-                {
-                    uniqueParts.Add(p);
-                }
-                else
-                {
-                    bool found = false;
-                    foreach (Part p1 in p.symmetryCounterparts)
-                    {
-                        if (uniqueParts.Contains(p1))
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                    {
-                        uniqueParts.Add(p);
-                    }
-                }
-            }
-            foreach (Part p in uniqueParts)
-            {
-                List<IRecolorable> mods = p.FindModulesImplementing<IRecolorable>();
-                foreach (IRecolorable mod in mods)
-                {
-                    ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
-                    moduleRecolorData.Add(data);
-                }
-            }
-            open = true;
         }
 
         internal void openGUIPart(EditorLogic editor, Part part)
@@ -93,11 +49,8 @@ namespace SSTUTools
         {
             open = false;
             closeSectionGUI();
-            if (highlightedPart != null)
-            {
-                highlightedPart.Highlight(false);
-            }
             moduleRecolorData.Clear();
+            sectionData = null;
             EditorLogic editor = EditorLogic.fetch;
             if (editor != null) { editor.Unlock("SSTURecolorGUILock"); }
         }
@@ -113,12 +66,34 @@ namespace SSTUTools
         private void drawWindow(int id)
         {
             GUILayout.BeginVertical();
+            drawSectionSelectionArea();
+            drawSectionRecoloringArea();
+            drawPresetColorArea();
+            GUILayout.EndVertical();
+            GUI.DragWindow();
+        }
+
+        private void openSectionGUI(SectionRecolorData section, int colorIndex)
+        {
+            this.sectionData = section;
+            this.colorIndex = colorIndex;
+        }
+
+        private void closeSectionGUI()
+        {
+            sectionData = null;
+            colorIndex = 0;
+        }
+
+        private void drawSectionSelectionArea()
+        {
             GUILayout.BeginHorizontal();
             GUILayout.Label("Main", GUILayout.Width(70));
             GUILayout.Label("Second", GUILayout.Width(70));
             GUILayout.Label("Detail", GUILayout.Width(70));
             GUILayout.EndHorizontal();
-            scrollPos = GUILayout.BeginScrollView(scrollPos);
+            //TODO find the height of 9 lines; no current part should have more than 9 recolorable sections (MUS = 7 in split tank + 2 fairings)
+            scrollPos = GUILayout.BeginScrollView(scrollPos, GUILayout.Height(200));
             int len = moduleRecolorData.Count;
             Color old = GUI.contentColor;
             Color guiColor = old;
@@ -129,27 +104,6 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     GUILayout.BeginHorizontal();
-                    if (craftGUI)
-                    {
-                        if (GUILayout.Button("Highlight", GUILayout.Width(70)))
-                        {
-                            hp = moduleRecolorData[i].module.part;
-                            if (highlightedPart == hp)
-                            {
-                                highlightedPart.Highlight(false);
-                                highlightedPart = null;
-                            }
-                            else
-                            {
-                                if (highlightedPart != null)
-                                {
-                                    highlightedPart.Highlight(false);
-                                }
-                                highlightedPart = hp;
-                                highlightedPart.Highlight(Color.green);
-                            }
-                        }
-                    }
                     for (int m = 0; m < 3; m++)
                     {
                         guiColor = moduleRecolorData[i].sectionData[k].colors[m];
@@ -171,22 +125,96 @@ namespace SSTUTools
                 open = false;
                 guiCloseAction();//call the method in SSTULauncher to close this GUI
             }
-            GUILayout.EndVertical();
-            GUI.DragWindow();
         }
 
-        private void openSectionGUI(SectionRecolorData section, int colorIndex)
+        private void drawSectionRecoloringArea()
         {
-            if (sectionGUI != null) { closeSectionGUI(); }
-            sectionGUI = gameObject.AddComponent<SectionRecolorGUI>();
-            sectionGUI.setColorData(section, colorIndex);
-            sectionGUI.onCloseAction = closeSectionGUI;
+            bool updated = false;
+            Color color = editingColor;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(moduleRecolorData[0].module.moduleName);//TODO find proper ref for this name
+            GUILayout.Label(sectionData.sectionName);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (drawColorInputLine("Red", ref color.r, ref rStr)) { updated = true; }
+            if (GUILayout.Button("Load Pattern", GUILayout.Width(70)))
+            {
+                sectionData.colors[0] = storedPattern[0];
+                sectionData.colors[1] = storedPattern[1];
+                sectionData.colors[2] = storedPattern[2];
+                updated = true;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (drawColorInputLine("Green", ref color.g, ref gStr)) { updated = true; }
+            if (GUILayout.Button("Store Pattern", GUILayout.Width(70)))
+            {
+                storedPattern = new Color[3];
+                storedPattern[0] = sectionData.colors[0];
+                storedPattern[1] = sectionData.colors[1];
+                storedPattern[2] = sectionData.colors[2];
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (drawColorInputLine("Blue", ref color.b, ref bStr)) { updated = true; }
+            if (GUILayout.Button("Load Color", GUILayout.Width(70)))
+            {
+                color = storedColor;
+                updated = true;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (drawColorInputLine("Specular", ref color.a, ref aStr)) { updated = true; }
+            if (GUILayout.Button("Store Color", GUILayout.Width(70)))
+            {
+                storedColor = color;
+            }
+            GUILayout.EndHorizontal();
+
+            if (updated)
+            {
+                editingColor = color;
+                sectionData.updateColors();
+            }
         }
 
-        private void closeSectionGUI()
+        private void drawPresetColorArea()
         {
-            Component.Destroy(sectionGUI);
-            sectionGUI = null;
+
+        }
+
+        private bool drawColorInputLine(string label, ref float val, ref string sVal)
+        {
+            //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
+            // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(80));
+            bool updated = false;
+            float result = val;
+            result = GUILayout.HorizontalSlider(val, 0, 1, GUILayout.Width(120));
+            if (result != val)
+            {
+                val = result;
+                sVal = (val * 255f).ToString("F0");
+                updated = true;
+            }
+            string textOutput = GUILayout.TextField(sVal, 3, GUILayout.Width(60));
+            if (sVal != textOutput)
+            {
+                sVal = textOutput;
+                int iVal;
+                if (int.TryParse(textOutput, out iVal))
+                {
+                    val = iVal / 255f;
+                    updated = true;
+                }
+            }
+            GUILayout.EndHorizontal();
+            return updated;
         }
 
     }
