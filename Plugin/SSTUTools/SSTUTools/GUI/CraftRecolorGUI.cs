@@ -8,12 +8,13 @@ namespace SSTUTools
 {
     public class CraftRecolorGUI : MonoBehaviour
     {
-        private static int graphWidth = 640;
+        private static int graphWidth = 500;
         private static int graphHeight = 800;
         private static int margin = 20;
         private static int id;
-        private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + margin);
+        private static Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth + margin, graphHeight + margin);
         private static Vector2 scrollPos;
+        private static Vector2 presetColorScrollPos;
 
         private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
         
@@ -69,19 +70,31 @@ namespace SSTUTools
             drawSectionSelectionArea();
             drawSectionRecoloringArea();
             drawPresetColorArea();
+            if (GUILayout.Button("Close"))
+            {
+                open = false;
+                guiCloseAction();//call the method in SSTULauncher to close this GUI
+            }
             GUILayout.EndVertical();
             GUI.DragWindow();
         }
 
-        private void openSectionGUI(SectionRecolorData section, int colorIndex)
+        private void setupSectionData(SectionRecolorData section, int colorIndex)
         {
             this.sectionData = section;
             this.colorIndex = colorIndex;
+            editingColor = sectionData.colors[colorIndex];
+            rStr = (editingColor.r * 255f).ToString("F0");
+            gStr = (editingColor.g * 255f).ToString("F0");
+            bStr = (editingColor.b * 255f).ToString("F0");
+            aStr = (editingColor.a * 255f).ToString("F0");
         }
 
         private void closeSectionGUI()
         {
             sectionData = null;
+            editingColor = Color.white;
+            rStr = gStr = bStr = aStr = "255";
             colorIndex = 0;
         }
 
@@ -97,7 +110,6 @@ namespace SSTUTools
             int len = moduleRecolorData.Count;
             Color old = GUI.contentColor;
             Color guiColor = old;
-            Part hp;
             for (int i = 0; i < len; i++)
             {
                 int len2 = moduleRecolorData[i].sectionData.Length;
@@ -111,34 +123,43 @@ namespace SSTUTools
                         GUI.color = guiColor;
                         if (GUILayout.Button("Recolor", GUILayout.Width(70)))
                         {
-                            openSectionGUI(moduleRecolorData[i].sectionData[k], m);
+                            setupSectionData(moduleRecolorData[i].sectionData[k], m);
                         }
                     }
-                    GUI.color = old;
+                    if (sectionData == moduleRecolorData[i].sectionData[k])
+                    {
+                        GUI.color = Color.red;
+                    }
+                    else
+                    {
+                        GUI.color = old;
+                    }
                     GUILayout.Label(moduleRecolorData[i].module.part.name + "-" + moduleRecolorData[i].sectionData[k].sectionName);
                     GUILayout.EndHorizontal();
+                    GUI.color = old;
                 }
             }
             GUILayout.EndScrollView();
-            if (GUILayout.Button("Close"))
-            {
-                open = false;
-                guiCloseAction();//call the method in SSTULauncher to close this GUI
-            }
         }
 
         private void drawSectionRecoloringArea()
-        {
+        {            
+            if (sectionData == null)
+            {
+                return;
+            }
             bool updated = false;
             Color color = editingColor;
             GUILayout.BeginHorizontal();
-            GUILayout.Label(moduleRecolorData[0].module.moduleName);//TODO find proper ref for this name
-            GUILayout.Label(sectionData.sectionName);
+            GUILayout.Label("Editing: ", GUILayout.Width(60));
+            GUILayout.Label(moduleRecolorData[0].module.moduleName, GUILayout.Width(200));
+            GUILayout.Label(sectionData.sectionName, GUILayout.Width(80));
+            GUILayout.Label(getSectionLabel(colorIndex) + " Color", GUILayout.Width(140));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             if (drawColorInputLine("Red", ref color.r, ref rStr)) { updated = true; }
-            if (GUILayout.Button("Load Pattern", GUILayout.Width(70)))
+            if (GUILayout.Button("Load Pattern", GUILayout.Width(120)))
             {
                 sectionData.colors[0] = storedPattern[0];
                 sectionData.colors[1] = storedPattern[1];
@@ -149,7 +170,7 @@ namespace SSTUTools
 
             GUILayout.BeginHorizontal();
             if (drawColorInputLine("Green", ref color.g, ref gStr)) { updated = true; }
-            if (GUILayout.Button("Store Pattern", GUILayout.Width(70)))
+            if (GUILayout.Button("Store Pattern", GUILayout.Width(120)))
             {
                 storedPattern = new Color[3];
                 storedPattern[0] = sectionData.colors[0];
@@ -160,7 +181,7 @@ namespace SSTUTools
 
             GUILayout.BeginHorizontal();
             if (drawColorInputLine("Blue", ref color.b, ref bStr)) { updated = true; }
-            if (GUILayout.Button("Load Color", GUILayout.Width(70)))
+            if (GUILayout.Button("Load Color", GUILayout.Width(120)))
             {
                 color = storedColor;
                 updated = true;
@@ -169,7 +190,7 @@ namespace SSTUTools
 
             GUILayout.BeginHorizontal();
             if (drawColorInputLine("Specular", ref color.a, ref aStr)) { updated = true; }
-            if (GUILayout.Button("Store Color", GUILayout.Width(70)))
+            if (GUILayout.Button("Store Color", GUILayout.Width(120)))
             {
                 storedColor = color;
             }
@@ -184,95 +205,13 @@ namespace SSTUTools
 
         private void drawPresetColorArea()
         {
-
-        }
-
-        private bool drawColorInputLine(string label, ref float val, ref string sVal)
-        {
-            //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
-            // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(80));
-            bool updated = false;
-            float result = val;
-            result = GUILayout.HorizontalSlider(val, 0, 1, GUILayout.Width(120));
-            if (result != val)
+            if (sectionData == null)
             {
-                val = result;
-                sVal = (val * 255f).ToString("F0");
-                updated = true;
+                return;
             }
-            string textOutput = GUILayout.TextField(sVal, 3, GUILayout.Width(60));
-            if (sVal != textOutput)
-            {
-                sVal = textOutput;
-                int iVal;
-                if (int.TryParse(textOutput, out iVal))
-                {
-                    val = iVal / 255f;
-                    updated = true;
-                }
-            }
-            GUILayout.EndHorizontal();
-            return updated;
-        }
-
-    }
-
-    public class SectionRecolorGUI : MonoBehaviour
-    {
-        private static int windowWidth = 320;
-        private static int windowHeight = 480;
-        private int id = 1;
-        private Rect windowRect = new Rect(Screen.width - 900 - 320, 40, windowWidth, windowHeight);
-        private Vector2 scrollPos;
-        private SectionRecolorData sectionData;
-        private int colorIndex;
-        private string rStr, gStr, bStr, aStr;
-
-        internal Action onCloseAction;
-
-        public void Awake()
-        {
-            id = GetInstanceID();
-        }
-
-        public void OnGUI()
-        {
-            windowRect = GUI.Window(id, windowRect, drawWindow, "Section Recoloring");
-        }
-
-        internal void setColorData(SectionRecolorData data, int index)
-        {
-            this.sectionData = data;
-            this.colorIndex = index;
-            this.rStr = (data.colors[index].r * 255f).ToString("F0");
-            this.gStr = (data.colors[index].g * 255f).ToString("F0");
-            this.bStr = (data.colors[index].b * 255f).ToString("F0");
-            this.aStr = (data.colors[index].a * 255f).ToString("F0");
-        }
-
-        private void drawWindow(int id)
-        {
-            GUILayout.BeginVertical();
-
-            Color color = sectionData.colors[colorIndex];
+            GUILayout.Label("Select a preset color: ");
+            presetColorScrollPos = GUILayout.BeginScrollView(presetColorScrollPos);
             bool update = false;
-
-            //red slider and input box
-            if (drawColorInputs("Red", ref color.r, ref rStr)) { update = true; }
-
-            //green slider and input box
-            if (drawColorInputs("Green", ref color.g, ref gStr)) { update = true; }
-
-            //blue slider and input box
-            if (drawColorInputs("Blue", ref color.b, ref bStr)) { update = true; }
-
-            //alpha slider and input box
-            if (drawColorInputs("Specular", ref color.a, ref aStr)) { update = true; }
-
-            GUILayout.Label("Preset Colors", GUILayout.ExpandWidth(true));
-            scrollPos = GUILayout.BeginScrollView(scrollPos, false, true);
             Color old = GUI.color;
             Color guiColor = old;
             List<PresetColor> presetColors = PresetColor.getColorList();
@@ -283,48 +222,32 @@ namespace SSTUTools
                 guiColor = presetColors[i].color;
                 guiColor.a = 1f;
                 GUI.color = guiColor;
-                if(GUILayout.Button("Select", GUILayout.Width(60)))
+                if (GUILayout.Button("Select", GUILayout.Width(60)))
                 {
-                    color = presetColors[i].color;
-                    rStr = (color.r * 255f).ToString("F0");
-                    gStr = (color.g * 255f).ToString("F0");
-                    bStr = (color.b * 255f).ToString("F0");
-                    aStr = (color.a * 255f).ToString("F0");
+                    editingColor = presetColors[i].color;
+                    rStr = (editingColor.r * 255f).ToString("F0");
+                    gStr = (editingColor.g * 255f).ToString("F0");
+                    bStr = (editingColor.b * 255f).ToString("F0");
+                    aStr = (editingColor.a * 255f).ToString("F0");
                     update = true;
                 }
                 GUI.color = old;
                 GUILayout.Label(presetColors[i].title);
                 GUILayout.EndHorizontal();
             }
-            GUI.color = old;
             GUILayout.EndScrollView();
-
-            bool shouldClose = false;
-            if (GUILayout.Button("Close"))
-            {
-                shouldClose = true;
-            }
-
-            GUILayout.EndVertical();
-            GUI.DragWindow();
-
-            sectionData.colors[colorIndex] = color;
+            GUI.color = old;
+            sectionData.colors[colorIndex] = editingColor;
             if (update)
             {
                 sectionData.updateColors();
             }
-
-            if (shouldClose)
-            {
-                onCloseAction();
-            }
         }
 
-        private bool drawColorInputs(string label, ref float val, ref string sVal)
+        private bool drawColorInputLine(string label, ref float val, ref string sVal)
         {
             //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
             // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
-            GUILayout.BeginHorizontal();
             GUILayout.Label(label, GUILayout.Width(80));
             bool updated = false;
             float result = val;
@@ -346,24 +269,24 @@ namespace SSTUTools
                     updated = true;
                 }
             }
-            GUILayout.EndHorizontal();
             return updated;
         }
 
-        private static Color colorFromBytes(int r, int g, int b, int a)
+        private string getSectionLabel(int index)
         {
-            return new Color(r / 255f, g / 255f, b / 255f, a / 255f);
+            switch (index)
+            {
+                case 0:
+                    return "Main";
+                case 1:
+                    return "Secondary";
+                case 2:
+                    return "Detail";
+                default:
+                    return "Unknown";
+            }
         }
 
-        private static Color colorFromString(string val)
-        {
-            string[] split = val.Split(',');
-            int r = int.Parse(split[0]);
-            int g = int.Parse(split[1]);
-            int b = int.Parse(split[2]);
-            int a = int.Parse(split[3]);
-            return colorFromBytes(r, g, b, a);
-        }
     }
 
     public class ModuleRecolorData
