@@ -9,17 +9,30 @@ namespace SSTUTools
     public class SSTURecolorGUI : PartModule
     {
 
-        private GameObject guiObject;
-        private CraftRecolorGUI gui;
+        private static GameObject guiObject;
+        private static CraftRecolorGUI gui;
 
         [KSPEvent(guiName ="Open Recoloring GUI", guiActive = false, guiActiveEditor = true)]
         public void recolorGUIEvent()
         {
-            if (guiObject == null)
+            bool open = true;
+            if (guiObject != null)
+            {
+                //apparently delegates can/do use reference/memory location ==, which is exactl what is needed in this situation
+                if (gui.guiCloseAction == recolorClose)
+                {
+                    open = false;
+                }
+                //kill existing GUI before opening new one
+                gui.guiCloseAction();
+                GameObject.Destroy(guiObject);
+                guiObject = null;
+            }
+            if (open)
             {
                 guiObject = new GameObject("SSTURecolorGUI");
                 gui = guiObject.AddComponent<CraftRecolorGUI>();
-                gui.openGUIPart(EditorLogic.fetch, part);
+                gui.openGUIPart(part);
                 gui.guiCloseAction = recolorClose;
             }
         }
