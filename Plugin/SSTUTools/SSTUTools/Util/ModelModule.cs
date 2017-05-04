@@ -93,7 +93,7 @@ namespace SSTUTools
                 MonoBehaviour.print("Current texture set for model "+model.name+" invalid: "+textureSet+", clearing colors and assigning default texture set.");
                 textureSet = model.getDefaultTextureSet();
                 useDefaultTextureColors = true;
-                if (HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().persistRecolorSelections)
+                if (SSTUGameSettings.persistRecolor())
                 {
                     useDefaultTextureColors = false;
                 }
@@ -116,7 +116,7 @@ namespace SSTUTools
         /// <param name="oldValue"></param>
         public void textureSetSelected(BaseField field, System.Object oldValue)
         {
-            bool defaultColors = !HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().persistRecolorSelections;
+            bool defaultColors = !SSTUGameSettings.persistRecolor();
             actionWithSymmetry(m => 
             {
                 m.textureSet = textureSet;

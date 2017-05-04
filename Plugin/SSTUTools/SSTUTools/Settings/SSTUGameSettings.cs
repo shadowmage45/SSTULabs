@@ -64,5 +64,14 @@ namespace SSTUTools
             }
         }
 
+        public static bool persistRecolor()
+        {
+            if (HighLogic.CurrentGame != null)
+            {
+                return HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().persistRecolorSelections;
+            }
+            return false;
+        }
+
     }
 }
