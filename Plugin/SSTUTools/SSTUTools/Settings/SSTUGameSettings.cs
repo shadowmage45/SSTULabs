@@ -20,6 +20,9 @@ namespace SSTUTools
         [GameParameters.CustomParameterUI("Override stock sandbox upgrade", toolTip = "Force-sets the stock 'apply upgrades in sandbox' to true.")]
         public bool upgradesInSandboxOverride = true;
 
+        [GameParameters.CustomParameterUI("Persistent Recolor Selections", toolTip = "If true, custom recolor selections will persist across texture set changes.")]
+        public bool persistRecolorSelections = false;
+
         public override string Section { get { return "SSTU"; } }
 
         public override int SectionOrder { get { return 1; } }
