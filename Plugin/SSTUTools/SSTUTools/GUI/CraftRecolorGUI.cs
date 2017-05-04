@@ -13,7 +13,6 @@ namespace SSTUTools
         private static Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth + margin, graphHeight + margin);
         private static Vector2 scrollPos;
         private static Vector2 presetColorScrollPos;
-        private static CraftRecolorGUI activeGUI = null;
 
         private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
         
@@ -31,17 +30,11 @@ namespace SSTUTools
             id = GetInstanceID();
         }
 
-        internal void openGUIPart(EditorLogic editor, Part part)
+        internal void openGUIPart(Part part)
         {
-            if (activeGUI != null)
-            {
-                activeGUI.closeGui();
-                activeGUI = null;
-            }
-            activeGUI = this;
-            ControlTypes controls = ControlTypes.ALLBUTCAMERAS;//TODO -- this is probably not the right lock set... does it interfere with IMGUI input?
+            ControlTypes controls = ControlTypes.ALLBUTCAMERAS;
+            controls = controls & ~ControlTypes.TWEAKABLES;
             InputLockManager.SetControlLock(controls, "SSTURecolorGUILock");
-            editor.Lock(true, true, true, "SSTURecolorGUILock");
             List<IRecolorable> mods = part.FindModulesImplementing<IRecolorable>();
             foreach (IRecolorable mod in mods)
             {
