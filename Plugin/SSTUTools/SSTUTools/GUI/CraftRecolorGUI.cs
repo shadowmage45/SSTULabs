@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 
 namespace SSTUTools
@@ -15,11 +13,10 @@ namespace SSTUTools
         private static Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth + margin, graphHeight + margin);
         private static Vector2 scrollPos;
         private static Vector2 presetColorScrollPos;
+        private static CraftRecolorGUI activeGUI = null;
 
         private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
         
-        private bool open = false;
-
         internal Action guiCloseAction;
 
         private SectionRecolorData sectionData;
@@ -36,6 +33,14 @@ namespace SSTUTools
 
         internal void openGUIPart(EditorLogic editor, Part part)
         {
+            if (activeGUI != null)
+            {
+                activeGUI.closeGui();
+                activeGUI = null;
+            }
+            activeGUI = this;
+            ControlTypes controls = ControlTypes.ALLBUTCAMERAS;//TODO -- this is probably not the right lock set... does it interfere with IMGUI input?
+            InputLockManager.SetControlLock(controls, "SSTURecolorGUILock");
             editor.Lock(true, true, true, "SSTURecolorGUILock");
             List<IRecolorable> mods = part.FindModulesImplementing<IRecolorable>();
             foreach (IRecolorable mod in mods)
@@ -43,25 +48,22 @@ namespace SSTUTools
                 ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
                 moduleRecolorData.Add(data);
             }
-            open = true;
         }
 
+        /// <summary>
+        /// To be called from the external 'GuiCloseAction' delegate.
+        /// </summary>
         internal void closeGui()
         {
-            open = false;
             closeSectionGUI();
             moduleRecolorData.Clear();
             sectionData = null;
-            EditorLogic editor = EditorLogic.fetch;
-            if (editor != null) { editor.Unlock("SSTURecolorGUILock"); }
+            InputLockManager.RemoveControlLock("SSTURecolorGUILock");
         }
 
         public void OnGUI()
         {
-            if (open)
-            {
-                windowRect = GUI.Window(id, windowRect, drawWindow, "Part Recoloring");
-            }
+            windowRect = GUI.Window(id, windowRect, drawWindow, "Part Recoloring");
         }
 
         private void drawWindow(int id)
@@ -72,7 +74,6 @@ namespace SSTUTools
             drawPresetColorArea();
             if (GUILayout.Button("Close"))
             {
-                open = false;
                 guiCloseAction();//call the method in SSTULauncher to close this GUI
             }
             GUILayout.EndVertical();
