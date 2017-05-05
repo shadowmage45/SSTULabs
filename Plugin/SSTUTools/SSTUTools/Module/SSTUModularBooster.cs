@@ -265,6 +265,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
+                    m.mountModule.model.setupTransformDefaults(m.part.transform.FindRecursive(m.thrustTransformName), m.part.transform.FindRecursive(m.gimbalTransformName));
                     m.updateGimbalOffset();
                     m.updateThrustOutput();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -411,7 +412,6 @@ namespace SSTUTools
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateAttachnodes(userInput);
-            updateGimbalOffset();
             updatePartCostAndMass();
             if (userInput)
             {
