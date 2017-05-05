@@ -6,13 +6,13 @@ namespace SSTUTools
 {
     public class CraftRecolorGUI : MonoBehaviour
     {
-        private static int graphWidth = 500;
-        private static int graphHeight = 800;
-        private static int margin = 20;
+        private static int graphWidth = 400;
+        private static int graphHeight = 540;
         private static int id;
-        private static Rect windowRect = new Rect(Screen.width - 600, 40, graphWidth + margin, graphHeight + margin);
+        private static Rect windowRect = new Rect(Screen.width - 500, 40, graphWidth, graphHeight);
         private static Vector2 scrollPos;
         private static Vector2 presetColorScrollPos;
+        private static GUIStyle nonWrappingLabelStyle = null;
 
         private List<ModuleRecolorData> moduleRecolorData = new List<ModuleRecolorData>();
         
@@ -41,6 +41,7 @@ namespace SSTUTools
                 ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
                 moduleRecolorData.Add(data);
             }
+            setupSectionData(moduleRecolorData[0].sectionData[0], 0);
         }
 
         /// <summary>
@@ -56,6 +57,14 @@ namespace SSTUTools
 
         public void OnGUI()
         {
+            //apparently trying to initialize this during OnAwake/etc fails, as unity is dumb and requires that it be done during an OnGUI call
+            //serious -- you cant even access the GUI.skin except in OnGUi...
+            if (nonWrappingLabelStyle == null)
+            {
+                GUIStyle style = new GUIStyle(GUI.skin.label);
+                style.wordWrap = false;
+                nonWrappingLabelStyle = style;
+            }
             windowRect = GUI.Window(id, windowRect, drawWindow, "Part Recoloring");
         }
 
@@ -95,21 +104,33 @@ namespace SSTUTools
         private void drawSectionSelectionArea()
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Main", GUILayout.Width(70));
-            GUILayout.Label("Second", GUILayout.Width(70));
-            GUILayout.Label("Detail", GUILayout.Width(70));
+            Color old = GUI.color;
+            float buttonWidth = 70;
+            float scrollWidth = 40;
+            float sectionTitleWidth = graphWidth - scrollWidth - buttonWidth * 3 - scrollWidth;
+            GUILayout.Label("Section", GUILayout.Width(sectionTitleWidth));
+            GUI.color = colorIndex == 0 ? Color.red : old;
+            GUILayout.Label("Main", GUILayout.Width(buttonWidth));
+            GUI.color = colorIndex == 1 ? Color.red : old;
+            GUILayout.Label("Second", GUILayout.Width(buttonWidth));
+            GUI.color = colorIndex == 2 ? Color.red : old;
+            GUILayout.Label("Detail", GUILayout.Width(buttonWidth));
+            GUI.color = old;
             GUILayout.EndHorizontal();
-            //TODO find the height of 9 lines; no current part should have more than 9 recolorable sections (MUS = 7 in split tank + 2 fairings)
-            scrollPos = GUILayout.BeginScrollView(scrollPos, GUILayout.Height(200));
-            int len = moduleRecolorData.Count;
-            Color old = GUI.contentColor;
             Color guiColor = old;
+            scrollPos = GUILayout.BeginScrollView(scrollPos, false, true, GUILayout.Height(100));
+            int len = moduleRecolorData.Count;
             for (int i = 0; i < len; i++)
             {
                 int len2 = moduleRecolorData[i].sectionData.Length;
                 for (int k = 0; k < len2; k++)
                 {
                     GUILayout.BeginHorizontal();
+                    if (sectionData == moduleRecolorData[i].sectionData[k])
+                    {
+                        GUI.color = Color.red;
+                    }
+                    GUILayout.Label(moduleRecolorData[i].sectionData[k].sectionName, GUILayout.Width(sectionTitleWidth));
                     for (int m = 0; m < 3; m++)
                     {
                         guiColor = moduleRecolorData[i].sectionData[k].colors[m];
@@ -120,19 +141,11 @@ namespace SSTUTools
                             setupSectionData(moduleRecolorData[i].sectionData[k], m);
                         }
                     }
-                    if (sectionData == moduleRecolorData[i].sectionData[k])
-                    {
-                        GUI.color = Color.red;
-                    }
-                    else
-                    {
-                        GUI.color = old;
-                    }
-                    GUILayout.Label(moduleRecolorData[i].module.part.name + "-" + moduleRecolorData[i].sectionData[k].sectionName);
-                    GUILayout.EndHorizontal();
                     GUI.color = old;
+                    GUILayout.EndHorizontal();
                 }
             }
+            GUI.color = old;
             GUILayout.EndScrollView();
         }
 
@@ -146,9 +159,9 @@ namespace SSTUTools
             Color color = editingColor;
             GUILayout.BeginHorizontal();
             GUILayout.Label("Editing: ", GUILayout.Width(60));
-            GUILayout.Label(moduleRecolorData[0].module.moduleName, GUILayout.Width(200));
-            GUILayout.Label(sectionData.sectionName, GUILayout.Width(80));
-            GUILayout.Label(getSectionLabel(colorIndex) + " Color", GUILayout.Width(140));
+            GUILayout.Label(sectionData.sectionName);
+            GUILayout.Label(getSectionLabel(colorIndex) + " Color");
+            GUILayout.FlexibleSpace();//to force everything to the left instead of randomly spaced out, while still allowing dynamic length adjustments
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
@@ -204,19 +217,25 @@ namespace SSTUTools
                 return;
             }
             GUILayout.Label("Select a preset color: ");
-            presetColorScrollPos = GUILayout.BeginScrollView(presetColorScrollPos);
+            presetColorScrollPos = GUILayout.BeginScrollView(presetColorScrollPos, false, true);
             bool update = false;
             Color old = GUI.color;
             Color guiColor = old;
             List<PresetColor> presetColors = PresetColor.getColorList();
             int len = presetColors.Count;
+            GUILayout.BeginHorizontal();
             for (int i = 0; i < len; i++)
             {
-                GUILayout.BeginHorizontal();
+                if (i > 0 && i % 2 == 0)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                }
+                GUILayout.Label(presetColors[i].title, nonWrappingLabelStyle, GUILayout.Width(115));
                 guiColor = presetColors[i].color;
                 guiColor.a = 1f;
                 GUI.color = guiColor;
-                if (GUILayout.Button("Select", GUILayout.Width(60)))
+                if (GUILayout.Button("Select", GUILayout.Width(55)))
                 {
                     editingColor = presetColors[i].color;
                     rStr = (editingColor.r * 255f).ToString("F0");
@@ -226,9 +245,8 @@ namespace SSTUTools
                     update = true;
                 }
                 GUI.color = old;
-                GUILayout.Label(presetColors[i].title);
-                GUILayout.EndHorizontal();
             }
+            GUILayout.EndHorizontal();
             GUILayout.EndScrollView();
             GUI.color = old;
             sectionData.colors[colorIndex] = editingColor;
@@ -242,7 +260,7 @@ namespace SSTUTools
         {
             //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
             // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
-            GUILayout.Label(label, GUILayout.Width(80));
+            GUILayout.Label(label, GUILayout.Width(60));
             bool updated = false;
             float result = val;
             result = GUILayout.HorizontalSlider(val, 0, 1, GUILayout.Width(120));
