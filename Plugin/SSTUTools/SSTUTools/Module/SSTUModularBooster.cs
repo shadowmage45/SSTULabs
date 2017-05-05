@@ -758,7 +758,7 @@ namespace SSTUTools
         private Transform createRootTransform(string name)
         {
             Transform tr = part.transform.FindRecursive(name);
-            if (tr != null) { GameObject.DestroyImmediate(tr); }
+            if (tr != null) { GameObject.DestroyImmediate(tr.gameObject); }
             tr = new GameObject(name).transform;
             tr.NestToParent(part.transform.FindRecursive("model"));
             return tr;
