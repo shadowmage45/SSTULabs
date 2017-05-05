@@ -156,7 +156,6 @@ namespace SSTUTools
                 return;
             }
             bool updated = false;
-            Color color = editingColor;
             GUILayout.BeginHorizontal();
             GUILayout.Label("Editing: ", GUILayout.Width(60));
             GUILayout.Label(sectionData.sectionName);
@@ -165,18 +164,19 @@ namespace SSTUTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Red", ref color.r, ref rStr)) { updated = true; }
+            if (drawColorInputLine("Red", ref editingColor.r, ref rStr)) { updated = true; }
             if (GUILayout.Button("Load Pattern", GUILayout.Width(120)))
             {
                 sectionData.colors[0] = storedPattern[0];
                 sectionData.colors[1] = storedPattern[1];
                 sectionData.colors[2] = storedPattern[2];
+                editingColor = sectionData.colors[colorIndex];
                 updated = true;
             }
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Green", ref color.g, ref gStr)) { updated = true; }
+            if (drawColorInputLine("Green", ref editingColor.g, ref gStr)) { updated = true; }
             if (GUILayout.Button("Store Pattern", GUILayout.Width(120)))
             {
                 storedPattern = new Color[3];
@@ -187,25 +187,25 @@ namespace SSTUTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Blue", ref color.b, ref bStr)) { updated = true; }
+            if (drawColorInputLine("Blue", ref editingColor.b, ref bStr)) { updated = true; }
             if (GUILayout.Button("Load Color", GUILayout.Width(120)))
             {
-                color = storedColor;
+                editingColor = storedColor;
                 updated = true;
             }
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Specular", ref color.a, ref aStr)) { updated = true; }
+            if (drawColorInputLine("Specular", ref editingColor.a, ref aStr)) { updated = true; }
             if (GUILayout.Button("Store Color", GUILayout.Width(120)))
             {
-                storedColor = color;
+                storedColor = editingColor;
             }
             GUILayout.EndHorizontal();
 
             if (updated)
             {
-                editingColor = color;
+                sectionData.colors[colorIndex] = editingColor;
                 sectionData.updateColors();
             }
         }
