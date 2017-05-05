@@ -140,7 +140,7 @@ namespace SSTUTools
         /// Determines the y-position of the engine model and bottom attach node position/fairing position.  Explicit value, specified in meters.
         /// </summary>
         [KSPField(guiName = "Vert. Pos.", guiActive = false, guiActiveEditor = true, isPersistant = true),
-         UI_FloatEdit(sigFigs =2, suppressEditorShipModified = true, minValue = -2, maxValue = 2, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.05f)]
+         UI_FloatEdit(sigFigs =2, suppressEditorShipModified = true, minValue = -2, maxValue = 2, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentEngineVerticalOffset = 0f;
 
         /// <summary>
@@ -343,6 +343,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.currentEngineVerticalOffset = currentEngineVerticalOffset;
+                    m.positionMountModel();//updates engine mounting position and fairing position including the new engine offset...method should probably be renamed... or functions split off...
                     m.positionEngineModels();
                     m.updateNodePositions(true);
                     m.updateFairing(true);
@@ -370,7 +371,7 @@ namespace SSTUTools
             //update config specified min/max on the spacing and offset controls
             //TODO -- clamp current to min/max
             //TODO -- if min/max == same, disable UI field
-            this.updateUIFloatEditControl(nameof(currentEngineVerticalOffset), minVerticalOffset, maxVerticalOffset, 0.5f, 0.25f, 0.05f, true, currentEngineVerticalOffset);
+            this.updateUIFloatEditControl(nameof(currentEngineVerticalOffset), minVerticalOffset, maxVerticalOffset, 0.5f, 0.25f, 0.01f, true, currentEngineVerticalOffset);
             this.updateUIFloatEditControl(nameof(currentEngineSpacing), minSpacing, maxSpacing, 0.5f, 0.25f, 0.05f, true, currentEngineSpacing);
 
             string[] optionsArray = SSTUUtils.getNames(engineLayouts, m => m.layoutName);
