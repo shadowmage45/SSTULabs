@@ -278,15 +278,7 @@ namespace SSTUTools
             initialize();
             this.updateUIFloatEditControl(nameof(currentTankDiameter), minTankDiameter, maxTankDiameter, tankDiameterIncrement * 2, tankDiameterIncrement, tankDiameterIncrement * 0.05f, true, currentTankDiameter);
             this.updateUIFloatEditControl(nameof(currentTankHeight), 0.25f, 1.75f, 0.25f, 0.125f, 0.005f, true, currentTankHeight);
-
-            if (!splitTank)
-            {
-                Fields[nameof(currentIntertank)].guiActiveEditor = false;
-                Fields[nameof(currentLower)].guiActiveEditor = false;
-                Fields[nameof(currentIntertankTexture)].guiActiveEditor = false;
-                Fields[nameof(currentLowerTexture)].guiActiveEditor = false;
-            }
-
+            
             Action<SSTUModularUpperStage> modelChangeAction = m =>
             {
                 m.updateModules(true);
@@ -374,11 +366,7 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentTankDiameter = currentTankDiameter; }//else it conflicts with stock slider functionality
                     if (m != this) { m.currentTankHeight = currentTankHeight; }
-                    m.updateModules(true);
-                    m.updateModels();
-                    m.updateTankStats();
-                    m.updateContainerVolume();
-                    m.updateGuiState();
+                    modelChangeAction(m);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -397,6 +385,16 @@ namespace SSTUTools
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
+
+            Fields[nameof(currentNose)].guiActiveEditor = noseModule.models.Count > 1;
+            Fields[nameof(currentUpper)].guiActiveEditor = upperModule.models.Count > 1;
+            Fields[nameof(currentIntertank)].guiActiveEditor = splitTank && intertankModule.models.Count > 1;
+            Fields[nameof(currentLower)].guiActiveEditor = splitTank && lowerModule.models.Count > 1;
+            Fields[nameof(currentMount)].guiActiveEditor = mountModule.models.Count > 1;
+            Fields[nameof(currentRCS)].guiActiveEditor = rcsModule.models.Count > 1;
+
+            Fields[nameof(currentIntertankTexture)].guiActiveEditor = splitTank;
+            Fields[nameof(currentLowerTexture)].guiActiveEditor = splitTank;
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
