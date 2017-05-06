@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SSTUTools
@@ -8,11 +8,6 @@ namespace SSTUTools
     {
 
         #region ----------------- REGION - Standard KSP-accessible config fields -----------------
-        /// <summary>
-        /// quick/dirty/easy flag to determine if should even attempt to load/manipulate split-tank elements
-        /// </summary>
-        [KSPField]
-        public bool splitTank = true;
 
         /// <summary>
         /// How much is the 'diameter' incremented for every 'large' tank diameter step? - this value is -not- scaled, and used as-is.
@@ -48,22 +43,29 @@ namespace SSTUTools
         /// Name of the 'interstage' node; positioned depending on mount interstage location (CB) / bottom of the upper tank (ST).
         /// </summary>
         [KSPField]
-        public String noseInterstageNodeName = "noseInterstage";
+        public String noseInterstageNode = "noseInterstage";
 
         /// <summary>
         /// Name of the 'interstage' node; positioned depending on mount interstage location (CB) / bottom of the upper tank (ST).
         /// </summary>
         [KSPField]
-        public String mountInterstageNodeName = "mountInterstage";
+        public String mountInterstageNode = "mountInterstage";
+
+        /// <summary>
+        /// A thrust transform of this name is created in the prefab part in order for the ModuleRCS to initialize properly even when no RCS model is present.
+        /// This name -must- match the name in the ModuleRCS, as this data is needed prior to the ModuleRCS loading its config data (??unconfirmed)
+        /// </summary>
+        [KSPField]
+        public String rcsThrustTransformName = "thrustTransform";
         
         /// <summary>
-        /// RealFuels compatibility config field, set to true when RF is in use to let RF handle mass/cost updates
+        /// RealFuels compatibility config field, set to false when RF is in use to let RF handle mass/cost updates -- TODO not sure if it needs to be true or false
         /// </summary>
         [KSPField]
         public bool subtractMass = false;
 
         /// <summary>
-        /// RealFuels compatibility config field, set to true when RF is in use to let RF handle mass/cost updates
+        /// RealFuels compatibility config field, set to false when RF is in use to let RF handle mass/cost updates -- TODO not sure if it needs to be true or false
         /// </summary>
         [KSPField]
         public bool subtractCost = false;
@@ -92,6 +94,13 @@ namespace SSTUTools
          * **/
 
         /// <summary>
+        /// quick/dirty/easy flag to determine if should even attempt to load/manipulate split-tank elements
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Tank Type"),
+         UI_Toggle(disabledText = "CommonBulkhead", enabledText = "SplitTank", suppressEditorShipModified = true)]
+        public bool splitTank = true;
+
+        /// <summary>
         /// Current absolute tank diameter (of the upper tank for split-tank, or of the full tank for common-bulkhead types)
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor =true, guiName ="Diameter"),
@@ -103,7 +112,7 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor =true, guiName = "Scale"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.25f, maxValue = 1.75f)]
-        public float currentTankHeight = 0.5f;
+        public float currentTankHeight = 1f;
 
         /// <summary>
         /// The currently selected/enabled nose option
@@ -115,7 +124,7 @@ namespace SSTUTools
         /// <summary>
         /// The currently selected/enabled nose option
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Upper"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Upper Tank"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentUpper = String.Empty;
 
@@ -129,7 +138,7 @@ namespace SSTUTools
         /// <summary>
         /// The currently selected/enabled nose option
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Lower"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Lower Tank"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentLower = String.Empty;
 
@@ -143,7 +152,7 @@ namespace SSTUTools
         /// <summary>
         /// The currently selected/enabled RCS option.
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentRCS = String.Empty;
 
@@ -177,6 +186,10 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentRCSTexture = String.Empty;
+
         /**
          * Persistent data fields for storage of model-module custom data -- colors/etc.
          * **/
@@ -195,6 +208,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string mountPersistentData;
 
+        [KSPField(isPersistant = true)]
+        public string rcsPersistentData;
+
         /// <summary>
         /// Used solely to track if resources have been initialized, as this should only happen once on first part creation (regardless of if it is created in flight or in the editor);
         /// Unsure of any cleaner way to track a simple boolean value across the lifetime of a part, seems like the part-persistence data is probably it...
@@ -211,6 +227,8 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
+        public GameObject[] rcsThrustTransforms = null;
+
         #endregion
 
         #region ----------------- REGION - Private working value fields ----------------- 
@@ -225,7 +243,7 @@ namespace SSTUTools
         private float totalTankVolume = 0;
         private float moduleMass = 0;
         private float moduleCost = 0;
-        private float rcsThrust = 0;
+        private float rcsThrust = -1;
 
         private ModelModule<SingleModelData> noseModule;
         private ModelModule<SingleModelData> upperModule;
@@ -265,56 +283,109 @@ namespace SSTUTools
             {
                 Fields[nameof(currentIntertank)].guiActiveEditor = false;
                 Fields[nameof(currentLower)].guiActiveEditor = false;
+                Fields[nameof(currentIntertankTexture)].guiActiveEditor = false;
+                Fields[nameof(currentLowerTexture)].guiActiveEditor = false;
             }
+
+            Action<SSTUModularUpperStage> modelChangeAction = m =>
+            {
+                m.updateModules(true);
+                m.updateModels();
+                m.updateTankStats();
+                m.updateRCSThrust();
+                m.updateContainerVolume();
+                m.updateGuiState();
+            };
+
+            Fields[nameof(splitTank)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.splitTank = splitTank;
+                    if (m.splitTank)
+                    {
+                        m.intertankModule.setupModel();
+                        m.lowerModule.setupModel();
+                    }
+                    else
+                    {
+                        m.intertankModule.model.destroyCurrentModel();
+                        m.lowerModule.model.destroyCurrentModel();
+                    }
+                    m.Fields[nameof(currentIntertank)].guiActiveEditor = m.splitTank;
+                    m.Fields[nameof(currentLower)].guiActiveEditor = m.splitTank;
+                    m.Fields[nameof(currentIntertankTexture)].guiActiveEditor = m.splitTank;
+                    m.Fields[nameof(currentLowerTexture)].guiActiveEditor = m.splitTank;
+                    modelChangeAction(m);
+                });
+            };
 
             Fields[nameof(currentNose)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 noseModule.modelSelected(currentNose);
-                this.actionWithSymmetry(m => 
-                {
-                    //TODO model position updates, recalc volume, mass, reposition fairings
-                });
+                this.actionWithSymmetry(modelChangeAction);
             };
 
             Fields[nameof(currentUpper)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 upperModule.modelSelected(currentUpper);
-                this.actionWithSymmetry(m =>
-                {
-                    //TODO model position updates, recalc volume, mass, reposition fairings
-                });
+                this.actionWithSymmetry(modelChangeAction);
+            };
+
+            Fields[nameof(currentIntertank)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                intertankModule.modelSelected(currentIntertank);
+                this.actionWithSymmetry(modelChangeAction);
+            };
+
+            Fields[nameof(currentLower)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                lowerModule.modelSelected(currentLower);
+                this.actionWithSymmetry(modelChangeAction);
             };
 
             Fields[nameof(currentMount)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 mountModule.modelSelected(currentMount);
-                this.actionWithSymmetry(m =>
-                {
-                    //TODO model position updates, recalc volume, mass, reposition fairings
-                });
+                this.actionWithSymmetry(modelChangeAction);
             };
 
             Fields[nameof(currentRCS)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 rcsModule.modelSelected(currentRCS);
-                this.actionWithSymmetry(m =>
+                this.actionWithSymmetry(m => 
                 {
-                    //TODO model position updates, recalc volume, mass, reposition fairings
+                    MonoBehaviour.print("RCS model updated!");
+                    m.rebuildRCSThrustTransforms(true);
+                    modelChangeAction(m);
                 });
             };
 
             Fields[nameof(currentNoseTexture)].uiControlEditor.onFieldChanged = noseModule.textureSetSelected;
             Fields[nameof(currentUpperTexture)].uiControlEditor.onFieldChanged = upperModule.textureSetSelected;
             Fields[nameof(currentMountTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
+            Fields[nameof(currentIntertankTexture)].uiControlEditor.onFieldChanged = intertankModule.textureSetSelected;
+            Fields[nameof(currentLowerTexture)].uiControlEditor.onFieldChanged = lowerModule.textureSetSelected;
+            Fields[nameof(currentRCSTexture)].uiControlEditor.onFieldChanged = rcsModule.textureSetSelected;
 
-            if (splitTank)
+            Callback<BaseField, System.Object> editorUpdateDelegate = delegate (BaseField a, System.Object b)
             {
-                Fields[nameof(currentIntertank)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) { };
-                Fields[nameof(currentLower)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) { };
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentTankDiameter = currentTankDiameter; }//else it conflicts with stock slider functionality
+                    if (m != this) { m.currentTankHeight = currentTankHeight; }
+                    m.updateModules(true);
+                    m.updateModels();
+                    m.updateTankStats();
+                    m.updateContainerVolume();
+                    m.updateGuiState();
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
-                Fields[nameof(currentIntertankTexture)].uiControlEditor.onFieldChanged = intertankModule.textureSetSelected;
-                Fields[nameof(currentLowerTexture)].uiControlEditor.onFieldChanged = lowerModule.textureSetSelected;
-            }
+            Fields[nameof(currentTankDiameter)].uiControlEditor.onFieldChanged = editorUpdateDelegate;
+
+            Fields[nameof(currentTankHeight)].uiControlEditor.onFieldChanged = editorUpdateDelegate;
 
             Fields[nameof(supportPercent)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
@@ -333,7 +404,7 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            return "This part has configurable diameter, height, bottom-cap, and fairings.";
+            return "This part has configurable diameter, height, nose, tanks, mount, and fairings.";
         }
 
         /// <summary>
@@ -356,11 +427,6 @@ namespace SSTUTools
             updateGuiState();
         }
 
-        /// <summary>
-        /// Return the current part cost/modifier.  Returns the pre-calculated tank cost.
-        /// </summary>
-        /// <param name="defaultCost"></param>
-        /// <returns></returns>
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             return subtractCost ? -defaultCost + moduleCost : moduleCost;
@@ -445,7 +511,6 @@ namespace SSTUTools
             initialized = true;
             loadConfigData();
             updateModules(false);
-            buildSavedModel();
             updateModels();
             updateTankStats();
             updateGuiState();
@@ -457,40 +522,41 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-
-            ConfigNode[] noseNodes = node.GetNodes("NOSE");
-            ConfigNode upperNode = node.GetNode("UPPERTANK");
-            ConfigNode[] mountNodes = node.GetNodes("MOUNT");
-            ConfigNode rcsNode = node.GetNode("RCS");
-
-            noseModule = new ModelModule<SingleModelData>(part, this, null, ModelOrientation.TOP, nameof(nosePersistentData), nameof(currentNose), nameof(currentNoseTexture));
+            noseModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSNose"), ModelOrientation.TOP, nameof(nosePersistentData), nameof(currentNose), nameof(currentNoseTexture));
             noseModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).noseModule; };
-            noseModule.setupModelList(SingleModelData.parseModels(noseNodes));
+            noseModule.setupModelList(SingleModelData.parseModels(node.GetNodes("NOSE")));
+            noseModule.setupModel();
 
-            upperModule = new ModelModule<SingleModelData>(part, this, null, ModelOrientation.TOP, nameof(upperPersistentData), nameof(currentUpper), nameof(currentUpperTexture));
+            upperModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSUpper"), ModelOrientation.TOP, nameof(upperPersistentData), nameof(currentUpper), nameof(currentUpperTexture));
             upperModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).upperModule; };
-            upperModule.setupModelList(SingleModelData.parseModels(new ConfigNode[] { upperNode }));
+            upperModule.setupModelList(SingleModelData.parseModels(node.GetNodes("UPPER")));
+            upperModule.setupModel();
+            intertankModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSIntertank"), ModelOrientation.TOP, nameof(intertankPersistentData), nameof(currentIntertank), nameof(currentIntertankTexture));
+            intertankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).intertankModule; };
+            intertankModule.setupModelList(SingleModelData.parseModels(node.GetNodes("INTERTANK")));
+            intertankModule.setupModel();
 
-            if (splitTank)
-            {
-                ConfigNode[] interNodes = node.GetNodes("INTERTANK");
-                ConfigNode lowerNode = node.GetNode("LOWERTANK");
-                intertankModule = new ModelModule<SingleModelData>(part, this, null, ModelOrientation.TOP, nameof(intertankPersistentData), nameof(currentIntertank), nameof(currentIntertankTexture));
-                intertankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).intertankModule; };
-                intertankModule.setupModelList(SingleModelData.parseModels(interNodes));
+            lowerModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSLower"), ModelOrientation.TOP, nameof(lowerPersistentData), nameof(currentLower), nameof(currentLowerTexture));
+            lowerModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).lowerModule; };
+            lowerModule.setupModelList(SingleModelData.parseModels(node.GetNodes("LOWER")));
+            lowerModule.setupModel();
 
-                lowerModule = new ModelModule<SingleModelData>(part, this, null, ModelOrientation.TOP, nameof(lowerPersistentData), nameof(currentLower), nameof(currentLowerTexture));
-                lowerModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).lowerModule; };
-                lowerModule.setupModelList(SingleModelData.parseModels(new ConfigNode[] { lowerNode }));
-            }
-
-            mountModule = new ModelModule<SingleModelData>(part, this, null, ModelOrientation.BOTTOM, nameof(mountPersistentData), nameof(currentMount), nameof(currentMountTexture));
+            mountModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSMount"), ModelOrientation.BOTTOM, nameof(mountPersistentData), nameof(currentMount), nameof(currentMountTexture));
             mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).mountModule; };
-            mountModule.setupModelList(SingleModelData.parseModels(mountNodes));
+            mountModule.setupModelList(SingleModelData.parseModels(node.GetNodes("MOUNT")));
+            mountModule.setupModel();
 
-            rcsModule = new ModelModule<SSTUModularUpperStageRCS>(part, this, null, ModelOrientation.CENTRAL, null, null, null);
+            rcsModule = new ModelModule<SSTUModularUpperStageRCS>(part, this, getRootTransform("MUSRCS"), ModelOrientation.CENTRAL, nameof(rcsPersistentData), nameof(currentRCS), nameof(currentRCSTexture));
             rcsModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).rcsModule; };
-            rcsModule.setupModelList(null);
+            rcsModule.setupModelList(SingleModelData.parseModels(node.GetNodes("RCS"), m=> new SSTUModularUpperStageRCS(m)));
+            rcsModule.setupModel();
+            rebuildRCSThrustTransforms(false);
+
+            if (!splitTank)
+            {
+                intertankModule.model.destroyCurrentModel();
+                lowerModule.model.destroyCurrentModel();
+            }
         }
 
         #endregion
@@ -502,106 +568,75 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleScales()
         {
-            //float scale = currentTankDiameter / defaultTankDiameter;
-            //upperDomeModule.updateScaleForDiameter(currentTankDiameter);
-            //upperTopCapModule.updateScaleForDiameter(currentTankDiameter);
-            //upperModule.updateScaleForHeightAndDiameter(currentTankHeight * scale, currentTankDiameter);
-            //upperBottomCapModule.updateScaleForDiameter(currentTankDiameter);
+            noseModule.model.updateScaleForDiameter(currentTankDiameter);
 
-            //float mountDiameterScale = currentTankDiameter;
-            //if (splitTank)
-            //{
-            //    currentIntertankModule.updateScaleForDiameter(currentTankDiameter);
-            //    float lowerDiameter = currentTankDiameter * 0.75f;
-            //    float lowerHeight = currentTankHeight * 0.75f;
-            //    mountDiameterScale = lowerDiameter;
-            //    lowerTopCapModule.updateScaleForDiameter(lowerDiameter);
-            //    lowerModule.updateScaleForHeightAndDiameter(lowerHeight, lowerDiameter);
-            //    lowerBottomCapModule.updateScaleForDiameter(lowerDiameter);
-            //}            
-            //currentMountModule.updateScaleForDiameter(mountDiameterScale);
-            //rcsModule.updateScaleForDiameter(mountDiameterScale);
+            float hScale, vScale;
+            hScale = currentTankDiameter / upperModule.model.modelDefinition.diameter;
+            vScale = hScale * currentTankHeight;
+            upperModule.model.updateScale(hScale, vScale);
+            if (splitTank)
+            {
+                intertankModule.model.updateScaleForDiameter(currentTankDiameter * 0.75f);
+                hScale = (currentTankDiameter * 0.75f) / lowerModule.model.modelDefinition.diameter;
+                vScale = hScale * currentTankHeight;
+                lowerModule.model.updateScale(hScale, vScale);
+            }
+            mountModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * 0.75f : currentTankDiameter);
+            rcsModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * 0.75f : currentTankDiameter);
         }
                 
         /// <summary>
-        /// Updated the modules internal cached position value.  This value is used later to update the actual model positions.
+        /// Updated the models position values and calculates fairing and attach node locations
         /// </summary>
         private void updateModulePositions()
         {
-            //float totalHeight = 0;
-            //totalHeight += upperDomeModule.currentHeight;
-            //totalHeight += upperTopCapModule.currentHeight;
-            //totalHeight += upperModule.currentHeight;
-            //totalHeight += upperBottomCapModule.currentHeight;
-            //if (splitTank)
-            //{
-            //    totalHeight += currentIntertankModule.currentHeight;
-            //    totalHeight += lowerTopCapModule.currentHeight;
-            //    totalHeight += lowerModule.currentHeight;
-            //    totalHeight += lowerBottomCapModule.currentHeight;
-            //}
-            //totalHeight += currentMountModule.currentHeight;
-            
-            ////start height = total height * 0.5
-            //float startY = totalHeight * 0.5f;
-            //partTopY = startY;
-            //partBottomY = -partTopY;
+            float totalHeight = 0;
+            totalHeight += noseModule.model.currentHeight;
+            totalHeight += upperModule.model.currentHeight;
+            if (splitTank)
+            {
+                totalHeight += intertankModule.model.currentHeight;
+                totalHeight += lowerModule.model.currentHeight;
+            }
+            totalHeight += mountModule.model.currentHeight;
 
-            ////next 'position' is the origin for the dome and start for the fairings
-            //startY -= upperDomeModule.currentHeight;
-            //topFairingBottomY = startY;
-            //upperDomeModule.currentVerticalPosition = startY;
+            partTopY = totalHeight * 0.5f;
+            partBottomY = -(totalHeight * 0.5f);//bottom attach node location, and bottom fairing location
 
-            ////next position is the origin for the upper-tank-top-cap portion of the model
-            //startY -= upperTopCapModule.currentHeight;
-            //upperTopCapModule.currentVerticalPosition = startY;
+            float start = partTopY;
+            start -= noseModule.model.currentHeight;
+            noseModule.model.setPosition(start, ModelOrientation.TOP);
 
-            ////next position is the origin for the upper-tank stretchable model; it uses a center-origin system, so position it using half of its height            
-            //startY -= upperModule.currentHeight * 0.5f;
-            //upperModule.currentVerticalPosition = startY;
+            start -= upperModule.model.currentHeight;
+            upperModule.model.setPosition(start, upperModule.model.modelDefinition.orientation);
 
-            ////next position is the origin for the upper-tank-lower-cap
-            //startY -= upperModule.currentHeight * 0.5f;//finish moving downward for the upper-tank-stretch segment
-            //startY -= upperTopCapModule.currentHeight;
-            //upperBottomCapModule.currentVerticalPosition = startY;
-            
-            ////next position the split-tank elements if ST is enabled            
-            //if (splitTank)
-            //{
-            //    //move downward for the intertank height
-            //    startY -= currentIntertankModule.currentHeight;
-            //    currentIntertankModule.currentVerticalPosition = startY;
+            if (splitTank)
+            {
+                start -= intertankModule.model.currentHeight;
+                intertankModule.model.setPosition(start, ModelOrientation.TOP);
 
-            //    //move downward for the lower tank top cap
-            //    startY -= lowerTopCapModule.currentHeight;
-            //    lowerTopCapModule.currentVerticalPosition = startY;
+                start -= lowerModule.model.currentHeight;
+                lowerModule.model.setPosition(start, lowerModule.model.modelDefinition.orientation);
+            }
 
-            //    //move downward for half height of the lower stretch tank
-            //    startY -= lowerModule.currentHeight * 0.5f;
-            //    lowerModule.currentVerticalPosition = startY;
-            //    startY -= lowerModule.currentHeight * 0.5f;
+            mountModule.model.setPosition(start, ModelOrientation.BOTTOM);
 
-            //    //move downward for the lower tank bottom cap 
-            //    startY -= lowerBottomCapModule.currentHeight;
-            //    lowerBottomCapModule.currentVerticalPosition = startY;                
-            //}
+            rcsModule.model.setPosition(start + mountModule.model.currentHeightScale * mountModule.model.modelDefinition.rcsVerticalPosition);            
+            rcsModule.model.currentHorizontalPosition = mountModule.model.modelDefinition.rcsHorizontalPosition * mountModule.model.currentDiameterScale;
+            rcsModule.model.mountVerticalRotation = mountModule.model.modelDefinition.rcsVerticalRotation;
+            rcsModule.model.mountHorizontalRotation = mountModule.model.modelDefinition.rcsHorizontalRotation;
 
-            ////and should already be positioned properly for the mount
-            //currentMountModule.currentVerticalPosition = startY;
-            //rcsModule.currentVerticalPosition = currentMountModule.currentVerticalPosition + (currentMountModule.modelDefinition.rcsVerticalPosition * currentMountModule.currentHeightScale);
-            //rcsModule.currentHorizontalPosition = currentMountModule.modelDefinition.rcsHorizontalPosition * currentMountModule.currentDiameterScale;
-            //rcsModule.mountVerticalRotation = currentMountModule.modelDefinition.rcsVerticalRotation;
-            //rcsModule.mountHorizontalRotation = currentMountModule.modelDefinition.rcsHorizontalRotation;
+            topFairingBottomY = noseModule.model.currentVerticalPosition + noseModule.model.modelDefinition.fairingTopOffset * noseModule.model.currentDiameterScale;
+            if (splitTank)
+            {
+                bottomFairingTopY = intertankModule.model.currentVerticalPosition + intertankModule.model.modelDefinition.fairingTopOffset * intertankModule.model.currentDiameterScale;
+            }
+            else
+            {
+                bottomFairingTopY = mountModule.model.currentVerticalPosition + mountModule.model.modelDefinition.fairingTopOffset * mountModule.model.currentDiameterScale;
+            }
 
-            //if (splitTank)
-            //{
-            //    bottomFairingTopY = upperBottomCapModule.currentVerticalPosition;
-            //}
-            //else
-            //{
-            //    bottomFairingTopY = currentMountModule.currentVerticalPosition;
-            //    bottomFairingTopY += currentMountModule.modelDefinition.fairingTopOffset * currentMountModule.currentHeightScale;
-            //}
+            guiTankHeight = totalHeight;
         }
 
         /// <summary>
@@ -654,84 +689,38 @@ namespace SSTUTools
         private void updateNodePositions(bool userInput)
         {
             AttachNode topNode = part.FindAttachNode("top");
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(0, partTopY, 0), topNode.orientation, userInput);
-
-            AttachNode topNode2 = part.FindAttachNode("top2");
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode2, new Vector3(0, topFairingBottomY, 0), topNode2.orientation, userInput);
+            if (topNode != null)
+            {
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, new Vector3(0, partTopY, 0), topNode.orientation, userInput);
+            }
 
             AttachNode bottomNode = part.FindAttachNode("bottom");
-            SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
-            
-            if (!String.IsNullOrEmpty(noseInterstageNodeName))
+            if (bottomNode != null)
             {
-                Vector3 pos = new Vector3(0, bottomFairingTopY, 0);
-                SSTUSelectableNodes.updateNodePosition(part, noseInterstageNodeName, pos);
-                AttachNode interstage = part.FindAttachNode(noseInterstageNodeName);
-                if (interstage != null)
-                {
-                    Vector3 orientation = new Vector3(0, -1, 0);
-                    SSTUAttachNodeUtils.updateAttachNodePosition(part, interstage, pos, orientation, userInput);
-                }
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, new Vector3(0, partBottomY, 0), bottomNode.orientation, userInput);
             }
-        }
 
-        #endregion
+            Vector3 pos = new Vector3(0, topFairingBottomY, 0);
+            SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
+            AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
+            if (noseInterstage != null)
+            {
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
+            }
 
-        #region ----------------- REGION - Model Build / Updating ----------------- 
+            pos = new Vector3(0, bottomFairingTopY, 0);
+            SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
+            AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
+            if (mountInterstage != null)
+            {
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
+            }
 
-        /// <summary>
-        /// Builds the model from the current/default settings, and/or restores object links from existing game-objects
-        /// </summary>
-        private void buildSavedModel()
-        {
-            //Transform modelBase = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
-
-            //setupModel(upperDomeModule, modelBase, ModelOrientation.CENTRAL);
-            //setupModel(upperTopCapModule, modelBase, ModelOrientation.CENTRAL);
-            //setupModel(upperModule, modelBase, ModelOrientation.CENTRAL);
-            //setupModel(upperBottomCapModule, modelBase, ModelOrientation.CENTRAL);
-            
-            //if (splitTank)
-            //{
-            //    if (currentIntertankModule.name != defaultIntertank)
-            //    {
-            //        SingleModelData dim = Array.Find<SingleModelData>(intertankModules, l => l.name == defaultIntertank);
-            //        dim.setupModel(modelBase, ModelOrientation.CENTRAL);
-            //        removeCurrentModel(dim);
-            //    }                
-            //    setupModel(currentIntertankModule, modelBase, ModelOrientation.CENTRAL);
-            //    setupModel(lowerTopCapModule, modelBase, ModelOrientation.CENTRAL);
-            //    setupModel(lowerModule, modelBase, ModelOrientation.CENTRAL);
-            //    setupModel(lowerBottomCapModule, modelBase, ModelOrientation.CENTRAL);
-            //}
-            //if (currentMountModule.name != defaultMount)
-            //{
-            //    SingleModelData dmm = Array.Find<SingleModelData>(mountModules, l => l.name == defaultMount);
-            //    dmm.setupModel(modelBase, ModelOrientation.BOTTOM);
-            //    removeCurrentModel(dmm);
-            //}
-
-            //setupModel(currentMountModule, modelBase, ModelOrientation.BOTTOM);
-            //setupModel(rcsModule, part.transform.FindRecursive("model").FindOrCreate(rcsTransformName), ModelOrientation.CENTRAL);
-        }
-
-        /// <summary>
-        /// Finds the model for the given part, if it currently exists; else it clones it
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
-        private void setupModel(ModelData model, Transform parent, ModelOrientation orientation)
-        {
-            model.setupModel(parent, orientation);
-        }
-
-        /// <summary>
-        /// Removes the current model of the passed in upper-stage part; used when switching mounts or intertank parts
-        /// </summary>
-        /// <param name="usPart"></param>
-        private void removeCurrentModel(ModelData usPart)
-        {
-            usPart.destroyCurrentModel();
+            if (userInput)
+            {
+                //TODO -- cache prev tank diameter somewhere, use that for child offset functionality
+                //SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, null, currentTankDiameter);
+            }
         }
 
         /// <summary>
@@ -739,23 +728,17 @@ namespace SSTUTools
         /// </summary>
         private void updateModels()
         {
-            //upperDomeModule.updateModel();
-            //upperTopCapModule.updateModel();
-            //upperModule.updateModel();
-            //upperBottomCapModule.updateModel();
-
-            //if (splitTank)
-            //{
-            //    currentIntertankModule.updateModel();
-            //    lowerTopCapModule.updateModel();
-            //    lowerModule.updateModel();
-            //    lowerBottomCapModule.updateModel();
-            //}
-
-            //currentMountModule.updateModel();
-            //rcsModule.updateModel();
-
-            //SSTUModInterop.onPartGeometryUpdate(part, true);
+            noseModule.model.updateModel();
+            upperModule.model.updateModel();
+            if (splitTank)
+            {
+                intertankModule.model.updateModel();
+                lowerModule.model.updateModel();
+            }
+            mountModule.model.updateModel();
+            rcsModule.model.updateModel();
+            rcsModule.model.updateThrustTransformPositions(rcsThrustTransforms);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         #endregion
@@ -771,7 +754,6 @@ namespace SSTUTools
             updateFuelVolume();
             updateModuleMass();
             updateModuleCost();
-            updateRCSThrust();
         }
         
         /// <summary>
@@ -779,19 +761,15 @@ namespace SSTUTools
         /// </summary>
         private void updateFuelVolume()
         {
-            //totalTankVolume = 0;
-            //totalTankVolume += upperDomeModule.getModuleVolume();
-            //totalTankVolume += upperTopCapModule.getModuleVolume();
-            //totalTankVolume += upperModule.getModuleVolume();
-            //totalTankVolume += upperBottomCapModule.getModuleVolume();
-            //if(splitTank)
-            //{
-            //    totalTankVolume += currentIntertankModule.getModuleVolume();
-            //    totalTankVolume += lowerTopCapModule.getModuleVolume();
-            //    totalTankVolume += lowerModule.getModuleVolume();
-            //    totalTankVolume += lowerBottomCapModule.getModuleVolume();
-            //}
-            //totalTankVolume += currentMountModule.getModuleVolume();
+            totalTankVolume = 0;
+            totalTankVolume += noseModule.model.getModuleVolume();
+            totalTankVolume += upperModule.model.getModuleVolume();
+            if (splitTank)
+            {
+                totalTankVolume += intertankModule.model.getModuleVolume();
+                totalTankVolume += lowerModule.model.getModuleVolume();
+            }
+            totalTankVolume += mountModule.model.getModuleVolume();
         }
 
         /// <summary>
@@ -800,11 +778,16 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleMass()
         {
-            //moduleMass = upperTopCapModule.getModuleMass() + upperModule.getModuleMass() + upperBottomCapModule.getModuleMass() + currentMountModule.getModuleMass() + rcsModule.getModuleMass()+upperDomeModule.getModuleMass();
-            //if (splitTank)
-            //{
-            //    moduleMass += currentIntertankModule.getModuleMass() + lowerModule.getModuleMass() + lowerBottomCapModule.getModuleMass() + lowerTopCapModule.getModuleMass(); ;
-            //}
+            moduleMass = 0;
+            moduleMass += noseModule.model.getModuleMass();
+            moduleMass += upperModule.model.getModuleMass();
+            if (splitTank)
+            {
+                moduleMass += intertankModule.model.getModuleMass();
+                moduleMass += lowerModule.model.getModuleMass();
+            }
+            moduleMass += mountModule.model.getModuleMass();
+            moduleMass += rcsModule.model.getModuleMass();
         }
                 
         /// <summary>
@@ -812,27 +795,77 @@ namespace SSTUTools
         /// </summary>
         private void updateModuleCost()
         {
-            //moduleCost = upperTopCapModule.getModuleCost() + upperModule.getModuleCost() + upperBottomCapModule.getModuleCost() + currentMountModule.getModuleCost() + rcsModule.getModuleCost()+upperDomeModule.getModuleCost();
-            //if (splitTank)
-            //{
-            //    moduleCost += currentIntertankModule.getModuleCost() + lowerModule.getModuleCost() + lowerBottomCapModule.getModuleCost()+lowerTopCapModule.getModuleCost();
-            //}
+            moduleCost = 0;
+            moduleCost += noseModule.model.getModuleCost();
+            moduleCost += upperModule.model.getModuleCost();
+            if (splitTank)
+            {
+                moduleCost += intertankModule.model.getModuleCost();
+                moduleCost += lowerModule.model.getModuleCost();
+            }
+            moduleCost += mountModule.model.getModuleCost();
+            moduleCost += rcsModule.model.getModuleCost();
         }
 
         /// <summary>
         /// update external RCS-module with thrust value;
-        /// TODO - may need to cache the 'needs update' flag, and run on first OnUpdate/etc, as otherwise the RCS module will likely not exist yet
         /// </summary>
         private void updateRCSThrust()
         {
-            //ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
-            //int len = rcsMod.Length;
-            //float scale = currentTankDiameter / defaultTankDiameter;
-            //rcsThrust = defaultRcsThrust * scale * scale;
-            //for (int i = 0; i < len; i++)
-            //{
-            //    rcsMod[i].thrusterPower = rcsThrust;
-            //}
+            ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
+            int len = rcsMod.Length;
+            float scale = currentTankDiameter / upperModule.model.modelDefinition.diameter;
+            if (rcsThrust < 0 && len>0)
+            {
+                rcsThrust = rcsMod[0].thrusterPower;
+            }
+            float thrust = rcsThrust * scale * scale;
+            if (rcsModule.model.dummyModel) { thrust = 0; }
+            for (int i = 0; i < len; i++)
+            {
+                rcsMod[i].thrusterPower = thrust;
+                rcsMod[i].moduleIsEnabled = thrust > 0;
+            }
+            guiRcsThrust = thrust;
+        }
+
+        private void rebuildRCSThrustTransforms(bool updateRCSModule)
+        {
+            if (rcsThrustTransforms != null)
+            {
+                //destroy immediate on existing, or optionally attempt to copy and re-use some of them?
+                int l = rcsThrustTransforms.Length;
+                for (int i = 0; i < l; i++)
+                {
+                    rcsThrustTransforms[i].transform.parent = null;//so that it doesn't get found by the rcs module, free-floating transform for one frame until destroyed
+                    GameObject.Destroy(rcsThrustTransforms[i]);//destroy
+                    rcsThrustTransforms[i] = null;//dereference
+                }
+                rcsThrustTransforms = null;//dump the whole array
+            }
+            rcsThrustTransforms = rcsModule.model.createThrustTransforms(rcsThrustTransformName, part.transform.FindRecursive("model"));
+            if (updateRCSModule)
+            {
+                ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+                int len = modules.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    part.fxGroups.RemoveAll(m => modules[i].thrusterFX.Contains(m));
+                    part.fxGroups.ForEach(m => MonoBehaviour.print(m.name));
+                    modules[i].thrusterFX.ForEach(m => m.fxEmitters.ForEach(s => GameObject.Destroy(s.gameObject)));
+                    modules[i].thrusterFX.Clear();
+                    modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
+                    modules[i].OnStart(StartState.Editor);//force update of fx/etc
+                    modules[i].DeactivateFX();//doesn't appear to work
+                    //TODO -- clean up this mess of linked stuff
+                    modules[i].thrusterFX.ForEach(m => 
+                    {
+                        m.setActive(false);
+                        m.SetPower(0);
+                        m.fxEmitters.ForEach(s => s.enabled = false);
+                    });
+                }
+            }
         }
 
         /// <summary>
@@ -845,7 +878,7 @@ namespace SSTUTools
             guiRcsThrust = rcsThrust;
         }
 
-        private Transform getRootTransform(String name, bool recreate)
+        private Transform getRootTransform(String name, bool recreate = true)
         {
             Transform modelBase = part.transform.FindRecursive("model");
             Transform root = modelBase.FindRecursive(name);
@@ -857,11 +890,7 @@ namespace SSTUTools
             }
             return root;
         }
-
-        #endregion
-
-        #region ----------------- REGION - Part Updating - Resource/Mass ----------------- 
-
+        
         /// <summary>
         /// Updates the min/max quantities of resource in the part based on the current 'totalFuelVolume' field and currently set fuel type
         /// </summary>
@@ -883,12 +912,16 @@ namespace SSTUTools
                 SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume * 1000f);
             }
         }
+
         #endregion
+
     }
 
     public class SSTUModularUpperStageRCS : SingleModelData
     {
         public GameObject[] models;
+        public string thrustTransformName;
+        public bool dummyModel = false;
         public float currentHorizontalPosition;
         public float modelRotation = 0;
         public float modelHorizontalZOffset = 0;
@@ -900,29 +933,23 @@ namespace SSTUTools
 
         public SSTUModularUpperStageRCS(ConfigNode node) : base(node)
         {
+            dummyModel = node.GetBoolValue("dummyModel");
             modelRotation = node.GetFloatValue("modelRotation");
             modelHorizontalZOffset = node.GetFloatValue("modelHorizontalZOffset");
             modelHorizontalXOffset = node.GetFloatValue("modelHorizontalXOffset");
-            modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
+            modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");            
+            thrustTransformName = modelDefinition.configNode.GetStringValue("thrustTransformName");
         }
         
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
+            model = new GameObject(modelDefinition.name);
+            model.transform.NestToParent(parent);
+            if (models != null) { destroyCurrentModel(); }
             models = new GameObject[4];
-            Transform[] trs = parent.FindChildren(modelDefinition.modelName);
-            if (trs != null && trs.Length>0)
+            for (int i = 0; i < 4; i++)
             {
-                for (int i = 0; i < 4; i++)
-                {
-                    models[i] = trs[i].gameObject;
-                }
-            }
-            else
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
-                }
+                models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
             }
             foreach (GameObject go in models)
             {
@@ -953,6 +980,71 @@ namespace SSTUTools
                 }
             }
         }
+
+        public override void destroyCurrentModel()
+        {
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i] == null) { continue; }
+                models[i].transform.parent = null;
+                GameObject.Destroy(models[i]);
+                models[i] = null;
+            }
+            models = null;
+        }
+
+        public GameObject[] createThrustTransforms(string name, Transform parent)
+        {
+            MonoBehaviour.print("Creating new thrust transforms");
+            if (dummyModel)
+            {
+                GameObject[] dumArr = new GameObject[1];
+                dumArr[0] = new GameObject(name);
+                dumArr[0].transform.NestToParent(parent);
+                return dumArr;
+            }
+            int len = 4, len2;
+            List<GameObject> goList = new List<GameObject>();
+            Transform[] trs;
+            GameObject go;
+            for (int i = 0; i < len; i++)
+            {
+                trs = models[i].transform.FindChildren(thrustTransformName);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    go = new GameObject(name);
+                    go.transform.NestToParent(parent);
+                    goList.Add(go);
+                }
+            }
+            return goList.ToArray();
+        }
+
+        public void updateThrustTransformPositions(GameObject[] gos)
+        {
+            MonoBehaviour.print("Updating transform positions");
+            if (dummyModel) { return; }
+            Transform[] trs;
+            int len;
+            GameObject go;
+            int index = 0;
+            int goLen = gos.Length;
+            for (int i = 0; i < 4; i++)
+            {
+                trs = models[i].transform.FindChildren(thrustTransformName);
+                len = trs.Length;
+                for (int k = 0; k < len && index < goLen; k++, index++)
+                {
+                    go = gos[index];
+                    go.transform.position = trs[k].position;
+                    go.transform.rotation = trs[k].rotation;
+                }
+            }
+        }
+
     }
 
 }

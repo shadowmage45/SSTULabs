@@ -46,5 +46,10 @@ namespace SSTUTools
                 GameObject.Destroy(guiObject);
             }
         }
+
+        public override string GetInfo()
+        {
+            return "This part has configurable colors.";
+        }
     }
 }

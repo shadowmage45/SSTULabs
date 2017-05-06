@@ -85,7 +85,9 @@ namespace SSTUTools
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
+            if (models == null) { MonoBehaviour.print("ERROR: model list was null!  Models must be populated after module construction."); }
             model = models.Find(m => m.name == modelName);
+            if (model == null) { MonoBehaviour.print("ERROR: could not locate model for name: "+modelName); }
             model.setupModel(root, orientation);
             bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet))
@@ -188,7 +190,6 @@ namespace SSTUTools
             }
             if (useDefaultColors)
             {
-                MonoBehaviour.print("Apply texture set called with useDefaultColors==true");
                 TextureSet ts = Array.Find(model.modelDefinition.textureSets, m => m.name == setName);
                 if (ts!=null && ts.maskColors != null && ts.maskColors.Length > 0)
                 {
@@ -202,7 +203,6 @@ namespace SSTUTools
                     customColors = new Color[] { Color.white, Color.white, Color.white };
                 }
                 saveColors(customColors);
-                MonoBehaviour.print("Updated custom colors to: " + persistentData);
             }
             model.enableTextureSet(textureSet, customColors);
             model.updateTextureUIControl(partModule, textureFieldName, textureSet);
