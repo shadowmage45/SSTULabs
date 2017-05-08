@@ -245,12 +245,12 @@ namespace SSTUTools
         private float moduleCost = 0;
         private float rcsThrust = -1;
 
-        private ModelModule<SingleModelData> noseModule;
-        private ModelModule<SingleModelData> upperModule;
-        private ModelModule<SingleModelData> intertankModule;
-        private ModelModule<SingleModelData> lowerModule;
-        private ModelModule<SingleModelData> mountModule;
-        private ModelModule<SSTUModularUpperStageRCS> rcsModule;
+        private ModelModule<SingleModelData, SSTUModularUpperStage> noseModule;
+        private ModelModule<SingleModelData, SSTUModularUpperStage> upperModule;
+        private ModelModule<SingleModelData, SSTUModularUpperStage> intertankModule;
+        private ModelModule<SingleModelData, SSTUModularUpperStage> lowerModule;
+        private ModelModule<SingleModelData, SSTUModularUpperStage> mountModule;
+        private ModelModule<SSTUModularUpperStageRCS, SSTUModularUpperStage> rcsModule;
 
         private bool initialized = false;
         #endregion
@@ -520,32 +520,33 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            noseModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSNose"), ModelOrientation.TOP, nameof(nosePersistentData), nameof(currentNose), nameof(currentNoseTexture));
-            noseModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).noseModule; };
+            noseModule = new ModelModule<SingleModelData, SSTUModularUpperStage>(part, this, getRootTransform("MUSNose"), ModelOrientation.TOP, nameof(nosePersistentData), nameof(currentNose), nameof(currentNoseTexture));
+            noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.setupModelList(SingleModelData.parseModels(node.GetNodes("NOSE")));
             noseModule.setupModel();
 
-            upperModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSUpper"), ModelOrientation.TOP, nameof(upperPersistentData), nameof(currentUpper), nameof(currentUpperTexture));
-            upperModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).upperModule; };
+            upperModule = new ModelModule<SingleModelData, SSTUModularUpperStage>(part, this, getRootTransform("MUSUpper"), ModelOrientation.TOP, nameof(upperPersistentData), nameof(currentUpper), nameof(currentUpperTexture));
+            upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.setupModelList(SingleModelData.parseModels(node.GetNodes("UPPER")));
             upperModule.setupModel();
-            intertankModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSIntertank"), ModelOrientation.TOP, nameof(intertankPersistentData), nameof(currentIntertank), nameof(currentIntertankTexture));
-            intertankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).intertankModule; };
+
+            intertankModule = new ModelModule<SingleModelData, SSTUModularUpperStage>(part, this, getRootTransform("MUSIntertank"), ModelOrientation.TOP, nameof(intertankPersistentData), nameof(currentIntertank), nameof(currentIntertankTexture));
+            intertankModule.getSymmetryModule = m => m.intertankModule;
             intertankModule.setupModelList(SingleModelData.parseModels(node.GetNodes("INTERTANK")));
             intertankModule.setupModel();
 
-            lowerModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSLower"), ModelOrientation.TOP, nameof(lowerPersistentData), nameof(currentLower), nameof(currentLowerTexture));
-            lowerModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).lowerModule; };
+            lowerModule = new ModelModule<SingleModelData, SSTUModularUpperStage>(part, this, getRootTransform("MUSLower"), ModelOrientation.TOP, nameof(lowerPersistentData), nameof(currentLower), nameof(currentLowerTexture));
+            lowerModule.getSymmetryModule = m => m.lowerModule;
             lowerModule.setupModelList(SingleModelData.parseModels(node.GetNodes("LOWER")));
             lowerModule.setupModel();
 
-            mountModule = new ModelModule<SingleModelData>(part, this, getRootTransform("MUSMount"), ModelOrientation.BOTTOM, nameof(mountPersistentData), nameof(currentMount), nameof(currentMountTexture));
-            mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).mountModule; };
+            mountModule = new ModelModule<SingleModelData, SSTUModularUpperStage>(part, this, getRootTransform("MUSMount"), ModelOrientation.BOTTOM, nameof(mountPersistentData), nameof(currentMount), nameof(currentMountTexture));
+            mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.setupModelList(SingleModelData.parseModels(node.GetNodes("MOUNT")));
             mountModule.setupModel();
 
-            rcsModule = new ModelModule<SSTUModularUpperStageRCS>(part, this, getRootTransform("MUSRCS"), ModelOrientation.CENTRAL, nameof(rcsPersistentData), nameof(currentRCS), nameof(currentRCSTexture));
-            rcsModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularUpperStage)m).rcsModule; };
+            rcsModule = new ModelModule<SSTUModularUpperStageRCS, SSTUModularUpperStage>(part, this, getRootTransform("MUSRCS"), ModelOrientation.CENTRAL, nameof(rcsPersistentData), nameof(currentRCS), nameof(currentRCSTexture));
+            rcsModule.getSymmetryModule = m => m.rcsModule; 
             rcsModule.setupModelList(SingleModelData.parseModels(node.GetNodes("RCS"), m=> new SSTUModularUpperStageRCS(m)));
             rcsModule.setupModel();
             rebuildRCSThrustTransforms(false);

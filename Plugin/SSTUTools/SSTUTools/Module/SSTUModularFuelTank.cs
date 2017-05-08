@@ -129,9 +129,9 @@ namespace SSTUTools
         private TankSet[] tankSets;
         private TankSet currentTankSetModule;
 
-        protected ModelModule<TankModelData> tankModule;
-        protected ModelModule<SingleModelData> noseModule;
-        protected ModelModule<SingleModelData> mountModule;
+        protected ModelModule<TankModelData, SSTUModularFuelTank> tankModule;
+        protected ModelModule<SingleModelData, SSTUModularFuelTank> noseModule;
+        protected ModelModule<SingleModelData, SSTUModularFuelTank> mountModule;
 
         protected String[] topNodeNames;
         protected String[] bottomNodeNames;
@@ -511,8 +511,8 @@ namespace SSTUTools
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
 
-            tankModule = new ModelModule<TankModelData>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
-            tankModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).tankModule; };
+            tankModule = new ModelModule<TankModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
+            tankModule.getSymmetryModule = m => m.tankModule;
             tankModule.setupModelList(mainTankModules);
 
             currentTankSetModule = Array.Find(tankSets, m => m.name == tankModule.model.setName);
@@ -542,14 +542,14 @@ namespace SSTUTools
                 }
             }
             
-            noseModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseType), nameof(currentNoseTexture));
-            noseModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).noseModule; };
+            noseModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseType), nameof(currentNoseTexture));
+            noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, topNodeNames)); };
             noseModule.setupModelList(noses);
             noseModule.setupModel();
 
-            mountModule = new ModelModule<SingleModelData>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountType), nameof(currentMountTexture));
-            mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularFuelTank)m).mountModule; };
+            mountModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountType), nameof(currentMountTexture));
+            mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, bottomNodeNames)); };
             mountModule.setupModelList(mounts);
             mountModule.setupModel();
@@ -617,9 +617,9 @@ namespace SSTUTools
         /// </summary>
         private void updateTankStats()
         {
-            currentTankVolume = noseModule.model.getModuleVolume() + tankModule.model.getModuleVolume() + mountModule.model.getModuleVolume();            
-            currentTankMass = noseModule.model.getModuleMass() + tankModule.model.getModuleMass() + mountModule.model.getModuleMass(); ;
-            currentTankCost = noseModule.model.getModuleCost() + tankModule.model.getModuleCost() + mountModule.model.getModuleCost(); ;
+            currentTankVolume = noseModule.moduleVolume + tankModule.moduleVolume + mountModule.moduleVolume;
+            currentTankMass = noseModule.moduleMass + tankModule.moduleMass + mountModule.moduleMass;
+            currentTankCost = noseModule.moduleCost + tankModule.moduleCost + mountModule.moduleCost;
         }
 
         /// <summary>

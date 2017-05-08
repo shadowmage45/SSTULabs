@@ -206,7 +206,7 @@ namespace SSTUTools
 
         #region REGION - Private working variables
 
-        private ModelModule<EngineClusterLayoutMountData> mountModule;
+        private ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster> mountModule;
         private EngineClusterLayoutData[] engineLayouts;     
         private EngineClusterLayoutData currentEngineLayout = null;
 
@@ -535,8 +535,8 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<EngineClusterLayoutMountData>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
-            mountModule.getSymmetryModule = delegate (PartModule m) { return ((SSTUModularEngineCluster)m).mountModule; };
+            mountModule = new ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
+            mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }
 

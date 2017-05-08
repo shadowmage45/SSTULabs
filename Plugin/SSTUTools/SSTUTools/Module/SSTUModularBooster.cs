@@ -142,9 +142,9 @@ namespace SSTUTools
 
         private bool initialized = false;
 
-        private ModelModule<SingleModelData> noseModule;
-        private ModelModule<SRBModelData> bodyModule;
-        private ModelModule<SRBNozzleData> mountModule;
+        private ModelModule<SingleModelData, SSTUModularBooster> noseModule;
+        private ModelModule<SRBModelData, SSTUModularBooster> bodyModule;
+        private ModelModule<SRBNozzleData, SSTUModularBooster> mountModule;
 
         private float modifiedCost = -1;
         private float modifiedMass = -1;
@@ -446,17 +446,20 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             //load all main modules from MAINMODEL nodes
-            bodyModule = new ModelModule<SRBModelData>(part, this, createRootTransform(baseTransformName + "Root"), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentMainName), nameof(currentMainTexture));
+            bodyModule = new ModelModule<SRBModelData, SSTUModularBooster>(part, this, createRootTransform(baseTransformName + "Root"), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentMainName), nameof(currentMainTexture));
+            bodyModule.getSymmetryModule = m => m.bodyModule;
             bodyModule.setupModelList(SingleModelData.parseModels<SRBModelData>(node.GetNodes("MAINMODEL"), m=>new SRBModelData(m)));
             bodyModule.setupModel();
 
             //load nose modules from NOSE nodes
-            noseModule = new ModelModule<SingleModelData>(part, this, createRootTransform(baseTransformName + "Nose"), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseName), nameof(currentNoseTexture));
+            noseModule = new ModelModule<SingleModelData, SSTUModularBooster>(part, this, createRootTransform(baseTransformName + "Nose"), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseName), nameof(currentNoseTexture));
+            noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.setupModelList(SingleModelData.parseModels(node.GetNodes("NOSE")));
             noseModule.setupModel();
 
             //load nose modules from NOZZLE nodes
-            mountModule = new ModelModule<SRBNozzleData>(part, this, createRootTransform(baseTransformName + "Mount"), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentNozzleName), nameof(currentNozzleTexture));
+            mountModule = new ModelModule<SRBNozzleData, SSTUModularBooster>(part, this, createRootTransform(baseTransformName + "Mount"), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentNozzleName), nameof(currentNozzleTexture));
+            mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.setupModelList(SingleModelData.parseModels<SRBNozzleData>(node.GetNodes("NOZZLE"), m => new SRBNozzleData(m)));
             mountModule.setupModel();
 
@@ -751,8 +754,8 @@ namespace SSTUTools
 
         private void updatePartCostAndMass()
         {
-            modifiedCost = bodyModule.model.getModuleCost() + noseModule.model.getModuleCost() + mountModule.model.getModuleCost();
-            modifiedMass = bodyModule.model.getModuleMass() + noseModule.model.getModuleMass() + mountModule.model.getModuleMass();
+            modifiedCost = bodyModule.moduleCost + noseModule.moduleCost + mountModule.moduleCost;
+            modifiedMass = bodyModule.moduleMass + noseModule.moduleMass + mountModule.moduleMass;
         }
 
         private Transform createRootTransform(string name)

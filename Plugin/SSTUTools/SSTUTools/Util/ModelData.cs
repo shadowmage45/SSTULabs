@@ -83,6 +83,7 @@ namespace SSTUTools
         public readonly String defaultTextureSet;
         public readonly TextureSet[] textureSets;
         public readonly CompoundModelData compoundModelData;
+        public readonly ModelAnimationData[] animationData;
 
         public ModelDefinition(ConfigNode node)
         {
@@ -177,6 +178,27 @@ namespace SSTUTools
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
+    }
+
+    public class ModelAnimationData
+    {
+        public readonly string animationName;
+
+        public ModelAnimationData(ConfigNode node)
+        {
+            animationName = node.GetStringValue("name");
+        }
+
+        public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            ModelAnimationData[] data = new ModelAnimationData[len];
+            for (int i = 0; i < len; i++)
+            {
+                data[i] = new ModelAnimationData(nodes[i]);
+            }
+            return data;
+        }
     }
 
     public class SubModelData

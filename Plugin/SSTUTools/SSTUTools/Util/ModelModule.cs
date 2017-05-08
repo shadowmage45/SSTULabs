@@ -7,10 +7,10 @@ using UnityEngine;
 namespace SSTUTools
 {
 
-    public class ModelModule<T> where T : SingleModelData
+    public class ModelModule<T, U> where T : SingleModelData where U : PartModule
     {
         //apparently these are like a class declaration.... the delegate name becomes a new type that can be referenced
-        public delegate ModelModule<T> SymmetryModule(PartModule m);
+        public delegate ModelModule<T, U> SymmetryModule(U m);
 
         public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
 
@@ -51,6 +51,20 @@ namespace SSTUTools
             get { return partModule.Fields[dataFieldName].GetValue<string>(partModule); }
             set { partModule.Fields[dataFieldName].SetValue(value, partModule); }
         }
+
+        public float moduleMass { get { return model.getModuleMass(); } }
+
+        public float moduleCost { get { return model.getModuleCost(); } }
+
+        public float moduleVolume { get { return model.getModuleVolume(); } }
+
+        public float moduleDiameter { get { return model.currentDiameter; } }
+
+        public float moduleHeight { get { return model.currentHeight; } }
+
+        public void setPosition(float yPos, ModelOrientation orientation = ModelOrientation.TOP) { model.setPosition(yPos, orientation); }
+
+        public void updateModel() { model.updateModel; }
 
         #region REGION - Constructors and Init Methods
 
@@ -208,13 +222,13 @@ namespace SSTUTools
             model.updateTextureUIControl(partModule, textureFieldName, textureSet);
         }
 
-        private void actionWithSymmetry(Action<ModelModule<T>> action)
+        private void actionWithSymmetry(Action<ModelModule<T, U>> action)
         {
             action(this);
             int index = part.Modules.IndexOf(partModule);
             foreach (Part p in part.symmetryCounterparts)
             {
-                action(getSymmetryModule(p.Modules[index]));
+                action(getSymmetryModule((U)p.Modules[index]));
             }
         }
 

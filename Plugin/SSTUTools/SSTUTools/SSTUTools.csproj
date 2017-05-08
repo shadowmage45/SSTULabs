@@ -101,7 +101,6 @@
     <Compile Include="Module\SSTUDragCubeRenderer.cs" />
     <Compile Include="Module\SSTUModelFix.cs" />
     <Compile Include="Module\SSTUModelSwitch.cs" />
-    <Compile Include="Module\SSTUModularFuelTankRCS.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
     <Compile Include="Util\IRecolorable.cs" />
     <Compile Include="Util\ModelModule.cs" />
@@ -114,7 +113,7 @@
     <Compile Include="WIPModule\SSTUAnimateRotation.cs" />
     <Compile Include="WIPModule\SSTUAssetBundleShaderLoader.cs" />
     <Compile Include="WIPModule\SSTUInflatable.cs" />
-    <Compile Include="WIPModule\SSTUModularStationCore.cs" />
+    <Compile Include="Module\SSTUModularStationCore.cs" />
     <Compile Include="Module\SSTUResourceBoiloff.cs" />
     <Compile Include="Module\SSTUVolumeContainer.cs" />
     <Compile Include="Util\AnimationController.cs" />
@@ -136,7 +135,6 @@
     <Compile Include="Module\SSTUAnimateControlled.cs" />
     <Compile Include="Module\SSTUAnimateEngineHeat.cs" />
     <Compile Include="Module\SSTUAnimateUsable.cs" />
-    <Compile Include="Module\SSTUCustomUpperStage.cs" />
     <Compile Include="Util\ModelData.cs" />
     <Compile Include="Module\SSTUInterstageFairing.cs" />
     <Compile Include="Module\SSTUModelConstraint.cs" />
