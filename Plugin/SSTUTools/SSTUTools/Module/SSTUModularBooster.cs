@@ -159,6 +159,8 @@ namespace SSTUTools
 
         private bool guiOpen = false;
 
+        private float baseRCSThrust = -1;
+
         #endregion ENDREGION - Private working variables
 
         #region REGION - KSP GUI Interaction Methods
@@ -291,8 +293,10 @@ namespace SSTUTools
             Fields[nameof(currentVariantName)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 string newModel = getNewModel(currentVariantName, bodyModule.model.length);
+                currentMainName = newModel;
                 this.actionWithSymmetry(m =>
                 {
+                    m.currentMainName = currentMainName;
                     m.currentVariantName = currentVariantName;
                 });
                 bodyModule.modelSelected(newModel);
@@ -749,6 +753,16 @@ namespace SSTUTools
                 }
                 part.Effects.OnLoad(copiedEffectsNode);
             }            
+        }
+
+        private void updateRCSModule()
+        {
+            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
+            if (rcs == null) { return; }
+            if (baseRCSThrust < 0) { baseRCSThrust = rcs.thrusterPower; }
+
+            float thrust = bodyModule.model.currentDiameterScale * baseRCSThrust;
+            rcs.thrusterPower = thrust;
         }
 
         /// <summary>
