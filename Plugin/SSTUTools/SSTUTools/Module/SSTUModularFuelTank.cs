@@ -693,7 +693,7 @@ namespace SSTUTools
             SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
             if (module != null)
             {
-                module.initializeExternal(model.getAnimationData(model.model.transform));
+                module.initializeExternal(model.getAnimationData(model.model.transform, 1 + id));
             }
         }
 

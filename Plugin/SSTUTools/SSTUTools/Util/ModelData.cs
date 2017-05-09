@@ -155,6 +155,11 @@ namespace SSTUTools
             {
                 compoundModelData = new CompoundModelData(node.GetNode("COMPOUNDMODEL"));
             }
+
+            if (node.HasNode("ANIMATION"))
+            {
+                animationData = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
+            }
         }
 
         public bool isAvailable(List<String> partUpgrades)
@@ -180,13 +185,21 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Stores the data defining a single animation for a single model definition.
+    /// Should include animation name, parent transform name (of the animation component), default speed
+    /// </summary>
     public class ModelAnimationData
     {
         public readonly string animationName;
+        public readonly string transformName;
+        public readonly float speed;
 
         public ModelAnimationData(ConfigNode node)
         {
             animationName = node.GetStringValue("name");
+            transformName = node.GetStringValue("transform");
+            speed = node.GetFloatValue("speed");
         }
 
         public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
@@ -390,22 +403,21 @@ namespace SSTUTools
             currentDiameter = newHorizontalScale * modelDefinition.diameter;
         }
 
-        public SSTUAnimData[] getAnimationData(Transform transform)
+        public SSTUAnimData[] getAnimationData(Transform transform, int startLayer)
         {
-            SSTUAnimData[] data = null;
-            ConfigNode[] nodes = modelDefinition.configNode.GetNodes("ANIMATION");
-            int len = nodes.Length;
-            data = new SSTUAnimData[len];
-            for (int i = 0; i < len; i++)
+            ModelAnimationData[] mData = modelDefinition.animationData;
+            int len = mData.Length;
+            SSTUAnimData[] data = new SSTUAnimData[len];
+            for (int i = 0; i < len; i++, startLayer++)
             {
-                data[i] = new SSTUAnimData(nodes[i], transform);
+                data[0] = new SSTUAnimData(mData[i].animationName, mData[i].speed, startLayer, transform);
             }
             return data;
         }
 
         public bool hasAnimation()
         {
-            return modelDefinition.configNode.HasNode("ANIMATION");
+            return modelDefinition.animationData != null;
         }
 
         public bool isAvailable(List<String> partUpgrades)

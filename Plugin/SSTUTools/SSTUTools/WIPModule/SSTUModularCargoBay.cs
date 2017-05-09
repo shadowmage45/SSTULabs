@@ -245,7 +245,7 @@ namespace SSTUTools.WIPModule
         private void updateNoseAnimControl()
         {
             noseAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = noseModule.model.getAnimationData(getRootTransform(rootNoseTransformName, false));
+            SSTUAnimData[] datas = noseModule.model.getAnimationData(getRootTransform(rootNoseTransformName, false), 1);
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
@@ -267,7 +267,7 @@ namespace SSTUTools.WIPModule
         private void updateBodyAnimControl()
         {
             bodyAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = tankModule.model.getAnimationData(getRootTransform(rootTransformName, false));
+            SSTUAnimData[] datas = tankModule.model.getAnimationData(getRootTransform(rootTransformName, false), 3);
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
@@ -289,7 +289,7 @@ namespace SSTUTools.WIPModule
         private void updateTailAnimControl()
         {
             tailAnimControl.clearAnimationData();
-            SSTUAnimData[] datas = mountModule.model.getAnimationData(getRootTransform(rootMountTransformName, false));
+            SSTUAnimData[] datas = mountModule.model.getAnimationData(getRootTransform(rootMountTransformName, false), 5);
             int len = datas.Length;
             for (int i = 0; i < len; i++)
             {
