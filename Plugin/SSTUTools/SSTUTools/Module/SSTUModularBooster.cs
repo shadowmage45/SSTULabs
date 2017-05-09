@@ -71,8 +71,11 @@ namespace SSTUTools
         #endregion REGION - KSP Config Variables
 
         #region REGION - Persistent Variables
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentVariantName = "default";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Length"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMainName;
 
@@ -142,6 +145,7 @@ namespace SSTUTools
 
         private bool initialized = false;
 
+        private string[] variantNames;
         private ModelModule<SingleModelData, SSTUModularBooster> noseModule;
         private ModelModule<SRBModelData, SSTUModularBooster> bodyModule;
         private ModelModule<SRBNozzleData, SSTUModularBooster> mountModule;
@@ -281,6 +285,25 @@ namespace SSTUTools
             this.updateUIFloatEditControl(nameof(currentGimbalOffset), -mountModule.model.gimbalAdjustmentRange, mountModule.model.gimbalAdjustmentRange, 2f, 1f, 0.1f, true, currentGimbalOffset);
             Fields[nameof(currentGimbalOffset)].guiActiveEditor = mountModule.model.gimbalAdjustmentRange > 0;
             Fields[nameof(currentDiameter)].guiActiveEditor = maxDiameter > minDiameter;
+
+            variantNames = getVariantNames();
+            this.updateUIChooseOptionControl(nameof(currentVariantName), variantNames, variantNames, true, currentVariantName);
+            Fields[nameof(currentVariantName)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                string newModel = getNewModel(currentVariantName, bodyModule.model.length);
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentVariantName = currentVariantName;
+                });
+                bodyModule.modelSelected(newModel);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    m.updateThrustOutput();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
             SSTUModInterop.onPartGeometryUpdate(part, true);
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
@@ -448,7 +471,8 @@ namespace SSTUTools
             //load all main modules from MAINMODEL nodes
             bodyModule = new ModelModule<SRBModelData, SSTUModularBooster>(part, this, createRootTransform(baseTransformName + "Root"), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentMainName), nameof(currentMainTexture));
             bodyModule.getSymmetryModule = m => m.bodyModule;
-            bodyModule.setupModelList(SingleModelData.parseModels<SRBModelData>(node.GetNodes("MAINMODEL"), m=>new SRBModelData(m)));
+            bodyModule.getValidSelections = m => bodyModule.models.FindAll(s => s.variant == currentVariantName);
+            bodyModule.setupModelList(SingleModelData.parseModels<SRBModelData>(node.GetNodes("MAINMODEL"), m => new SRBModelData(m)));
             bodyModule.setupModel();
 
             //load nose modules from NOSE nodes
@@ -767,6 +791,45 @@ namespace SSTUTools
             return tr;
         }
 
+        private string[] getVariantNames()
+        {
+            List<string> names = new List<string>();
+            int len = bodyModule.models.Count;
+            for (int i = 0; i < len; i++)
+            {
+                names.AddUnique(bodyModule.models[i].variant);
+            }
+            return names.ToArray();
+        }
+
+        private string getNewModel(string newVariant, string length)
+        {
+            string name = string.Empty;
+            int len = bodyModule.models.Count;
+            //attempt to find selection of 'newVariant' that has same 'length' as input
+            for (int i = 0; i < len; i++)
+            {
+                if (bodyModule.models[i].variant == newVariant && bodyModule.models[i].length == length)
+                {
+                    name = bodyModule.models[i].name;
+                    break;
+                }
+            }
+            //fallback for if not found -- select first selection of 'newVariant' type
+            if (string.IsNullOrEmpty(name))
+            {
+                for (int i = 0; i < len; i++)
+                {
+                    if (bodyModule.models[i].variant == newVariant)
+                    {
+                        name = bodyModule.models[i].name;
+                        break;
+                    }
+                }
+            }
+            return name;
+        }
+
         #endregion ENDREGION - Update Methods
     }
 
@@ -775,11 +838,15 @@ namespace SSTUTools
     /// </summary>
     public class SRBModelData : SingleModelData
     {
+        public string variant;
+        public string length;
         public float minThrust;
         public float maxThrust;
         public String engineConfig;
         public SRBModelData(ConfigNode node) : base(node)
         {
+            variant = node.GetStringValue("variant", "default");
+            length = node.GetStringValue("length", "1x");
             minThrust = node.GetFloatValue("minThrust");
             maxThrust = node.GetFloatValue("maxThrust");
             engineConfig = node.GetStringValue("engineConfig");            
