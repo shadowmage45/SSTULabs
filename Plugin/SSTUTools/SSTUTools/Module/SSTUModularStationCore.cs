@@ -536,13 +536,13 @@ namespace SSTUTools
             bottomModule.updateModel();
             bottomDockModule.updateModel();
 
-            solarModule.setPosition(coreModule.currentVerticalPosition);
+            solarModule.setPosition(coreModule.model.currentVerticalPosition);
 
-            Vector3 pos = new Vector3(0, topDockY + topDockModule.currentHeight, 0);
+            Vector3 pos = new Vector3(0, topDockY + topDockModule.moduleHeight, 0);
             topDockTransform.localPosition = pos;
             topControlTransform.localPosition = pos;
 
-            pos = new Vector3(0, bottomDockY - bottomDockModule.currentHeight, 0);
+            pos = new Vector3(0, bottomDockY - bottomDockModule.moduleHeight, 0);
             bottomDockTransform.localPosition = pos;
             bottomControlTransform.localPosition = pos;
         }
