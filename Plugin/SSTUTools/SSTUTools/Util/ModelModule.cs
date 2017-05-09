@@ -28,28 +28,26 @@ namespace SSTUTools
         public T model;
         public Color[] customColors = new Color[0];//zero-length array triggers default color assignment from texture set colors (if present)
 
-        //string names used to hook into the KSPField data for module fields
-        //workaround to needing those exact fields for persistence and UI interaction functions
-        private string dataFieldName;
-        private string textureFieldName;
-        private string modelFieldName;
+        private BaseField dataField;
+        private BaseField textureField;
+        private BaseField modelField;
 
         private string textureSet
         {
-            get { return partModule.Fields[textureFieldName].GetValue<string>(partModule); }
-            set { partModule.Fields[textureFieldName].SetValue(value, partModule); }
+            get { return textureField==null? "default" : textureField.GetValue<string>(partModule); }
+            set { if (textureField != null) { textureField.SetValue(value, partModule); } }
         }
 
         private string modelName
         {
-            get { return partModule.Fields[modelFieldName].GetValue<string>(partModule); }
-            set { partModule.Fields[modelFieldName].SetValue(value, partModule); }
+            get { return modelField.GetValue<string>(partModule); }
+            set { modelField.SetValue(value, partModule); }
         }
 
         private string persistentData
         {
-            get { return partModule.Fields[dataFieldName].GetValue<string>(partModule); }
-            set { partModule.Fields[dataFieldName].SetValue(value, partModule); }
+            get { return dataField==null? string.Empty : dataField.GetValue<string>(partModule); }
+            set { if (dataField != null) { dataField.SetValue(value, partModule); } }
         }
 
         public float moduleMass { get { return model.getModuleMass(); } }
@@ -64,7 +62,7 @@ namespace SSTUTools
 
         public void setPosition(float yPos, ModelOrientation orientation = ModelOrientation.TOP) { model.setPosition(yPos, orientation); }
 
-        public void updateModel() { model.updateModel; }
+        public void updateModel() { model.updateModel(); }
 
         #region REGION - Constructors and Init Methods
 
@@ -74,9 +72,9 @@ namespace SSTUTools
             this.partModule = partModule;
             this.root = root;
             this.orientation = orientation;
-            this.dataFieldName = dataFieldName;
-            this.modelFieldName = modelFieldName;
-            this.textureFieldName = textureFieldName;
+            this.dataField = partModule.Fields[dataFieldName];
+            this.modelField = partModule.Fields[modelFieldName];
+            this.textureField = partModule.Fields[textureFieldName];
             loadPersistentData(persistentData);
         }
 
@@ -137,8 +135,10 @@ namespace SSTUTools
             {
                 m.textureSet = textureSet;
                 m.applyTextureSet(m.textureSet, defaultColors);
-                m.partModule.updateUIChooseOptionControl(textureFieldName, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetNames(), true, m.textureSet);
-                m.partModule.Fields[textureFieldName].guiActiveEditor = m.model.modelDefinition.textureSets.Length > 1;
+                if (textureField != null)
+                {
+                    m.partModule.updateUIChooseOptionControl(textureField.name, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetNames(), true, m.textureSet);                    
+                }
             });
         }
 
@@ -188,7 +188,8 @@ namespace SSTUTools
         {
             IEnumerable<T> validSelections = getValidSelections(models);
             string[] names = SSTUUtils.getNames(validSelections, s => s.name);
-            partModule.updateUIChooseOptionControl(modelFieldName, names, names, true, modelName);
+            partModule.updateUIChooseOptionControl(modelField.name, names, names, true, modelName);
+            modelField.guiActiveEditor = names.Length > 1;
         }
 
         #endregion ENDREGION - GUI Interaction Methods
@@ -219,7 +220,10 @@ namespace SSTUTools
                 saveColors(customColors);
             }
             model.enableTextureSet(textureSet, customColors);
-            model.updateTextureUIControl(partModule, textureFieldName, textureSet);
+            if (textureField != null)
+            {
+                model.updateTextureUIControl(partModule, textureField.name, textureSet);
+            }
         }
 
         private void actionWithSymmetry(Action<ModelModule<T, U>> action)

@@ -94,36 +94,18 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentBottomTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Top Dock Tex"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentTopDockTexture = "default";
-
-        [KSPField(isPersistant = true, guiName = "Bottom Dock Tex"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentBottomDockTexture = "default";
-
-        [KSPField(isPersistant = true, guiName = "Solar Tex"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentSolarTexture = "default";
-
         //persistent data for modules; stores colors and other per-module data
-        [KSPField(isPersistant = true)]
-        public string topDockModulePersistentData;
         [KSPField(isPersistant = true)]
         public string topModulePersistentData;
         [KSPField(isPersistant = true)]
         public string coreModulePersistentData;
         [KSPField(isPersistant = true)]
         public string bottomModulePersistentData;
-        [KSPField(isPersistant = true)]
-        public string bottomDockModulePersistentData;
-        [KSPField(isPersistant = true)]
-        public string solarModulePersistentData;
 
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
-        
+
         //standard work-around for lack of config-node data being passed consistently and lack of support for mod-added serializable classes
         [Persistent]
         public string configNodeData = string.Empty;
@@ -143,7 +125,7 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularStationCore> coreModule;
         ModelModule<SingleModelData, SSTUModularStationCore> bottomModule;
         ModelModule<SingleModelData, SSTUModularStationCore> bottomDockModule;
-        ModelModule<SingleModelData, SSTUModularStationCore> solarModule;
+        ModelModule<SolarData, SSTUModularStationCore> solarModule;
 
         private ModuleDockingNode topDockPartModule;
         private ModuleDockingNode bottomDockPartModule;
@@ -246,9 +228,8 @@ namespace SSTUTools
             Action<SSTUModularStationCore> modelChangedAction = delegate (SSTUModularStationCore m)
             {
                 m.updateModulePositions();
+                m.updateMassAndCost();
                 m.updateAttachNodes(true);
-                m.updateCost();
-                m.updateMass();
                 m.updateDragCubes();
                 m.updateResourceVolume();
                 m.updateGUI();
@@ -398,15 +379,15 @@ namespace SSTUTools
             bottomModule.getSymmetryModule = m => m.bottomModule;
             bottomModule.getValidSelections = m => bottomModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            topDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOPDOCK", true), ModelOrientation.TOP, topDockModulePersistentData, currentTopDock, currentTopDockTexture);
+            topDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOPDOCK", true), ModelOrientation.TOP, null, currentTopDock, null);
             topDockModule.getSymmetryModule = m => m.topDockModule;
             topDockModule.getValidSelections = m => topDockModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
-            bottomDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOMDOCK", true), ModelOrientation.BOTTOM, bottomDockModulePersistentData, currentBottomDock, currentBottomDockTexture);
+            bottomDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOMDOCK", true), ModelOrientation.BOTTOM, null, currentBottomDock, null);
             bottomDockModule.getSymmetryModule = m => m.bottomDockModule;
             bottomDockModule.getValidSelections = m => bottomDockModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
-            solarModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, solarModulePersistentData, currentSolar, currentSolarTexture);
+            solarModule = new ModelModule<SolarData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, currentSolar, null);
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
             solarModule.getValidSelections = m => solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
@@ -479,8 +460,7 @@ namespace SSTUTools
 
 
             updateModulePositions();
-            updateMass();
-            updateCost();
+            updateMassAndCost();
             updateAttachNodes(false);
             if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
@@ -558,20 +538,7 @@ namespace SSTUTools
             SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 1000f);
         }
         
-        private void updateCost()
-        {
-            modifiedCost = coreModule.moduleCost;
-            modifiedCost += solarModule.moduleCost;
-            modifiedCost += topDockModule.moduleCost;
-            modifiedCost += bottomDockModule.moduleCost;
-            if (useAdapterCost)
-            {
-                modifiedCost += topModule.moduleCost;
-                modifiedCost += bottomModule.moduleCost;
-            }
-        }
-        
-        private void updateMass()
+        private void updateMassAndCost()
         {
             modifiedMass = coreModule.moduleMass;
             modifiedMass += solarModule.moduleMass;
@@ -581,6 +548,16 @@ namespace SSTUTools
                 modifiedMass += bottomModule.moduleMass;
                 modifiedMass += topDockModule.moduleMass;
                 modifiedMass += bottomDockModule.moduleMass;
+            }
+
+            modifiedCost = coreModule.moduleCost;
+            modifiedCost += solarModule.moduleCost;
+            modifiedCost += topDockModule.moduleCost;
+            modifiedCost += bottomDockModule.moduleCost;
+            if (useAdapterCost)
+            {
+                modifiedCost += topModule.moduleCost;
+                modifiedCost += bottomModule.moduleCost;
             }
         }
 
@@ -596,22 +573,22 @@ namespace SSTUTools
                     if (controls[i].animationID == solarAnimationID) { animationControl = controls[i]; break; }
                 }
             }
-            
-            animationControl.animationName = solarModule.animationName;
+
+            animationControl.animationName = solarModule.model.modelDefinition.animationData[0].animationName;
             animationControl.reInitialize();
 
             SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
             if (solar == null) { return; }
 
-            solar.resourceAmount = solarModule.energy;
-            solar.pivotTransforms = solarModule.pivotNames;
-            solar.secondaryPivotTransforms = solarModule.secPivotNames;
-            solar.rayTransforms = solarModule.sunNames;
+            solar.resourceAmount = solarModule.model.energy;
+            solar.pivotTransforms = solarModule.model.pivotNames;
+            solar.secondaryPivotTransforms = solarModule.model.secPivotNames;
+            solar.rayTransforms = solarModule.model.sunNames;
 
-            SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.sunAxis);
+            SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
             solar.setSuncatcherAxis(axis);
 
-            if (solarModule.panelsEnabled)
+            if (solarModule.model.panelsEnabled)
             {
                 solar.enableModule();
             }
@@ -706,16 +683,8 @@ namespace SSTUTools
         
         private void updateGUI()
         {
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            string[] moduleNames = SingleModelData.getValidSelectionNames(part, topModules, topNodeNames);
-            this.updateUIChooseOptionControl("currentTop", moduleNames, moduleNames, true, currentTop);
-            Fields["currentTop"].guiActiveEditor = !useModelSelectionGUI && moduleNames.Length > 1;
-            Events["selectTopEvent"].guiActiveEditor = useModelSelectionGUI && moduleNames.Length > 1;
-
-            moduleNames = SingleModelData.getValidSelectionNames(part, bottomModules, bottomNodeNames);
-            this.updateUIChooseOptionControl("currentBottom", moduleNames, moduleNames, true, currentBottom);
-            Fields["currentBottom"].guiActiveEditor = !useModelSelectionGUI && moduleNames.Length > 1;
-            Events["selectBottomEvent"].guiActiveEditor = useModelSelectionGUI && moduleNames.Length > 1;
+            topModule.updateSelections();
+            bottomModule.updateSelections();
         }
 
         private void updateDragCubes()
