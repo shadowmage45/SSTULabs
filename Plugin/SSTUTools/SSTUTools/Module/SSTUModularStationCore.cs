@@ -425,7 +425,7 @@ namespace SSTUTools
 
             topDockModule.setupModel();
             topModule.setupModel();
-            coreModule.setupModel();
+            coreModule.setupModel();//TODO -- only setup core module if not the prefab part -- else need to add transform updating/fx-updating for RCS and engine modules, as they lack proper handling for transform swapping at runtime
             bottomModule.setupModel();
             bottomDockModule.setupModel();
             solarModule.setupModel();
@@ -457,7 +457,6 @@ namespace SSTUTools
                 bottomDockTransform = part.transform.FindRecursive(bottomDockName);
                 bottomControlTransform = part.transform.FindRecursive(bottomDockName + "Control");
             }
-
 
             updateModulePositions();
             updateMassAndCost();
