@@ -238,7 +238,11 @@ namespace SSTUTools
             Fields[nameof(currentTopDock)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 topDockModule.modelSelected(currentTopDock);
-                this.actionWithSymmetry(modelChangedAction);
+                this.actionWithSymmetry(m=> 
+                {
+                    modelChangedAction(m);
+                    m.updateDockingModules(false);
+                });
             };
 
             Fields[nameof(currentTop)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
@@ -262,7 +266,21 @@ namespace SSTUTools
             Fields[nameof(currentBottomDock)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 bottomDockModule.modelSelected(currentBottomDock);
-                this.actionWithSymmetry(modelChangedAction);
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                    m.updateDockingModules(false);
+                });
+            };
+
+            Fields[nameof(currentSolar)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                solarModule.modelSelected(currentSolar);
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                    m.updateSolarModules();
+                });
             };
 
             Fields[nameof(currentTopTexture)].uiControlEditor.onFieldChanged = topModule.textureSetSelected;
@@ -572,12 +590,21 @@ namespace SSTUTools
                     if (controls[i].animationID == solarAnimationID) { animationControl = controls[i]; break; }
                 }
             }
+            if (animationControl == null)
+            {
+                MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
+                return;
+            }
 
             animationControl.animationName = solarModule.model.modelDefinition.animationData[0].animationName;
             animationControl.reInitialize();
 
             SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
-            if (solar == null) { return; }
+            if (solar == null)
+            {
+                MonoBehaviour.print("ERROR: No solar panel module found in part: " + part.name);
+                return;
+            }
 
             solar.resourceAmount = solarModule.model.energy;
             solar.pivotTransforms = solarModule.model.pivotNames;
@@ -720,10 +747,10 @@ namespace SSTUTools
         public readonly float energy;
         public readonly string sunAxis;
         public readonly bool panelsEnabled;
-        
+
+        private GameObject[] models;
+
         private SolarPosition[] positions;
-        private SingleModelData[] models;
-        private Transform[] rootTransforms;
         
         public SolarData(ConfigNode node) : base(node)
         {
@@ -750,53 +777,44 @@ namespace SSTUTools
 
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
-            base.setupModel(parent, orientation);
-            //    SSTUUtils.destroyChildren(root);
-            //    int len = positions.Length;
-            //    rootTransforms = new Transform[len];
-            //    models = new SingleModelData[len];
-            //    Vector3 pos;
-            //    for (int i = 0; i < len; i++)
-            //    {
-            //        rootTransforms[i] = new GameObject(root.name + "-" + i).transform;
-            //        pos = positions[i].position.CopyVector();
-            //        pos.y += yOffset;
-            //        rootTransforms[i].parent = root;
-            //        rootTransforms[i].position = root.position;
-            //        rootTransforms[i].rotation = root.rotation;
-            //        rootTransforms[i].localPosition = pos;
-            //        rootTransforms[i].Rotate(positions[i].rotation, Space.Self);
-            //        models[i] = new SingleModelData(modelName);
-            //        models[i].setupModel(rootTransforms[i], ModelOrientation.TOP);
-            //        rootTransforms[i].localScale = positions[i].scale;
-            //    }
+            destroyCurrentModel();
+            model = new GameObject("MSCSolarRoot");
+            model.transform.NestToParent(parent);
+            int len = positions.Length;
+            models = new GameObject[len];
+            for (int i = 0; i < len; i++)
+            {
+                models[i] = new GameObject("MSCSolar");
+                models[i].transform.NestToParent(model.transform);
+                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
+                models[i].transform.Rotate(positions[i].rotation, Space.Self);
+                models[i].transform.localPosition = positions[i].position;
+                models[i].transform.localScale = positions[i].scale;
+            }
         }
 
         public override void destroyCurrentModel()
         {
-            base.destroyCurrentModel();
-            //    int len = rootTransforms.Length;
-            //    for (int i = 0; i < len; i++)
-            //    {                
-            //        GameObject.DestroyImmediate(rootTransforms[i].gameObject);
-            //    }
-            //    rootTransforms = null;
-            //    models = null;
+            if (model != null)
+            {
+                model.transform.parent = null;
+                GameObject.Destroy(model);//will destroy children as well
+            }
+            //de-reference them all, just in case
+            model = null;
+            models = null;
         }
 
         public override void updateModel()
         {
-            base.updateModel();
-            //    int len = rootTransforms.Length;
-            //    float yPos = 0;
-            //    Vector3 pos;
-            //    for (int i = 0; i < len; i++)
-            //    {
-            //        yPos = yOffset + positions[i].position.y;
-            //        pos = rootTransforms[i].localPosition;
-            //        pos.y = yPos;
-            //        rootTransforms[i].localPosition = pos;
-            //    }
+            int len = models.Length;
+            Vector3 pos;
+            for (int i = 0; i < len; i++)
+            {
+                pos = positions[i].position;
+                pos.y += currentVerticalPosition;
+                models[i].transform.localPosition = pos;
+            }
         }
 
         public override float getModuleCost()
