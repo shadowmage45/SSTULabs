@@ -99,13 +99,23 @@ namespace SSTUTools
             SSTUUtils.destroyChildrenImmediate(root);
             if (models == null) { MonoBehaviour.print("ERROR: model list was null!  Models must be populated after module construction."); }
             model = models.Find(m => m.name == modelName);
-            if (model == null) { MonoBehaviour.print("ERROR: could not locate model for name: "+modelName); }
+            if (model == null)
+            {
+                MonoBehaviour.print("ERROR: could not locate model for name: "+modelName);
+                model = models[0];
+                modelName = model.name;
+                MonoBehaviour.print("Using first available model: "+ model.name);
+            }
             model.setupModel(root, orientation);
             bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet))
             {
                 MonoBehaviour.print("Current texture set for model "+model.name+" invalid: "+textureSet+", clearing colors and assigning default texture set.");
                 textureSet = model.getDefaultTextureSet();
+                if (!model.isValidTextureSet(textureSet))
+                {
+                    MonoBehaviour.print("ERROR: Default texture set: " + textureSet + " set for model: " + model.name + " is invalid.  This is a configuration level error in the model definition that needs to be corrected.");
+                }
                 useDefaultTextureColors = true;
                 if (SSTUGameSettings.persistRecolor())
                 {

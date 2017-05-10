@@ -367,27 +367,27 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            coreModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, coreModulePersistentData, currentCore, currentCoreTexture);
+            coreModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(coreModulePersistentData), nameof(currentCore), nameof(currentCoreTexture));
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.setupModelList(SingleModelData.parseModels(node.GetNodes("CORE")));
 
-            topModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, topModulePersistentData, currentTop, currentTopTexture);
+            topModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, nameof(topModulePersistentData), nameof(currentTop), nameof(currentTopTexture));
             topModule.getSymmetryModule = m => m.topModule;
             topModule.getValidSelections = m => topModule.models.FindAll(s => s.canSwitchTo(part, topNodeNames));
 
-            bottomModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOM", true), ModelOrientation.BOTTOM, bottomModulePersistentData, currentBottom, currentBottomTexture);
+            bottomModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOM", true), ModelOrientation.BOTTOM, nameof(bottomModulePersistentData), nameof(currentBottom), nameof(currentBottomTexture));
             bottomModule.getSymmetryModule = m => m.bottomModule;
             bottomModule.getValidSelections = m => bottomModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            topDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOPDOCK", true), ModelOrientation.TOP, null, currentTopDock, null);
+            topDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOPDOCK", true), ModelOrientation.TOP, null, nameof(currentTopDock), null);
             topDockModule.getSymmetryModule = m => m.topDockModule;
             topDockModule.getValidSelections = m => topDockModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
-            bottomDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOMDOCK", true), ModelOrientation.BOTTOM, null, currentBottomDock, null);
+            bottomDockModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOMDOCK", true), ModelOrientation.BOTTOM, null, nameof(currentBottomDock), null);
             bottomDockModule.getSymmetryModule = m => m.bottomDockModule;
             bottomDockModule.getValidSelections = m => bottomDockModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
-            solarModule = new ModelModule<SolarData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, currentSolar, null);
+            solarModule = new ModelModule<SolarData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
             solarModule.getValidSelections = m => solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));

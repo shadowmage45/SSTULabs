@@ -298,6 +298,7 @@ namespace SSTUTools
                 {
                     m.currentMainName = currentMainName;
                     m.currentVariantName = currentVariantName;
+                    m.bodyModule.updateSelections();
                 });
                 bodyModule.modelSelected(newModel);
                 this.actionWithSymmetry(m =>
@@ -468,7 +469,8 @@ namespace SSTUTools
         private void loadConfigNodeData()
         {
             //reset existing gimbal/thrust transforms, remove them from the model hierarchy so they do not get deleted when setting up models
-            resetTransformParents();//this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
+            //this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
+            resetTransformParents();
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
@@ -494,13 +496,14 @@ namespace SSTUTools
             //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
             mountModule.model.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
 
+            int len;
             //if had custom thrust curve data, reload it now (else it will default to whatever is on the engine)
             if (!string.IsNullOrEmpty(thrustCurveData))
             {
                 thrustCurveCache = new FloatCurve();
                 string[] keySplits = thrustCurveData.Split(':');
                 string[] valSplits;
-                int len = keySplits.Length;
+                len = keySplits.Length;
                 float key, value, inTan, outTan;
                 for (int i = 0; i < len; i++)
                 {
@@ -515,7 +518,7 @@ namespace SSTUTools
             if (!string.IsNullOrEmpty(presetCurveName))
             {
                 ConfigNode[] presetNodes = GameDatabase.Instance.GetConfigNodes("SSTU_THRUSTCURVE");
-                int len = presetNodes.Length;
+                len = presetNodes.Length;
                 for (int i = 0; i < len; i++)
                 {
                     if (presetNodes[i].GetStringValue("name") == presetCurveName)
@@ -524,6 +527,16 @@ namespace SSTUTools
                         break;
                     }
                 }
+            }
+            List<string> variantNames = new List<string>();
+            len = bodyModule.models.Count;
+            for (int i = 0; i < len; i++)
+            {
+                variantNames.AddUnique(bodyModule.models[i].variant);
+            }
+            if (string.IsNullOrEmpty(currentVariantName) || !variantNames.Contains(currentVariantName))
+            {
+                currentVariantName = bodyModule.model.variant;
             }
         }        
 
