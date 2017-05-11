@@ -198,8 +198,8 @@ namespace SSTUTools
         public ModelAnimationData(ConfigNode node)
         {
             animationName = node.GetStringValue("name");
-            transformName = node.GetStringValue("transform");
-            speed = node.GetFloatValue("speed");
+            transformName = node.GetStringValue("transform", string.Empty);
+            speed = node.GetFloatValue("speed", 1f);
         }
 
         public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
@@ -484,7 +484,7 @@ namespace SSTUTools
         /// of the bottom of the model.
         /// </summary>
         /// <param name="positionOfBottomOfModel"></param>
-        public void setPosition(float positionOfBottomOfModel, ModelOrientation orientation = ModelOrientation.TOP)
+        public virtual void setPosition(float positionOfBottomOfModel, ModelOrientation orientation = ModelOrientation.TOP)
         {
             float offset = getVerticalOffset();
             if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }

@@ -523,6 +523,8 @@ namespace SSTUTools
             topDockModule.setPosition(topDockY);
             topModule.setPosition(topY);
             coreModule.setPosition(coreY);
+            solarModule.setPosition(coreY);
+            MonoBehaviour.print("Set core/solar pos to: " + coreY);
             bottomModule.setPosition(bottomY, ModelOrientation.BOTTOM);
             bottomDockModule.setPosition(bottomDockY, ModelOrientation.BOTTOM);
 
@@ -532,8 +534,7 @@ namespace SSTUTools
             coreModule.updateModel();
             bottomModule.updateModel();
             bottomDockModule.updateModel();
-
-            solarModule.setPosition(coreModule.model.currentVerticalPosition);
+            solarModule.updateModel();
 
             Vector3 pos = new Vector3(0, topDockY + topDockModule.moduleHeight, 0);
             topDockTransform.localPosition = pos;
@@ -587,13 +588,30 @@ namespace SSTUTools
                 int len = controls.Length;
                 for (int i = 0; i < len; i++)
                 {
-                    if (controls[i].animationID == solarAnimationID) { animationControl = controls[i]; break; }
+                    if (controls[i].animationID == solarAnimationID)
+                    {
+                        animationControl = controls[i];
+                        break;
+                    }
                 }
             }
             if (animationControl == null)
             {
                 MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
                 return;
+            }
+
+            ModelAnimationData mad = solarModule.model.hasAnimation() ?  solarModule.model.modelDefinition.animationData[0] : null;
+            if (mad == null)
+            {
+                MonoBehaviour.print("ERROR: No animation data found for model definition: " + solarModule.model.modelDefinition.modelName + " :: " + solarModule.model.modelDefinition.name);
+
+                //TODO -- setup animation control and solar control with no anim data
+                return;
+            }
+            else
+            {
+
             }
 
             animationControl.animationName = solarModule.model.modelDefinition.animationData[0].animationName;
@@ -746,7 +764,7 @@ namespace SSTUTools
         public readonly string sunNames;
         public readonly float energy;
         public readonly string sunAxis;
-        public readonly bool panelsEnabled;
+        public readonly bool panelsEnabled = true;
 
         private GameObject[] models;
 
@@ -754,42 +772,46 @@ namespace SSTUTools
         
         public SolarData(ConfigNode node) : base(node)
         {
-
-            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");            
-            //loaded from SOLARDATA from model def
-            pivotNames = solarNode.GetStringValue("pivotNames");
-            secPivotNames = solarNode.GetStringValue("secPivotNames");
-            sunNames = solarNode.GetStringValue("sunNames");
-            panelsEnabled = solarNode.GetBoolValue("enabled");
-            sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
-            
-            //loaded from SOLARDATA with option of per-model override (energy, tech-unlock-upgrade-name)
-            energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
-
-            ConfigNode[] posNodes = node.GetNodes("POSITION");
-            int len = posNodes.Length;
-            positions = new SolarPosition[len];
-            for (int i = 0; i < len; i++)
+            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
+            if (solarNode == null)
             {
-                positions[i] = new SolarPosition(posNodes[i]);
+                panelsEnabled = false;
+            }
+            if (panelsEnabled)
+            {
+                pivotNames = solarNode.GetStringValue("pivotNames");
+                secPivotNames = solarNode.GetStringValue("secPivotNames");
+                sunNames = solarNode.GetStringValue("sunNames");
+                panelsEnabled = solarNode.GetBoolValue("enabled");
+                sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
+                energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
+                ConfigNode[] posNodes = node.GetNodes("POSITION");
+                int len = posNodes.Length;
+                positions = new SolarPosition[len];
+                for (int i = 0; i < len; i++)
+                {
+                    positions[i] = new SolarPosition(posNodes[i]);
+                }
             }
         }
 
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
-            destroyCurrentModel();
             model = new GameObject("MSCSolarRoot");
             model.transform.NestToParent(parent);
-            int len = positions.Length;
-            models = new GameObject[len];
-            for (int i = 0; i < len; i++)
+            if (panelsEnabled)
             {
-                models[i] = new GameObject("MSCSolar");
-                models[i].transform.NestToParent(model.transform);
-                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
-                models[i].transform.Rotate(positions[i].rotation, Space.Self);
-                models[i].transform.localPosition = positions[i].position;
-                models[i].transform.localScale = positions[i].scale;
+                int len = positions.Length;
+                models = new GameObject[len];
+                for (int i = 0; i < len; i++)
+                {
+                    models[i] = new GameObject("MSCSolar");
+                    models[i].transform.NestToParent(model.transform);
+                    SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
+                    models[i].transform.Rotate(positions[i].rotation, Space.Self);
+                    models[i].transform.localPosition = positions[i].position;
+                    models[i].transform.localScale = positions[i].scale;
+                }
             }
         }
 
@@ -805,31 +827,19 @@ namespace SSTUTools
             models = null;
         }
 
-        public override void updateModel()
-        {
-            int len = models.Length;
-            Vector3 pos;
-            for (int i = 0; i < len; i++)
-            {
-                pos = positions[i].position;
-                pos.y += currentVerticalPosition;
-                models[i].transform.localPosition = pos;
-            }
-        }
-
         public override float getModuleCost()
         {
-            return modelDefinition.cost * positions.Length;
+            return positions == null ? modelDefinition.cost : modelDefinition.cost * positions.Length;
         }
 
         public override float getModuleMass()
         {
-            return modelDefinition.mass * positions.Length;
+            return positions == null ? modelDefinition.mass : modelDefinition.mass * positions.Length;
         }
 
         public override float getModuleVolume()
         {
-            return modelDefinition.volume * positions.Length;
+            return positions == null ? modelDefinition.volume : modelDefinition.volume * positions.Length;
         }
 
     }
