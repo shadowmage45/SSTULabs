@@ -104,6 +104,56 @@ namespace SSTUTools
                 }
             }
         }
+
+        public static void applyToPartIcons()
+        {
+            //this is going to get ugly....
+            /*
+            First option is brute force, see implementation below.
+            iterate through entire parts list
+                iterate through get children (renderer)
+                    if mesh uses SSTU shader
+                        find identical transform on the icon and swap it to the SSTU-icon shader
+            */
+            /*
+            Second option is??
+            Need to know
+            1.)  What parts to operate on.  
+                    Not all parts, and not all SSTU parts, nor just the modular parts (solar panels, other stand-alones) 
+                    Cannot use modular-part code as a singular fix, would only be a partial solution
+            2.)  What transforms/meshes/renderers need to be swapped.
+                    Even on parts that need shader swapping, not all renderers will need to be swapped.
+            3.)  Eventually it might be necessary to include a dictionary of shaders to swap from-> to
+                    In the case of incompatible features across shaders.  
+                    Currently the masked shader supports all of the solar-shader features needed for icon rendering (no back-face lighting needed for icons...)
+            */
+            List<string> shaderNames = new List<string>();
+            shaderNames.Add("SSTU/Masked");
+            shaderNames.Add("SSTU/SolarShader");
+            Shader iconShader = null;
+            foreach (AvailablePart p in PartLoader.LoadedPartsList)
+            {
+                Transform pt = p.partPrefab.gameObject.transform;
+                Renderer[] ptrs = pt.GetComponentsInChildren<Renderer>();
+                foreach (Renderer ptr in ptrs)
+                {
+                    string ptsn = ptr.sharedMaterial.shader.name;
+                    if (shaderNames.Contains(ptsn))//is a shader that we care about
+                    {
+                        Transform[] ictrs = p.iconPrefab.gameObject.transform.FindChildren(pt.name);//find transforms from icon with same name
+                        foreach (Transform ictr in ictrs)
+                        {
+                            Renderer itr = ictr.GetComponent<Renderer>();
+                            if (itr != null)
+                            {
+                                itr.sharedMaterial.shader = iconShader;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
 }

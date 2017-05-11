@@ -110,7 +110,7 @@ namespace SSTUTools
         /// <summary>
         /// Current scale height of the tank sections
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor =true, guiName = "Scale"),
+        [KSPField(isPersistant = true, guiActiveEditor =true, guiName = "V. Scale"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.25f, maxValue = 1.75f)]
         public float currentTankHeight = 1f;
 
