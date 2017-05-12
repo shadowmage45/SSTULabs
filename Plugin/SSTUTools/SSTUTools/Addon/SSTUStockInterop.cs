@@ -25,7 +25,7 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));
             GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
-            GameEvents.OnPartLoaderLoaded.Add(new EventVoid.OnEvent(SSTUAssetBundleShaderLoader.PartListLoaded));
+            GameEvents.OnPartLoaderLoaded.Add(new EventVoid.OnEvent(PartListLoaded));
         }
 
         public void OnDestroy()
@@ -33,7 +33,12 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Destroy");
             GameEvents.OnGameSettingsApplied.Remove(new EventVoid.OnEvent(gameSettingsApplied));
             GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
-            GameEvents.OnPartLoaderLoaded.Remove(new EventVoid.OnEvent(SSTUAssetBundleShaderLoader.PartListLoaded));
+            GameEvents.OnPartLoaderLoaded.Remove(new EventVoid.OnEvent(PartListLoaded));
+        }
+
+        public void PartListLoaded()
+        {
+            SSTUAssetBundleShaderLoader.PartListLoaded();
         }
 
         public static void addDragUpdatePart(Part part)

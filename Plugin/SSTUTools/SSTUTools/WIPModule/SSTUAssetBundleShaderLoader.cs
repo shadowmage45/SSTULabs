@@ -136,7 +136,7 @@ namespace SSTUTools
             List<string> shaderNames = new List<string>();
             shaderNames.Add("SSTU/Masked");
             shaderNames.Add("SSTU/SolarShader");
-            Shader iconShader = null;
+            Shader iconShader = SSTUDatabase.getShader("SSTU/MaskedIcon");
             foreach (AvailablePart p in PartLoader.LoadedPartsList)
             {
                 bool outputName = false;
@@ -149,10 +149,10 @@ namespace SSTUTools
                     {
                         if (!outputName)
                         {
-                            MonoBehaviour.print("Adjusting icon shaders for part: " + p.name);
+                            MonoBehaviour.print("Adjusting icon shaders for part: " + p.name+" for shader:"+ptsn+" tr: "+ptr);
                             outputName = true;
                         }
-                        Transform[] ictrs = p.iconPrefab.gameObject.transform.FindChildren(pt.name);//find transforms from icon with same name
+                        Transform[] ictrs = p.iconPrefab.gameObject.transform.FindChildren(ptr.name);//find transforms from icon with same name
                         foreach (Transform ictr in ictrs)
                         {
                             Renderer itr = ictr.GetComponent<Renderer>();
