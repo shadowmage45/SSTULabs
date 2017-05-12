@@ -71,6 +71,12 @@ namespace SSTUTools
             }
         }
 
+        public static void PartListLoaded()
+        {
+            MonoBehaviour.print("Updating part icons with fixed shaders.");
+            applyToPartIcons();
+        }
+
         public static void applyToModelDatabase()
         {
             ConfigNode[] textureNodes = GameDatabase.Instance.GetConfigNodes("SSTU_SHADER");
@@ -116,7 +122,7 @@ namespace SSTUTools
                         find identical transform on the icon and swap it to the SSTU-icon shader
             */
             /*
-            Second option is??
+            Second option is??  (nothing currently)
             Need to know
             1.)  What parts to operate on.  
                     Not all parts, and not all SSTU parts, nor just the modular parts (solar panels, other stand-alones) 
@@ -133,6 +139,7 @@ namespace SSTUTools
             Shader iconShader = null;
             foreach (AvailablePart p in PartLoader.LoadedPartsList)
             {
+                bool outputName = false;
                 Transform pt = p.partPrefab.gameObject.transform;
                 Renderer[] ptrs = pt.GetComponentsInChildren<Renderer>();
                 foreach (Renderer ptr in ptrs)
@@ -140,6 +147,11 @@ namespace SSTUTools
                     string ptsn = ptr.sharedMaterial.shader.name;
                     if (shaderNames.Contains(ptsn))//is a shader that we care about
                     {
+                        if (!outputName)
+                        {
+                            MonoBehaviour.print("Adjusting icon shaders for part: " + p.name);
+                            outputName = true;
+                        }
                         Transform[] ictrs = p.iconPrefab.gameObject.transform.FindChildren(pt.name);//find transforms from icon with same name
                         foreach (Transform ictr in ictrs)
                         {
