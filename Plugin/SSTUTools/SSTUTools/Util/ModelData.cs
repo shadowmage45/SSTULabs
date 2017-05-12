@@ -169,13 +169,12 @@ namespace SSTUTools
 
         public string[] getTextureSetNames()
         {
-            int len = textureSets.Length;
-            string[] names = new string[len];
-            for (int i = 0; i < len; i++)
-            {
-                names[i] = textureSets[i].name;
-            }
-            return names;
+            return SSTUUtils.getNames(textureSets, m => m.name);
+        }
+
+        public string[] getTextureSetTitles()
+        {
+            return SSTUUtils.getNames(textureSets, m => m.title);
         }
 
         internal bool shouldInvert(ModelOrientation orientation)
@@ -434,7 +433,7 @@ namespace SSTUTools
         public virtual void updateTextureUIControl(PartModule module, string fieldName, string currentTexture)
         {
             string[] names = modelDefinition.getTextureSetNames();
-            module.updateUIChooseOptionControl(fieldName, names, names, true, currentTexture);
+            module.updateUIChooseOptionControl(fieldName, names, modelDefinition.getTextureSetTitles(), true, currentTexture);
             module.Fields[fieldName].guiActiveEditor = names.Length > 1;
         }
 

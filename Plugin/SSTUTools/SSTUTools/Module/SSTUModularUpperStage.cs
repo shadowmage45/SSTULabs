@@ -28,6 +28,15 @@ namespace SSTUTools
         public float maxTankDiameter = 10;
 
         /// <summary>
+        /// Ratio between the upper and lower tanks, 
+        /// lDiam/uDiam = ratio as a decimal/percentage, 
+        /// expressing how large the lower tank is in relation to the top; 
+        /// e.g. 0.75 = 75% = lower tank is 75% diameter of upper tank.
+        /// </summary>
+        [KSPField]
+        public float splitTankRatio = 0.75f;
+
+        /// <summary>
         /// Index in same-type modules for the SSTUNodeFairing responsible for the 'top' fairing.
         /// </summary>
         [KSPField]
@@ -575,13 +584,13 @@ namespace SSTUTools
             upperModule.model.updateScale(hScale, vScale);
             if (splitTank)
             {
-                intertankModule.model.updateScaleForDiameter(currentTankDiameter * 0.75f);
-                hScale = (currentTankDiameter * 0.75f) / lowerModule.model.modelDefinition.diameter;
+                intertankModule.model.updateScaleForDiameter(currentTankDiameter * splitTankRatio);
+                hScale = (currentTankDiameter * splitTankRatio) / lowerModule.model.modelDefinition.diameter;
                 vScale = hScale * currentTankHeight;
                 lowerModule.model.updateScale(hScale, vScale);
             }
-            mountModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * 0.75f : currentTankDiameter);
-            rcsModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * 0.75f : currentTankDiameter);
+            mountModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * splitTankRatio : currentTankDiameter);
+            rcsModule.model.updateScaleForDiameter(splitTank ? currentTankDiameter * splitTankRatio : currentTankDiameter);
         }
                 
         /// <summary>

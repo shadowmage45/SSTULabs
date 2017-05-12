@@ -198,7 +198,8 @@ namespace SSTUTools
         {
             IEnumerable<T> validSelections = getValidSelections(models);
             string[] names = SSTUUtils.getNames(validSelections, s => s.name);
-            partModule.updateUIChooseOptionControl(modelField.name, names, names, true, modelName);
+            string[] displays = SSTUUtils.getNames(validSelections, s => s.modelDefinition.title);
+            partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
         }
 

@@ -76,12 +76,14 @@ namespace SSTUTools
     public class TextureSet
     {
         public readonly String name;
+        public readonly string title;
         public readonly TextureSetMaterialData[] textureData;
         public readonly Color[] maskColors;
 
         public TextureSet(ConfigNode node)
         {
             name = node.GetStringValue("name");
+            title = node.GetStringValue("title", name);
             ConfigNode[] texNodes = node.GetNodes("TEXTURE");
             int len = texNodes.Length;
             textureData = new TextureSetMaterialData[len];
