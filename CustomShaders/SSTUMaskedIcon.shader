@@ -56,26 +56,34 @@ Shader "SSTU/MaskedIcon"
 
 		void surf (Input IN, inout ColoredSpecularSurfaceOutput o)
 		{
+			//as the clip test needs to be performed regardless of the surface properties, run it first as an early exit
+			//should save some texture sampling and processing of data that would just be discarded anyway.
+			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
+			screenUV.y = 1 - screenUV.y;
+			if(screenUV.x < _MinX || screenUV.y < _MinY || screenUV.x > _MaxX || screenUV.y > _MaxY)
+			{
+				clip(-1);
+				return;
+			}
 			float4 color = tex2D(_MainTex,(IN.uv_MainTex));
 			float4 mask = tex2D(_MaskTex, (IN.uv_MainTex));
 			float4 spec = tex2D(_SpecMap, (IN.uv_MainTex));
 			float3 normal = UnpackNormal(tex2D(_BumpMap, IN.uv_MainTex));
 			float3 ao = tex2D(_AOMap, (IN.uv_MainTex));
 			
-			float m = 1 - (mask.r + mask.g + mask.b);
-			o.Albedo.r = (mask.r * _MaskColor1.r * _MaskColor1.a + mask.g * _MaskColor2.r * _MaskColor2.a + mask.b * _MaskColor3.r * _MaskColor3.a) * color.r * ao.r + color.r * m * ao.r;
-			o.Albedo.g = (mask.r * _MaskColor1.g * _MaskColor1.a + mask.g * _MaskColor2.g * _MaskColor2.a + mask.b * _MaskColor3.g * _MaskColor3.a) * color.g * ao.g + color.g * m * ao.g;
-			o.Albedo.b = (mask.r * _MaskColor1.b * _MaskColor1.a + mask.g * _MaskColor2.b * _MaskColor2.a + mask.b * _MaskColor3.b * _MaskColor3.a) * color.b * ao.b + color.b * m * ao.b;
+			float m = saturate(1 - (mask.r + mask.g + mask.b));
+			half3 userColor = mask.rrr * _MaskColor1.rgb + mask.ggg * _MaskColor2.rgb + mask.bbb * _MaskColor3.rgb;
+			half3 diffuseColor = color * m;
+			half3 detailColor = (color - 0.5) * (1 - m);
+
+			half3 userSpec = mask.r * _MaskColor1.a + mask.g * _MaskColor2.a + mask.b * _MaskColor3.a;
+			half3 baseSpec = spec * m;
+			half3 detailSpec = (spec - 0.5) * (1 - m);
+
+			o.Albedo = saturate(userColor + diffuseColor + detailColor) * ao;
 			o.GlossColor = spec.rgb;
 			o.Specular = _Shininess;
 			o.Normal = normal;
-			
-			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
-			screenUV.y = 1 - screenUV.y;
-			if(screenUV.x < _MinX || screenUV.y < _MinY || screenUV.x > _MaxX || screenUV.y > _MaxY)
-			{
-				clip(-1);
-			}
 		}
 		ENDCG
 	}
