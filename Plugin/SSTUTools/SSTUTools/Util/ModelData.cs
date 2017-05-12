@@ -574,7 +574,7 @@ namespace SSTUTools
                 if (i < nodeCount)
                 {
                     data = modelDefinition.attachNodeData[i];
-                    size = data.size;
+                    size = Mathf.RoundToInt(data.size * currentDiameterScale);
                     pos = data.position * currentHeightScale;
                     if (invert)
                     {
