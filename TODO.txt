@@ -1,0 +1,24 @@
+Recoloring Shader Rework TODO
+Code
+	MFT variant name not updated properly -- is being updated to model name
+	Flag Decal not working properly on MFTs -- is the shader being set to an improper shader, or the flag-updating code simply not called?
+Adapter Textures
+	First pass done.  Textures exist.  Need seam cleanup on diff/spec for painted textures.  Need diff/spec/nrm cleanup for gold/orange textures.
+Adapter Configs
+	Need to rename default texture set along with finding good names for the various mask-based sets
+Tank Models
+Tank Textures
+	Re-export textures for 'white' on the detail area, for use of detail mask
+	Finish stripes3 texture
+	Update 'NONE' mask to include detail area on detail channel
+Tank Configs
+Mount Models
+	Need to re-UV many of them in order to allow for all stripe patterns.  May or may not be doable depending on the mount, if it was unwrapped in 1/2 or 1/4, etc.
+Mount Textures
+	Need masks for all
+	Need re-export for all using separate AO bake
+DOS Configs
+DOS Textures
+DSP Models
+	Increase mounting depth on skylab style solar panels
+	Figure out symmetry model system.

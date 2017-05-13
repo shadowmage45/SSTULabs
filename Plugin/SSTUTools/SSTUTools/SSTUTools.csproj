@@ -1,0 +1,177 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{0BCB8074-A14F-42BA-BDCF-8A28765479B6}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SSTUTools</RootNamespace>
+    <AssemblyName>SSTUTools</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>libs\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>libs\Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-UnityScript">
+      <HintPath>libs\Assembly-UnityScript.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-UnityScript-firstpass">
+      <HintPath>libs\Assembly-UnityScript-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>libs\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>libs\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityScript.Lang">
+      <HintPath>libs\UnityScript.Lang.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Addon\SSTUDatabase.cs" />
+    <Compile Include="Addon\SSTULauncher.cs" />
+    <Compile Include="Addon\SSTUStockInterop.cs" />
+    <Compile Include="Fairing\FairingContainer.cs" />
+    <Compile Include="Fairing\FairingData.cs" />
+    <Compile Include="GUI\ModuleSelectionGUI.cs" />
+    <Compile Include="GUI\CraftRecolorGUI.cs" />
+    <Compile Include="GUI\ThrustCurveEditorGUI.cs" />
+    <Compile Include="GUI\VolumeContainerGUI.cs" />
+    <Compile Include="MeshGenerator\MeshGenerators.cs" />
+    <Compile Include="DepModules\MeshGenerator.cs" />
+    <Compile Include="MeshGenerator\MeshBuilder.cs" />
+    <Compile Include="MeshGenerator\ProceduralCylinderModel.cs" />
+    <Compile Include="MeshGenerator\ProceduralModel.cs" />
+    <Compile Include="Module\SSTUAirstreamShield.cs" />
+    <Compile Include="Module\SSTUCollisionHandler.cs" />
+    <Compile Include="Module\SSTUControlTransform.cs" />
+    <Compile Include="Module\SSTUDeployableEngine.cs" />
+    <Compile Include="Module\SSTUDragCubeRenderer.cs" />
+    <Compile Include="Module\SSTUModelFix.cs" />
+    <Compile Include="Module\SSTUModelSwitch.cs" />
+    <Compile Include="Module\SSTUModularFuelTankRCS.cs" />
+    <Compile Include="Settings\SSTUGameSettings.cs" />
+    <Compile Include="Util\IRecolorable.cs" />
+    <Compile Include="Util\ModelModule.cs" />
+    <Compile Include="Util\SSTUTextureUtils.cs" />
+    <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
+    <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
+    <Compile Include="Module\SSTUModularFuelTank.cs" />
+    <Compile Include="Module\SSTUDecalSwitch.cs" />
+    <Compile Include="Module\SSTUFieldManipulator.cs" />
+    <Compile Include="WIPModule\SSTUAnimateRotation.cs" />
+    <Compile Include="WIPModule\SSTUAssetBundleShaderLoader.cs" />
+    <Compile Include="WIPModule\SSTUInflatable.cs" />
+    <Compile Include="WIPModule\SSTUModularStationCore.cs" />
+    <Compile Include="Module\SSTUResourceBoiloff.cs" />
+    <Compile Include="Module\SSTUVolumeContainer.cs" />
+    <Compile Include="Util\AnimationController.cs" />
+    <Compile Include="Util\SSTUEngineLayout.cs" />
+    <Compile Include="Util\VolumeContainer.cs" />
+    <Compile Include="WIPModule\SSTUAssetBundleModelLoader.cs" />
+    <Compile Include="WIPModule\SSTUCollisionDebug.cs" />
+    <Compile Include="WIPModule\SSTUModularCargoBay.cs" />
+    <Compile Include="Module\SSTUModularEngineCluster.cs" />
+    <Compile Include="Module\SSTUFlagDecal.cs" />
+    <Compile Include="Module\SSTUInterstageDecoupler.cs" />
+    <Compile Include="Util\SSTUAttachNodeUtils.cs" />
+    <Compile Include="Module\SSTUModularBooster.cs" />
+    <Compile Include="Module\SSTUModularParachute.cs" />
+    <Compile Include="Module\SSTUAnimateLight.cs" />
+    <Compile Include="Module\SSTUAutoDepletionDecoupler.cs" />
+    <Compile Include="Module\SSTUResizableFairing.cs" />
+    <Compile Include="Util\SSTUModInterop.cs" />
+    <Compile Include="Module\SSTUAnimateControlled.cs" />
+    <Compile Include="Module\SSTUAnimateEngineHeat.cs" />
+    <Compile Include="Module\SSTUAnimateUsable.cs" />
+    <Compile Include="Module\SSTUCustomUpperStage.cs" />
+    <Compile Include="Util\ModelData.cs" />
+    <Compile Include="Module\SSTUInterstageFairing.cs" />
+    <Compile Include="Module\SSTUModelConstraint.cs" />
+    <Compile Include="Module\SSTUModularHeatShield.cs" />
+    <Compile Include="WIPModule\SSTUMultiDockingPort.cs" />
+    <Compile Include="Module\SSTUNodeFairing.cs" />
+    <Compile Include="Module\SSTUProceduralDecoupler.cs" />
+    <Compile Include="Module\SSTUCustomRadialDecoupler.cs" />
+    <Compile Include="Module\SSTUSelectableNodes.cs" />
+    <Compile Include="Module\SSTUSolarPanelDeployable.cs" />
+    <Compile Include="Module\SSTUSolarPanelStatic.cs" />
+    <Compile Include="Module\SSTUTextureSwitch.cs" />
+    <Compile Include="WIPModule\SSTUUpgradeTest.cs" />
+    <Compile Include="WIPModule\SSTUVesselStats.cs" />
+    <Compile Include="WIPModule\SSTUWeldingDockingPort.cs" />
+    <Compile Include="Util\AnimState.cs" />
+    <Compile Include="Util\SSTUExtensions.cs" />
+    <Compile Include="Util\FuelType.cs" />
+    <Compile Include="Util\SSTUConfigNodeUtils.cs" />
+    <Compile Include="Util\TechLimit.cs" />
+    <Compile Include="Util\SSTUUtils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(TargetPath)" "$(SolutionDir)\..\..\GameData\SSTU\Plugins\$(TargetFileName)"
+
+</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
