@@ -137,7 +137,7 @@ namespace SSTUTools
             String[] dataVals = nodeData.Split(new String[] { "," }, StringSplitOptions.None);
             position = new Vector3(SSTUUtils.safeParseFloat(dataVals[0].Trim()), SSTUUtils.safeParseFloat(dataVals[1].Trim()), SSTUUtils.safeParseFloat(dataVals[2].Trim()));
             orientation = new Vector3(SSTUUtils.safeParseFloat(dataVals[3].Trim()), SSTUUtils.safeParseFloat(dataVals[4].Trim()), SSTUUtils.safeParseFloat(dataVals[5].Trim()));
-            size = dataVals.Length > 6 ? SSTUUtils.safeParseInt(dataVals[6]) : 2;
+            size = dataVals.Length > 6 ? SSTUUtils.safeParseInt(dataVals[6]) : 4;
         }
     }
 }

@@ -565,7 +565,7 @@ namespace SSTUTools
 
             Vector3 pos = Vector3.zero;
             Vector3 orient = Vector3.up;
-            int size = 2;
+            int size = 4;
 
             bool invert = modelDefinition.shouldInvert(orientation);
             for (int i = 0; i < len; i++)
