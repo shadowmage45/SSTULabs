@@ -8,7 +8,7 @@ namespace SSTUTools
     /// <summary>
     /// Procedrually created (and adjustable/configurable) replacement for engine fairings, or any other part-attached fairing.
     /// </summary>           
-    public class SSTUNodeFairing : PartModule
+    public class SSTUNodeFairing : PartModule, IRecolorable
     {
         #region REGION - Standard KSP Config Fields
         /// <summary>
@@ -130,7 +130,8 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float guiBottomDiameter = 1.25f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true),
+         UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentTextureSet = String.Empty;
 
         [KSPField(isPersistant = true, guiName ="Colliders", guiActiveEditor = true), UI_Toggle(disabledText = "Disabled", enabledText = "Enabled", suppressEditorShipModified = true)]
@@ -139,7 +140,6 @@ namespace SSTUTools
         #endregion
 
         #region REGION - Persistent config fields
-
 
         /// <summary>
         /// Has the fairing been jettisoned?  If true, no further interaction is possible.  Only set to true by in-flight jettison actions
@@ -164,6 +164,15 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true)]
         public bool removedMass = false;
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
 
         //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
         /// <summary>
@@ -246,24 +255,24 @@ namespace SSTUTools
             }
         }
         
-        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        public void nextTextureEvent()
-        {
-            if (textureSets != null && textureSets.Length > 0)
-            {
-                TextureSet s = SSTUUtils.findNext(textureSets, m => m.name == currentTextureSet, false);
-                currentTextureSet = s.name;
-                updateTextureSet();
-            }
-            SSTUNodeFairing f;
-            int index = part.Modules.IndexOf(this);
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                f = (SSTUNodeFairing)p.Modules[index];
-                f.currentTextureSet = this.currentTextureSet;
-                f.updateTextureSet();
-            }
-        }
+        //[KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
+        //public void nextTextureEvent()
+        //{
+        //    if (textureSets != null && textureSets.Length > 0)
+        //    {
+        //        TextureSet s = SSTUUtils.findNext(textureSets, m => m.name == currentTextureSet, false);
+        //        currentTextureSet = s.name;
+        //        updateTextureSet();
+        //    }
+        //    SSTUNodeFairing f;
+        //    int index = part.Modules.IndexOf(this);
+        //    foreach (Part p in part.symmetryCounterparts)
+        //    {
+        //        f = (SSTUNodeFairing)p.Modules[index];
+        //        f.currentTextureSet = this.currentTextureSet;
+        //        f.updateTextureSet();
+        //    }
+        //}
 
         public void colliderGuiUpdated(BaseField field, object obj)
         {
@@ -340,20 +349,20 @@ namespace SSTUTools
         {
             base.OnSave(node);            
             updatePersistentDataString();
-            node.SetValue("persistentDataString", persistentDataString, true);
+            node.SetValue(nameof(persistentDataString), persistentDataString, true);
         }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
             initialize();
-            this.updateUIFloatEditControl("guiTopDiameter", minTopDiameter, maxTopDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, guiTopDiameter);
-            this.updateUIFloatEditControl("guiBottomDiameter", minBottomDiameter, maxBottomDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, guiBottomDiameter);
-            Fields["guiTopDiameter"].uiControlEditor.onFieldChanged = topDiameterUpdated;
-            Fields["guiBottomDiameter"].uiControlEditor.onFieldChanged = bottomDiameterUpdated;
-            Fields["numOfSections"].uiControlEditor.onFieldChanged = sectionsUpdated;
-            Fields["editorTransparency"].uiControlEditor.onFieldChanged = transparencyUpdated;
-            Fields["generateColliders"].uiControlEditor.onFieldChanged = colliderGuiUpdated;
+            this.updateUIFloatEditControl(nameof(guiTopDiameter), minTopDiameter, maxTopDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, guiTopDiameter);
+            this.updateUIFloatEditControl(nameof(guiBottomDiameter), minBottomDiameter, maxBottomDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, guiBottomDiameter);
+            Fields[nameof(guiTopDiameter)].uiControlEditor.onFieldChanged = topDiameterUpdated;
+            Fields[nameof(guiBottomDiameter)].uiControlEditor.onFieldChanged = bottomDiameterUpdated;
+            Fields[nameof(numOfSections)].uiControlEditor.onFieldChanged = sectionsUpdated;
+            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = transparencyUpdated;
+            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = colliderGuiUpdated;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
         }
@@ -394,7 +403,7 @@ namespace SSTUTools
             {
                 if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
                 {
-                    Events["nextTextureEvent"].active = false;
+                    //Events[nameof(nextTextureEvent)].active = false;
                 }
                 if (textureSets.Length > 0 && String.IsNullOrEmpty(currentTextureSet))
                 {
@@ -447,11 +456,28 @@ namespace SSTUTools
                 needsGuiUpdate = false;
             }
         }
-        
+
+        public string[] getSectionNames()
+        {
+            return new string[] { fairingName };
+        }
+
+        public Color[] getSectionColors(string name)
+        {
+            return new Color[] { customColor1, customColor2, customColor3 };
+        }
+
+        public void setSectionColors(string name, Color[] colors)
+        {
+            customColor1 = colors[0];
+            customColor2 = colors[1];
+            customColor3 = colors[2];
+        }
+
         #endregion
-        
+
         #region REGION - external interaction methods
-         
+
         public void updateExternal(FairingUpdateData data)
         {
             externalUpdateData = data;
@@ -459,7 +485,10 @@ namespace SSTUTools
 
         private void updateFromExternalData(FairingUpdateData eData)
         {
-            if (fairingParts == null) { MonoBehaviour.print("ERROR: Fairing parts are null for external update"); }
+            if (fairingParts == null)
+            {
+                MonoBehaviour.print("ERROR: Fairing parts are null for external update");
+            }
             foreach (SSTUNodeFairingData data in fairingParts)
             {                
                 if (eData.hasTopY && data.canAdjustTop)
@@ -606,11 +635,11 @@ namespace SSTUTools
             {
                 topAdjustEnabled = bottomAdjustEnabled = false;
             }
-            Fields["guiTopDiameter"].guiActiveEditor = topAdjustEnabled;
-            Fields["guiBottomDiameter"].guiActiveEditor = bottomAdjustEnabled;
-            Fields["numOfSections"].guiActiveEditor = currentlyEnabled && canAdjustSections;
-            Events["nextTextureEvent"].active =  currentlyEnabled && textureSets != null && textureSets.Length > 1;
-            Events["nextTextureEvent"].guiName = fairingName + " Next Texture";
+            Fields[nameof(guiTopDiameter)].guiActiveEditor = topAdjustEnabled;
+            Fields[nameof(guiBottomDiameter)].guiActiveEditor = bottomAdjustEnabled;
+            Fields[nameof(numOfSections)].guiActiveEditor = currentlyEnabled && canAdjustSections;
+            //Events[nameof(nextTextureEvent)].active =  currentlyEnabled && textureSets != null && textureSets.Length > 1;
+            //Events[nameof(nextTextureEvent)].guiName = fairingName + " Next Texture";
 
             bool enableButtonActive = false;
             if (HighLogic.LoadedSceneIsEditor)
@@ -622,11 +651,11 @@ namespace SSTUTools
                 enableButtonActive = currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
             }
             String guiActionName = HighLogic.LoadedSceneIsEditor ? (currentlyEnabled ? "Disable" : "Enable") : actionName;
-            Events["jettisonEvent"].guiName = guiActionName + " " + fairingName;
-            Actions["jettisonAction"].guiName = actionName + " " + fairingName;
-            Events["jettisonEvent"].active = Actions["jettisonAction"].active = enableButtonActive;
-            Fields["editorTransparency"].guiActiveEditor = currentlyEnabled;
-            Fields["generateColliders"].guiActiveEditor = currentlyEnabled;
+            Events[nameof(jettisonEvent)].guiName = guiActionName + " " + fairingName;
+            Actions[nameof(jettisonAction)].guiName = actionName + " " + fairingName;
+            Events[nameof(jettisonEvent)].active = Actions[nameof(jettisonAction)].active = enableButtonActive;
+            Fields[nameof(editorTransparency)].guiActiveEditor = currentlyEnabled;
+            Fields[nameof(generateColliders)].guiActiveEditor = currentlyEnabled;
         }
 
         private void updateOpacity()
