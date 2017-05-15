@@ -311,6 +311,7 @@ namespace SSTUTools
             foreach (Transform child in tr)
             {
                 if (child == null) { continue; }
+                child.parent = null;
                 GameObject.Destroy(child.gameObject);
             }
         }

@@ -270,6 +270,7 @@ namespace SSTUTools
             initialize();
             this.updateUIFloatEditControl(nameof(guiTopDiameter), minTopDiameter, maxTopDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, guiTopDiameter);
             this.updateUIFloatEditControl(nameof(guiBottomDiameter), minBottomDiameter, maxBottomDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, guiBottomDiameter);
+
             Fields[nameof(guiTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m =>
@@ -319,6 +320,7 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m => 
                 {
+                    m.editorTransparency = editorTransparency;
                     m.updateOpacity();
                 });
             };
@@ -327,15 +329,8 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m=> 
                 {
-                    int len = m.fairingParts.Length;
-                    for (int i = 0; i < len; i++)
-                    {
-                        if (m.fairingParts[i].generateColliders != m.generateColliders)
-                        {
-                            m.fairingParts[i].generateColliders = true;
-                            needsRebuilt = true;
-                        }
-                    }
+                    m.generateColliders = generateColliders;
+                    m.updateColliders();
                 });
             };
 
@@ -590,6 +585,9 @@ namespace SSTUTools
             }
 
             textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
+            string[] names = SSTUUtils.getNames(textureSets, m => m.name);
+            string[] titles = SSTUUtils.getNames(textureSets, m => m.title);
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
             TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
@@ -625,6 +623,19 @@ namespace SSTUTools
             Fields[nameof(generateColliders)].guiActiveEditor = currentlyEnabled;
         }
 
+        private void updateColliders()
+        {
+            int len = fairingParts.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (fairingParts[i].generateColliders != generateColliders)
+                {
+                    fairingParts[i].generateColliders = generateColliders;
+                    needsRebuilt = true;
+                }
+            }
+        }
+
         private void updateOpacity()
         {
             float opacity = editorTransparency && HighLogic.LoadedSceneIsEditor ? 0.25f : 1f;
@@ -643,14 +654,14 @@ namespace SSTUTools
             if (fairingForceDisabled)
             {
                 currentlyEnabled = false;
-                enableFairingRender(false);
+                destroyFairing();
             }
             else if (!fairingEnabled || fairingJettisoned)
             {
                 currentlyEnabled = false;
                 if (!renderingJettisonedFairing)
                 {
-                    enableFairingRender(false);
+                    destroyFairing();
                 }
             }
             else
@@ -661,8 +672,12 @@ namespace SSTUTools
                 }
                 else//manual fairing
                 {
-                    currentlyEnabled = true;
-                    enableFairingRender(true);
+                    //TODO -- wtf goes here?
+                    if (!currentlyEnabled)
+                    {
+                        currentlyEnabled = true;
+                        needsRebuilt = true;
+                    }
                 }
             }
             updateShieldingStatus();
@@ -689,7 +704,7 @@ namespace SSTUTools
                     }
                 }
                 currentlyEnabled = true;
-                enableFairingRender(true);
+                needsRebuilt = true;
                 prevAttachedPart = triggerPart;
             }
             else
@@ -711,8 +726,7 @@ namespace SSTUTools
                 }
                 if (!renderingJettisonedFairing)
                 {
-                    enableFairingRender(false);
-                }
+                    destroyFairing();                }
             }
         }
         
@@ -752,17 +766,6 @@ namespace SSTUTools
             fairingEnabled = enable;
             needsStatusUpdate = true;
         }
-        
-        private void enableFairingRender(bool val)
-        {
-            currentRenderEnabled = val;
-            foreach (FairingData fd in fairingParts)
-            {
-                fd.enableRenders(val);
-                fd.enableColliders(generateColliders);
-            }
-            updateOpacity();
-        }
 
         private void buildFairing()
         {
@@ -792,9 +795,19 @@ namespace SSTUTools
         
         private void rebuildFairing()
         {
+            destroyFairing();
             buildFairing();
-            enableFairingRender(currentRenderEnabled);
             updateOpacity();
+            updateColliders();
+        }
+
+        public void destroyFairing()
+        {
+            int len = fairingParts.Length;
+            for (int i = 0; i < len; i++)
+            {
+                fairingParts[i].destroyFairing();
+            }
         }
         
         private void updateTextureSet()

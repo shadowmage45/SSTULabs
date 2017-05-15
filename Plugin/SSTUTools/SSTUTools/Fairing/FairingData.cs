@@ -80,13 +80,9 @@ namespace SSTUTools
             fairingBase.jettisonPanels(part, jettisonForce, jettisonDirection, fairingJettisonMass / (float)numOfSections);
         }
 
-        public void enableRenders(bool val)
+        public void destroyFairing()
         {
-            fairingBase.enableRender(val);
-            if (val && HighLogic.LoadedSceneIsEditor)
-            {
-                fairingBase.setOpacity(0.25f);
-            }
+            fairingBase.destroyFairing();
         }
 
         public void enableColliders(bool val)

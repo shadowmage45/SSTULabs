@@ -166,9 +166,9 @@ namespace SSTUTools
             return profile[0].radius;
         }
 
-        public void enableRender(bool val)
+        public void destroyFairing()
         {
-            SSTUUtils.enableRenderRecursive(rootObject.transform, val);
+            SSTUUtils.destroyChildren(rootObject.transform);
         }
 
         public void enableColliders(bool val)
