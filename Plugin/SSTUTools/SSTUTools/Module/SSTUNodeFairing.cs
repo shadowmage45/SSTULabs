@@ -122,11 +122,11 @@ namespace SSTUTools
         [KSPField(guiActiveEditor = true, guiName = "Sections", isPersistant = true), UI_FloatRange(minValue = 1f, stepIncrement = 1f, maxValue = 6f, suppressEditorShipModified = true)]
         public float numOfSections = 1;
 
-        [KSPField(guiName = "Top Diam", guiActiveEditor = true),
+        [KSPField(guiName = "Top Diam", guiActiveEditor = true, isPersistant = true),
          UI_FloatEdit(sigFigs =4, suppressEditorShipModified = true)]
         public float guiTopDiameter = 1.25f;
 
-        [KSPField(guiName = "Bot. Diam", guiActiveEditor = true),
+        [KSPField(guiName = "Bot. Diam", guiActiveEditor = true, isPersistant = true),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float guiBottomDiameter = 1.25f;
 
@@ -188,8 +188,6 @@ namespace SSTUTools
 
         #region REGION - private working vars, not user editable
         private float prevNumOfSections = 0;
-        private float prevTopDiameter;
-        private float prevBottomDiameter;
 
         private bool currentlyEnabled = false;
         private bool renderingJettisonedFairing = false;
@@ -254,85 +252,6 @@ namespace SSTUTools
                 f.updateGuiState();
             }
         }
-        
-        //[KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        //public void nextTextureEvent()
-        //{
-        //    if (textureSets != null && textureSets.Length > 0)
-        //    {
-        //        TextureSet s = SSTUUtils.findNext(textureSets, m => m.name == currentTextureSet, false);
-        //        currentTextureSet = s.name;
-        //        updateTextureSet();
-        //    }
-        //    SSTUNodeFairing f;
-        //    int index = part.Modules.IndexOf(this);
-        //    foreach (Part p in part.symmetryCounterparts)
-        //    {
-        //        f = (SSTUNodeFairing)p.Modules[index];
-        //        f.currentTextureSet = this.currentTextureSet;
-        //        f.updateTextureSet();
-        //    }
-        //}
-
-        public void colliderGuiUpdated(BaseField field, object obj)
-        {
-            foreach (FairingData fd in fairingParts)
-            {
-                if (fd.generateColliders != generateColliders)
-                {
-                    fd.generateColliders = this.generateColliders;
-                    needsRebuilt = true;
-                }
-            }
-        }
-
-        public void transparencyUpdated(BaseField field, object obj)
-        {
-            updateOpacity();
-        }
-
-        public void topDiameterUpdated(BaseField field, object obj)
-        {
-            float radius = guiTopDiameter * 0.5f;
-            foreach (SSTUNodeFairingData data in fairingParts)
-            {
-                if (data.canAdjustTop)
-                {
-                    if (data.topRadius != radius)
-                    {
-                        needsRebuilt = true;
-                        data.topRadius = radius;
-                    }
-                }
-            }
-            prevTopDiameter = guiTopDiameter;
-        }
-
-        public void bottomDiameterUpdated(BaseField field, object obj)
-        {
-            float radius = guiBottomDiameter * 0.5f;
-            foreach (SSTUNodeFairingData data in fairingParts)
-            {
-                if (data.canAdjustBottom)
-                {
-                    if (data.bottomRadius != radius)
-                    {
-                        needsRebuilt = true;
-                        data.bottomRadius = radius;
-                    }
-                }
-            }
-            prevBottomDiameter = guiBottomDiameter;
-        }
-
-        public void sectionsUpdated(BaseField field, object obj)
-        {
-            if (numOfSections != prevNumOfSections)
-            {
-                needsRebuilt = true;
-                prevNumOfSections = numOfSections;
-            }
-        }
 
         #endregion
 
@@ -358,11 +277,78 @@ namespace SSTUTools
             initialize();
             this.updateUIFloatEditControl(nameof(guiTopDiameter), minTopDiameter, maxTopDiameter, topDiameterIncrement*2, topDiameterIncrement, topDiameterIncrement*0.05f, true, guiTopDiameter);
             this.updateUIFloatEditControl(nameof(guiBottomDiameter), minBottomDiameter, maxBottomDiameter, bottomDiameterIncrement*2, bottomDiameterIncrement, bottomDiameterIncrement*0.05f, true, guiBottomDiameter);
-            Fields[nameof(guiTopDiameter)].uiControlEditor.onFieldChanged = topDiameterUpdated;
-            Fields[nameof(guiBottomDiameter)].uiControlEditor.onFieldChanged = bottomDiameterUpdated;
-            Fields[nameof(numOfSections)].uiControlEditor.onFieldChanged = sectionsUpdated;
-            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = transparencyUpdated;
-            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = colliderGuiUpdated;
+            Fields[nameof(guiTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.guiTopDiameter = guiTopDiameter;
+                    float radius = m.guiTopDiameter * 0.5f;
+                    int len = m.fairingParts.Length;
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (m.fairingParts[i].canAdjustTop && m.fairingParts[i].topRadius != radius)
+                        {
+                            m.fairingParts[i].topRadius = radius;
+                            m.needsRebuilt = true;
+                        }
+                    }
+                });
+            };
+            Fields[nameof(guiBottomDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.guiBottomDiameter = guiBottomDiameter;
+                    float radius = m.guiBottomDiameter * 0.5f;
+                    int len = m.fairingParts.Length;
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (m.fairingParts[i].canAdjustBottom && m.fairingParts[i].bottomRadius != radius)
+                        {
+                            m.fairingParts[i].bottomRadius = radius;
+                            m.needsRebuilt = true;
+                        }
+                    }
+                });
+            };
+            Fields[nameof(numOfSections)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    m.numOfSections = numOfSections;
+                    needsRebuilt = true;
+                });
+            };
+            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    m.updateOpacity();
+                });
+            };
+            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m=> 
+                {
+                    int len = m.fairingParts.Length;
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (m.fairingParts[i].generateColliders != m.generateColliders)
+                        {
+                            m.fairingParts[i].generateColliders = true;
+                            needsRebuilt = true;
+                        }
+                    }
+                });
+            };
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    m.currentTextureSet = currentTextureSet;
+                    m.updateTextureSet();
+                });
+            };
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
         }
@@ -399,18 +385,7 @@ namespace SSTUTools
             updateEditorFields(false);//update cached editor gui field values for diameter, sections, etc.
             buildFairing();//construct fairing from cached/persistent/default data
             needsStatusUpdate = true;
-            if (textureSets != null)
-            {
-                if (textureSets.Length <= 1)//only a single, (or no) texture set selected/avaialable
-                {
-                    //Events[nameof(nextTextureEvent)].active = false;
-                }
-                if (textureSets.Length > 0 && String.IsNullOrEmpty(currentTextureSet))
-                {
-                    TextureSet s = textureSets[0];
-                    currentTextureSet = textureSets[0].name;
-                }
-            }
+            updateTextureSet();
         }
 
         private void updatePersistentDataString()
@@ -565,17 +540,17 @@ namespace SSTUTools
                 if (data.canAdjustBottom && data.bottomRadius < bottomRadius) { data.bottomRadius = bottomRadius; }
                 if (data.numOfSections < numOfSections) { data.numOfSections = (int)Math.Round(numOfSections); }
             }
-            prevTopDiameter = guiTopDiameter = topRadius * 2f;
-            prevBottomDiameter = guiBottomDiameter = bottomRadius * 2f;
+            guiTopDiameter = topRadius * 2f;
+            guiBottomDiameter = bottomRadius * 2f;
             prevNumOfSections = numOfSections;
             if (forceUpdate)
             {
-                this.updateUIFloatEditControl("guiTopDiameter", topRadius * 2f);
-                this.updateUIFloatEditControl("guiBottomDiameter", bottomRadius * 2f);
+                this.updateUIFloatEditControl(nameof(guiTopDiameter), topRadius * 2f);
+                this.updateUIFloatEditControl(nameof(guiBottomDiameter), bottomRadius * 2f);
             }
             //re-seat the values due to stock firing more update events in the middle of force-updating the widgets
-            prevTopDiameter = guiTopDiameter = topRadius * 2f;
-            prevBottomDiameter = guiBottomDiameter = bottomRadius * 2f;
+            guiTopDiameter = topRadius * 2f;
+            guiBottomDiameter = bottomRadius * 2f;
         }        
 
         //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
@@ -840,7 +815,7 @@ namespace SSTUTools
                     TextureSetMaterialData d = t.textureData[0];
                     foreach (SSTUNodeFairingData f in fairingParts)
                     {
-                        d.enable(f.fairingBase.rootObject, new Color[] { Color.clear, Color.clear, Color.clear });
+                        d.enable(f.fairingBase.rootObject, getSectionColors(string.Empty));
                     }
                 }
             }
