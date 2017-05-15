@@ -159,12 +159,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool fairingForceDisabled = false;
 
-        /// <summary>
-        /// Persistent tracking of if the fairing has removed its 'jettision mass' from the parent part (and added it to its attached part, if a node-attached fairing)
-        /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool removedMass = false;
-
         [KSPField(isPersistant = true)]
         public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
 
@@ -187,7 +181,6 @@ namespace SSTUTools
         #endregion
 
         #region REGION - private working vars, not user editable
-        private float prevNumOfSections = 0;
 
         private bool currentlyEnabled = false;
         private bool renderingJettisonedFairing = false;
@@ -294,6 +287,7 @@ namespace SSTUTools
                     }
                 });
             };
+
             Fields[nameof(guiBottomDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m =>
@@ -311,6 +305,7 @@ namespace SSTUTools
                     }
                 });
             };
+
             Fields[nameof(numOfSections)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m => 
@@ -319,6 +314,7 @@ namespace SSTUTools
                     needsRebuilt = true;
                 });
             };
+
             Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m => 
@@ -326,6 +322,7 @@ namespace SSTUTools
                     m.updateOpacity();
                 });
             };
+
             Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m=> 
@@ -341,6 +338,7 @@ namespace SSTUTools
                     }
                 });
             };
+
             Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m => 
@@ -349,6 +347,7 @@ namespace SSTUTools
                     m.updateTextureSet();
                 });
             };
+
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             GameEvents.onVesselWasModified.Add(new EventData<Vessel>.OnEvent(onVesselModified));
         }
@@ -542,15 +541,11 @@ namespace SSTUTools
             }
             guiTopDiameter = topRadius * 2f;
             guiBottomDiameter = bottomRadius * 2f;
-            prevNumOfSections = numOfSections;
             if (forceUpdate)
             {
-                this.updateUIFloatEditControl(nameof(guiTopDiameter), topRadius * 2f);
-                this.updateUIFloatEditControl(nameof(guiBottomDiameter), bottomRadius * 2f);
+                this.updateUIFloatEditControl(nameof(guiTopDiameter), guiTopDiameter);
+                this.updateUIFloatEditControl(nameof(guiBottomDiameter), guiBottomDiameter);
             }
-            //re-seat the values due to stock firing more update events in the middle of force-updating the widgets
-            guiTopDiameter = topRadius * 2f;
-            guiBottomDiameter = bottomRadius * 2f;
         }        
 
         //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
@@ -613,9 +608,6 @@ namespace SSTUTools
             Fields[nameof(guiTopDiameter)].guiActiveEditor = topAdjustEnabled;
             Fields[nameof(guiBottomDiameter)].guiActiveEditor = bottomAdjustEnabled;
             Fields[nameof(numOfSections)].guiActiveEditor = currentlyEnabled && canAdjustSections;
-            //Events[nameof(nextTextureEvent)].active =  currentlyEnabled && textureSets != null && textureSets.Length > 1;
-            //Events[nameof(nextTextureEvent)].guiName = fairingName + " Next Texture";
-
             bool enableButtonActive = false;
             if (HighLogic.LoadedSceneIsEditor)
             {
