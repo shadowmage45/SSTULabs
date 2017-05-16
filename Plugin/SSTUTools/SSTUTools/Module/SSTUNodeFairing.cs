@@ -209,8 +209,6 @@ namespace SSTUTools
         private bool needsRebuilt = false;
 
         private bool needsGuiUpdate = false;
-
-        private bool currentRenderEnabled = true;
                 
         #endregion
 
@@ -651,7 +649,7 @@ namespace SSTUTools
         /// </summary>
         private void updateFairingStatus()
         {
-            if (fairingForceDisabled)
+            if (fairingForceDisabled)//disabled through external plugin
             {
                 currentlyEnabled = false;
                 destroyFairing();

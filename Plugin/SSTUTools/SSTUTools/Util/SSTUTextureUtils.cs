@@ -162,6 +162,7 @@ namespace SSTUTools
         {
             ConfigNode[] setNodes = GameDatabase.Instance.GetConfigNodes("SSTU_TEXTURESET");
             ConfigNode setNode = Array.Find(setNodes, m => m.GetStringValue("name") == name);
+            if (setNode == null) { MonoBehaviour.print("ERROR: Could not find texture set for name: "+name); }
             return new TextureSet(setNode);
         }
     }
