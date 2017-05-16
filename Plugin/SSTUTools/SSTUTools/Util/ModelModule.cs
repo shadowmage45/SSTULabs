@@ -147,7 +147,7 @@ namespace SSTUTools
                 m.applyTextureSet(m.textureSet, defaultColors);
                 if (textureField != null)
                 {
-                    m.partModule.updateUIChooseOptionControl(textureField.name, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetNames(), true, m.textureSet);                    
+                    m.partModule.updateUIChooseOptionControl(textureField.name, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetTitles(), true, m.textureSet);                    
                 }
             });
         }
