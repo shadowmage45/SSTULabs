@@ -73,14 +73,14 @@ namespace SSTUTools
             }
         }
 
-        public void reparentFairing(Transform newParent, bool nest)
+        public void reparentFairing(Transform newParent)
         {
-            rootObject.transform.parent = newParent;
-            if (nest)
+            int len = panelPivots.Length;
+            for (int i = 0; i < len; i++)
             {
-                rootObject.transform.localPosition = Vector3.zero;
-                rootObject.transform.rotation = newParent.rotation;
+                panelPivots[i].transform.parent = newParent;
             }
+            panelPivots = new GameObject[0];
         }
 
         public void recreateModels()
@@ -128,7 +128,8 @@ namespace SSTUTools
 
         public void setPanelRotations(float angle)
         {
-            for (int i = 0; i < panels; i++)
+            int len = panelPivots.Length;
+            for (int i = 0; i < len; i++)
             {
                 panelPivots[i].transform.localRotation = defaultPivotLocalRotations[i];
                 panelPivots[i].transform.Rotate(new Vector3(1, 0, 0), angle, Space.Self);
@@ -169,11 +170,21 @@ namespace SSTUTools
         public void destroyFairing()
         {
             SSTUUtils.destroyChildren(rootObject.transform);
+            panelPivots = new GameObject[0];
         }
 
         public void enableColliders(bool val)
         {
             SSTUUtils.enableColliderRecursive(rootObject.transform, val);
+        }
+
+        public void enableTextureSet(string name, Color[] userColors)
+        {
+            TextureSet set = TextureSet.getGlobalTextureSet(name);
+            if (set != null)
+            {
+                set.enable(rootObject, userColors);
+            }
         }
     }
 }

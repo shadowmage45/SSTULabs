@@ -181,10 +181,7 @@ namespace SSTUTools
         #endregion
 
         #region REGION - private working vars, not user editable
-
-        private bool currentlyEnabled = false;
-        private bool renderingJettisonedFairing = false;
-        
+                
         //the current fairing panels
         private SSTUNodeFairingData[] fairingParts;
 
@@ -199,11 +196,12 @@ namespace SSTUTools
         
         //material used for procedural fairing, created from the texture references in the texture set definitions
         private Material fairingMaterial;
-
-        private TextureSet[] textureSets;
         
         private Part prevAttachedPart = null;
 
+        /// <summary>
+        /// Flipped to true when the fairing should check/update attach node status, due to editor/vessel modified events and/or startup/init.
+        /// </summary>
         private bool needsStatusUpdate = false;
         
         private bool needsRebuilt = false;
@@ -360,6 +358,7 @@ namespace SSTUTools
         public void onEditorVesselModified(ShipConstruct ship)
         {
             if (!HighLogic.LoadedSceneIsEditor) { return; }
+            MonoBehaviour.print("Editor vessel modified, marking for fairing update");
             needsStatusUpdate = true;
         }
 
@@ -375,7 +374,8 @@ namespace SSTUTools
                 updateFromExternalData(externalUpdateData);
             }
             updateEditorFields(false);//update cached editor gui field values for diameter, sections, etc.
-            buildFairing();//construct fairing from cached/persistent/default data
+            //TODO -- how to tell if fairing should be initially built? As if it is a new part in the editor?
+            //TODO -- a one-time 'initialized' field?
             needsStatusUpdate = true;
             updateTextureSet();
         }
@@ -404,12 +404,10 @@ namespace SSTUTools
             }
             if (needsStatusUpdate)
             {
-                needsStatusUpdate = false;
                 updateFairingStatus();
             }
             if (needsRebuilt)
             {
-                updateFairingStatus();
                 rebuildFairing();
                 updatePersistentDataString();
                 updateEditorFields(false);
@@ -500,6 +498,7 @@ namespace SSTUTools
                 fairingForceDisabled = false;//default to NOT force disabled
             }
             updateEditorFields(true);
+            needsStatusUpdate = true;
             needsGuiUpdate = true;
             externalUpdateData = null;
         }
@@ -597,6 +596,7 @@ namespace SSTUTools
         {
             bool topAdjustEnabled = enableTopDiameterControls && canAdjustTop;
             bool bottomAdjustEnabled = enableBottomDiameterControls && canAdjustBottom;
+            bool currentlyEnabled = fairingParts[0].fairingEnabled();
             if (fairingForceDisabled || !currentlyEnabled || fairingJettisoned)//adjustment not possible if faring jettisoned
             {
                 topAdjustEnabled = bottomAdjustEnabled = false;
@@ -649,38 +649,18 @@ namespace SSTUTools
         /// </summary>
         private void updateFairingStatus()
         {
-            if (fairingForceDisabled)//disabled through external plugin
+            needsStatusUpdate = false;
+            MonoBehaviour.print("Fairing node status update.");
+            if (fairingForceDisabled || fairingJettisoned || !fairingEnabled)
             {
-                currentlyEnabled = false;
+                MonoBehaviour.print("Already force disabled or jettisoned: " + fairingForceDisabled + " : " + fairingJettisoned + " : "+fairingEnabled);
                 destroyFairing();
             }
-            else if (!fairingEnabled || fairingJettisoned)
+            else if(!String.IsNullOrEmpty(nodeName))//should watch node
             {
-                currentlyEnabled = false;
-                if (!renderingJettisonedFairing)
-                {
-                    destroyFairing();
-                }
+                MonoBehaviour.print("Checking node: " + nodeName);
+                updateStatusForNode();
             }
-            else
-            {
-                if (!String.IsNullOrEmpty(nodeName))//should watch node
-                {
-                    updateStatusForNode();
-                }
-                else//manual fairing
-                {
-                    //TODO -- wtf goes here?
-                    if (!currentlyEnabled)
-                    {
-                        currentlyEnabled = true;
-                        needsRebuilt = true;
-                    }
-                }
-            }
-            updateShieldingStatus();
-            updateOpacity();
-            needsGuiUpdate = true;
         }
 
         private void updateStatusForNode()
@@ -701,30 +681,33 @@ namespace SSTUTools
                         }
                     }
                 }
-                currentlyEnabled = true;
-                needsRebuilt = true;
+                if (!fairingParts[0].fairingEnabled())
+                {
+                    needsRebuilt = true;
+                }
+                MonoBehaviour.print("Spawning for node: " + nodeName + " bot: " + fairingPos + " for part: " + triggerPart);
                 prevAttachedPart = triggerPart;
+            }
+            else if (prevAttachedPart != null)
+            {
+                MonoBehaviour.print("Not spawning for node, checking if should remove/jettison.");
+                if (HighLogic.LoadedSceneIsFlight)
+                {
+                    if (canAutoJettison)
+                    {
+                        MonoBehaviour.print("Jettisoning from decouple fairing");
+                        jettisonFairing();
+                    }
+                }
+                else
+                {
+                    MonoBehaviour.print("Removing fairing");
+                    destroyFairing();
+                }
             }
             else
             {
-                currentlyEnabled = false;
-                if (prevAttachedPart != null)//had part previously attached, jettison it
-                {
-                    if (HighLogic.LoadedSceneIsFlight)
-                    {
-                        if (canAutoJettison)
-                        {
-                            jettisonFairing();
-                        }
-                        else
-                        {
-                            renderingJettisonedFairing = true;
-                        }
-                    }
-                }
-                if (!renderingJettisonedFairing)
-                {
-                    destroyFairing();                }
+                destroyFairing();
             }
         }
         
@@ -736,16 +719,16 @@ namespace SSTUTools
         {
             foreach (SSTUNodeFairingData data in fairingParts)
             {
-                data.fairingBase.reparentFairing(newParent.transform, false);
+                data.fairingBase.reparentFairing(newParent.transform);
             }
         }
         
         private void jettisonFairing()
         {
-            renderingJettisonedFairing = true;
-            if (numOfSections == 1 && prevAttachedPart!=null)
+            if (numOfSections == 1 && prevAttachedPart != null)
             {
                 reparentFairing(prevAttachedPart);
+                SSTUModInterop.onPartGeometryUpdate(prevAttachedPart, true);//update other parts highlight renderers, to add the new fairing bits to it.
             }
             else
             {
@@ -754,15 +737,26 @@ namespace SSTUTools
                     data.jettisonPanels(part);
                 }
             }
+            prevAttachedPart = null;
             fairingJettisoned = true;
-            currentlyEnabled = false;
-            SSTUModInterop.onPartGeometryUpdate(part, true);
+            destroyFairing();//cleanup any leftover bits in fairing containers
+            SSTUModInterop.onPartGeometryUpdate(part, true);//update highlight renderers before they freak out and crash the game
         }
         
         private void enableFairing(bool enable)
         {
-            fairingEnabled = enable;
-            needsStatusUpdate = true;
+            if (enable != fairingEnabled)
+            {
+                fairingEnabled = enable;
+                if (enable)
+                {
+                    needsRebuilt = true;
+                }
+                else
+                {
+                    destroyFairing();
+                }
+            }
         }
 
         private void buildFairing()
@@ -795,7 +789,7 @@ namespace SSTUTools
         {
             destroyFairing();
             buildFairing();
-            updateOpacity();
+            updateTextureSet();
             updateColliders();
         }
 
@@ -810,17 +804,10 @@ namespace SSTUTools
         
         private void updateTextureSet()
         {
-            if (textureSets != null && !String.IsNullOrEmpty(currentTextureSet))
+            int len = fairingParts.Length;
+            for (int i = 0; i < len; i++)
             {
-                TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
-                if (t != null)
-                {
-                    TextureSetMaterialData d = t.textureData[0];
-                    foreach (SSTUNodeFairingData f in fairingParts)
-                    {
-                        d.enable(f.fairingBase.rootObject, getSectionColors(string.Empty));
-                    }
-                }
+                fairingParts[i].fairingBase.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
             }
             updateOpacity();
         }
@@ -894,7 +881,7 @@ namespace SSTUTools
             SSTUAirstreamShield shield = part.GetComponent<SSTUAirstreamShield>();
             if (shield != null)
             {
-                if (currentlyEnabled)
+                if (fairingParts[0].fairingEnabled())
                 {
                     string name = fairingName + "" + part.Modules.IndexOf(this);
                     float top=float.NegativeInfinity, bottom=float.PositiveInfinity, topRad=0, botRad=0;

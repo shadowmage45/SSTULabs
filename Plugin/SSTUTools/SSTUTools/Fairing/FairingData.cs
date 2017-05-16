@@ -71,17 +71,12 @@ namespace SSTUTools
             fairingBase.setMaterial(material);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? editorOpacity : 1.0f);
             enabled = true;
-        } 
-
-        public void recreateFairing(Material material, float editorOpacity)
-        {
-            destroyFairing();
-            createFairing(material, editorOpacity);
         }
 
         public void jettisonPanels(Part part)
         {
             fairingBase.jettisonPanels(part, jettisonForce, jettisonDirection, fairingJettisonMass / (float)numOfSections);
+            fairingBase.destroyFairing();
             enabled = false;
         }
 
