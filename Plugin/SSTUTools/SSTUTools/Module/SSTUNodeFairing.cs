@@ -204,7 +204,19 @@ namespace SSTUTools
         /// </summary>
         private bool needsStatusUpdate = false;
         
-        private bool needsRebuilt = false;
+        private bool needsRebuilt
+        {
+            get
+            {
+                return nrb;
+            }
+            set
+            {
+                nrb = value;
+            }
+        }
+
+        private bool nrb = false;
 
         private bool needsGuiUpdate = false;
                 
@@ -222,24 +234,19 @@ namespace SSTUTools
         [KSPEvent(guiName = "Jettison Fairing", guiActive = true, guiActiveEditor = true)]
         public void jettisonEvent()
         {
-            if (HighLogic.LoadedSceneIsEditor)
+            this.actionWithSymmetry(m => 
             {
-                enableFairing(!fairingEnabled);
-            }
-            else
-            {
-                jettisonFairing();
-            }
-            updateGuiState();
-            SSTUNodeFairing f;
-            int index = part.Modules.IndexOf(this);
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                f = (SSTUNodeFairing)p.Modules[index];
-                if (HighLogic.LoadedSceneIsEditor) { f.enableFairing(fairingEnabled); }
-                else { f.jettisonFairing(); }
-                f.updateGuiState();
-            }
+                m.fairingEnabled = fairingEnabled;
+                if (HighLogic.LoadedSceneIsEditor)
+                {
+                    m.enableFairing(m.fairingEnabled);
+                }
+                else
+                {
+                    m.jettisonFairing();
+                }
+                m.updateGuiState();
+            });
         }
 
         #endregion
@@ -308,7 +315,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.numOfSections = numOfSections;
-                    needsRebuilt = true;
+                    m.needsRebuilt = true;
                 });
             };
 
@@ -364,6 +371,7 @@ namespace SSTUTools
 
         private void initialize()
         {
+            MonoBehaviour.print("SSTUNodeFairing start init");
             if (rendersToRemove != null && rendersToRemove.Length > 0)
             {
                 SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(rendersToRemove));
@@ -378,6 +386,7 @@ namespace SSTUTools
             //TODO -- a one-time 'initialized' field?
             needsStatusUpdate = true;
             updateTextureSet();
+            MonoBehaviour.print("SSTUNodeFairing end init");
         }
 
         private void updatePersistentDataString()
@@ -408,6 +417,7 @@ namespace SSTUTools
             }
             if (needsRebuilt)
             {
+                MonoBehaviour.print("Rebuilding fairing...");
                 rebuildFairing();
                 updatePersistentDataString();
                 updateEditorFields(false);
@@ -450,17 +460,19 @@ namespace SSTUTools
 
         private void updateFromExternalData(FairingUpdateData eData)
         {
+            MonoBehaviour.print("Updating from external data!");
             if (fairingParts == null)
             {
                 MonoBehaviour.print("ERROR: Fairing parts are null for external update");
             }
+            bool enabled = fairingParts[0].fairingEnabled();
             foreach (SSTUNodeFairingData data in fairingParts)
             {                
                 if (eData.hasTopY && data.canAdjustTop)
                 {
                     if (eData.topY != data.topY)
                     {
-                        needsRebuilt = true;
+                        needsRebuilt = enabled;
                     }
                     data.topY = eData.topY;
                 }
@@ -468,7 +480,7 @@ namespace SSTUTools
                 {
                     if (eData.bottomY != data.bottomY)
                     {
-                        needsRebuilt = true;
+                        needsRebuilt = enabled;
                     }
                     data.bottomY = eData.bottomY;
                 }
@@ -476,7 +488,7 @@ namespace SSTUTools
                 {
                     if (eData.topRadius != data.topRadius)
                     {
-                        needsRebuilt = true;
+                        needsRebuilt = enabled;
                     }
                     data.topRadius = eData.topRadius;
                 }
@@ -484,7 +496,7 @@ namespace SSTUTools
                 {
                     if (eData.bottomRadius != data.bottomRadius)
                     {
-                        needsRebuilt = true;
+                        needsRebuilt = enabled;
                     }
                     data.bottomRadius = eData.bottomRadius;
                 }
@@ -496,6 +508,11 @@ namespace SSTUTools
             else
             {
                 fairingForceDisabled = false;//default to NOT force disabled
+            }
+            if (enabled && fairingForceDisabled)
+            {
+                needsRebuilt = false;
+                destroyFairing();
             }
             updateEditorFields(true);
             needsStatusUpdate = true;
@@ -574,14 +591,8 @@ namespace SSTUTools
                     fairingParts[i].loadPersistence(datas[i]);
                 }
             }
-
-            if (fairingMaterial != null)
-            {
-                Material.Destroy(fairingMaterial);
-                fairingMaterial = null;
-            }
-
-            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
+            //TODO - setup cleaner method for initializing GUI and material, as this generates a ton of garbage
+            TextureSet[] textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
             string[] names = SSTUUtils.getNames(textureSets, m => m.name);
             string[] titles = SSTUUtils.getNames(textureSets, m => m.title);
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
@@ -685,28 +696,33 @@ namespace SSTUTools
                 {
                     needsRebuilt = true;
                 }
-                MonoBehaviour.print("Spawning for node: " + nodeName + " bot: " + fairingPos + " for part: " + triggerPart);
+                MonoBehaviour.print("Spawning for node: " + nodeName + " bot: " + fairingPos + " for part: " + triggerPart+" rebuild: "+needsRebuilt);
                 prevAttachedPart = triggerPart;
             }
             else if (prevAttachedPart != null)
             {
-                MonoBehaviour.print("Not spawning for node, checking if should remove/jettison.");
+                MonoBehaviour.print("Was previously attached, checking if should remove/jettison.");
                 if (HighLogic.LoadedSceneIsFlight)
                 {
                     if (canAutoJettison)
                     {
-                        MonoBehaviour.print("Jettisoning from decouple fairing");
+                        MonoBehaviour.print("Jettisoning from decouple +canAutoJettison");
                         jettisonFairing();
+                    }
+                    else
+                    {
+                        MonoBehaviour.print("Manual fairing detected, not removing; no-op");
                     }
                 }
                 else
                 {
-                    MonoBehaviour.print("Removing fairing");
+                    MonoBehaviour.print("Removing fairing due to being in editor scene.");
                     destroyFairing();
                 }
             }
             else
             {
+                MonoBehaviour.print("Negative node, and was not attached, destroying if present.");
                 destroyFairing();
             }
         }
@@ -717,9 +733,10 @@ namespace SSTUTools
         /// <param name="newParent"></param>
         private void reparentFairing(Part newParent)
         {
-            foreach (SSTUNodeFairingData data in fairingParts)
+            int len = fairingParts.Length;
+            for (int i = 0; i < len; i++)
             {
-                data.fairingBase.reparentFairing(newParent.transform);
+                fairingParts[i].fairingBase.reparentFairing(newParent.transform.FindRecursive("model"));
             }
         }
         
@@ -739,23 +756,21 @@ namespace SSTUTools
             }
             prevAttachedPart = null;
             fairingJettisoned = true;
+            fairingEnabled = false;
             destroyFairing();//cleanup any leftover bits in fairing containers
             SSTUModInterop.onPartGeometryUpdate(part, true);//update highlight renderers before they freak out and crash the game
         }
         
         private void enableFairing(bool enable)
         {
-            if (enable != fairingEnabled)
+            fairingEnabled = enable;
+            if (enable && !fairingParts[0].fairingEnabled())
             {
-                fairingEnabled = enable;
-                if (enable)
-                {
-                    needsRebuilt = true;
-                }
-                else
-                {
-                    destroyFairing();
-                }
+                needsRebuilt = true;
+            }
+            else if(!enable)
+            {
+                destroyFairing();
             }
         }
 
