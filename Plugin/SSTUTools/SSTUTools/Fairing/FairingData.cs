@@ -28,6 +28,7 @@ namespace SSTUTools
         public Vector3 jettisonDirection = new Vector3(0, 0, 1);//default jettison direction is positive Z (outward)
         public bool generateColliders = true;
         public int facesPerCollider = 1;
+        private bool enabled = false;
 
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node, GameObject root)
@@ -55,6 +56,7 @@ namespace SSTUTools
             jettisonForce = node.GetFloatValue("jettisonForce", jettisonForce);
             jettisonDirection = node.GetVector3("jettisonDirection", jettisonDirection);
             fairingName = node.GetStringValue("name", fairingName);
+            enabled = false;
         }
 
         public void createFairing(Material material, float editorOpacity)
@@ -68,31 +70,35 @@ namespace SSTUTools
             fairingBase.generateFairing();
             fairingBase.setMaterial(material);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? editorOpacity : 1.0f);
+            enabled = true;
         } 
 
         public void recreateFairing(Material material, float editorOpacity)
         {
+            destroyFairing();
             createFairing(material, editorOpacity);
         }
 
         public void jettisonPanels(Part part)
         {
             fairingBase.jettisonPanels(part, jettisonForce, jettisonDirection, fairingJettisonMass / (float)numOfSections);
+            enabled = false;
         }
 
         public void destroyFairing()
         {
             fairingBase.destroyFairing();
-        }
-
-        public void enableColliders(bool val)
-        {
-
+            enabled = false;
         }
 
         public void setMaterial(Material mat)
         {
             fairingBase.setMaterial(mat);
+        }
+
+        public bool fairingEnabled()
+        {
+            return enabled;
         }
     }
 }
