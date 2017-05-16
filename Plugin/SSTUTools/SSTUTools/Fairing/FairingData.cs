@@ -30,6 +30,8 @@ namespace SSTUTools
         public int facesPerCollider = 1;
         private bool enabled = false;
 
+        internal bool fairingEnabled { get { return enabled; } }
+
         //to be called on initial prefab part load; populate the instance with the default values from the input node
         public virtual void load(ConfigNode node, GameObject root)
         {
@@ -91,10 +93,6 @@ namespace SSTUTools
             fairingBase.setMaterial(mat);
         }
 
-        public bool fairingEnabled()
-        {
-            return enabled;
-        }
     }
 }
 
