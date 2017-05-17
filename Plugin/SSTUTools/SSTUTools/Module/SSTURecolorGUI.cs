@@ -51,5 +51,24 @@ namespace SSTUTools
         {
             return "This part has configurable colors.";
         }
+
+        public override void OnStart(StartState state)
+        {
+            base.OnStart(state);
+            GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(editorVesselModified));
+        }
+
+        public void OnDestroy()
+        {
+            GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(editorVesselModified));
+        }
+
+        public void editorVesselModified(ShipConstruct ship)
+        {
+            if (gui != null)
+            {
+                gui.refreshGui();
+            }
+        }
     }
 }

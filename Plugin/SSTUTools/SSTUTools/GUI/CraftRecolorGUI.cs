@@ -55,6 +55,11 @@ namespace SSTUTools
             InputLockManager.RemoveControlLock("SSTURecolorGUILock");
         }
 
+        internal void refreshGui()
+        {
+            //TODO
+        }
+
         public void OnGUI()
         {
             //apparently trying to initialize this during OnAwake/etc fails, as unity is dumb and requires that it be done during an OnGUI call
