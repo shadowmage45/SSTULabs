@@ -67,6 +67,15 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified =true)]
         public String currentTextureSet = String.Empty;
 
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -292,6 +301,24 @@ namespace SSTUTools
             updateDecouplerForce();
         }
 
+        public string[] getSectionNames()
+        {
+            return new string[] { "Decoupler" };
+        }
+
+        public Color[] getSectionColors(string name)
+        {
+            return new Color[] { customColor1, customColor2, customColor3 };
+        }
+
+        public void setSectionColors(string name, Color[] colors)
+        {
+            customColor1 = colors[0];
+            customColor2 = colors[1];
+            customColor3 = colors[2];
+            updateTextureSet();
+        }
+
         #endregion
 
         #region model updating/generation/regeneration
@@ -392,6 +419,11 @@ namespace SSTUTools
                 dc.Fields["ejectionForce"].guiName = "Ejection Force";
                 dc.Fields["ejectionForce"].guiActiveEditor = true;
             }
+        }
+
+        private void updateTextureSet()
+        {
+            model.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
         }
 
         #endregion

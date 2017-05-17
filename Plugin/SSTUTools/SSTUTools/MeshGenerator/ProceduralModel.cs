@@ -46,26 +46,14 @@ namespace SSTUTools
             currentMaterial = mat;
             updateModelMaterial();
         }
-        
-        public void setMainTexture(String texName)
+
+        public void enableTextureSet(string name, Color[] userColors)
         {
-            if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set diffuse texture: "+texName); }
-            currentMaterial.mainTexture = GameDatabase.Instance.GetTexture(texName, false);
-            updateModelMaterial();
-        }
-        
-        public void setNormalTexture(String texName)
-        {
-            if (currentMaterial == null) { MonoBehaviour.print("ERROR: Material was null when trying to set normal texture: " + texName); }
-            if (String.IsNullOrEmpty(texName))
+            TextureSet s = TextureSet.getGlobalTextureSet(name);
+            if (s != null)
             {
-                currentMaterial.SetTexture("_BumpMap", null);
+                s.enable(root, userColors);
             }
-            else
-            {
-                currentMaterial.SetTexture("_BumpMap", GameDatabase.Instance.GetTexture(texName, false));
-            }
-            updateModelMaterial();
         }
         
         protected void updateModelMaterial()
