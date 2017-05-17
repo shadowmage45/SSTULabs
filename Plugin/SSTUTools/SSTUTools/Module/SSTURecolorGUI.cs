@@ -67,7 +67,7 @@ namespace SSTUTools
         {
             if (gui != null)
             {
-                gui.refreshGui();
+                gui.refreshGui(part);
             }
         }
     }

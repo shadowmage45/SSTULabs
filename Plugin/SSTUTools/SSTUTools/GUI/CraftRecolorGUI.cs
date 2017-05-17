@@ -35,12 +35,7 @@ namespace SSTUTools
             ControlTypes controls = ControlTypes.ALLBUTCAMERAS;
             controls = controls & ~ControlTypes.TWEAKABLES;
             InputLockManager.SetControlLock(controls, "SSTURecolorGUILock");
-            List<IRecolorable> mods = part.FindModulesImplementing<IRecolorable>();
-            foreach (IRecolorable mod in mods)
-            {
-                ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
-                moduleRecolorData.Add(data);
-            }
+            setupForPart(part);
             setupSectionData(moduleRecolorData[0].sectionData[0], 0);
         }
 
@@ -55,9 +50,41 @@ namespace SSTUTools
             InputLockManager.RemoveControlLock("SSTURecolorGUILock");
         }
 
-        internal void refreshGui()
+        internal void refreshGui(Part part)
         {
-            //TODO
+            moduleRecolorData.Clear();
+            int moduleIndex = -1;
+            int sectionIndex = -1;
+            int len = moduleRecolorData.Count;
+            for (int i = 0; i < len; i++)
+            {
+                int l2 = moduleRecolorData[i].sectionData.Length;
+                for (int k = 0; k < l2; k++)
+                {
+                    if (moduleRecolorData[i].sectionData[k] == sectionData)
+                    {
+                        moduleIndex = i;
+                        sectionIndex = k;
+                    }
+                }
+                if (moduleIndex >= 0) { break; }
+            }
+            setupForPart(part);
+            if (moduleIndex < 0 || sectionIndex < 0)
+            {
+                MonoBehaviour.print("ERROR: Module/Section index < 0 -- " +moduleIndex+" / "+sectionIndex);
+            }
+            setupSectionData(moduleRecolorData[moduleIndex].sectionData[sectionIndex], 0);
+        }
+
+        private void setupForPart(Part part)
+        {
+            List<IRecolorable> mods = part.FindModulesImplementing<IRecolorable>();
+            foreach (IRecolorable mod in mods)
+            {
+                ModuleRecolorData data = new ModuleRecolorData((PartModule)mod, mod);
+                moduleRecolorData.Add(data);
+            }
         }
 
         public void OnGUI()
