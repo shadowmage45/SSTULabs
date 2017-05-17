@@ -37,6 +37,7 @@ namespace SSTUTools
             this.panels = numberOfPanels;
             this.thickness = thickness;
             setNumberOfPanels(panels, false);
+            panelPivots = new GameObject[0];
         }
 
         public void setNumberOfPanels(int panels, bool recreate)
@@ -169,7 +170,19 @@ namespace SSTUTools
 
         public void destroyFairing()
         {
-            SSTUUtils.destroyChildren(rootObject.transform);
+            if (panelPivots != null)
+            {
+                int len = panelPivots.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (panelPivots[i] != null)
+                    {
+                        panelPivots[i].transform.parent = null;
+                        GameObject.Destroy(panelPivots[i]);
+                        panelPivots[i] = null;
+                    }
+                }
+            }
             panelPivots = new GameObject[0];
         }
 
