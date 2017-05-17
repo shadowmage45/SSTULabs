@@ -8,6 +8,21 @@ namespace SSTUTools
 {
     public static class SSTUTextureUtils
     {
+
+        private static Dictionary<string, TextureSet> globalTextureSets = new Dictionary<string, TextureSet>();
+
+        public static void loadTextureSets()
+        {
+            globalTextureSets.Clear();
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_TEXTURESET");
+            int len = nodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                TextureSet n = new TextureSet(nodes[i]);
+                globalTextureSets.Add(n.name, n);
+            }
+        }
+
         public static void updateModelMaterial(Transform root, string[] excludeMeshes, string[] meshes, string shader, ShaderProperty[] props)
         {
             //black-list, do everything not specified in excludeMeshes array
@@ -71,6 +86,42 @@ namespace SSTUTools
                 props[i].apply(m);
             }
         }
+
+        public static TextureSet getTextureSet(string name)
+        {
+            return globalTextureSets.ContainsKey(name) ? globalTextureSets[name] : null;
+        }
+
+        public static string[] getTextureSetNames(ConfigNode[] nodes)
+        {
+            List<string> names = new List<string>();
+            string name;
+            TextureSet set;
+            int len = nodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                name = nodes[i].GetStringValue("name");
+                set = getTextureSet(name);
+                if (set != null) { names.Add(set.name); }
+            }
+            return names.ToArray();
+        }
+
+        public static string[] getTextureSetTitles(ConfigNode[] nodes)
+        {
+            List<string> names = new List<string>();
+            string name;
+            TextureSet set;
+            int len = nodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                name = nodes[i].GetStringValue("name");
+                set = getTextureSet(name);
+                if (set != null) { names.Add(set.title); }
+            }
+            return names.ToArray();
+        }
+
     }
 
     public class TextureSet
@@ -160,11 +211,9 @@ namespace SSTUTools
         /// <returns></returns>
         public static TextureSet getGlobalTextureSet(string name)
         {
-            ConfigNode[] setNodes = GameDatabase.Instance.GetConfigNodes("SSTU_TEXTURESET");
-            ConfigNode setNode = Array.Find(setNodes, m => m.GetStringValue("name") == name);
-            if (setNode == null) { MonoBehaviour.print("ERROR: Could not find texture set for name: "+name); }
-            return new TextureSet(setNode);
+            return SSTUTextureUtils.getTextureSet(name);
         }
+
     }
 
     public class TextureSetMaterialData

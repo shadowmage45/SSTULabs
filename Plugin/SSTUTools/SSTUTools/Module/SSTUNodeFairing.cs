@@ -618,12 +618,15 @@ namespace SSTUTools
                     fairingParts[i].loadPersistence(datas[i]);
                 }
             }
-            //TODO - setup cleaner method for initializing GUI and material, as this generates a ton of garbage
-            TextureSet[] textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
-            string[] names = SSTUUtils.getNames(textureSets, m => m.name);
-            string[] titles = SSTUUtils.getNames(textureSets, m => m.title);
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
+            if (Array.Find(names, m => m == currentTextureSet) == null)
+            {
+                currentTextureSet = names[0];
+            }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            TextureSet t = Array.Find(textureSets, m => m.name == currentTextureSet);
+            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
 
