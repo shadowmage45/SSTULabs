@@ -198,6 +198,10 @@ namespace SSTUTools
             {
                 set.enable(rootObject, userColors);
             }
+            else
+            {
+                MonoBehaviour.print("ERROR: " + name + " is not a valid texture set for fairing.");
+            }
         }
     }
 }
