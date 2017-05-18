@@ -2,7 +2,7 @@ using UnityEngine;
 using System;
 namespace SSTUTools
 {
-    public class SSTUProceduralDecoupler : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUProceduralDecoupler : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
         #region fields
                 
@@ -84,14 +84,12 @@ namespace SSTUTools
         private float volume = 0;
 
         private ProceduralCylinderModel model;
+        private Material fairingMaterial;
         
         private float prevDiameter;
         private float prevHeight;
         private float prevThickness;
         private bool prevCollider;
-
-        private TextureSet currentTextureSetData;
-        private TextureSet[] textureSetData;
                 
         #endregion
 
@@ -99,10 +97,11 @@ namespace SSTUTools
 
         public void onTextureUpdated(BaseField field, object obj)
         {
-            if ((string)obj != currentTextureSet)
+            this.actionWithSymmetry(m =>
             {
-                setTextureFromEditor(currentTextureSet, true);
-            }
+                m.currentTextureSet = currentTextureSet;
+                m.updateTextureSet();
+            });
         }
         
         public void onHeightUpdated(BaseField field, object obj)
@@ -198,28 +197,6 @@ namespace SSTUTools
             }
         }
 
-        private void setTextureFromEditor(String newTexture, bool updateSymmetry)
-        {
-            currentTextureSet = newTexture;
-            currentTextureSetData = Array.Find(textureSetData, m => m.name == newTexture);
-            if (currentTextureSetData == null)
-            {
-                currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.name;
-                newTexture = currentTextureSet;
-            }
-            currentTextureSetData.enable(model.root, new Color[] { Color.clear, Color.clear, Color.clear });
-            if (updateSymmetry)
-            {
-                SSTUProceduralDecoupler dc;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    dc = p.GetComponent<SSTUProceduralDecoupler>();
-                    dc.setTextureFromEditor(newTexture, false);
-                }
-            }
-        }
-
         #endregion
 
         #region KSP Lifecycle and KSP Overrides
@@ -259,7 +236,6 @@ namespace SSTUTools
             Fields["thickness"].uiControlEditor.onFieldChanged = onThicknessUpdated;
             Fields["hollowCollider"].uiControlEditor.onFieldChanged = onColliderUpdated;
             Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
-            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
         }
 
         private void loadConfigData()
@@ -267,20 +243,19 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
+            TextureSet[] textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
             int len = textureSetData.Length;
-            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
+            TextureSet currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.name;
             }
-            string[] textureSetNames = new string[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureSetNames[i] = textureSetData[i].name;
-            }
-            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
+            fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
+            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
+            string[] textureSetNames = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            string[] titles = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, titles, true, currentTextureSet);
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
@@ -354,7 +329,7 @@ namespace SSTUTools
             model.topUV = uvs.getArea("top");
             model.bottomUV = uvs.getArea("top");
             setModelParameters();
-            model.setMaterial(currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial"));
+            model.setMaterial(fairingMaterial);
             model.createModel();
             model.setParent(modelBase);
             updatePhysicalAttributes();
