@@ -268,7 +268,7 @@ namespace SSTUTools
             }
             else
             {
-                customColors = new Color[] { Color.white, Color.white, Color.white };
+                customColors = new Color[0];
             }
         }
 
