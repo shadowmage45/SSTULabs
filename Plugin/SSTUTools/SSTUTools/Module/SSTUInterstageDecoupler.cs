@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools.Module
 {
-    class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier
+    class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier, IRecolorable
     {
         [KSPField]
         public String modelName = "SSTU/Assets/SC-ENG-ULLAGE-A";
@@ -146,6 +146,15 @@ namespace SSTUTools.Module
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
 
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -155,9 +164,6 @@ namespace SSTUTools.Module
 
         private float modifiedMass;
         private float modifiedCost;
-
-        private TextureSet currentTextureSetData;
-        private TextureSet[] textureSetData;
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
         private InterstageDecouplerEngine[] engineModels;
@@ -191,21 +197,13 @@ namespace SSTUTools.Module
             this.forEachSymmetryCounterpart(module => module.autoDecouple = this.autoDecouple);
         }
 
-        [KSPEvent(guiName = "Next Texture", guiActiveEditor = true)]
-        public void nextTextureEvent()
-        {
-            TextureSet next = SSTUUtils.findNext(textureSetData, m => m.name == currentTextureSet, false);
-            currentTextureSet = next.name;
-            onTextureUpdated(null, null);
-        }
-
         public void onTextureUpdated(BaseField field, object obj)
         {
-            textureWasUpdated();
+            updateTextureSet();
             this.forEachSymmetryCounterpart(module =>
             {
                 module.currentTextureSet = this.currentTextureSet;
-                module.textureWasUpdated();
+                module.updateTextureSet();
             });
         }
         
@@ -295,17 +293,6 @@ namespace SSTUTools.Module
             updateDragCubes();
         }
 
-        private void textureWasUpdated()
-        {
-            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
-            if (currentTextureSetData == null)
-            {
-                currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.name;
-            }
-            currentTextureSetData.enable(fairingBase.rootObject, new Color[] { Color.clear, Color.clear, Color.clear });
-        }
-
         #endregion ENDREGION - GUI Interaction
 
         public override void OnLoad(ConfigNode node)
@@ -330,7 +317,6 @@ namespace SSTUTools.Module
             Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = onTransparencyUpdated;
             Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = onCollidersUpdated;
             Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
-            Fields[nameof(currentTextureSet)].guiActiveEditor = textureSetData.Length > 1;
             Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = onEngineScaleUpdated;
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
@@ -397,29 +383,46 @@ namespace SSTUTools.Module
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
+        //IRecolorable override
+        public string[] getSectionNames()
+        {
+            return new string[] { "Decoupler" };
+        }
+
+        //IRecolorable override
+        public Color[] getSectionColors(string name)
+        {
+            return new Color[] { customColor1, customColor2, customColor3 };
+        }
+
+        //IRecolorable override
+        public void setSectionColors(string name, Color[] colors)
+        {
+            customColor1 = colors[0];
+            customColor2 = colors[1];
+            customColor3 = colors[2];
+            updateTextureSet();
+        }
+
         private void initialize()
         {
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
-            currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
+            TextureSet[] textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
+            TextureSet currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.name;
             }
-            int len = textureSetData.Length;
-            string[] textureSetNames = new string[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureSetNames[i] = textureSetData[i].name;
-            }
-            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
-
-            TextureSetMaterialData data = currentTextureSetData.textureData[0];
-            fairingMaterial = data.createMaterial("SSTUFairingMaterial");
+            string[] names = SSTUTextureUtils.getTextureSetNames(node.GetNodes("TEXTURESET"));
+            string[] titles = SSTUTextureUtils.getTextureSetTitles(node.GetNodes("TEXTURESET"));
+            this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
+            Fields[nameof(currentTextureSet)].guiActiveEditor = textureSetData.Length > 1;
+            
+            fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
 
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 
@@ -604,7 +607,12 @@ namespace SSTUTools.Module
         {
             return currentBottomDiameter / defaultModelScale * currentEngineScale;
         }
-        
+
+        private void updateTextureSet()
+        {
+            fairingBase.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
+        }
+
         private class InterstageDecouplerEngine
         {
             Transform model;
