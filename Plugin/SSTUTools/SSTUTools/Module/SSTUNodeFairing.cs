@@ -500,6 +500,7 @@ namespace SSTUTools
 
         private void updateFromExternalData(FairingUpdateData eData)
         {
+            MonoBehaviour.print("Updating fairing from external interaction ");
             if (fairingParts == null)
             {
                 MonoBehaviour.print("ERROR: Fairing parts are null for external update");
@@ -530,6 +531,7 @@ namespace SSTUTools
                     }
                     data.topRadius = eData.topRadius;
                     guiTopDiameter = data.topRadius * 2f;
+                    MonoBehaviour.print("Set top rad: " + eData.topRadius);
                 }
                 if (eData.hasBottomRad && data.canAdjustBottom)
                 {
@@ -539,6 +541,7 @@ namespace SSTUTools
                     }
                     data.bottomRadius = eData.bottomRadius;
                     guiBottomDiameter = data.bottomRadius * 2f;
+                    MonoBehaviour.print("Set bot rad: " + eData.bottomRadius);
                 }
             }
             if (eData.hasEnable)
@@ -690,7 +693,7 @@ namespace SSTUTools
             if (shouldSpawnFairingForNode(out watchedNode, out triggerPart, out fairingPos))
             {
                 MonoBehaviour.print("Triggering (re)build from node attachment");
-                needsRebuilt = !fairingCreated;
+                needsRebuilt = needsRebuilt || !fairingCreated;
                 if (snapToNode)
                 {
                     foreach (SSTUNodeFairingData data in fairingParts)
@@ -781,7 +784,7 @@ namespace SSTUTools
 
         private void buildFairing()
         {
-            MonoBehaviour.print("Building Fairing");
+            MonoBehaviour.print("Building Fairing "+guiTopDiameter+" : "+guiBottomDiameter);
             needsRebuilt = false;
             fairingCreated = true;
             int len = fairingParts.Length;            
@@ -789,14 +792,16 @@ namespace SSTUTools
             {
                 for (int i = 0; i < len; i++)
                 {
-                    if (fairingParts[i].canAdjustTop)
+                    MonoBehaviour.print("pt t/b " + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
+                    if (fairingParts[i].canAdjustTop && canAdjustTop)
                     {
                         fairingParts[i].topRadius = guiTopDiameter * 0.5f;
                     }
-                    if (fairingParts[i].canAdjustBottom)
+                    if (fairingParts[i].canAdjustBottom && canAdjustBottom)
                     {
                         fairingParts[i].bottomRadius = guiBottomDiameter * 0.5f;
                     }
+                    MonoBehaviour.print("pt t/b 2" + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
                 }
             }
             for (int i = 0; i < len; i++)
