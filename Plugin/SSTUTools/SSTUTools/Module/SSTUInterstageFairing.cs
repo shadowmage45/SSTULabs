@@ -185,6 +185,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
 
+        [KSPField(isPersistant = true)]
+        public bool initializedColors = false;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -243,7 +246,7 @@ namespace SSTUTools
             this.actionWithSymmetry(m =>
             {
                 m.currentTextureSet = currentTextureSet;
-                m.updateTextureSet();
+                m.updateTextureSet(!SSTUGameSettings.persistRecolor());
             });
         }
 
@@ -450,7 +453,7 @@ namespace SSTUTools
             customColor1 = colors[0];
             customColor2 = colors[1];
             customColor3 = colors[2];
-            updateTextureSet();
+            updateTextureSet(false);
         }
 
         #endregion
@@ -599,7 +602,7 @@ namespace SSTUTools
                 fairingBase.setMaterial(fairingMaterial);
                 if (HighLogic.LoadedSceneIsEditor && editorTransparency) { setPanelOpacity(0.25f); }
                 else { setPanelOpacity(1.0f); }
-                updateTextureSet();
+                updateTextureSet(false);
             }
         }
 
@@ -649,12 +652,22 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
             string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
-            if (Array.Find(names, m => m == currentTextureSet) == null)
+            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            if (t == null)
             {
                 currentTextureSet = names[0];
+                t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+                initializedColors = false;
+            }
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                Color[] cs = t.maskColors;
+                customColor1 = cs[0];
+                customColor2 = cs[1];
+                customColor3 = cs[2];
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
             
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
@@ -746,9 +759,17 @@ namespace SSTUTools
             }
         }
 
-        private void updateTextureSet()
+        private void updateTextureSet(bool useDefaults)
         {
-            fairingBase.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
+            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            fairingBase.enableTextureSet(currentTextureSet, colors);
+            if (useDefaults)
+            {
+                customColor1 = colors[0];
+                customColor2 = colors[1];
+                customColor3 = colors[2];
+            }
         }
 
         #endregion

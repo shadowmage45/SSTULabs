@@ -76,6 +76,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
 
+        [KSPField(isPersistant = true)]
+        public bool initializedColors = false;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -100,7 +103,7 @@ namespace SSTUTools
             this.actionWithSymmetry(m =>
             {
                 m.currentTextureSet = currentTextureSet;
-                m.updateTextureSet();
+                m.updateTextureSet(!SSTUGameSettings.persistRecolor());
             });
         }
         
@@ -211,6 +214,7 @@ namespace SSTUTools
                 loadConfigData();
                 updateEditorFields();
                 prepModel();
+                updateTextureSet(true);
             }
         }
 
@@ -236,6 +240,7 @@ namespace SSTUTools
             Fields["thickness"].uiControlEditor.onFieldChanged = onThicknessUpdated;
             Fields["hollowCollider"].uiControlEditor.onFieldChanged = onColliderUpdated;
             Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            updateTextureSet(false);
         }
 
         private void loadConfigData()
@@ -250,11 +255,20 @@ namespace SSTUTools
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.name;
+                initializedColors = false;
+            }
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                Color[] cs = currentTextureSetData.maskColors;
+                customColor1 = cs[0];
+                customColor2 = cs[1];
+                customColor3 = cs[2];
             }
             fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
             Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
             string[] textureSetNames = SSTUTextureUtils.getTextureSetNames(textureNodes);
-            string[] titles = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, titles, true, currentTextureSet);
         }
 
@@ -291,7 +305,7 @@ namespace SSTUTools
             customColor1 = colors[0];
             customColor2 = colors[1];
             customColor3 = colors[2];
-            updateTextureSet();
+            updateTextureSet(false);
         }
 
         #endregion
@@ -396,9 +410,17 @@ namespace SSTUTools
             }
         }
 
-        private void updateTextureSet()
+        private void updateTextureSet(bool useDefaults)
         {
-            model.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
+            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            model.enableTextureSet(currentTextureSet, colors);
+            if (useDefaults)
+            {
+                customColor1 = colors[0];
+                customColor2 = colors[1];
+                customColor3 = colors[2];
+            }
         }
 
         #endregion

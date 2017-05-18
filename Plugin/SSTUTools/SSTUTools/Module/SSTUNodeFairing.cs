@@ -177,6 +177,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
 
+        [KSPField(isPersistant = true)]
+        public bool initializedColors = false;
+
         //this one is quite hacky; storing ConfigNode data in the string, because the -fields- load fine on revert-to-vab (and everywhere), but the config-node data is not present in all situations
         /// <summary>
         /// Persistent data from fairing parts; stores their current top/bottom positions and radius data
@@ -362,7 +365,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.currentTextureSet = currentTextureSet;
-                    m.updateTextureSet();
+                    m.updateTextureSet(!SSTUGameSettings.persistRecolor());
                 });
             };
 
@@ -423,7 +426,7 @@ namespace SSTUTools
             {
                 needsStatusUpdate = true;
             }
-            updateTextureSet();
+            updateTextureSet(false);
             //MonoBehaviour.print("NodeFairingInit End: " + fairingCreated + " :: " + fairingForceDisabled + " :: " + fairingJettisoned + " :: " + fairingEnabled);
         }
 
@@ -486,7 +489,7 @@ namespace SSTUTools
             customColor1 = colors[0];
             customColor2 = colors[1];
             customColor3 = colors[2];
-            updateTextureSet();
+            updateTextureSet(false);
         }
 
         #endregion
@@ -624,12 +627,22 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
             string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
-            if (Array.Find(names, m => m == currentTextureSet) == null)
+            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            if (t == null)
             {
                 currentTextureSet = names[0];
+                t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+                initializedColors = false;
+            }
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                Color[] css = t.maskColors;
+                customColor1 = css[0];
+                customColor2 = css[1];
+                customColor3 = css[2];
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
 
@@ -818,7 +831,7 @@ namespace SSTUTools
         {
             destroyFairing();
             buildFairing();
-            updateTextureSet();
+            updateTextureSet(false);
             updateColliders();
         }
 
@@ -837,12 +850,20 @@ namespace SSTUTools
             fairingCreated = false;
         }
         
-        private void updateTextureSet()
+        private void updateTextureSet(bool useDefaults)
         {
+            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             int len = fairingParts.Length;
             for (int i = 0; i < len; i++)
             {
-                fairingParts[i].fairingBase.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
+                fairingParts[i].fairingBase.enableTextureSet(currentTextureSet, colors);
+            }
+            if (useDefaults)
+            {
+                customColor1 = colors[0];
+                customColor2 = colors[1];
+                customColor3 = colors[2];
             }
             updateOpacity();
         }

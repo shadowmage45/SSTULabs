@@ -155,6 +155,9 @@ namespace SSTUTools.Module
         [KSPField(isPersistant = true)]
         public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
 
+        [KSPField(isPersistant = true)]
+        public bool initializedColors = false;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -199,11 +202,10 @@ namespace SSTUTools.Module
 
         public void onTextureUpdated(BaseField field, object obj)
         {
-            updateTextureSet();
-            this.forEachSymmetryCounterpart(module =>
+            this.actionWithSymmetry(m => 
             {
-                module.currentTextureSet = this.currentTextureSet;
-                module.updateTextureSet();
+                m.currentTextureSet = currentTextureSet;
+                m.updateTextureSet(!SSTUGameSettings.persistRecolor());
             });
         }
         
@@ -401,7 +403,7 @@ namespace SSTUTools.Module
             customColor1 = colors[0];
             customColor2 = colors[1];
             customColor3 = colors[2];
-            updateTextureSet();
+            updateTextureSet(false);
         }
 
         private void initialize()
@@ -416,9 +418,18 @@ namespace SSTUTools.Module
             {
                 currentTextureSetData = textureSetData[0];
                 currentTextureSet = currentTextureSetData.name;
+                initializedColors = false;
             }
-            string[] names = SSTUTextureUtils.getTextureSetNames(node.GetNodes("TEXTURESET"));
-            string[] titles = SSTUTextureUtils.getTextureSetTitles(node.GetNodes("TEXTURESET"));
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                Color[] cs = currentTextureSetData.maskColors;
+                customColor1 = cs[0];
+                customColor2 = cs[1];
+                customColor3 = cs[2];
+            }
+            string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
             this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
             Fields[nameof(currentTextureSet)].guiActiveEditor = textureSetData.Length > 1;
             
@@ -434,6 +445,7 @@ namespace SSTUTools.Module
             fairingBase = new InterstageDecouplerModel(root.gameObject, collider.gameObject, 0.25f, cylinderSides, numberOfPanels, wallThickness);
             updateEditorFields();
             buildFairing();
+            updateTextureSet(false);
             updateNodePositions(false);
             if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
             {
@@ -608,9 +620,17 @@ namespace SSTUTools.Module
             return currentBottomDiameter / defaultModelScale * currentEngineScale;
         }
 
-        private void updateTextureSet()
+        private void updateTextureSet(bool useDefaults)
         {
-            fairingBase.enableTextureSet(currentTextureSet, getSectionColors(string.Empty));
+            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            fairingBase.enableTextureSet(currentTextureSet, colors);
+            if (useDefaults)
+            {
+                customColor1 = colors[0];
+                customColor2 = colors[1];
+                customColor3 = colors[2];
+            }
         }
 
         private class InterstageDecouplerEngine
