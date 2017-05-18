@@ -25,6 +25,8 @@ namespace SSTUTools
         private static Color[] storedPattern;
         private static Color storedColor;
 
+        public static Part openPart;
+
         public void Awake()
         {
             id = GetInstanceID();
@@ -37,6 +39,7 @@ namespace SSTUTools
             InputLockManager.SetControlLock(controls, "SSTURecolorGUILock");
             setupForPart(part);
             setupSectionData(moduleRecolorData[0].sectionData[0], 0);
+            openPart = part;
         }
 
         /// <summary>
@@ -47,12 +50,13 @@ namespace SSTUTools
             closeSectionGUI();
             moduleRecolorData.Clear();
             sectionData = null;
+            openPart = null;
             InputLockManager.RemoveControlLock("SSTURecolorGUILock");
         }
 
         internal void refreshGui(Part part)
         {
-            moduleRecolorData.Clear();
+            if (part != openPart) { return; }
             int moduleIndex = -1;
             int sectionIndex = -1;
             int len = moduleRecolorData.Count;
@@ -69,6 +73,7 @@ namespace SSTUTools
                 }
                 if (moduleIndex >= 0) { break; }
             }
+            moduleRecolorData.Clear();
             setupForPart(part);
             if (moduleIndex < 0 || sectionIndex < 0)
             {

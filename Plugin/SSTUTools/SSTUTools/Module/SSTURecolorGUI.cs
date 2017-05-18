@@ -37,6 +37,18 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="part"></param>
+        public void onPartGeometryChanged(Part part)
+        {
+            if (part == this.part && gui!=null)
+            {
+                gui.refreshGui(part);
+            }
+        }
+
         public void recolorClose()
         {
             if (guiObject != null)
