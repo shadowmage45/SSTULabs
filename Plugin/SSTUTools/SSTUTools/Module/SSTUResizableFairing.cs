@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    class SSTUResizableFairing : PartModule, IPartMassModifier, IPartCostModifier
+    class SSTUResizableFairing : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
     {
 
         /// <summary>
@@ -62,20 +62,31 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = "Fairings-White";
 
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+
+        [KSPField(isPersistant = true)]
+        public bool initializedColors = false;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
         private float prevDiameter;
         private ModuleProceduralFairing mpf = null;
-        private TextureSet[] textureSets;
 
         public void onTextureUpdated(BaseField field, object obj)
         {
-            if ((string)obj != currentTextureSet)
+            this.actionWithSymmetry(m => 
             {
-                updateTexture(currentTextureSet);
-                foreach (Part p in part.symmetryCounterparts) { p.GetComponent<SSTUResizableFairing>().updateTexture(currentTextureSet); }
-            }
+                m.currentTextureSet = currentTextureSet;
+                m.updateTextureSet(!SSTUGameSettings.persistRecolor());
+            });
         }
 
         public void onDiameterUpdated(BaseField field, object obj)
@@ -107,22 +118,34 @@ namespace SSTUTools
             base.OnStart(state);
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
-            int len = textureSets.Length;
-            string[] textureSetNames = new string[len];
-            for (int i = 0; i < len; i++)
+
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
+            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
+            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            if (t == null)
             {
-                textureSetNames[i] = textureSets[i].name;
+                currentTextureSet = names[0];
+                t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+                initializedColors = false;
             }
-            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, textureSetNames, true, currentTextureSet);
-            
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                Color[] cs = t.maskColors;
+                customColor1 = cs[0];
+                customColor2 = cs[1];
+                customColor3 = cs[2];
+            }
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
+            Fields[nameof(currentTextureSet)].guiActiveEditor = names.Length > 1;
+
             updateModelScale();
-            updateTexture(currentTextureSet);
+            updateTextureSet(false);
             updateNodePositions(false);
             this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
             Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
             Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
-            Fields["currentTextureSet"].guiActiveEditor = textureSets.Length > 1;
             updateEditorFields();
         }
 
@@ -139,7 +162,7 @@ namespace SSTUTools
         {
             mpf = part.GetComponent<ModuleProceduralFairing>();
             updateModelScale();//make sure to update the mpf after it is initialized
-            updateTexture(currentTextureSet);
+            updateTextureSet(false);
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
@@ -155,6 +178,24 @@ namespace SSTUTools
         }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "Decoupler" };
+        }
+
+        public Color[] getSectionColors(string name)
+        {
+            return new Color[] { customColor1, customColor2, customColor3 };
+        }
+
+        public void setSectionColors(string name, Color[] colors)
+        {
+            customColor1 = colors[0];
+            customColor2 = colors[1];
+            customColor3 = colors[2];
+            updateTextureSet(false);
+        }
 
         private void updateEditorFields()
         {
@@ -189,26 +230,27 @@ namespace SSTUTools
             SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
         }
 
-        private void updateTexture(String name)
+        private void updateTextureSet(bool useDefaults)
         {
-            currentTextureSet = name;
-            if (mpf != null)
+            if (mpf == null) { return; }
+            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            Material fm = mpf.FairingMaterial;
+            if (fm != null)
             {
-                TextureSet set = Array.Find(textureSets, m => m.name == currentTextureSet);
-                if (set != null)
-                {
-                    TextureSetMaterialData data = set.textureData[0];
-                    mpf.TextureURL = data.getPropertyValue("_MainTex");
-                    Texture t = SSTUUtils.findTexture(mpf.TextureURL, false);
-                    
-                    mpf.FairingMaterial.mainTexture = t;
-                    foreach (var f in mpf.Panels)
-                    {
-                        f.mat.mainTexture = t;
-                        SSTUUtils.setMainTextureRecursive(f.go.transform, t);                        
-                    }
-                }
+                s.textureData[0].enable(fm, colors);
+            }
+            foreach (ProceduralFairings.FairingPanel fp in mpf.Panels)
+            {
+                s.enable(fp.go, colors);
+            }
+            if (useDefaults)
+            {
+                customColor1 = colors[0];
+                customColor2 = colors[1];
+                customColor3 = colors[2];
             }
         }
+
     }
 }

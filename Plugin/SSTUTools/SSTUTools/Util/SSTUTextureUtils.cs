@@ -65,16 +65,20 @@ namespace SSTUTools
 
         public static void updateRenderer(Renderer rend, string shader, ShaderProperty[] props)
         {
-            Material m = rend.material;
+            updateMaterial(rend.material, shader, props);
+        }
+
+        public static void updateMaterial(Material mat, string shader, ShaderProperty[] props)
+        {
             if (!String.IsNullOrEmpty(shader))
             {
                 Shader s = SSTUDatabase.getShader(shader);
-                if (s != null && s != m.shader)
+                if (s != null && s != mat.shader)
                 {
-                    m.shader = s;
+                    mat.shader = s;
                 }
             }
-            updateMaterialProperties(m, props);
+            updateMaterialProperties(mat, props);
         }
 
         public static void updateMaterialProperties(Material m, ShaderProperty[] props)
@@ -249,6 +253,18 @@ namespace SSTUTools
                 ps.Add(new ShaderPropertyColor("_MaskColor"+(i+1), userColors[i]));
             }            
             SSTUTextureUtils.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
+        }
+
+        public void enable(Material mat, Color[] userColors)
+        {
+            List<ShaderProperty> ps = new List<ShaderProperty>();
+            ps.AddRange(props);
+            int len = userColors.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ps.Add(new ShaderPropertyColor("_MaskColor" + (i + 1), userColors[i]));
+            }
+            SSTUTextureUtils.updateMaterial(mat, shader, ps.ToArray());
         }
 
         public string getPropertyValue(string name)
