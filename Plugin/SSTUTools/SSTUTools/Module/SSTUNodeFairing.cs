@@ -866,6 +866,7 @@ namespace SSTUTools
                 customColor3 = colors[2];
             }
             updateOpacity();
+            SSTUModInterop.onPartTextureUpdated(part);
         }
 
         private bool shouldSpawnFairingForNode(out AttachNode watchedNode, out Part triggerPart, out float fairingPos)

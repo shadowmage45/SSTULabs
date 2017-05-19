@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUFlagDecal : PartModule
+    public class SSTUFlagDecal : PartModule, IPartGeometryUpdated
     {
 
         [KSPField]
@@ -52,7 +52,8 @@ namespace SSTUTools
             updateFlagTransform();
         }
 
-        public void onPartGeometryChanged(Part part)
+        //IPartGeometryUpdated callback method
+        public void geometryUpdated(Part part)
         {
             if (part == this.part)
             {

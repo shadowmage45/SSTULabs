@@ -13,6 +13,16 @@ namespace SSTUTools
         void setSectionColors(string name, Color[] colors);
     }
 
+    public interface IPartTextureUpdated
+    {
+        void textureUpdated(Part part);
+    }
+
+    public interface IPartGeometryUpdated
+    {
+        void geometryUpdated(Part part);
+    }
+
     public class PresetColor
     {
         private static List<PresetColor> colorList = new List<PresetColor>();

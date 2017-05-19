@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTURecolorGUI : PartModule
+    public class SSTURecolorGUI : PartModule, IPartGeometryUpdated, IPartTextureUpdated
     {
 
         private static GameObject guiObject;
@@ -37,11 +37,17 @@ namespace SSTUTools
             }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="part"></param>
-        public void onPartGeometryChanged(Part part)
+        //IPartGeometryUpdated callback method
+        public void geometryUpdated(Part part)
+        {
+            if (part == this.part && gui!=null)
+            {
+                gui.refreshGui(part);
+            }
+        }
+
+        //IPartTextureUpdated callback method
+        public void textureUpdated(Part part)
         {
             if (part == this.part && gui!=null)
             {

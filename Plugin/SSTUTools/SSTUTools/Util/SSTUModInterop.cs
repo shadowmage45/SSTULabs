@@ -66,7 +66,7 @@ namespace SSTUTools
             //MonoBehaviour.print(System.Environment.StackTrace);
             SSTUStockInterop.updatePartHighlighting(part);
             part.airlock = locateAirlock(part);
-            part.SendMessage("onPartGeometryChanged", part);//used by SSTUFlagDecal and potentially others in the future
+            partGeometryUpdate(part);
             if (isFARInstalled())
             {
                 //FARdebug(part);
@@ -79,6 +79,29 @@ namespace SSTUTools
             if (HighLogic.LoadedSceneIsEditor && part.parent==null && part!=EditorLogic.RootPart)//likely the part under the cursor; this fixes problems with modular parts not wanting to attach to stuff
             {
                 part.gameObject.SetLayerRecursive(1, 2097152);//1<<21 = Part Triggers get skipped by the relayering (hatches, ladders, ??)
+            }
+        }
+
+        public static void onPartTextureUpdated(Part part)
+        {
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
+            {
+                List<IPartTextureUpdated> iptu = part.FindModulesImplementing<IPartTextureUpdated>();
+                int len = iptu.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    iptu[i].textureUpdated(part);
+                }
+            }
+        }
+
+        private static void partGeometryUpdate(Part part)
+        {
+            List<IPartGeometryUpdated> ipgu = part.FindModulesImplementing<IPartGeometryUpdated>();
+            int len = ipgu.Count;
+            for (int i = 0; i < len; i++)
+            {
+                ipgu[i].geometryUpdated(part);
             }
         }
 

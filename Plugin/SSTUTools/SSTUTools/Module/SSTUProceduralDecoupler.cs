@@ -421,6 +421,7 @@ namespace SSTUTools
                 customColor2 = colors[1];
                 customColor3 = colors[2];
             }
+            SSTUModInterop.onPartTextureUpdated(part);
         }
 
         #endregion

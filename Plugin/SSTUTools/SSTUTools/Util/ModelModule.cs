@@ -235,6 +235,7 @@ namespace SSTUTools
             {
                 model.updateTextureUIControl(partModule, textureField.name, textureSet);
             }
+            SSTUModInterop.onPartTextureUpdated(part);
         }
 
         private void actionWithSymmetry(Action<ModelModule<T, U>> action)
