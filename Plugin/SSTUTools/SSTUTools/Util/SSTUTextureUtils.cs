@@ -49,16 +49,32 @@ namespace SSTUTools
             }
             else//white-list, only do what is specified by meshes array
             {
+                //MonoBehaviour.print("Updating material for meshes...");
                 int len = meshes.Length;
+                Transform[] trs;
                 Transform tr;
                 Renderer r;
                 for (int i = 0; i < len; i++)
                 {
-                    tr = root.FindRecursive(meshes[i]);
-                    if (tr == null) { continue; }
-                    r = tr.GetComponent<Renderer>();
-                    if (r == null) { continue; }
-                    updateRenderer(r, shader, props);
+                    //MonoBehaviour.print("----- " + meshes[i]);
+                    trs = root.FindChildren(meshes[i]);
+                    int len2 = trs.Length;
+                    for (int k = 0; k < len2; k++)
+                    {
+                        tr = trs[k];
+                        if (tr == null)
+                        {
+                            //MonoBehaviour.print("Could not find mesh...");
+                            continue;
+                        }
+                        r = tr.GetComponent<Renderer>();
+                        if (r == null)
+                        {
+                            //MonoBehaviour.print("Mesh had no renderer...");
+                            continue;
+                        }
+                        updateRenderer(r, shader, props);
+                    }
                 }
             }
         }
