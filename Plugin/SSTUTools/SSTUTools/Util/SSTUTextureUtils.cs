@@ -59,6 +59,7 @@ namespace SSTUTools
                     //MonoBehaviour.print("----- " + meshes[i]);
                     trs = root.FindChildren(meshes[i]);
                     int len2 = trs.Length;
+                    //if (len2 <= 0) { MonoBehaviour.print("Could not find mesh..."); }
                     for (int k = 0; k < len2; k++)
                     {
                         tr = trs[k];
@@ -73,6 +74,7 @@ namespace SSTUTools
                             //MonoBehaviour.print("Mesh had no renderer...");
                             continue;
                         }
+                        //MonoBehaviour.print("Updating renderer: " + r);
                         updateRenderer(r, shader, props);
                     }
                 }
