@@ -121,7 +121,6 @@
     <Compile Include="Util\VolumeContainer.cs" />
     <Compile Include="WIPModule\SSTUAssetBundleModelLoader.cs" />
     <Compile Include="WIPModule\SSTUCollisionDebug.cs" />
-    <Compile Include="WIPModule\SSTUModularCargoBay.cs" />
     <Compile Include="Module\SSTUModularEngineCluster.cs" />
     <Compile Include="Module\SSTUFlagDecal.cs" />
     <Compile Include="Module\SSTUInterstageDecoupler.cs" />
