@@ -23,6 +23,9 @@ namespace SSTUTools
         [KSPField]
         public int animationLayer = 1;
 
+        [KSPField(isPersistant = true)]
+        public float animationMaxDeploy = 1;
+
         [KSPField]
         public String animationName;
 
@@ -36,6 +39,10 @@ namespace SSTUTools
         public string configNodeData = string.Empty;
         
         private AnimationController controller;
+
+        private EventData<float> evt1;
+
+        private EventData<float, float> evt2;
 
         private List<Action<AnimState>> callbacks = new List<Action<AnimState>>();
         
@@ -72,10 +79,10 @@ namespace SSTUTools
         }
 
         public float GetScalar
-        {
+        {            
             get
             {
-                throw new NotImplementedException();
+                return controller.getCurrentTime();
             }
         }
 
@@ -83,7 +90,7 @@ namespace SSTUTools
         {
             get
             {
-                throw new NotImplementedException();
+                return true;
             }
         }
 
@@ -91,7 +98,7 @@ namespace SSTUTools
         {
             get
             {
-                throw new NotImplementedException();
+                return evt2;
             }
         }
 
@@ -99,36 +106,39 @@ namespace SSTUTools
         {
             get
             {
-                throw new NotImplementedException();
+                return evt1;
             }
         }
 
         public void SetScalar(float t)
         {
-            throw new NotImplementedException();
+            controller.setCurrentTime(t);
         }
 
         public void SetUIRead(bool state)
         {
-            throw new NotImplementedException();
+            //NOOP
         }
 
         public void SetUIWrite(bool state)
         {
-            throw new NotImplementedException();
+            //NOOP
         }
 
         public bool IsMoving()
         {
-            //if (animationControl != null)
-            //{
-            //    return animationControl.
-            //}
-            //return false;
-            throw new NotImplementedException();
+            AnimState state = controller.animationState;
+            return state == AnimState.STOPPED_END || state == AnimState.STOPPED_START;
         }
 
         #endregion ENDREGION - IScalarModule fields/methods
+
+        public override void OnAwake()
+        {
+            base.OnAwake();
+            evt1 = new EventData<float>("SSTUAnimateControlledEvt1");
+            evt2 = new EventData<float, float>("SSTUAnimateControlledEvt1");
+        }
 
         public override void OnStart(StartState state)
         {
@@ -160,15 +170,16 @@ namespace SSTUTools
 
         public void initializeExternal(SSTUAnimData[] animData)
         {
+            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
+            float time = prevState == AnimState.STOPPED_START || prevState == AnimState.PLAYING_BACKWARD ? 0 : 1;
             if (controller != null)
             {
                 controller.clearAnimationData();
                 controller = null;
             }
-            controller = new AnimationController();
+            controller = new AnimationController(time, animationMaxDeploy);
             controller.addAnimationData(animData);
-            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
-            controller.restorePreviousAnimationState(prevState);
+            controller.restorePreviousAnimationState(prevState, animationMaxDeploy);
             controller.setStateChangeCallback(onAnimationStateChange);
         }
 
@@ -193,7 +204,9 @@ namespace SSTUTools
                 allNodes = animNodes;
             }
 
-            controller = new AnimationController();
+            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
+            float time = prevState == AnimState.STOPPED_START || prevState == AnimState.PLAYING_BACKWARD ? 0 : 1;
+            controller = new AnimationController(time, animationMaxDeploy);
             SSTUAnimData animationData;
             len = allNodes.Length;
             for (int i = 0; i < len; i++)
@@ -201,8 +214,7 @@ namespace SSTUTools
                 animationData = new SSTUAnimData(allNodes[i], part.gameObject.transform.FindRecursive("model"));
                 controller.addAnimationData(animationData);
             }
-            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
-            controller.restorePreviousAnimationState(prevState);
+            controller.restorePreviousAnimationState(prevState, 1f);
             controller.setStateChangeCallback(onAnimationStateChange);
         }
 
@@ -238,6 +250,7 @@ namespace SSTUTools
             {
                 controller.setAnimState(newState, false);
             }
+            fireEvents(newState);
         }
 
         public AnimState getAnimationState()
@@ -261,6 +274,28 @@ namespace SSTUTools
                 callbacks[i].Invoke(newState);
             }
             persistentState = newState.ToString();
+            fireEvents(newState);
+        }
+
+        private void fireEvents(AnimState newState)
+        {
+            switch (newState)
+            {
+                case AnimState.STOPPED_START:
+                    OnStop.Fire(0f);
+                    break;
+                case AnimState.STOPPED_END:
+                    OnStop.Fire(1f);
+                    break;
+                case AnimState.PLAYING_FORWARD:
+                    OnMoving.Fire(0, 1);
+                    break;
+                case AnimState.PLAYING_BACKWARD:
+                    OnMoving.Fire(1, 0);
+                    break;
+                default:
+                    break;
+            }
         }
 
     }

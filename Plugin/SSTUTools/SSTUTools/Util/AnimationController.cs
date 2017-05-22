@@ -11,7 +11,14 @@ namespace SSTUTools
         private Action<AnimState> stateChangeCallback;
         private List<SSTUAnimData> animationData = new List<SSTUAnimData>();
 
-        public AnimationController() { }
+        private float animTime = 0f;
+        private float maxTime = 1f;
+
+        public AnimationController(float time, float maxTime)
+        {
+            this.animTime = time;
+            this.maxTime = maxTime;
+        }
 
         public AnimState animationState
         {
@@ -39,12 +46,17 @@ namespace SSTUTools
             {
                 bool playing = false;
                 int len = animationData.Count;
+                float time = animTime;
                 for (int i = 0; i < len; i++)
                 {
-                    if (animationData[i].updateAnimation())
+                    if (animationData[i].updateAnimation(out time))
                     {
                         playing = true;
                     }
+                }
+                if (animTime != time)
+                {
+                    animTime = time;
                 }
                 //if no longer playing, set the new animation state and inform the callback of the change
                 if (!playing)
@@ -105,26 +117,41 @@ namespace SSTUTools
             }
         }
 
-        public void restorePreviousAnimationState(AnimState state)
+        public void restorePreviousAnimationState(AnimState state, float maxTime)
         {
+            this.maxTime = maxTime;
             if (state == AnimState.PLAYING_BACKWARD)
             {
                 state = AnimState.STOPPED_START;
+                animTime = 0f;
             }
             else if (state == AnimState.PLAYING_FORWARD)
             {
                 state = AnimState.STOPPED_END;
+                animTime = maxTime;
+            }
+            else if (state == AnimState.STOPPED_END)
+            {
+                animTime = maxTime;
+            }
+            else if (state == AnimState.STOPPED_START)
+            {
+                animTime = 0f;
             }
             setAnimState(state, false);
         }
 
         public void setMaxTime(float time)
         {
+            maxTime = time;
             int len = animationData.Count;
             bool shouldStop = false;
             for (int i = 0; i < len; i++)
             {
-                if (animationData[i].setMaxTime(time, currentAnimState)) { shouldStop = true; }
+                if (animationData[i].setMaxTime(maxTime, currentAnimState))
+                {
+                    shouldStop = true;
+                }
             }
             if (shouldStop)
             {
@@ -136,6 +163,20 @@ namespace SSTUTools
                     stateChangeCallback.Invoke(AnimState.STOPPED_END);
                 }
             }
+        }
+
+        public void setCurrentTime(float time, bool sample = true)
+        {
+            int len = animationData.Count;
+            for (int i = 0; i < len; i++)
+            {
+                animationData[i].setAnimTime(time, true);
+            }
+        }
+
+        public float getCurrentTime()
+        {
+            return animTime;
         }
 
         private void playAnimation()
@@ -235,8 +276,9 @@ namespace SSTUTools
             }
         }
 
-        public bool updateAnimation()
-        {   
+        public bool updateAnimation(out float time)
+        {
+            time = 0f;
             bool playing = false;
             bool earlyStop = false;
             int len = animations.Length;
@@ -260,6 +302,7 @@ namespace SSTUTools
                         playing = true;
                     }
                 }
+                time = clip.normalizedTime;
             }
             if (earlyStop && !playing)
             {
