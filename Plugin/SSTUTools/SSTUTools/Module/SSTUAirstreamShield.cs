@@ -27,7 +27,7 @@ namespace SSTUTools
         public float bottomRadius;
 
         [KSPField]
-        public int animationID = -1;
+        public string animationID = string.Empty;
         
         [KSPField(guiName = "Shielded Parts", guiActive = true, guiActiveEditor = true)]
         public int partsShielded = 0;
@@ -68,7 +68,7 @@ namespace SSTUTools
         public void Start()
         {
             needsUpdate = true;
-            if (animationID >= 0)
+            if (!string.IsNullOrEmpty(animationID))
             {
                 animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStateChange);
                 if (animationControl != null) { onAnimationStateChange(animationControl.getAnimationState()); }

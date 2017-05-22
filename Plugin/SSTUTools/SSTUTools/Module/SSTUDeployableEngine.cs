@@ -10,7 +10,7 @@ namespace SSTUTools
     {
 
         [KSPField]
-        public int animationID = -1;
+        public string animationID = string.Empty;
 
         [KSPField]
         public string engineID = "Engine";
@@ -64,7 +64,6 @@ namespace SSTUTools
 
         public void Start()
         {
-
             animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
             engineModule = null;
             ModuleEnginesFX[] engines = part.GetComponents<ModuleEnginesFX>();

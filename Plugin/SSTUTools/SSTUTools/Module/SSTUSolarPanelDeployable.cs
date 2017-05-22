@@ -78,7 +78,7 @@ namespace SSTUTools
         public float trackingSpeed = 0.25f;
 
         [KSPField]
-        public int animationID = 0;
+        public string animationID = string.Empty;
 
         [KSPField]
         public string sunAxis = Axis.ZPlus.ToString();

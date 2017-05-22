@@ -27,7 +27,7 @@ namespace SSTUTools
         public float mass = 0.25f;
 
         [KSPField]
-        public int animationID = 0;
+        public string animationID = string.Empty;
 
         [KSPField(isPersistant =true, guiActiveEditor = true, guiName = "Diam"),
          UI_FloatEdit(suppressEditorShipModified = true, unit = "m", sigFigs = 3)]
@@ -151,7 +151,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (animationID >= 0)
+            if (!string.IsNullOrEmpty(animationID))
             {
                 animation = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChanged);
             }

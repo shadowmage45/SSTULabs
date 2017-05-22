@@ -72,7 +72,7 @@ namespace SSTUTools
         public String statePersistence = LightAnimationState.OFF.ToString();
 
         [KSPField]
-        public int animationID = -1;
+        public string animationID = string.Empty;
 
         [Persistent]
         public string configNodeData = string.Empty;
@@ -140,7 +140,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (animationID >= 0)
+            if (!string.IsNullOrEmpty(animationID))
             {
                 animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, OnAnimationStatusCallback);
             }

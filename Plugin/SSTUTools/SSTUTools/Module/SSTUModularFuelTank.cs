@@ -50,13 +50,13 @@ namespace SSTUTools
         public bool subtractCost = false;
 
         [KSPField]
-        public int noseAnimationID = -1;
+        public string noseAnimationID = string.Empty;
 
         [KSPField]
-        public int bodyAnimationID = -1;
+        public string bodyAnimationID = string.Empty;
 
         [KSPField]
-        public int mountAnimationID = -1;
+        public string mountAnimationID = string.Empty;
 
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Length"),
@@ -283,7 +283,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.noseAnimationID, m.noseModule.model);
+                    m.updateAnimationControl(m.noseAnimationID, m.noseModule.model, 1);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -296,7 +296,7 @@ namespace SSTUTools
                 {
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
-                    m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model);
+                    m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model, 3);
                     m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -309,7 +309,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.mountAnimationID, m.mountModule.model);
+                    m.updateAnimationControl(m.mountAnimationID, m.mountModule.model, 5);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -339,9 +339,9 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
-            updateAnimationControl(noseAnimationID, noseModule.model);
-            updateAnimationControl(bodyAnimationID, tankModule.model);
-            updateAnimationControl(mountAnimationID, mountModule.model);
+            updateAnimationControl(noseAnimationID, noseModule.model, 1);
+            updateAnimationControl(bodyAnimationID, tankModule.model, 3);
+            updateAnimationControl(mountAnimationID, mountModule.model, 5);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
         
@@ -687,13 +687,13 @@ namespace SSTUTools
             return root;
         }
 
-        private void updateAnimationControl(int id, SingleModelData model)
+        private void updateAnimationControl(string id, SingleModelData model, int layer)
         {
-            if (id < 0) { return; }
+            if (string.IsNullOrEmpty(id)) { return; }
             SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
             if (module != null)
             {
-                module.initializeExternal(model.getAnimationData(model.model.transform, 1 + id));
+                module.initializeExternal(model.getAnimationData(model.model.transform, layer));
             }
         }
 

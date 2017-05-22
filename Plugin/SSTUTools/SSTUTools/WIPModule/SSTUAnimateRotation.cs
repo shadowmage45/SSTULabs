@@ -46,7 +46,7 @@ namespace SSTUTools
         /// If this is >=0, interaction buttons will only display when the dependent animation is in the deployed state
         /// </summary>
         [KSPField]
-        public int animationID = -1;
+        public string animationID = string.Empty;
         
         [KSPField(isPersistant = true)]
         public bool rotating = false;
@@ -91,7 +91,7 @@ namespace SSTUTools
         public void Start()
         {
             AnimState state = AnimState.STOPPED_END;
-            if (animationID >= 0)
+            if (!string.IsNullOrEmpty(animationID))
             {
                 animController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChange);
                 state = animController.getAnimationState();

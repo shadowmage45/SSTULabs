@@ -8,7 +8,7 @@ namespace SSTUTools
     public class SSTUInflatable : PartModule, IPartMassModifier, IPartCostModifier
     {
         [KSPField]
-        public int animationID = 0;
+        public string animationID = string.Empty;
 
         [KSPField]
         public float deflationMult = 0.1f;

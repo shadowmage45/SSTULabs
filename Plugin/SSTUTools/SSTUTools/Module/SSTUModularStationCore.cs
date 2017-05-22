@@ -33,7 +33,7 @@ namespace SSTUTools
         public bool updateSolar = true;
 
         [KSPField]
-        public int solarAnimationID = 0;
+        public string solarAnimationID = string.Empty;
 
         [KSPField]
         public string topManagedNodes = "top1, top2, top3, top4, top5";
