@@ -11,11 +11,11 @@ namespace SSTUTools
     /// Includes provisions for the animation data to be supplied entirely by external modules as well, to be used
     /// by MFT or other modules that want optional animation support.
     /// </summary>
-    public class SSTUAnimateControlled : PartModule
+    public class SSTUAnimateControlled : PartModule, IScalarModule
     {
         //lookup value for external modules to find the proper animation module when multiple anim modules are in use
         [KSPField]
-        public int animationID = 0;
+        public string animationID = "animation";
 
         [KSPField]
         public float animationSpeed = 1;
@@ -40,9 +40,9 @@ namespace SSTUTools
         private List<Action<AnimState>> callbacks = new List<Action<AnimState>>();
         
         //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
-        public static SSTUAnimateControlled locateAnimationController(Part part, int id, Action<AnimState> callback = null)
+        public static SSTUAnimateControlled locateAnimationController(Part part, string id, Action<AnimState> callback = null)
         {
-            if (id < 0)
+            if (string.IsNullOrEmpty(id))
             {
                 return null;
             }
@@ -60,6 +60,75 @@ namespace SSTUTools
             }
             return null;
         }
+
+        #region REGION - IScalarModule fields/methods
+
+        public string ScalarModuleID
+        {
+            get
+            {
+                return animationID;
+            }
+        }
+
+        public float GetScalar
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public bool CanMove
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public EventData<float, float> OnMoving
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public EventData<float> OnStop
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void SetScalar(float t)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetUIRead(bool state)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetUIWrite(bool state)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsMoving()
+        {
+            //if (animationControl != null)
+            //{
+            //    return animationControl.
+            //}
+            //return false;
+            throw new NotImplementedException();
+        }
+
+        #endregion ENDREGION - IScalarModule fields/methods
 
         public override void OnStart(StartState state)
         {

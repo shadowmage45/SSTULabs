@@ -3,10 +3,11 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAnimateUsable : PartModule
+    public class SSTUAnimateUsable : PartModule, IScalarModule
     {
+
         [KSPField]
-        public int animationID;
+        public string animationID = string.Empty;
 
         [KSPField]
         public String deployActionName = "Deploy";
@@ -72,6 +73,78 @@ namespace SSTUTools
         public KSPActionGroup actionGroup = KSPActionGroup.None;
         
         private SSTUAnimateControlled animationControl;
+
+        #region REGION - IScalarModule fields/methods
+
+        public string ScalarModuleID
+        {
+            get
+            {
+                return animationID;
+            }
+        }
+
+        public float GetScalar
+        {
+            get
+            {
+                if (animationControl != null) { return animationControl.GetScalar; }
+                return 0f;
+            }
+        }
+
+        public bool CanMove
+        {
+            get
+            {
+                if (animationControl != null) { return animationControl.CanMove; }
+                return false;
+            }
+        }
+
+        public EventData<float, float> OnMoving
+        {
+            get
+            {
+                if (animationControl != null) { return animationControl.OnMoving; }
+                return null;
+            }
+        }
+
+        public EventData<float> OnStop
+        {
+            get
+            {
+                if (animationControl != null) { return animationControl.OnStop; }
+                return null;
+            }
+        }
+
+        public void SetScalar(float t)
+        {
+            if (animationControl != null) { animationControl.SetScalar(t); }
+        }
+
+        public void SetUIRead(bool state)
+        {
+            if (animationControl != null) { animationControl.SetUIRead(state); }
+        }
+
+        public void SetUIWrite(bool state)
+        {
+            if (animationControl != null) { animationControl.SetUIWrite(state); }
+        }
+
+        public bool IsMoving()
+        {
+            if (animationControl != null)
+            {
+                return animationControl.IsMoving();
+            }
+            return false;
+        }
+
+        #endregion ENDREGION - IScalarModule fields/methods
 
         [KSPEvent(guiName = "Deploy", guiActive = true, guiActiveEditor = true)]
         public void deployEvent()
