@@ -226,6 +226,10 @@ namespace SSTUTools
                 controller = null;
                 initialize();
             }
+            else
+            {
+                MonoBehaviour.print("Not re-initializing SSTUAnimateControlled, as module has not yet been started.");
+            }
         }
 
         public bool initialized() { return controller != null; }
@@ -266,6 +270,10 @@ namespace SSTUTools
             }
         }
         
+        /// <summary>
+        /// Internal callback from the animation controller class.  Only called when animation changes state from playing.
+        /// </summary>
+        /// <param name="newState"></param>
         private void onAnimationStateChange(AnimState newState)
         {
             int len = callbacks.Count;
