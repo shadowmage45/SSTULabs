@@ -44,10 +44,11 @@ namespace SSTUTools
             MonoBehaviour.print("LoadUpgrades: \n" + node);
         }
 
-        public override bool FindUpgrades(bool fillApplied)
+        public override bool FindUpgrades(bool fillApplied, ConfigNode node = null)
         {
             MonoBehaviour.print("FindUpgrades: " + fillApplied);
-            return base.FindUpgrades(fillApplied);
+            return base.FindUpgrades(fillApplied, node);
         }
+
     }
 }

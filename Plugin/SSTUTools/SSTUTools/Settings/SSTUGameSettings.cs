@@ -33,6 +33,14 @@ namespace SSTUTools
 
         public override bool HasPresets { get { return true; } }
 
+        public override string DisplaySection
+        {
+            get
+            {
+                return "SSTU";
+            }
+        }
+
         public override void SetDifficultyPreset(GameParameters.Preset preset)
         {
             switch (preset)
