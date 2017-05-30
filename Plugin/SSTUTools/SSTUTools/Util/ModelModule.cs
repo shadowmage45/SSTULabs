@@ -108,9 +108,12 @@ namespace SSTUTools
             }
             model.setupModel(root, orientation);
             bool useDefaultTextureColors = false;
-            if (!model.isValidTextureSet(textureSet))
+            if (!model.isValidTextureSet(textureSet) && !string.Equals("default", textureSet))
             {
-                MonoBehaviour.print("Current texture set for model "+model.name+" invalid: "+textureSet+", clearing colors and assigning default texture set.");
+                if (!string.Equals(string.Empty, textureSet))
+                {
+                    MonoBehaviour.print("Current texture set for model " + model.name + " invalid: " + textureSet + ", clearing colors and assigning default texture set.");
+                }
                 textureSet = model.getDefaultTextureSet();
                 if (!model.isValidTextureSet(textureSet))
                 {
