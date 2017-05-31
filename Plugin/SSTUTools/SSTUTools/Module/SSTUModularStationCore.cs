@@ -33,7 +33,7 @@ namespace SSTUTools
         public bool updateSolar = true;
 
         [KSPField]
-        public string solarAnimationID = string.Empty;
+        public string solarAnimationID = "solarDeploy";
 
         [KSPField]
         public string topManagedNodes = "top1, top2, top3, top4, top5";
@@ -524,7 +524,6 @@ namespace SSTUTools
             topModule.setPosition(topY);
             coreModule.setPosition(coreY);
             solarModule.setPosition(coreY);
-            MonoBehaviour.print("Set core/solar pos to: " + coreY);
             bottomModule.setPosition(bottomY, ModelOrientation.BOTTOM);
             bottomDockModule.setPosition(bottomDockY, ModelOrientation.BOTTOM);
 
@@ -581,8 +580,11 @@ namespace SSTUTools
 
         private void updateSolarModules()
         {
-            if (!updateSolar) { return; }
-            if (animationControl == null)
+            if (!updateSolar)
+            {
+                return;
+            }
+            if (animationControl == null && !string.Equals("none", solarAnimationID))
             {
                 SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
                 int len = controls.Length;
@@ -594,51 +596,55 @@ namespace SSTUTools
                         break;
                     }
                 }
-            }
-            if (animationControl == null)
-            {
-                MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
-                return;
+                if (animationControl == null)
+                {
+                    MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
+                    return;
+                }
             }
 
-            ModelAnimationData mad = solarModule.model.hasAnimation() ?  solarModule.model.modelDefinition.animationData[0] : null;
-            if (mad == null)
-            {
-                MonoBehaviour.print("ERROR: No animation data found for model definition: " + solarModule.model.modelDefinition.modelName + " :: " + solarModule.model.modelDefinition.name);
+            bool animEnabled = solarModule.model.hasAnimation();
+            bool solarEnabled = solarModule.model.panelsEnabled;
+            string animName = string.Empty;
+            float animSpeed = 1f;
 
-                //TODO -- setup animation control and solar control with no anim data
-                return;
+            if (animEnabled)
+            {
+                ModelAnimationData mad = solarModule.model.modelDefinition.animationData[0];
+                animName = mad.animationName;
+                animSpeed = mad.speed;
             }
             else
             {
-
+                animName = string.Empty;
+                animSpeed = 1f;
             }
 
-            animationControl.animationName = solarModule.model.modelDefinition.animationData[0].animationName;
-            animationControl.reInitialize();
+            if (animationControl != null)
+            {
+                animationControl.animationName = animName;
+                animationControl.animationSpeed = animSpeed;
+                animationControl.reInitialize();
+            }
 
             SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
-            if (solar == null)
+            if (solar != null)
             {
-                MonoBehaviour.print("ERROR: No solar panel module found in part: " + part.name);
-                return;
-            }
+                if (solarEnabled)
+                {
+                    solar.resourceAmount = solarModule.model.energy;
+                    solar.pivotTransforms = solarModule.model.pivotNames;
+                    solar.secondaryPivotTransforms = solarModule.model.secPivotNames;
+                    solar.rayTransforms = solarModule.model.sunNames;
 
-            solar.resourceAmount = solarModule.model.energy;
-            solar.pivotTransforms = solarModule.model.pivotNames;
-            solar.secondaryPivotTransforms = solarModule.model.secPivotNames;
-            solar.rayTransforms = solarModule.model.sunNames;
-
-            SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
-            solar.setSuncatcherAxis(axis);
-
-            if (solarModule.model.panelsEnabled)
-            {
-                solar.enableModule();
-            }
-            else
-            {
-                solar.disableModule();
+                    SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
+                    solar.setSuncatcherAxis(axis);
+                    solar.enableModule();
+                }
+                else
+                {
+                    solar.disableModule();
+                }
             }
         }
         
@@ -799,19 +805,16 @@ namespace SSTUTools
         {
             model = new GameObject("MSCSolarRoot");
             model.transform.NestToParent(parent);
-            if (panelsEnabled)
+            int len = positions==null? 0 : positions.Length;
+            models = new GameObject[len];
+            for (int i = 0; i < len; i++)
             {
-                int len = positions.Length;
-                models = new GameObject[len];
-                for (int i = 0; i < len; i++)
-                {
-                    models[i] = new GameObject("MSCSolar");
-                    models[i].transform.NestToParent(model.transform);
-                    SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
-                    models[i].transform.Rotate(positions[i].rotation, Space.Self);
-                    models[i].transform.localPosition = positions[i].position;
-                    models[i].transform.localScale = positions[i].scale;
-                }
+                models[i] = new GameObject("MSCSolar");
+                models[i].transform.NestToParent(model.transform);
+                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
+                models[i].transform.Rotate(positions[i].rotation, Space.Self);
+                models[i].transform.localPosition = positions[i].position;
+                models[i].transform.localScale = positions[i].scale;
             }
         }
 

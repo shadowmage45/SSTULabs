@@ -188,7 +188,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] animNodes = node.GetNodes("ANIMATION");
             int len = animNodes.Length;
-            ConfigNode[] allNodes=null;
+            ConfigNode[] allNodes = null;
             if (!String.IsNullOrEmpty(animationName))
             {
                 allNodes = new ConfigNode[len + 1];
@@ -203,6 +203,7 @@ namespace SSTUTools
             {
                 allNodes = animNodes;
             }
+            if (allNodes == null) { allNodes = new ConfigNode[0]; }//should be impossible, but ensures clean init with no animations defined, without throwing un-necessary errors
 
             AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
             float time = prevState == AnimState.STOPPED_START || prevState == AnimState.PLAYING_BACKWARD ? 0 : 1;
