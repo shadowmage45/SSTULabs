@@ -13,26 +13,26 @@ namespace SSTUTools
         [KSPField]
         public bool allowInFlightChange = false;
 
-        //currently selected texture set, by name
-        [KSPField(isPersistant = true)]
+        [KSPField]
+        public string transformName = string.Empty;
+
+        /// <summary>
+        /// Current texture set.  ChooseOption UI widget is initialized inside of texture-set-container helper object
+        /// </summary>
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
+
+        /// <summary>
+        /// Persistent data storage field used to store custom recoloring data
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public string persistentData = string.Empty;
 
         [Persistent]
         public string configNodeData = string.Empty;
 
-        //actual texture set names
-        private TextureSet[] textureSets;
-        
-        [KSPEvent(guiActiveEditor = true, guiActive = false, guiName = "Next Texture Set")]
-        public void nextTextureSetEvent()
-        {
-            enableTextureSet(SSTUUtils.findNext(textureSets, m=>m.name==currentTextureSet, false).name);
-            int index = part.Modules.IndexOf(this);
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                ((SSTUTextureSwitch)p.Modules[index]).enableTextureSet(currentTextureSet);
-            }
-        }
+        private TextureSetContainer textureSets;
 
         public override void OnLoad(ConfigNode node)
         {
@@ -45,32 +45,130 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
+
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentTextureSet = currentTextureSet;
+                    m.textureSets.enableCurrentSet(getModelTransform());
+                });
+            };
         }
 
         //restores texture set data and either loads default texture set or saved texture set (if any)
         private void initialize()
         {
             loadConfigData();
-            enableTextureSet(currentTextureSet);
         }
 
         private void loadConfigData()
         {
+            if (textureSets != null) { return; }//already initialized from OnLoad (prefab, some in-editor parts)
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            textureSets = TextureSet.loadGlobalTextureSets(node.GetNodes("TEXTURESET"));
+            ConfigNode[] setNodes = node.GetNodes("TEXTURESET");
+            textureSets = new TextureSetContainer(Fields[nameof(currentTextureSet)], Fields[nameof(persistentData)], setNodes);
+            textureSets.enableCurrentSet(getModelTransform());
         }
-        
-        //enables a specific texture set, by name
-        public void enableTextureSet(String name)
+
+        private Transform getModelTransform()
         {
-            TextureSet currentSet = Array.Find(textureSets, m => m.name == currentTextureSet);
-            if (currentSet != null)
+            return string.IsNullOrEmpty(transformName) ? part.transform.FindRecursive("model") : part.transform.FindRecursive(transformName);
+        }
+    }
+
+    /// <summary>
+    /// Support/helper class for stand-alone texture switching (not used with model switching).
+    /// Manages loading of texture sets, updating of color persistent data, and applying texture sets to model transforms
+    /// </summary>
+    public class TextureSetContainer
+    {
+
+        private BaseField textureSetField;
+        private BaseField persistentDataField;
+
+        private Color[] customColors;
+
+        private string currentTextureSet
+        {
+            get { return (string)textureSetField.GetValue(textureSetField); }
+        }
+
+        private string persistentData
+        {
+            get { return (string)persistentDataField.GetValue(persistentDataField); }
+            set { persistentDataField.SetValue(value, persistentDataField); }
+        }
+
+        public TextureSetContainer(BaseField textureSetField, BaseField persistentDataField, ConfigNode[] textureSetNodes)
+        {
+            this.textureSetField = textureSetField;
+            this.persistentDataField = persistentDataField;
+            loadPersistentData(persistentData);
+        }
+
+        public void enableCurrentSet(Transform root)
+        {
+            TextureSet set = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            if (customColors == null || customColors.Length == 0)
             {
-                currentSet.enable(part.gameObject, new Color[] { Color.clear, Color.clear, Color.clear });
-                currentTextureSet = name;
-            } 
+                customColors = new Color[4];
+                customColors[0] = set.maskColors[0];
+                customColors[1] = set.maskColors[1];
+                customColors[2] = set.maskColors[2];
+                customColors[3] = set.maskColors[3];
+            }
+            set.enable(root.gameObject, customColors);
+            saveColors(customColors);
+        }
+
+        public void setCustomColors(Color[] colors)
+        {
+            customColors = colors;
+        }
+
+        private void loadPersistentData(string data)
+        {
+            if (!string.IsNullOrEmpty(data))
+            {
+                string[] colorSplits = data.Split(';');
+                string[] dataSplits;
+                int len = colorSplits.Length;
+                customColors = new Color[len];
+                float r, g, b, a;
+                for (int i = 0; i < len; i++)
+                {
+                    dataSplits = colorSplits[i].Split(',');
+                    r = SSTUUtils.safeParseFloat(dataSplits[0]);
+                    g = SSTUUtils.safeParseFloat(dataSplits[1]);
+                    b = SSTUUtils.safeParseFloat(dataSplits[2]);
+                    a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]) : 1f;
+                    customColors[i] = new Color(r, g, b, a);
+                }
+            }
+            else
+            {
+                customColors = new Color[0];
+            }
+        }
+
+        private void saveColors(Color[] colors)
+        {
+            if (colors == null || colors.Length == 0) { return; }
+            int len = colors.Length;
+            string data = string.Empty;
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0) { data = data + ";"; }
+                data = data + colors[i].r + ",";
+                data = data + colors[i].g + ",";
+                data = data + colors[i].b + ",";
+                data = data + colors[i].a;
+            }
+            persistentData = data;
         }
 
     }
+
 }
 
