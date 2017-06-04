@@ -241,7 +241,7 @@ namespace SSTUTools
             updateGuiState();
         }
         
-        [KSPEvent(guiName = "Jettison Fairing", guiActive = false, guiActiveEditor = false)]
+        [KSPEvent(guiName = "Jettison Fairing", guiActive = true, guiActiveEditor = false)]
         public void jettisonEvent()
         {
             if (HighLogic.LoadedSceneIsFlight)
@@ -427,6 +427,7 @@ namespace SSTUTools
                 needsStatusUpdate = true;
             }
             updateTextureSet(false);
+            needsGuiUpdate = true;
             //MonoBehaviour.print("NodeFairingInit End: " + fairingCreated + " :: " + fairingForceDisabled + " :: " + fairingJettisoned + " :: " + fairingEnabled);
         }
 
