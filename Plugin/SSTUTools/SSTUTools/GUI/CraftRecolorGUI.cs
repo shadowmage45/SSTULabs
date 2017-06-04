@@ -19,7 +19,9 @@ namespace SSTUTools
         internal Action guiCloseAction;
 
         private SectionRecolorData sectionData;
-        private int colorIndex;
+        private int moduleIndex = -1;
+        private int sectionIndex = -1;
+        private int colorIndex = -1;
         private string rStr, gStr, bStr, aStr;//string caches of color values//TODO -- set initial state when a section color is selected
         private static Color editingColor;
         private static Color[] storedPattern;
@@ -34,11 +36,20 @@ namespace SSTUTools
 
         internal void openGUIPart(Part part)
         {
+            if (part != openPart)
+            {
+                moduleIndex = -1;
+                sectionIndex = -1;
+                colorIndex = -1;
+            }
+            if (moduleIndex < 0) { moduleIndex = 0; }
+            if (sectionIndex < 0) { sectionIndex = 0; }
+            if (colorIndex < 0) { colorIndex = 0; }
             ControlTypes controls = ControlTypes.ALLBUTCAMERAS;
             controls = controls & ~ControlTypes.TWEAKABLES;
             InputLockManager.SetControlLock(controls, "SSTURecolorGUILock");
             setupForPart(part);
-            setupSectionData(moduleRecolorData[0].sectionData[0], 0);
+            setupSectionData(moduleRecolorData[moduleIndex].sectionData[sectionIndex], colorIndex);
             openPart = part;
         }
 
@@ -52,34 +63,25 @@ namespace SSTUTools
             sectionData = null;
             openPart = null;
             InputLockManager.RemoveControlLock("SSTURecolorGUILock");
+            colorIndex = -1;
+            moduleIndex = -1;
+            sectionIndex = -1;
         }
 
         internal void refreshGui(Part part)
         {
+            MonoBehaviour.print("Refreshing GUI: " + part + " :: " + openPart);
             if (part != openPart) { return; }
-            int moduleIndex = -1;
-            int sectionIndex = -1;
-            int len = moduleRecolorData.Count;
-            for (int i = 0; i < len; i++)
-            {
-                int l2 = moduleRecolorData[i].sectionData.Length;
-                for (int k = 0; k < l2; k++)
-                {
-                    if (moduleRecolorData[i].sectionData[k] == sectionData)
-                    {
-                        moduleIndex = i;
-                        sectionIndex = k;
-                    }
-                }
-                if (moduleIndex >= 0) { break; }
-            }
+
             moduleRecolorData.Clear();
             setupForPart(part);
-            if (moduleIndex < 0 || sectionIndex < 0)
-            {
-                MonoBehaviour.print("ERROR: Module/Section index < 0 -- " +moduleIndex+" / "+sectionIndex);
-            }
-            setupSectionData(moduleRecolorData[moduleIndex].sectionData[sectionIndex], 0);
+
+            int len = moduleRecolorData.Count;
+            if (moduleIndex >= len) { moduleIndex = 0; sectionIndex = 0; }
+            len = moduleRecolorData[moduleIndex].sectionData.Length;
+            if (sectionIndex >= len) { sectionIndex = 0; }
+
+            setupSectionData(moduleRecolorData[moduleIndex].sectionData[sectionIndex], colorIndex);
         }
 
         private void setupForPart(Part part)
@@ -163,7 +165,7 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     GUILayout.BeginHorizontal();
-                    if (sectionData == moduleRecolorData[i].sectionData[k])
+                    if ( k == sectionIndex && i == moduleIndex )
                     {
                         GUI.color = Color.red;
                     }
@@ -175,6 +177,9 @@ namespace SSTUTools
                         GUI.color = guiColor;
                         if (GUILayout.Button("Recolor", GUILayout.Width(70)))
                         {
+                            moduleIndex = i;
+                            sectionIndex = k;
+                            colorIndex = m;
                             setupSectionData(moduleRecolorData[i].sectionData[k], m);
                         }
                     }
