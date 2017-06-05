@@ -392,16 +392,16 @@ MODULE
 MODULE
 {
 	name = SSTUAnimateControlled
-	animationID = 0
+	animationID = solarDeploy
 	animationLayer = 1
-	animationName = ST-GEN-DSP-DOS-M-Deploy
+	animationName = ST-GEN-DSP-SMC-L-Deploy
 }
 MODULE
 {
 	name = SSTUSolarPanelDeployable
-	animationID = 0
-	rayTransforms = ST-GEN-DSP-DOS-M-Suncatcher
-	pivotTransforms = ST-GEN-DSP-DOS-M-Pivot
+	animationID = solarDeploy
+	rayTransforms = ST-GEN-DSP-SMC-L-Suncatcher
+	pivotTransforms = ST-GEN-DSP-SMC-L-Pivot
 	resourceName = ElectricCharge	
 	resourceAmount = 26
 	powerCurve
