@@ -579,6 +579,7 @@ namespace SSTUTools
         public readonly float activeInsulationPrevention = 1f;
         public readonly float inactiveInsulationPrevention = 0f;
         public readonly float passiveInsulationPrevention = 0f;
+        public readonly string unlockName = string.Empty;
 
         public ContainerModifier(ConfigNode node)
         {
@@ -599,7 +600,17 @@ namespace SSTUTools
             inactiveInsulationPrevention = node.GetFloatValue("inactiveInsulationPrevention", inactiveInsulationPrevention);
             passiveInsulationPrevention = node.GetFloatValue("passiveInsulationPrevention", passiveInsulationPrevention);
             activeECCost = node.GetFloatValue("activeECCost", activeECCost);
+
+            unlockName = node.GetStringValue("upgradeUnlock");
         }
+
+        public bool isAvailable(SSTUVolumeContainer module)
+        {
+            if (string.IsNullOrEmpty(unlockName)) { return true; }
+            return PartUpgradeManager.Handler.IsUnlocked(unlockName);
+            //return string.IsNullOrEmpty(unlockName)? true : module.upgradesApplied.Contains(unlockName);
+        }
+
     }
 
     /// <summary>

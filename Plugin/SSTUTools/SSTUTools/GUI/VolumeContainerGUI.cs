@@ -190,11 +190,16 @@ namespace SSTUTools
             ContainerModifier[] mods = container.modifiers;
             ContainerModifier mod;
             int len = mods.Length;
+            int index = 0;
             GUILayout.BeginHorizontal();
             for (int i = 0; i < len; i++)
             {
                 mod = mods[i];
-                if (i > 0 && i % 4 == 0)
+                if (!mod.isAvailable(module))
+                {
+                    continue;
+                }
+                if (index > 0 && index % 4 == 0)
                 {
                     GUILayout.EndHorizontal();
                     GUILayout.BeginHorizontal();
@@ -203,6 +208,7 @@ namespace SSTUTools
                 {
                     module.containerTypeUpdated(container, mod, true);
                 }
+                index++;
             }
             GUILayout.EndHorizontal();
         }
