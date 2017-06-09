@@ -315,6 +315,7 @@ namespace SSTUTools
     {
         public ModelDefinition modelDefinition;
         public readonly String name;
+        public readonly string modelName;
         public readonly float baseScale = 1f;
 
         public float volume;
@@ -331,10 +332,11 @@ namespace SSTUTools
         public ModelData(ConfigNode node)
         {
             name = node.GetStringValue("name");
-            modelDefinition = SSTUModelData.getModelDefinition(name);
+            modelName = node.GetStringValue("modelName", name);
+            modelDefinition = SSTUModelData.getModelDefinition(modelName);
             if (modelDefinition==null)
             {
-                MonoBehaviour.print("ERROR: Could not locate model data for name: " + name);
+                MonoBehaviour.print("ERROR: Could not locate model data for name: " + modelName);
             }
             currentDiameter = modelDefinition.diameter;
             currentHeight = modelDefinition.height;
@@ -348,11 +350,11 @@ namespace SSTUTools
 
         public ModelData(String name)
         {
-            this.name = name;
-            modelDefinition = SSTUModelData.getModelDefinition(name);
+            this.modelName = this.name = name;
+            modelDefinition = SSTUModelData.getModelDefinition(modelName);
             if (modelDefinition == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate model definition data for name: " + name);
+                MonoBehaviour.print("ERROR: Could not locate model definition data for name: " + modelName);
             }
             currentDiameter = modelDefinition.diameter;
             currentHeight = modelDefinition.height;
