@@ -106,6 +106,7 @@
     <Compile Include="Util\ModelModule.cs" />
     <Compile Include="Util\SSTUTextureUtils.cs" />
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
+    <Compile Include="WIPModule\SSTULinearMultiDock.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
     <Compile Include="Module\SSTUModularFuelTank.cs" />
     <Compile Include="Module\SSTUDecalSwitch.cs" />
