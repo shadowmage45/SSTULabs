@@ -360,6 +360,7 @@ namespace SSTUTools
             model.recreateModel();
             updatePhysicalAttributes();
             updateDecouplerForce();
+            updateTextureSet(false);
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
