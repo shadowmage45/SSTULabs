@@ -220,9 +220,12 @@ namespace SSTUTools
 
         public override string GetInfo()
         {
-            //destroy the model after the prefab part/icon part has been created
-            model.destroyModel();            
-            model = null;
+            if (model != null)
+            {
+                //destroy the model after the prefab part/icon part has been created
+                model.destroyModel();
+                model = null;
+            }
             return "This part has configurable diameter, height, thickness, and ejection force.";
         }
 
