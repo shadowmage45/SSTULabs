@@ -59,7 +59,11 @@ Shader "SSTU/MaskedIcon"
 			//as the clip test needs to be performed regardless of the surface properties, run it first as an early exit
 			//should save some texture sampling and processing of data that would just be discarded anyway.
 			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
-			screenUV.y = 1 - screenUV.y;
+			#ifdef SHADER_API_OPENGL
+			
+			#else
+				screenUV.y = 1 - screenUV.y;
+			#endif
 			if(screenUV.x < _MinX || screenUV.y < _MinY || screenUV.x > _MaxX || screenUV.y > _MaxY)
 			{
 				clip(-1);
