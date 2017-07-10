@@ -60,9 +60,9 @@ Shader "SSTU/MaskedIcon"
 			//should save some texture sampling and processing of data that would just be discarded anyway.
 			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
 			#ifdef SHADER_API_OPENGL
-			
-			#else
 				screenUV.y = 1 - screenUV.y;
+			#else
+				//screenUV.y = 1 - screenUV.y;
 			#endif
 			if(screenUV.x < _MinX || screenUV.y < _MinY || screenUV.x > _MaxX || screenUV.y > _MaxY)
 			{
