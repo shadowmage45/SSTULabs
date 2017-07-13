@@ -487,13 +487,18 @@ namespace SSTUTools
             }
         }
 
+        public static MaterialPropertyBlock sharedBlock = new MaterialPropertyBlock();
+
         public static void setOpacityRecursive(Transform tr, float opacity)
         {
             Renderer renderer = tr.GetComponent<Renderer>();
             if (renderer != null && renderer.sharedMaterial != null)
             {
-                renderer.sharedMaterial.SetFloat("_Opacity", opacity);
-                renderer.sharedMaterial.renderQueue = opacity >= 1f ? 2000 : 3000;
+                sharedBlock.Clear();
+                renderer.GetPropertyBlock(sharedBlock);                
+                sharedBlock.SetFloat(PropertyIDs._Opacity, opacity);
+                renderer.SetPropertyBlock(sharedBlock);      
+                renderer.sharedMaterial.renderQueue = opacity >= 1f ? -1 : 6000;
             }
             foreach (Transform child in tr) { setOpacityRecursive(child, opacity); }
         }

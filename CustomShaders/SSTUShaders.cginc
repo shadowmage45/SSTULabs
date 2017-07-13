@@ -5,7 +5,7 @@ struct ColoredSpecularSurfaceOutput
 	half3 Emission;
 	half Specular;
 	half3 GlossColor;
-	half Alpha;
+	fixed Alpha;
 };
 	
 struct SolarSurfaceOutput 
@@ -42,7 +42,7 @@ inline half4 LightingColoredSpecular (ColoredSpecularSurfaceOutput s, half3 ligh
 inline half4 LightingColoredSpecular_PrePass (ColoredSpecularSurfaceOutput s, half4 light)
 {
 	half3 spec = light.a * s.GlossColor;
-   
+ 
 	half4 c;
 	c.rgb = (s.Albedo * light.rgb + light.rgb * spec) * 0.5;
 	c.a = s.Alpha + spec * _SpecColor.a;

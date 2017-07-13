@@ -20,14 +20,14 @@ Shader "SSTU/Masked"
 	
 	SubShader
 	{
-		Tags { "RenderType"="Opaque" }
+		Tags {"RenderType"="Opaque"}
 		ZWrite On
 		ZTest LEqual
-		Blend SrcAlpha OneMinusSrcAlpha 
+		Blend SrcAlpha OneMinusSrcAlpha
 
 		CGPROGRAM
 
-		#pragma surface surf ColoredSpecular
+		#pragma surface surf ColoredSpecular keepalpha
 		#pragma target 3.0
 		#include "SSTUShaders.cginc"
 		

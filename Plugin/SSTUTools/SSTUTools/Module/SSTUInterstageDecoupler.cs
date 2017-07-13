@@ -373,6 +373,14 @@ namespace SSTUTools.Module
             }
         }
 
+        public void LateUpdate()
+        {
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                fairingBase.setOpacity(editorTransparency ? 0.25f : 1);
+            }
+        }
+
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             return -defaultMass + modifiedMass;

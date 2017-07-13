@@ -382,6 +382,14 @@ namespace SSTUTools
             GameEvents.onVesselWasModified.Remove(new EventData<Vessel>.OnEvent(onVesselModified));
         }
 
+        public void Start()
+        {
+            if (fairingParts != null)
+            {
+                updateOpacity();
+            }
+        }
+
         public void onVesselModified(Vessel v)
         {
             if (!HighLogic.LoadedSceneIsFlight) { return; }
@@ -472,6 +480,10 @@ namespace SSTUTools
             {
                 updateGuiState();
                 needsGuiUpdate = false;
+            }
+            if (HighLogic.LoadedSceneIsEditor && fairingParts != null)
+            {
+                updateOpacity();
             }
         }
 
