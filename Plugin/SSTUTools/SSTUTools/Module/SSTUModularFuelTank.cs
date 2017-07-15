@@ -145,39 +145,12 @@ namespace SSTUTools
 
         #region REGION - GUI Events/Interaction methods
 
-        [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
-        public void selectNoseEvent()
-        {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, topNodeNames), currentTankDiameter, delegate (string a, bool b)
-            {
-                noseModule.modelSelected(a);
-                this.actionWithSymmetry(m =>
-                {
-                    m.updateEditorStats(true);
-                });
-            });
-        }
-
-        [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
-        public void selectMountEvent()
-        {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, mountModule.models, bottomNodeNames), currentTankDiameter, delegate (string a, bool b)
-            {
-                mountModule.modelSelected(a);
-                this.actionWithSymmetry(m =>
-                {
-                    m.updateEditorStats(true);
-                });
-            });
-        }
-
         private void updateAvailableVariants()
         {
             noseModule.updateSelections();
             mountModule.updateSelections();
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            Fields[nameof(currentNoseType)].guiActiveEditor = !useModelSelectionGUI && noseModule.models.Count > 1;
-            Fields[nameof(currentMountType)].guiActiveEditor = !useModelSelectionGUI && mountModule.models.Count > 1;
+            Fields[nameof(currentNoseType)].guiActiveEditor = noseModule.models.Count > 1;
+            Fields[nameof(currentMountType)].guiActiveEditor = mountModule.models.Count > 1;
         }
 
         private void updateUIScaleControls()
@@ -227,11 +200,6 @@ namespace SSTUTools
             }
             updateAvailableVariants();
             updateUIScaleControls();
-
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-
-            Events[nameof(selectNoseEvent)].guiActiveEditor = useModelSelectionGUI && noseModule.models.Count > 0;
-            Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && mountModule.models.Count > 0;
 
             Fields[nameof(currentTankDiameter)].uiControlEditor.onFieldChanged = delegate(BaseField a, object b) 
             {
@@ -321,8 +289,8 @@ namespace SSTUTools
 
             Fields[nameof(currentTankSet)].guiActiveEditor = tankSets.Length > 1;
             Fields[nameof(currentTankType)].guiActiveEditor = currentTankSetModule.Length > 1;
-            Fields[nameof(currentNoseType)].guiActiveEditor = !useModelSelectionGUI && noseModule.models.Count > 1;
-            Fields[nameof(currentMountType)].guiActiveEditor = !useModelSelectionGUI && mountModule.models.Count > 1;
+            Fields[nameof(currentNoseType)].guiActiveEditor = noseModule.models.Count > 1;
+            Fields[nameof(currentMountType)].guiActiveEditor = mountModule.models.Count > 1;
 
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onPartGeometryUpdate(part, true);

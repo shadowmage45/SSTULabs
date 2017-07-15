@@ -165,21 +165,6 @@ namespace SSTUTools
 
         #region REGION - KSP GUI Interaction Methods
 
-        [KSPEvent(guiName = "Select Nose", guiActive = false, guiActiveEditor = true)]
-        public void selectNoseEvent()
-        {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, noseModule.models, new string[] { "top"}), currentDiameter, delegate(string s, bool b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    m.noseModule.modelSelected(s);
-                    m.updateEditorStats(true);
-                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            });
-        }
-
         [KSPEvent(guiName = "Adjust Thrust Curve", guiActiveEditor = true, guiActive = false)]
         public void editThrustCurveEvent()
         {
@@ -211,9 +196,6 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-            Events[nameof(selectNoseEvent)].guiActiveEditor = useModelSelectionGUI;
 
             Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
             {

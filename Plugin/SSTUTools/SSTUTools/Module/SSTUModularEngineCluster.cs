@@ -233,20 +233,6 @@ namespace SSTUTools
 
         #region REGION - GUI Interaction Methods
 
-        [KSPEvent(guiName = "Select Mount", guiActive = false, guiActiveEditor = true)]
-        public void selectMountEvent()
-        {
-            ModuleSelectionGUI.openGUI(ModelData.getValidSelections(part, currentEngineLayout.mountData, new string[] { "top" }), currentMountDiameter, delegate(string a, bool b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    m.mountModule.modelSelected(a);
-                    m.updateEditorStats(true);
-                    m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
-                });
-            });
-        }
-
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
@@ -269,9 +255,7 @@ namespace SSTUTools
             {
                 initialize();
             }
-
-            bool useModelSelectionGUI = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().useModelSelectGui;
-
+            
             //setup the delegate methods for UI field interaction events/callbacks
 
             Fields[nameof(currentMountName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b) 
@@ -324,8 +308,7 @@ namespace SSTUTools
                     {
                         m.currentMountName = m.currentEngineLayout.defaultMount;
                     }
-                    m.Fields[nameof(currentMountName)].guiActiveEditor = !useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;
-                    m.Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && m.currentEngineLayout.mountData.Length > 1;                    
+                    m.Fields[nameof(currentMountName)].guiActiveEditor = m.currentEngineLayout.mountData.Length > 1;                  
                     m.setupMountModel();
                     m.currentMountDiameter = m.mountModule.model.initialDiameter;
                     m.setupEngineModels();
@@ -377,8 +360,7 @@ namespace SSTUTools
             string[] optionsArray = SSTUUtils.getNames(engineLayouts, m => m.layoutName);
             this.updateUIChooseOptionControl(nameof(currentEngineLayoutName), optionsArray, optionsArray, false);
 
-            Fields[nameof(currentMountName)].guiActiveEditor = !useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
-            Events[nameof(selectMountEvent)].guiActiveEditor = useModelSelectionGUI && currentEngineLayout.mountData.Length > 1;
+            Fields[nameof(currentMountName)].guiActiveEditor = currentEngineLayout.mountData.Length > 1;
             Events[nameof(clearMountEvent)].guiActiveEditor = currentEngineLayout.mountData.Length > 1;
         }
 

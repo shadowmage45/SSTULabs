@@ -13,9 +13,6 @@ namespace SSTUTools
 
         [GameParameters.CustomFloatParameterUI("Boiloff Multiplier", asPercentage = true, minValue = 0, maxValue = 2, toolTip = "How fast do cryogenic fuels evaporate? 0 = none, 1 = standard rate, 2 = 2x standard rate.")]
         public float boiloffModifier = 1f;
-        
-        [GameParameters.CustomParameterUI("Use Model Select GUI?", toolTip = "Use advanced GUI for adapter selection for modular parts.")]
-        public bool useModelSelectGui = true;
 
         [GameParameters.CustomParameterUI("Override stock sandbox upgrade", toolTip = "Force-sets the stock 'apply upgrades in sandbox' to true.")]
         public bool upgradesInSandboxOverride = true;

@@ -83,7 +83,6 @@
     <Compile Include="Addon\SSTUStockInterop.cs" />
     <Compile Include="Fairing\FairingContainer.cs" />
     <Compile Include="Fairing\FairingData.cs" />
-    <Compile Include="GUI\ModuleSelectionGUI.cs" />
     <Compile Include="GUI\CraftRecolorGUI.cs" />
     <Compile Include="GUI\ThrustCurveEditorGUI.cs" />
     <Compile Include="GUI\VolumeContainerGUI.cs" />
