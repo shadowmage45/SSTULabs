@@ -79,6 +79,12 @@ namespace SSTUTools
         [KSPField]
         public bool subtractCost = false;
 
+        [KSPField]
+        public float minVScale = 0.25f;
+
+        [KSPField]
+        public float maxVScale = 1.75f;
+
         #endregion
 
         #region ----------------- REGION - GUI visible fields and fine tune adjustment contols - do not edit through config -----------------
@@ -286,7 +292,8 @@ namespace SSTUTools
             base.OnStart(state);
             initialize();
             this.updateUIFloatEditControl(nameof(currentTankDiameter), minTankDiameter, maxTankDiameter, tankDiameterIncrement * 2, tankDiameterIncrement, tankDiameterIncrement * 0.05f, true, currentTankDiameter);
-            this.updateUIFloatEditControl(nameof(currentTankHeight), 0.25f, 1.75f, 0.25f, 0.125f, 0.005f, true, currentTankHeight);
+            float diff = maxVScale - minVScale;
+            this.updateUIFloatEditControl(nameof(currentTankHeight), minVScale, maxVScale, diff*0.2f, diff*0.05f, diff*0.001f, true, currentTankHeight);
             
             Action<SSTUModularUpperStage> modelChangeAction = m =>
             {
