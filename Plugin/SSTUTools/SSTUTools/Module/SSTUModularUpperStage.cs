@@ -80,10 +80,10 @@ namespace SSTUTools
         public bool subtractCost = false;
 
         [KSPField]
-        public float minVScale = 0.25f;
+        public float minVScale = 0.20f;
 
         [KSPField]
-        public float maxVScale = 1.75f;
+        public float maxVScale = 2.20f;
 
         #endregion
 
