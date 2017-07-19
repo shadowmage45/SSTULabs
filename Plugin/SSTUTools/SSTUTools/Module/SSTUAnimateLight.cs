@@ -492,6 +492,7 @@ namespace SSTUTools
             light.range = range;
             light.spotAngle = angle;
             light.type = type;
+            light.cullingMask = light.cullingMask & ~(1<<10);//flip the layer 10 bit to ignore scaled scenery, keep existing mask except for layer 10
         }
 
         public void setColor(Color color)
