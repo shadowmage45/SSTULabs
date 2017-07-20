@@ -134,8 +134,8 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            transforms = part.transform.FindChildren(transformName);
-            secondaryTransforms = string.IsNullOrEmpty(secondaryTransformName) ? secondaryTransforms = new Transform[0] : part.transform.FindChildren(secondaryTransformName);
+            transforms = part.transform.FindRecursive("model").FindChildren(transformName);
+            secondaryTransforms = string.IsNullOrEmpty(secondaryTransformName) ? secondaryTransforms = new Transform[0] : part.transform.FindRecursive("model").FindChildren(secondaryTransformName);
             float restoredRotation = rotation;
             int len = transforms.Length;
             for (int i = 0; i < len; i++)
