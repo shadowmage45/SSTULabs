@@ -39,6 +39,12 @@ namespace SSTUTools
         [KSPField]
         public String targetTransformName = "SSTUMPTargetTransform";
 
+        /// <summary>
+        /// Determines if this part is capable of having its parachutes repacked by a qualified kerbal.
+        /// </summary>
+        [KSPField]
+        public bool canBeRepacked = false;
+
         //mains config data
 
         /// <summary>
@@ -207,6 +213,13 @@ namespace SSTUTools
             cutChuteEvent();
         }
 
+        [KSPAction("Repack Chute")]
+        public void repackChuteAction(KSPActionParam param)
+        {
+            //TODO -- uhh...yeah...NFC how to handle this; check if vessel has a capable engineer onboard?
+            repackChuteEvent();
+        }
+
         [KSPEvent(guiName = "Deploy Chute", guiActive = true, guiActiveEditor = false)]
         public void deployChuteEvent()
         {
@@ -224,6 +237,21 @@ namespace SSTUTools
             {
                 setChuteState(ChuteState.CUT);
                 //TODO print output message to screen
+            }
+        }
+
+        [KSPEvent(guiName = "Cut Chute", guiActive = true, guiActiveEditor = false, guiActiveUnfocused = false, externalToEVAOnly = true, unfocusedRange = 8f)]
+        public void repackChuteEvent()
+        {
+            if (chuteState == ChuteState.CUT && canRepack())
+            {
+                //TODO -- uhh.. yeah... resetting internal state is easy enough;
+                //resetting model transforms.... yeah... not so easy.
+                //can I clone the transform from the original prefab model and inject back into hierarchy?
+                //how does stock handle repacking?
+
+                //hmm... might be able clone the game objects at time of jettison, and merely disable the originals.
+                //when 'repacked', simply re-enable the originals.
             }
         }
 
@@ -700,6 +728,7 @@ namespace SSTUTools
                 BaseField f = Fields["drogueSafetyAlt"];
                 f.guiActive = f.guiActiveEditor = false;
             }
+            Events[nameof(repackChuteEvent)].guiActive = chuteState == ChuteState.CUT && canBeRepacked;
         }
 
         /// <summary>
@@ -840,6 +869,20 @@ namespace SSTUTools
         private bool shouldDeploySeaLevelAlt(float height)
         {
             return height >= FlightGlobals.getAltitudeAtPos(part.transform.position);
+        }
+
+        private bool canRepack()
+        {
+            if (!canBeRepacked) { return false; }
+            int repairLevel = 2;
+            //check to see if current vessel is an engineer kerbal
+            //check to see if current vessel contains an engineer kerbal crew
+            if (HighLogic.CurrentGame.Parameters.CustomParams<GameParameters.AdvancedParams>().KerbalExperienceEnabled(HighLogic.CurrentGame.Mode) && FlightGlobals.ActiveVessel.VesselValues.RepairSkill.value < repairLevel)
+            {
+                ScreenMessages.PostScreenMessage("Crew member has insufficient repair skill to repack the parachute on " + part.partName + "\nLevel " + repairLevel + " or higher repair skill is required.");
+                return false;
+            }
+            return true;
         }
 
         private void applyPhysicsDrag()
