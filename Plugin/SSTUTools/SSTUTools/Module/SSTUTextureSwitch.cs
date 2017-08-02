@@ -8,13 +8,16 @@ namespace SSTUTools
     // managing of actual switching of textures,
     // and restoring persistent option on reload.
     // may be controlled through external module (e.g resource or mesh-switch) through the two methods restoreDefaultTexture() and enableTextureSet(String setName)
-    public class SSTUTextureSwitch : PartModule
+    public class SSTUTextureSwitch : PartModule, IRecolorable
     {
         [KSPField]
         public bool allowInFlightChange = false;
 
         [KSPField]
         public string transformName = string.Empty;
+
+        [KSPField]
+        public string sectionName = "Recolorable";
 
         /// <summary>
         /// Current texture set.  ChooseOption UI widget is initialized inside of texture-set-container helper object
@@ -67,13 +70,37 @@ namespace SSTUTools
             if (textureSets != null) { return; }//already initialized from OnLoad (prefab, some in-editor parts)
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] setNodes = node.GetNodes("TEXTURESET");
-            textureSets = new TextureSetContainer(Fields[nameof(currentTextureSet)], Fields[nameof(persistentData)], setNodes);
+            //MonoBehaviour.print("Set nodes length: " + setNodes.Length + " from node: \n" + node.ToString());
+            textureSets = new TextureSetContainer(this, Fields[nameof(currentTextureSet)], Fields[nameof(persistentData)], setNodes);
+            if (string.IsNullOrEmpty(currentTextureSet))
+            {
+                currentTextureSet = setNodes[0].GetValue("name");
+            }
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), SSTUTextureUtils.getTextureSetNames(setNodes), SSTUTextureUtils.getTextureSetTitles(setNodes), true, currentTextureSet);
+            //MonoBehaviour.print("Current texture set: " + currentTextureSet);
             textureSets.enableCurrentSet(getModelTransform());
+            //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
 
         private Transform getModelTransform()
         {
             return string.IsNullOrEmpty(transformName) ? part.transform.FindRecursive("model") : part.transform.FindRecursive(transformName);
+        }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { sectionName };
+        }
+
+        public Color[] getSectionColors(string name)
+        {
+            return textureSets.customColors;
+        }
+
+        public void setSectionColors(string name, Color[] colors)
+        {
+            textureSets.setCustomColors(colors);
+            textureSets.enableCurrentSet(getModelTransform());
         }
     }
 
@@ -84,24 +111,26 @@ namespace SSTUTools
     public class TextureSetContainer
     {
 
+        private PartModule pm;
         private BaseField textureSetField;
         private BaseField persistentDataField;
 
-        private Color[] customColors;
+        internal Color[] customColors;
 
         private string currentTextureSet
         {
-            get { return (string)textureSetField.GetValue(textureSetField); }
+            get { return (string)textureSetField.GetValue(pm); }
         }
 
         private string persistentData
         {
-            get { return (string)persistentDataField.GetValue(persistentDataField); }
-            set { persistentDataField.SetValue(value, persistentDataField); }
+            get { return (string)persistentDataField.GetValue(pm); }
+            set { persistentDataField.SetValue(value, pm); }
         }
 
-        public TextureSetContainer(BaseField textureSetField, BaseField persistentDataField, ConfigNode[] textureSetNodes)
+        public TextureSetContainer(PartModule pm, BaseField textureSetField, BaseField persistentDataField, ConfigNode[] textureSetNodes)
         {
+            this.pm = pm;
             this.textureSetField = textureSetField;
             this.persistentDataField = persistentDataField;
             loadPersistentData(persistentData);
@@ -112,11 +141,10 @@ namespace SSTUTools
             TextureSet set = SSTUTextureUtils.getTextureSet(currentTextureSet);
             if (customColors == null || customColors.Length == 0)
             {
-                customColors = new Color[4];
+                customColors = new Color[3];
                 customColors[0] = set.maskColors[0];
                 customColors[1] = set.maskColors[1];
                 customColors[2] = set.maskColors[2];
-                customColors[3] = set.maskColors[3];
             }
             set.enable(root.gameObject, customColors);
             saveColors(customColors);
@@ -125,6 +153,7 @@ namespace SSTUTools
         public void setCustomColors(Color[] colors)
         {
             customColors = colors;
+            saveColors(customColors);
         }
 
         private void loadPersistentData(string data)
