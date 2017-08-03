@@ -493,6 +493,14 @@ namespace SSTUTools
             currentVerticalPosition = positionOfBottomOfModel + offset;
         }
 
+        public virtual float getPosition(ModelOrientation orientation = ModelOrientation.TOP)
+        {
+            float offset = getVerticalOffset();
+            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
+            return currentVerticalPosition - offset;
+        }
+
         public static string[] getModelNames(ModelData[] data)
         {
             int len = data.Length;

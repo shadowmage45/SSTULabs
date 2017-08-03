@@ -33,6 +33,13 @@ namespace SSTUTools
         [KSPField]
         public String rcsThrustTransformName = "thrustTransform";
 
+        [KSPField]
+        public int topFairingIndex = 0;
+
+
+        [KSPField]
+        public int lowerFairingIndex = 1;
+
         /// <summary>
         /// If true, the engine thrust will be scaled with model changes by the parameters below
         /// </summary>
@@ -126,6 +133,9 @@ namespace SSTUTools
         //do NOT adjust this through config, or you will mess up your resource updates in the editor; you have been warned
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
+
+        [KSPField(isPersistant = true)]
+        public bool initializedFairing = false;
 
         [KSPField(isPersistant = true)]
         public string thrustCurveData;
@@ -341,6 +351,11 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
+            if (!initializedFairing && HighLogic.LoadedSceneIsEditor)
+            {
+                initializedFairing = true;
+                updateFairing(true);
+            }
         }
 
         //IModuleCostModifier Override
@@ -445,6 +460,7 @@ namespace SSTUTools
             {
                 updateContainerVolume();
             }
+            updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
         }
 
         /// <summary>
@@ -770,36 +786,38 @@ namespace SSTUTools
             }
         }
 
-        ///// <summary>
-        ///// Update the fairing module height and position based on current tank parameters
-        ///// </summary>
-        //private void updateFairing(bool userInput)
-        //{
-        //    SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
-        //    if (modules == null || modules.Length < 2)
-        //    {
-        //        return;
-        //    }
-        //    SSTUNodeFairing topFairing = modules[topFairingIndex];
-        //    if (topFairing != null)
-        //    {
-        //        FairingUpdateData data = new FairingUpdateData();
-        //        data.setTopY(partTopY);
-        //        data.setBottomY(topFairingBottomY);
-        //        data.setBottomRadius(currentDiameter * 0.5f);
-        //        if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
-        //        topFairing.updateExternal(data);
-        //    }
-        //    SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
-        //    if (bottomFairing != null)
-        //    {
-        //        FairingUpdateData data = new FairingUpdateData();
-        //        data.setTopRadius(currentTankDiameter * 0.5f);
-        //        data.setTopY(bottomFairingTopY);
-        //        if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
-        //        bottomFairing.updateExternal(data);
-        //    }
-        //}
+        /// <summary>
+        /// Update the fairing module height and position based on current tank parameters
+        /// </summary>
+        private void updateFairing(bool userInput)
+        {
+            SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
+            if (modules == null || modules.Length < 2)
+            {
+                return;
+            }
+            SSTUNodeFairing topFairing = modules[topFairingIndex];
+            if (topFairing != null)
+            {
+                FairingUpdateData data = new FairingUpdateData();
+                float partTopY = noseModule.model.getPosition(ModelOrientation.TOP)+noseModule.model.currentHeight;
+                float topFairingBottomY = partTopY - noseModule.model.currentHeight + noseModule.model.modelDefinition.fairingTopOffset * noseModule.model.currentDiameterScale;
+                data.setTopY(partTopY);
+                data.setBottomY(topFairingBottomY);
+                data.setBottomRadius(currentDiameter * 0.5f);
+                if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
+                topFairing.updateExternal(data);
+            }
+            SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
+            if (bottomFairing != null)
+            {
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopRadius(currentDiameter * 0.5f);
+                data.setTopY(bottomFairingTopY);
+                if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
+                bottomFairing.updateExternal(data);
+            }
+        }
 
         /// <summary>
         /// Update attach node positions and optionally update the parts attached to those nodes if userInput==true
