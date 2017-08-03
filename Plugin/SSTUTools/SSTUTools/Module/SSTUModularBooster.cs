@@ -27,6 +27,13 @@ namespace SSTUTools
         public String gimbalTransformName = "SSTU-MRB-GimbalTransform";
 
         /// <summary>
+        /// A thrust transform of this name is created in the prefab part in order for the ModuleRCS to initialize properly even when no RCS model is present.
+        /// This name -must- match the name in the ModuleRCS, as this data is needed prior to the ModuleRCS loading its config data (??unconfirmed)
+        /// </summary>
+        [KSPField]
+        public String rcsThrustTransformName = "thrustTransform";
+
+        /// <summary>
         /// If true, the engine thrust will be scaled with model changes by the parameters below
         /// </summary>
         [KSPField]
@@ -129,6 +136,8 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
+        public GameObject[] rcsThrustTransforms = null;
+
         #endregion ENDREGION - Persistent variables
 
         #region REGION - GUI Display Variables
@@ -138,6 +147,12 @@ namespace SSTUTools
 
         [KSPField(guiName = "Burn Tme", guiActiveEditor = true)]
         public float guiBurnTime = 0f;
+
+        /// <summary>
+        /// RCS thrust, based on tank model scale.
+        /// </summary>
+        [KSPField(guiName = "RCS Thrust", guiActive = false, guiActiveEditor = true)]
+        public float guiRcsThrust;
 
         #endregion
 
@@ -152,14 +167,13 @@ namespace SSTUTools
 
         private float modifiedCost = -1;
         private float modifiedMass = -1;
+        private float rcsThrust = -1;
 
         private FloatCurve thrustCurveCache;
 
         private ModuleEnginesFX engineModule;
 
         private bool guiOpen = false;
-
-        private float baseRCSThrust = -1;
 
         #endregion ENDREGION - Private working variables
 
@@ -204,6 +218,7 @@ namespace SSTUTools
                     m.currentDiameter = currentDiameter;
                     m.updateEditorStats(true);
                     m.updateThrustOutput();
+                    m.updateRCSThrust();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -256,6 +271,8 @@ namespace SSTUTools
                     m.mountModule.model.setupTransformDefaults(m.part.transform.FindRecursive(m.thrustTransformName), m.part.transform.FindRecursive(m.gimbalTransformName));
                     m.updateGimbalOffset();
                     m.updateThrustOutput();
+                    m.rebuildRCSThrustTransforms(true);
+                    m.updateRCSThrust();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -318,6 +335,7 @@ namespace SSTUTools
         {            
             updateGimbalOffset();
             updateThrustOutput();
+            updateRCSThrust();
             if (!initializedResources && HighLogic.LoadedSceneIsEditor)
             {
                 initializedResources = true;
@@ -520,6 +538,8 @@ namespace SSTUTools
             {
                 currentVariantName = bodyModule.model.variant;
             }
+
+            rebuildRCSThrustTransforms(false);
         }        
 
         /// <summary>
@@ -747,18 +767,39 @@ namespace SSTUTools
                     }
                 }
                 part.Effects.OnLoad(copiedEffectsNode);
-            }            
+            }
         }
 
-        private void updateRCSModule()
-        {
-            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
-            if (rcs == null) { return; }
-            if (baseRCSThrust < 0) { baseRCSThrust = rcs.thrusterPower; }
-
-            float thrust = bodyModule.model.currentDiameterScale * baseRCSThrust;
-            rcs.thrusterPower = thrust;
-        }
+        ///// <summary>
+        ///// Update the fairing module height and position based on current tank parameters
+        ///// </summary>
+        //private void updateFairing(bool userInput)
+        //{
+        //    SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
+        //    if (modules == null || modules.Length < 2)
+        //    {
+        //        return;
+        //    }
+        //    SSTUNodeFairing topFairing = modules[topFairingIndex];
+        //    if (topFairing != null)
+        //    {
+        //        FairingUpdateData data = new FairingUpdateData();
+        //        data.setTopY(partTopY);
+        //        data.setBottomY(topFairingBottomY);
+        //        data.setBottomRadius(currentDiameter * 0.5f);
+        //        if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
+        //        topFairing.updateExternal(data);
+        //    }
+        //    SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
+        //    if (bottomFairing != null)
+        //    {
+        //        FairingUpdateData data = new FairingUpdateData();
+        //        data.setTopRadius(currentTankDiameter * 0.5f);
+        //        data.setTopY(bottomFairingTopY);
+        //        if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
+        //        bottomFairing.updateExternal(data);
+        //    }
+        //}
 
         /// <summary>
         /// Update attach node positions and optionally update the parts attached to those nodes if userInput==true
@@ -774,6 +815,67 @@ namespace SSTUTools
                 Vector3 pos = bodyModule.model.modelDefinition.surfaceNode.position * bodyModule.model.currentDiameterScale;
                 Vector3 rot = bodyModule.model.modelDefinition.surfaceNode.orientation;
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, surface, pos, rot, userInput);
+            }
+        }
+
+        /// <summary>
+        /// update external RCS-module with thrust value;
+        /// </summary>
+        private void updateRCSThrust()
+        {
+            ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
+            int len = rcsMod.Length;
+            float scale = currentDiameter / bodyModule.model.modelDefinition.diameter;
+            if (rcsThrust < 0 && len > 0)
+            {
+                rcsThrust = rcsMod[0].thrusterPower;
+            }
+            float thrust = rcsThrust * scale * scale;
+            if (!mountModule.model.hasRCS) { thrust = 0; }
+            for (int i = 0; i < len; i++)
+            {
+                rcsMod[i].thrusterPower = thrust;
+                rcsMod[i].moduleIsEnabled = thrust > 0;
+            }
+            guiRcsThrust = thrust;
+        }
+
+        private void rebuildRCSThrustTransforms(bool updateRCSModule)
+        {
+            if (rcsThrustTransforms != null)
+            {
+                //destroy immediate on existing, or optionally attempt to copy and re-use some of them?
+                int l = rcsThrustTransforms.Length;
+                for (int i = 0; i < l; i++)
+                {
+                    rcsThrustTransforms[i].transform.parent = null;//so that it doesn't get found by the rcs module, free-floating transform for one frame until destroyed
+                    GameObject.Destroy(rcsThrustTransforms[i]);//destroy
+                    rcsThrustTransforms[i] = null;//dereference
+                }
+                rcsThrustTransforms = null;//dump the whole array
+            }
+            rcsThrustTransforms = mountModule.model.createRCSThrustTransforms(rcsThrustTransformName, part.transform.FindRecursive("model"));
+            if (updateRCSModule)
+            {
+                ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+                int len = modules.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    part.fxGroups.RemoveAll(m => modules[i].thrusterFX.Contains(m));
+                    part.fxGroups.ForEach(m => MonoBehaviour.print(m.name));
+                    modules[i].thrusterFX.ForEach(m => m.fxEmitters.ForEach(s => GameObject.Destroy(s.gameObject)));
+                    modules[i].thrusterFX.Clear();
+                    modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
+                    modules[i].OnStart(StartState.Editor);//force update of fx/etc
+                    modules[i].DeactivateFX();//doesn't appear to work
+                    //TODO -- clean up this mess of linked stuff
+                    modules[i].thrusterFX.ForEach(m =>
+                    {
+                        m.setActive(false);
+                        m.SetPower(0);
+                        m.fxEmitters.ForEach(s => s.enabled = false);
+                    });
+                }
             }
         }
 
@@ -869,6 +971,8 @@ namespace SSTUTools
     {        
         public readonly String thrustTransformName;
         public readonly String gimbalTransformName;
+        public readonly string rcsThrustTransformName;
+        public bool hasRCS = false;
         public readonly float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
         public readonly float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
         public Quaternion gimbalDefaultOrientation;
@@ -877,6 +981,8 @@ namespace SSTUTools
         {
             thrustTransformName = node.GetStringValue("thrustTransformName");
             gimbalTransformName = node.GetStringValue("gimbalTransformName");
+            rcsThrustTransformName = node.GetStringValue("rcsTransformName");
+            hasRCS = node.GetBoolValue("hasRCS");
             gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
             gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
         }
@@ -934,6 +1040,56 @@ namespace SSTUTools
             Transform modelGimbalTransform = getGimbalTransform();
             modelGimbalTransform.localRotation = gimbalDefaultOrientation;
             modelGimbalTransform.Rotate(worldAxis, -newRotation, Space.World);
+        }
+
+        public GameObject[] createRCSThrustTransforms(string name, Transform parent)
+        {
+            MonoBehaviour.print("Creating new rcs thrust transforms");
+            if (!hasRCS)
+            {
+                GameObject[] dumArr = new GameObject[1];
+                dumArr[0] = new GameObject(name);
+                dumArr[0].transform.NestToParent(parent);
+                return dumArr;
+            }
+            int len = 4, len2;
+            List<GameObject> goList = new List<GameObject>();
+            Transform[] trs;
+            GameObject go;
+            for (int i = 0; i < len; i++)
+            {
+                trs = model.transform.FindChildren(thrustTransformName);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    go = new GameObject(name);
+                    go.transform.NestToParent(parent);
+                    goList.Add(go);
+                }
+            }
+            return goList.ToArray();
+        }
+
+        public void updateRCSThrustTransformPositions(GameObject[] gos)
+        {
+            MonoBehaviour.print("Updating rcs transform positions");
+            if (!hasRCS) { return; }
+            Transform[] trs;
+            int len;
+            GameObject go;
+            int index = 0;
+            int goLen = gos.Length;
+            for (int i = 0; i < 4; i++)
+            {
+                trs = model.transform.FindChildren(thrustTransformName);
+                len = trs.Length;
+                for (int k = 0; k < len && index < goLen; k++, index++)
+                {
+                    go = gos[index];
+                    go.transform.position = trs[k].position;
+                    go.transform.rotation = trs[k].rotation;
+                }
+            }
         }
     }
 
