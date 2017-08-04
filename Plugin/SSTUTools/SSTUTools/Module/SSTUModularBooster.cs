@@ -105,6 +105,10 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "V.Scale"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float currentVScale = 1f;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
@@ -460,6 +464,11 @@ namespace SSTUTools
                 updateContainerVolume();
             }
             updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
+            Fields[nameof(currentVScale)].guiActive = bodyModule.model.minVerticalScale < 1 || bodyModule.model.maxVerticalScale > 1;
+            float min = bodyModule.model.minVerticalScale;
+            float max = bodyModule.model.maxVerticalScale;
+            float diff = max - min;
+            this.updateUIFloatEditControl(nameof(currentVScale), min, max, diff * 0.25f, diff * 0.05f, diff * 0.005f, true, currentVScale);
         }
 
         /// <summary>
@@ -586,7 +595,7 @@ namespace SSTUTools
         private void updateModelScaleAndPosition()
         {
             noseModule.model.updateScaleForDiameter(currentDiameter);
-            bodyModule.model.updateScaleForDiameter(currentDiameter);
+            bodyModule.model.updateScale(currentDiameter / bodyModule.model.modelDefinition.diameter, currentVScale);
             mountModule.model.updateScaleForDiameter(currentDiameter);
 
             noseModule.model.currentVerticalPosition = bodyModule.model.currentHeight * 0.5f;
