@@ -105,6 +105,10 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "V.Scale"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float currentVScale = 1f;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Gimbal"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
@@ -451,6 +455,11 @@ namespace SSTUTools
 
         private void updateEditorStats(bool userInput)
         {
+            float min = bodyModule.model.minVerticalScale;
+            float max = bodyModule.model.maxVerticalScale;
+            float diff = max - min;
+            if (currentVScale < min) { currentVScale = min; }
+            if (currentVScale > max) { currentVScale = max; }
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateAttachnodes(userInput);
@@ -460,6 +469,8 @@ namespace SSTUTools
                 updateContainerVolume();
             }
             updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
+            this.updateUIFloatEditControl(nameof(currentVScale), min, max, diff * 0.25f, diff * 0.05f, diff * 0.005f, true, currentVScale);
+            Fields[nameof(currentVScale)].guiActive = min < 1 || max > 1;
         }
 
         /// <summary>
@@ -586,7 +597,7 @@ namespace SSTUTools
         private void updateModelScaleAndPosition()
         {
             noseModule.model.updateScaleForDiameter(currentDiameter);
-            bodyModule.model.updateScaleForDiameter(currentDiameter);
+            bodyModule.model.updateScale(currentDiameter / bodyModule.model.modelDefinition.diameter, currentVScale);
             mountModule.model.updateScaleForDiameter(currentDiameter);
 
             noseModule.model.currentVerticalPosition = bodyModule.model.currentHeight * 0.5f;
