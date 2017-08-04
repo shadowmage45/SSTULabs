@@ -177,7 +177,6 @@ namespace SSTUTools
 
         private float modifiedCost = -1;
         private float modifiedMass = -1;
-        private float rcsThrust = -1;
 
         private FloatCurve thrustCurveCache;
 
@@ -848,16 +847,21 @@ namespace SSTUTools
             ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
             int len = rcsMod.Length;
             float scale = currentDiameter / bodyModule.model.modelDefinition.diameter;
-            if (rcsThrust < 0 && len > 0)
+            float thrust = mountModule.model.rcsPower * scale * scale;
+            if (!mountModule.model.hasRCS)
             {
-                rcsThrust = rcsMod[0].thrusterPower;
+                thrust = 0;
             }
-            float thrust = rcsThrust * scale * scale;
-            if (!mountModule.model.hasRCS) { thrust = 0; }
             for (int i = 0; i < len; i++)
             {
                 rcsMod[i].thrusterPower = thrust;
                 rcsMod[i].moduleIsEnabled = thrust > 0;
+                rcsMod[i].enablePitch = mountModule.model.enableRCSPitch;
+                rcsMod[i].enableYaw = mountModule.model.enableRCSYaw;
+                rcsMod[i].enableRoll = mountModule.model.enableRCSRoll;
+                rcsMod[i].enableX = mountModule.model.enableRCSX;
+                rcsMod[i].enableY = mountModule.model.enableRCSY;
+                rcsMod[i].enableZ = mountModule.model.enableRCSZ;
             }
             guiRcsThrust = thrust;
         }
@@ -993,18 +997,34 @@ namespace SSTUTools
     {        
         public readonly String thrustTransformName;
         public readonly String gimbalTransformName;
-        public readonly string rcsThrustTransformName;
-        public bool hasRCS = false;
         public readonly float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
         public readonly float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
+
+        public readonly bool hasRCS = false;
+        public readonly string rcsThrustTransformName;
+        public readonly float rcsPower = 1f;
+        public readonly bool enableRCSPitch = true;
+        public readonly bool enableRCSYaw = true;
+        public readonly bool enableRCSRoll = true;
+        public readonly bool enableRCSX = true;
+        public readonly bool enableRCSY = true;
+        public readonly bool enableRCSZ = true;
+
         public Quaternion gimbalDefaultOrientation;
 
         public SRBNozzleData(ConfigNode node) : base(node)
         {
             thrustTransformName = node.GetStringValue("thrustTransformName");
             gimbalTransformName = node.GetStringValue("gimbalTransformName");
-            rcsThrustTransformName = node.GetStringValue("rcsTransformName");
             hasRCS = node.GetBoolValue("hasRCS");
+            rcsThrustTransformName = node.GetStringValue("rcsTransformName");
+            rcsPower = node.GetFloatValue("rcsPower", rcsPower);
+            enableRCSPitch = node.GetBoolValue("enableRCSPitch", enableRCSPitch);
+            enableRCSYaw = node.GetBoolValue("enableRCSYaw", enableRCSYaw);
+            enableRCSRoll = node.GetBoolValue("enableRCSRoll", enableRCSRoll);
+            enableRCSX = node.GetBoolValue("enableRCSX", enableRCSX);
+            enableRCSY = node.GetBoolValue("enableRCSY", enableRCSY);
+            enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
             gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
             gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
         }
