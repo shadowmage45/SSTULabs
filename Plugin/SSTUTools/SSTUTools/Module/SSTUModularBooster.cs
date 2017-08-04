@@ -455,6 +455,11 @@ namespace SSTUTools
 
         private void updateEditorStats(bool userInput)
         {
+            float min = bodyModule.model.minVerticalScale;
+            float max = bodyModule.model.maxVerticalScale;
+            float diff = max - min;
+            if (currentVScale < min) { currentVScale = min; }
+            if (currentVScale > max) { currentVScale = max; }
             updateModelScaleAndPosition();
             updateEffectsScale();
             updateAttachnodes(userInput);
@@ -464,11 +469,8 @@ namespace SSTUTools
                 updateContainerVolume();
             }
             updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
-            Fields[nameof(currentVScale)].guiActive = bodyModule.model.minVerticalScale < 1 || bodyModule.model.maxVerticalScale > 1;
-            float min = bodyModule.model.minVerticalScale;
-            float max = bodyModule.model.maxVerticalScale;
-            float diff = max - min;
             this.updateUIFloatEditControl(nameof(currentVScale), min, max, diff * 0.25f, diff * 0.05f, diff * 0.005f, true, currentVScale);
+            Fields[nameof(currentVScale)].guiActive = min < 1 || max > 1;
         }
 
         /// <summary>
