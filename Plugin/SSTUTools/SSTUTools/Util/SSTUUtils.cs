@@ -17,6 +17,10 @@ namespace SSTUTools
                 jettisonedObject.transform.position = parent.position;
                 jettisonedObject.transform.rotation = parent.rotation;
             }
+            else
+            {
+                jettisonedObject.transform.position = toJettison.transform.position;
+            }
             toJettison.transform.NestToParent(jettisonedObject.transform);
             physicalObject po = jettisonedObject.AddComponent<physicalObject>();
             Rigidbody rb = jettisonedObject.AddComponent<Rigidbody>();

@@ -743,7 +743,7 @@ namespace SSTUTools
                 BaseField f = Fields["drogueSafetyAlt"];
                 f.guiActive = f.guiActiveEditor = false;
             }
-            Events[nameof(repackChuteEvent)].guiActive = chuteState == ChuteState.CUT && canBeRepacked;
+            Events[nameof(repackChuteEvent)].guiActiveUnfocused = chuteState == ChuteState.CUT && canBeRepacked;
         }
 
         /// <summary>
@@ -787,6 +787,7 @@ namespace SSTUTools
                 if (jettison)
                 {
                     GameObject jett = GameObject.Instantiate(modelTrs[i].gameObject);
+                    jett.SetActive(true);
                     jett.transform.position = modelTrs[i].position;
                     jett.transform.rotation = modelTrs[i].rotation;
                     Vector3 force = (part.transform.up * 100) + (part.transform.forward * 10);
