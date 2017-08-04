@@ -178,6 +178,9 @@ namespace SSTUTools
 
         private Transform targetTransform;
 
+        private Transform[] mainCapTransforms;
+        private Transform[] drogueCapTransforms;
+
         private float deployTime = 0f;
         private bool hasDrogueChute = false;
         private bool initialized = false;
@@ -240,18 +243,14 @@ namespace SSTUTools
             }
         }
 
-        [KSPEvent(guiName = "Cut Chute", guiActive = true, guiActiveEditor = false, guiActiveUnfocused = false, externalToEVAOnly = true, unfocusedRange = 8f)]
+        [KSPEvent(guiName = "Repack Chute", guiActive = false, guiActiveEditor = false, guiActiveUnfocused = false, externalToEVAOnly = true, unfocusedRange = 8f)]
         public void repackChuteEvent()
         {
             if (chuteState == ChuteState.CUT && canRepack())
             {
-                //TODO -- uhh.. yeah... resetting internal state is easy enough;
-                //resetting model transforms.... yeah... not so easy.
-                //can I clone the transform from the original prefab model and inject back into hierarchy?
-                //how does stock handle repacking?
-
-                //hmm... might be able clone the game objects at time of jettison, and merely disable the originals.
-                //when 'repacked', simply re-enable the originals.
+                hasJettisonedDrogueCap = false;
+                hasJettisonedMainCap = false;
+                setChuteState(ChuteState.RETRACTED);
             }
         }
 
@@ -341,6 +340,8 @@ namespace SSTUTools
             foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, baseTransform, targetTransform); }
             foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, baseTransform, targetTransform); }
             hasDrogueChute = drogueChuteModules.Length > 0;
+            mainCapTransforms = part.transform.FindRecursive("model").FindChildren(mainCapName);
+            drogueCapTransforms = part.transform.FindRecursive("model").FindChildren(drogueCapName);
         }
 
         #endregion
@@ -677,18 +678,32 @@ namespace SSTUTools
                     updateDeployAnimation(mainChuteModules, ChuteAnimationState.FULL_DEPLOYED, 1, wobbleMultiplier, lerpDegreePerSecond);
                     break;
             }
-            
+
             if (isMainChuteDeployed())
             {
-                removeParachuteCap(mainCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedMainCap);
-                removeParachuteCap(drogueCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap);
+                removeParachuteCap(HighLogic.LoadedSceneIsFlight && !hasJettisonedMainCap, mainCapTransforms);
+                removeParachuteCap(HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap, drogueCapTransforms);
                 hasJettisonedMainCap = true;
                 hasJettisonedDrogueCap = true;
             }
             else if (isDrogueChuteDeployed())
             {
-                removeParachuteCap(drogueCapName, HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap);
+                removeParachuteCap(HighLogic.LoadedSceneIsFlight && !hasJettisonedDrogueCap, drogueCapTransforms);
                 hasJettisonedDrogueCap = true;
+            }
+            else //neither are deployed; check for cut state, if not cut, activate the cap meshes
+            {
+                bool enable = chuteState == ChuteState.RETRACTED || chuteState == ChuteState.ARMED;
+                int len = mainCapTransforms.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    mainCapTransforms[i].gameObject.SetActive(enable && !hasJettisonedMainCap);
+                }
+                len = drogueCapTransforms.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    drogueCapTransforms[i].gameObject.SetActive(enable && !hasJettisonedMainCap);
+                }
             }
             updateGuiState();            
         }
@@ -763,20 +778,22 @@ namespace SSTUTools
             //print("alt4: " + vessel.heightFromTerrain);
         }
 
-        private void removeParachuteCap(String name, bool jettison)
+        private void removeParachuteCap(bool jettison, Transform[] modelTrs)
         {
-            if (String.IsNullOrEmpty(name)) { return; }
-            Transform tr = part.transform.FindRecursive(name);
-            if (tr == null) { return; }
-            if (jettison)
+            if (modelTrs == null || modelTrs.Length < 1) { return; }
+            int len = modelTrs.Length;
+            for (int i = 0; i < len; i++)
             {
-                Vector3 force = (part.transform.up * 100) + (part.transform.forward * 10);
-                GameObject jettisoned = SSTUUtils.createJettisonedObject(tr.gameObject, part.rb.velocity, force, 0.15f);
+                if (jettison)
+                {
+                    GameObject jett = GameObject.Instantiate(modelTrs[i].gameObject);
+                    jett.transform.position = modelTrs[i].position;
+                    jett.transform.rotation = modelTrs[i].rotation;
+                    Vector3 force = (part.transform.up * 100) + (part.transform.forward * 10);
+                    GameObject jettisoned = SSTUUtils.createJettisonedObject(jett, part.rb.velocity, force, 0.15f);
+                }
                 SSTUStockInterop.updatePartHighlighting(part);
-            }
-            else
-            {
-                GameObject.Destroy(tr.gameObject);
+                modelTrs[i].gameObject.SetActive(false);
             }
         }
 
