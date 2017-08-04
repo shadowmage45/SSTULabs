@@ -501,6 +501,11 @@ namespace SSTUTools
             return currentVerticalPosition - offset;
         }
 
+        public virtual float getFairingOffset()
+        {
+            return currentHeightScale * modelDefinition.fairingTopOffset;
+        }
+
         public static string[] getModelNames(ModelData[] data)
         {
             int len = data.Length;

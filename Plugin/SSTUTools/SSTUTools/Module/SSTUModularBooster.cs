@@ -800,21 +800,25 @@ namespace SSTUTools
             if (topFairing != null)
             {
                 FairingUpdateData data = new FairingUpdateData();
-                float partTopY = noseModule.model.getPosition(ModelOrientation.TOP)+noseModule.model.currentHeight;
-                float topFairingBottomY = partTopY - noseModule.model.currentHeight + noseModule.model.modelDefinition.fairingTopOffset * noseModule.model.currentDiameterScale;
-                data.setTopY(partTopY);
+                float partTopY = noseModule.model.getPosition(ModelOrientation.TOP) + noseModule.model.currentHeight;
+                float topFairingBottomY = partTopY - noseModule.model.currentHeight + noseModule.model.getFairingOffset();
+                data.setTopY(partTopY);//why isn't this fairing setup for snap-to-node? does it not work for upper fairings?
                 data.setBottomY(topFairingBottomY);
                 data.setBottomRadius(currentDiameter * 0.5f);
                 if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
+                data.setEnable(!noseModule.model.modelDefinition.fairingDisabled);
                 topFairing.updateExternal(data);
             }
             SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
             if (bottomFairing != null)
             {
+                float bottomFairingTopY = mountModule.model.getPosition(ModelOrientation.BOTTOM) - mountModule.model.getFairingOffset();
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopRadius(currentDiameter * 0.5f);
                 data.setTopY(bottomFairingTopY);
+                //do not set bottomY, use auto-snap to node in fairing config
                 if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
+                data.setEnable(!mountModule.model.modelDefinition.fairingDisabled);
                 bottomFairing.updateExternal(data);
             }
         }
