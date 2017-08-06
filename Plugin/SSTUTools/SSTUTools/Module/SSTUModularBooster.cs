@@ -607,6 +607,7 @@ namespace SSTUTools
             noseModule.model.updateModel();
             bodyModule.model.updateModel();
             mountModule.model.updateModel();
+            mountModule.model.updateRCSThrustTransformPositions(rcsThrustTransforms);
         }
 
         /// <summary>
@@ -914,6 +915,7 @@ namespace SSTUTools
                     });
                 }
             }
+            SSTUUtils.recursePrintComponents(part.transform.gameObject, "");
         }
 
         /// <summary>
@@ -1027,6 +1029,8 @@ namespace SSTUTools
         {
             thrustTransformName = node.GetStringValue("thrustTransformName");
             gimbalTransformName = node.GetStringValue("gimbalTransformName");
+            gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
+            gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
             hasRCS = node.GetBoolValue("hasRCS");
             rcsThrustTransformName = node.GetStringValue("rcsTransformName");
             rcsPower = node.GetFloatValue("rcsPower", rcsPower);
@@ -1036,8 +1040,6 @@ namespace SSTUTools
             enableRCSX = node.GetBoolValue("enableRCSX", enableRCSX);
             enableRCSY = node.GetBoolValue("enableRCSY", enableRCSY);
             enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
-            gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
-            gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
         }
 
         public Transform getGimbalTransform()
@@ -1105,20 +1107,18 @@ namespace SSTUTools
                 dumArr[0].transform.NestToParent(parent);
                 return dumArr;
             }
-            int len = 4, len2;
+            int len2;
             List<GameObject> goList = new List<GameObject>();
             Transform[] trs;
             GameObject go;
-            for (int i = 0; i < len; i++)
+            trs = model.transform.FindChildren(rcsThrustTransformName);
+            len2 = trs.Length;
+            MonoBehaviour.print("Found: " + len2 + " trs with name: " + rcsThrustTransformName);
+            for (int k = 0; k < len2; k++)
             {
-                trs = model.transform.FindChildren(thrustTransformName);
-                len2 = trs.Length;
-                for (int k = 0; k < len2; k++)
-                {
-                    go = new GameObject(name);
-                    go.transform.NestToParent(parent);
-                    goList.Add(go);
-                }
+                go = new GameObject(name);
+                go.transform.NestToParent(parent);
+                goList.Add(go);
             }
             return goList.ToArray();
         }
@@ -1132,16 +1132,13 @@ namespace SSTUTools
             GameObject go;
             int index = 0;
             int goLen = gos.Length;
-            for (int i = 0; i < 4; i++)
+            trs = model.transform.FindChildren(rcsThrustTransformName);
+            len = trs.Length;
+            for (int i = 0; i < len && index < goLen; i++, index++)
             {
-                trs = model.transform.FindChildren(thrustTransformName);
-                len = trs.Length;
-                for (int k = 0; k < len && index < goLen; k++, index++)
-                {
-                    go = gos[index];
-                    go.transform.position = trs[k].position;
-                    go.transform.rotation = trs[k].rotation;
-                }
+                go = gos[index];
+                go.transform.position = trs[i].position;
+                go.transform.rotation = trs[i].rotation;
             }
         }
     }
