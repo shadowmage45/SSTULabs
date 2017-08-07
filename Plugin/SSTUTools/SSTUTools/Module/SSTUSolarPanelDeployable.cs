@@ -35,6 +35,29 @@ namespace SSTUTools
         {
             public Transform pivotTransform;
             public Quaternion defaultOrientation;
+            private float currentAngle = 0f;
+
+            public void setCurrentAngle(float angle)
+            {
+                currentAngle = angle;
+                pivotTransform.rotation = defaultOrientation * Quaternion.Euler(0f, currentAngle, 0f);
+            }
+
+            public float getCurrentAngle()
+            {
+                return currentAngle;
+            }
+
+            public float getTargetAngle(Vector3 targetPos)
+            {
+                Vector3 fwd = pivotTransform.InverseTransformDirection(pivotTransform.forward);
+                Vector3 pos = pivotTransform.position;
+                Vector3 ptd = targetPos - pos;//pos-tgt-delta
+                ptd = pivotTransform.InverseTransformDirection(ptd);
+                float angleFwd = (float)SSTUUtils.toDegrees(Mathf.Atan2(fwd.x, fwd.z));
+                float angleTgt = (float)SSTUUtils.toDegrees(Mathf.Atan2(ptd.x, ptd.z));
+                return angleTgt - angleFwd;
+            }
         }
 
         private class SuncatcherData
@@ -96,6 +119,9 @@ namespace SSTUTools
         //Status displayed for panel state, includes animation state and energy state;  Using in place of the three-line output from stock panels
         [KSPField(guiName = "S.P.", guiActive = true)]
         public String guiStatus = String.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string persistentData = string.Empty;
 
         //current state of this solar panel module
         private SSTUPanelState panelState = SSTUPanelState.RETRACTED;
