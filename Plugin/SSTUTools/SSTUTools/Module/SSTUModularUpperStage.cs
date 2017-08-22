@@ -437,6 +437,7 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
+            updateNodePositions(false);
             updateRCSThrust();
             updateGuiState();
         }
