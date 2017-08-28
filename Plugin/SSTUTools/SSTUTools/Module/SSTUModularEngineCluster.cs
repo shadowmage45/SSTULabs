@@ -537,10 +537,12 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     EngineClusterLayoutMountData eclmd = ecld.mountData[k];
+                    float bse = eclmd.modelDefinition.diameter;
+                    float bmd = eclmd.modelDefinition.configNode.GetFloatValue("mountingDiameter");
                     float min = eclmd.minDiameter;
                     float max = eclmd.maxDiameter;
                     float def = eclmd.initialDiameter;
-                    MonoBehaviour.print("Min/max/def: " + string.Format("3f", min) + " - " + string.Format("3f", max) + " - " + string.Format("3f", def)+" - mount: "+eclmd.name);
+                    MonoBehaviour.print("Base/Mount/Min/max/def: " + string.Format("3f", bse) + "-" + string.Format("3f", bmd) +"-" +string.Format("3f", min) + " - " + string.Format("3f", max) + " - " + string.Format("3f", def)+" - mount: "+eclmd.name);
                 }
             }
             MonoBehaviour.print("-------------------------------");
