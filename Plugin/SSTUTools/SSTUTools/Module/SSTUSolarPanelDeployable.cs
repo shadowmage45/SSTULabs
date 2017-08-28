@@ -218,6 +218,58 @@ namespace SSTUTools
             base.OnSave(node);
             savedAnimationState = panelState.ToString();
             node.SetValue("savedAnimationState", savedAnimationState, true);
+            node.SetValue(nameof(persistentData), getPivotSaveData());
+        }
+
+        private string getPivotSaveData()
+        {
+            if (pivotData == null) { return persistentData; }
+            string output = "";
+            int len = pivotData.Length;
+            Quaternion rot;
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0)
+                {
+                    output = output + ";";
+                }
+                rot = pivotData[i].pivotTransform.localRotation;
+                output = output + rot.x + "," + rot.y + "," + rot.z + "," + rot.w;
+            }
+            for (int i = 0; i < len; i++)
+            {
+                if (secondaryPivotData != null && secondaryPivotData.Length > 0)
+                {
+                    output = output + ";";
+                    rot = secondaryPivotData[i].pivotTransform.localRotation;
+                    output = output + rot.x + "," + rot.y + "," + rot.z + "," + rot.w;
+                }
+            }
+            return output;
+        }
+
+        private void loadPivotSaveData(string data)
+        {
+            int index = 0;       
+            string[] split0 = data.Split(';');
+            int len = split0.Length;
+            string[] split1;
+            Quaternion parsed;
+            bool main = true;
+            for (int i = 0; i < len; i++, index++)
+            {
+                split1 = split0[index].Split(',');
+                parsed = new Quaternion(float.Parse(split1[0]), float.Parse(split1[1]), float.Parse(split1[2]), float.Parse(split1[3]));
+                if (main && i > pivotData.Length) { main = false; i = 0; }
+                if (main)
+                {
+                    pivotData[i].pivotTransform.localRotation = parsed;
+                }
+                else
+                {
+                    secondaryPivotData[i].pivotTransform.localRotation = parsed;
+                }
+            }
         }
 
         public override string GetInfo()
