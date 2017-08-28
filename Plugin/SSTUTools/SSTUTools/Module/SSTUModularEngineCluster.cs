@@ -456,6 +456,7 @@ namespace SSTUTools
             updateEditorStats(false);
             updateGuiState();
             SSTUModInterop.onPartGeometryUpdate(part, true);
+            outputMountInfo();
         }
 
         private void loadEngineLayouts(ConfigNode[] moduleLayoutNodes)
@@ -520,6 +521,29 @@ namespace SSTUTools
             mountModule = new ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
             mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
+        }
+
+        private void outputMountInfo()
+        {
+            MonoBehaviour.print("-------------------------------");
+            MonoBehaviour.print("Mount config for: " + part);
+            MonoBehaviour.print("Mounting size: " + engineMountDiameter);
+            MonoBehaviour.print("Spacing: " + engineSpacing);
+            int len = engineLayouts.Length;
+            for (int i = 0; i < len; i++)
+            {
+                EngineClusterLayoutData ecld = engineLayouts[i];
+                int len2 = ecld.mountData.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    EngineClusterLayoutMountData eclmd = ecld.mountData[k];
+                    float min = eclmd.minDiameter;
+                    float max = eclmd.maxDiameter;
+                    float def = eclmd.initialDiameter;
+                    MonoBehaviour.print("Min/max/def: " + string.Format("3f", min) + " - " + string.Format("3f", max) + " - " + string.Format("3f", def)+" - mount: "+eclmd.name);
+                }
+            }
+            MonoBehaviour.print("-------------------------------");
         }
 
         #endregion ENDREGION - Initialization
