@@ -676,7 +676,8 @@ namespace SSTUTools
             Fields[nameof(numOfSections)].guiActiveEditor = currentlyEnabled && canAdjustSections;
             Events[nameof(jettisonEvent)].guiName = actionName + " " + fairingName;
             Actions[nameof(jettisonAction)].guiName = actionName + " " + fairingName;
-            Events[nameof(jettisonEvent)].active = Actions[nameof(jettisonAction)].active = HighLogic.LoadedSceneIsFlight && currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
+            Events[nameof(jettisonEvent)].active = HighLogic.LoadedSceneIsFlight && currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
+            Actions[nameof(jettisonAction)].active = currentlyEnabled && canManuallyJettison && (numOfSections > 1 || String.IsNullOrEmpty(nodeName));
             Events[nameof(toggleFairing)].guiName = "Toggle " + fairingName;
             Events[nameof(toggleFairing)].active = HighLogic.LoadedSceneIsEditor && !fairingForceDisabled && ((currentlyEnabled && canDisableInEditor) || canSpawnFairing());
             Fields[nameof(editorTransparency)].guiActiveEditor = currentlyEnabled;
