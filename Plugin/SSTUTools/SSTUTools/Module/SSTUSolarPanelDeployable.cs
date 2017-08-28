@@ -74,9 +74,6 @@ namespace SSTUTools
         public String pivotTransforms = String.Empty;
 
         [KSPField]
-        public String secondaryPivotTransforms = String.Empty;
-
-        [KSPField]
         public String windBreakTransformName = String.Empty;
 
         [KSPField]
@@ -109,6 +106,17 @@ namespace SSTUTools
         [KSPField]
         public FloatCurve temperatureEfficCurve;
 
+        [KSPField]
+        public bool canLockPanels = true;
+
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Panel Rotation"),
+         UI_Toggle(suppressEditorShipModified = true, enabledText = "Locked", disabledText = "Tracking")]
+        public bool userLock = false;
+
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = false, guiName = "Panel Rotation"),
+         UI_FloatEdit(suppressEditorShipModified = true, minValue = -180f, maxValue = 180f, incrementLarge =90f, incrementSmall = 45, incrementSlide = 1f)]
+        public float userRotation = 0f;
+
         //BELOW HERE ARE NON-CONFIG EDITABLE FIELDS
 
         //used purely to persist rough estimate of animation state; if it is retracting/extending when reloaded, it will default to the start of that animation transition
@@ -126,8 +134,6 @@ namespace SSTUTools
         //current state of this solar panel module
         private SSTUPanelState panelState = SSTUPanelState.RETRACTED;
 
-        private Axis pivotAngleAxis = Axis.ZPlus;
-        private Axis pivotRotateAxis = Axis.YPlus;
         private Axis suncatcherAngleAxis = Axis.ZPlus;
 
         //cached energy flow value, used to update gui
@@ -140,7 +146,6 @@ namespace SSTUTools
         private Transform windBreakTransform;
 
         private PivotData[] pivotData;
-        private PivotData[] secondaryPivotData;
         private SuncatcherData[] suncatcherData;
 
         private SSTUAnimateControlled animationController;
@@ -229,20 +234,11 @@ namespace SSTUTools
             Quaternion rot;
             for (int i = 0; i < len; i++)
             {
-                if (i > 0)
-                {
-                    output = output + ";";
-                }
                 rot = pivotData[i].pivotTransform.localRotation;
                 output = output + rot.x + "," + rot.y + "," + rot.z + "," + rot.w;
-            }
-            for (int i = 0; i < len; i++)
-            {
-                if (secondaryPivotData != null && secondaryPivotData.Length > 0)
+                if (i < len-1)
                 {
                     output = output + ";";
-                    rot = secondaryPivotData[i].pivotTransform.localRotation;
-                    output = output + rot.x + "," + rot.y + "," + rot.z + "," + rot.w;
                 }
             }
             return output;
@@ -250,25 +246,25 @@ namespace SSTUTools
 
         private void loadPivotSaveData(string data)
         {
-            int index = 0;       
+            if (string.IsNullOrEmpty(data))
+            {
+                MonoBehaviour.print("ERROR: No saved/persistent pivot data for pivots.");
+                return;
+            }
+            int index = 0;
             string[] split0 = data.Split(';');
             int len = split0.Length;
+            if (len != pivotData.Length)
+            {
+                MonoBehaviour.print("ERROR: Length mismatch between saved pivot data and stored pivot orientation array.");
+            }
             string[] split1;
             Quaternion parsed;
-            bool main = true;
             for (int i = 0; i < len; i++, index++)
             {
                 split1 = split0[index].Split(',');
                 parsed = new Quaternion(float.Parse(split1[0]), float.Parse(split1[1]), float.Parse(split1[2]), float.Parse(split1[3]));
-                if (main && i > pivotData.Length) { main = false; i = 0; }
-                if (main)
-                {
-                    pivotData[i].pivotTransform.localRotation = parsed;
-                }
-                else
-                {
-                    secondaryPivotData[i].pivotTransform.localRotation = parsed;
-                }
+                pivotData[i].pivotTransform.localRotation = parsed;
             }
         }
 
@@ -304,40 +300,10 @@ namespace SSTUTools
             updateGuiData();
         }
 
-        public void Start()
-        {
-            if (!moduleIsEnabled || vessel == null || pivotData==null || secondaryPivotData==null || vessel.solarFlux <= 0) { return; }
-            CelestialBody sun = FlightGlobals.Bodies[0];
-            sunTransform = sun.transform;
-            if (panelState == SSTUPanelState.EXTENDED)
-            {
-                PivotData pd;
-                int len = pivotData.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    pd = pivotData[i];
-                    Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
-                    float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
-                    Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
-                    pd.pivotTransform.rotation = to;
-                }
-                len = secondaryPivotData.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    pd = secondaryPivotData[i];
-                    Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
-                    float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
-                    Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
-                    pd.pivotTransform.rotation = to;
-                }
-            }
-        }
-
         private void reInitialize()
         {
             initialized = false;
             OnStart(StartState.Flying);
-            Start();
         }
 
         public void setSuncatcherAxis(Axis axis)
@@ -371,7 +337,6 @@ namespace SSTUTools
             sunTransform = null;
             windBreakTransform = null;
             pivotData = null;
-            secondaryPivotData = null;
             suncatcherData = null;
             if (animationController != null) { animationController.removeCallback(onAnimationStatusChanged); }
             animationController = null;
@@ -396,6 +361,7 @@ namespace SSTUTools
             animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
             setupDefaultRotations();
             setPanelState(panelState);
+            loadPivotSaveData(persistentData);
             updateGuiData();
             suncatcherAngleAxis = (Axis)Enum.Parse(typeof(Axis), sunAxis);
         }
@@ -479,11 +445,6 @@ namespace SSTUTools
                 {
                     updatePivotRotation(pivotData[i]);
                 }
-                len = secondaryPivotData.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    updatePivotRotation(secondaryPivotData[i]);
-                }
             }
             len = suncatcherData.Length;
             for (int i = 0; i < len; i++)
@@ -496,22 +457,32 @@ namespace SSTUTools
             }
         }
         
-        private void updatePivotRotation(PivotData pd, bool lerp = true)
+        private void updatePivotRotation(PivotData pd)
         {
             //vector from pivot to sun
-            Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
             //finding angle to turn towards based on direction of vector on a single axis
-            float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
-            if (pd.pivotTransform.lossyScale.z < 0) { y = -y; }
-            if (lerp) // lerp towards destination rotation by trackingSpeed amount
+            if (userLock)
             {
+                float y = userRotation;
+                if (pd.pivotTransform.lossyScale.z < 0)
+                {
+                    y = -y;
+                }
+                Quaternion current = pd.pivotTransform.rotation;
+                pd.pivotTransform.localRotation = pd.defaultOrientation;
+                Quaternion target = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
+                pd.pivotTransform.rotation = Quaternion.Lerp(current, target, TimeWarp.deltaTime * this.trackingSpeed);
+            }
+            else
+            {
+                Vector3 vector = pd.pivotTransform.InverseTransformPoint(sunTransform.position);
+                float y = (float)SSTUUtils.toDegrees(Mathf.Atan2(vector.x, vector.z));
+                if (pd.pivotTransform.lossyScale.z < 0)
+                {
+                    y = -y;
+                }
                 Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
                 pd.pivotTransform.rotation = Quaternion.Lerp(pd.pivotTransform.rotation, to, TimeWarp.deltaTime * this.trackingSpeed);
-            }
-            else // or just set to the new rotation
-            {
-                Quaternion to = pd.pivotTransform.rotation * Quaternion.Euler(0f, y, 0f);
-                pd.pivotTransform.rotation = to;
             }
         }
 
@@ -639,11 +610,6 @@ namespace SSTUTools
             {
                 pivotData[i].pivotTransform.localRotation = pivotData[i].defaultOrientation;
             }
-            len = secondaryPivotData.Length;
-            for (int i = 0; i < len; i++)
-            {
-                secondaryPivotData[i].pivotTransform.localRotation = secondaryPivotData[i].defaultOrientation;
-            }
         }
 
         private void checkForBreak()
@@ -691,7 +657,6 @@ namespace SSTUTools
         {
             String[] suncatcherNames = SSTUUtils.parseCSV(rayTransforms);
             String[] pivotNames = SSTUUtils.parseCSV(pivotTransforms);
-            String[] secPivotNames = SSTUUtils.parseCSV(secondaryPivotTransforms);
 
             PivotData pd;
             SuncatcherData sd;
@@ -717,25 +682,6 @@ namespace SSTUTools
                 }
             }
             pivotData = tempPivotData.ToArray();
-            tempPivotData.Clear();
-
-            len = secPivotNames.Length;
-            for (int i = 0; i < len; i++)
-            {
-                name = secPivotNames[i];
-                if (String.IsNullOrEmpty(name)) { continue; }
-                trs = part.transform.FindChildren(name);
-                len2 = trs.Length;
-                if (len2 == 0) { MonoBehaviour.print("ERROR: Could not locate secondary pivot transforms for name: " + name + " for part: " + part); }
-                for (int k = 0; k < len2; k++)
-                {
-                    pd = new PivotData();
-                    pd.pivotTransform = trs[k];
-                    pd.defaultOrientation = pd.pivotTransform.localRotation;
-                    tempPivotData.Add(pd);
-                }
-            }
-            secondaryPivotData = tempPivotData.ToArray();
             tempPivotData.Clear();
 
             List<SuncatcherData> tempSunData = new List<SuncatcherData>();
@@ -779,11 +725,6 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 pivotData[i].defaultOrientation = pivotData[i].pivotTransform.localRotation;
-            }
-            len = secondaryPivotData.Length;
-            for (int i = 0; i < len; i++)
-            {
-                secondaryPivotData[i].defaultOrientation = secondaryPivotData[i].pivotTransform.localRotation;
             }
             animationController.setToState(state);//restore actual state...
         }
