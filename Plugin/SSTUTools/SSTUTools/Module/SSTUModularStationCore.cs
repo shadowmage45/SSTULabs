@@ -634,7 +634,6 @@ namespace SSTUTools
                 {
                     solar.resourceAmount = solarModule.model.energy;
                     solar.pivotTransforms = solarModule.model.pivotNames;
-                    solar.secondaryPivotTransforms = solarModule.model.secPivotNames;
                     solar.rayTransforms = solarModule.model.sunNames;
 
                     SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
