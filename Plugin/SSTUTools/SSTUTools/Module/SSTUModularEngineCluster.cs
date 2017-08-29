@@ -261,8 +261,11 @@ namespace SSTUTools
             Fields[nameof(currentMountName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b) 
             {
                 mountModule.modelSelected(a, b);
-                this.actionWithSymmetry(m => 
+                this.actionWithSymmetry(m =>
                 {
+                    if (m.currentMountDiameter < m.mountModule.model.minDiameter) { m.currentMountDiameter = m.mountModule.model.minDiameter; }
+                    if (m.currentMountDiameter > m.mountModule.model.maxDiameter) { m.currentMountDiameter = m.mountModule.model.maxDiameter; }
+                    m.updateMountSizeGuiControl(true, m.currentMountDiameter);
                     m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -271,10 +274,10 @@ namespace SSTUTools
 
             Fields[nameof(currentMountDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
             {
-                if (currentMountDiameter < mountModule.model.minDiameter) { currentMountDiameter = mountModule.model.minDiameter; }
-                if (currentMountDiameter > mountModule.model.maxDiameter) { currentMountDiameter = mountModule.model.maxDiameter; }
-                this.actionWithSymmetry(m => 
+                this.actionWithSymmetry(m =>
                 {
+                    if (m.currentMountDiameter < m.mountModule.model.minDiameter) { m.currentMountDiameter = m.mountModule.model.minDiameter; }
+                    if (m.currentMountDiameter > m.mountModule.model.maxDiameter) { m.currentMountDiameter = m.mountModule.model.maxDiameter; }
                     m.currentMountDiameter = currentMountDiameter;
                     m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -456,7 +459,7 @@ namespace SSTUTools
             updateEditorStats(false);
             updateGuiState();
             SSTUModInterop.onPartGeometryUpdate(part, true);
-            outputMountInfo();
+            //outputMountInfo();
         }
 
         private void loadEngineLayouts(ConfigNode[] moduleLayoutNodes)
