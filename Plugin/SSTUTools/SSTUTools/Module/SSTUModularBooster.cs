@@ -596,8 +596,10 @@ namespace SSTUTools
         /// </summary>
         private void updateModelScaleAndPosition()
         {
+            float hScale = currentDiameter / bodyModule.model.modelDefinition.diameter;
+            float vScale = hScale * currentVScale;
             noseModule.model.updateScaleForDiameter(currentDiameter);
-            bodyModule.model.updateScale(currentDiameter / bodyModule.model.modelDefinition.diameter, currentVScale);
+            bodyModule.model.updateScale(hScale, vScale);
             mountModule.model.updateScaleForDiameter(currentDiameter);
 
             noseModule.model.currentVerticalPosition = bodyModule.model.currentHeight * 0.5f;
