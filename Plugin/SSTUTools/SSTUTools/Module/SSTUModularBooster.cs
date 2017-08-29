@@ -917,7 +917,7 @@ namespace SSTUTools
                     });
                 }
             }
-            SSTUUtils.recursePrintComponents(part.transform.gameObject, "");
+            //SSTUUtils.recursePrintComponents(part.transform.gameObject, "");
         }
 
         /// <summary>
