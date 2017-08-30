@@ -109,7 +109,7 @@ namespace SSTUTools
         [KSPField]
         public bool canLockPanels = true;
 
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Panel Rotation"),
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = false, guiName = "Panel Rotation"),
          UI_Toggle(suppressEditorShipModified = true, enabledText = "Locked", disabledText = "Tracking")]
         public bool userLock = false;
 
@@ -248,7 +248,7 @@ namespace SSTUTools
         {
             if (string.IsNullOrEmpty(data))
             {
-                MonoBehaviour.print("ERROR: No saved/persistent pivot data for pivots.");
+                //MonoBehaviour.print("ERROR: No saved/persistent pivot data for pivots.");
                 return;
             }
             int index = 0;
@@ -256,7 +256,7 @@ namespace SSTUTools
             int len = split0.Length;
             if (len != pivotData.Length)
             {
-                MonoBehaviour.print("ERROR: Length mismatch between saved pivot data and stored pivot orientation array.");
+                MonoBehaviour.print("ERROR: Length mismatch between saved pivot data and stored pivot orientation array. Things are likely going to crash...");
             }
             string[] split1;
             Quaternion parsed;
@@ -295,6 +295,14 @@ namespace SSTUTools
                 {
                     updatePowerStatus();
                     checkForBreak();
+                }
+                else if (HighLogic.LoadedSceneIsEditor && userLock)
+                {
+                    int len = pivotData.Length;
+                    for (int i = 0; i < len; i++)
+                    {
+                        updatePivotRotation(pivotData[i]);
+                    }
                 }
             }
             updateGuiData();
@@ -758,6 +766,8 @@ namespace SSTUTools
                 Events["extendEvent"].active = true;
                 Events["retractEvent"].active = false;
             }
+            Fields[nameof(userLock)].guiActive = Fields[nameof(userLock)].guiActiveEditor = canLockPanels;
+            Fields[nameof(userRotation)].guiActive = Fields[nameof(userRotation)].guiActiveEditor = userLock;
         }
 
         public string GetContractObjectiveType()
