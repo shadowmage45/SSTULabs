@@ -1,0 +1,8 @@
+All subfolders in the GameData folder within the .zip file need to be extracted into your KSP/GameData folder.
+
+Extract the GameData/SSTU folder to <KSP>/GameData/SSTU
+Extract the GameData/CommunityResourcePack folder to <KSP>/GameData/CommunityResourcePack
+Extract the GameData/KSPWheel folder to <KSP>/GameData/KSPWheel
+Extract the ModuleManager.*.*.*.dll file to <KSP>/GameData/ModuleManager.*.*.*.dll
+
+Optional patches are available from the SSTULabs GitHub repository in the SSTU-OptionalPatches folder.  Install these anywhere in your GameData folder to enable the patches.

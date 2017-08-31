@@ -13,6 +13,7 @@ cd SSTULabs
 xcopy GameData Build\GameData /e /i
 copy LICENSE-ASSETS.txt Build\GameData\LICENSE-ASSETS.txt
 copy LICENSE-SOURCE.txt Build\GameData\LICENSE-SOURCE.txt
+copy Installation_Instructions.txt Build\Installation_Instructions.txt
 xcopy Plugin\SSTUTools\SSTUTools Build\Source\Plugin /e /i
 rd Build\Source\Plugin\bin /s /q
 rd Build\Source\Plugin\libs /s /q
