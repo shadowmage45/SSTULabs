@@ -80,8 +80,19 @@ namespace SSTUTools
 
             //setup applicable resources
             List<string> resourceNames = new List<string>();
-            resourceNames.AddRange(availableResources);
-            int len = resourceSets.Length;
+            int len = availableResources.Length;
+            for (int i = 0; i < Length; i++)
+            {
+                if (!resourceNames.Contains(availableResources[i]))
+                {
+                    resourceNames.Add(availableResources[i]);
+                }
+                else
+                {
+                    MonoBehaviour.print("ERROR:  Duplicate resource detected for name: " + availableResources[i]+" while loading data for part: "+module.part);
+                }
+            }
+            len = resourceSets.Length;
             int resLen;
             ContainerResourceSet set;
             for (int i = 0; i < len; i++)
@@ -94,6 +105,22 @@ namespace SSTUTools
                     resourceNames.AddUnique(set.availableResources[k]);
                 }
             }
+
+            //validate vs part resource library, make sure they are all valid resource entries
+            PartResourceLibrary prl = PartResourceLibrary.Instance;
+            PartResourceDefinition prd;
+            len = resourceNames.Count;
+            for (int i = len-1; i >= 0; i--)//inverted loop to allow for removal by index while traversing
+            {
+                prd = prl.GetDefinition(applicableResources[i]);
+                if (prd == null)
+                {
+                    MonoBehaviour.print("ERROR: Could not find resource definition for: " + resourceNames[i] + " while loading data for part: " + module.part+" -- resource removed from VolumeContainer");
+                    resourceNames.RemoveAt(i);
+                }
+            }
+
+            //sort and turn into an array
             resourceNames.Sort();//basic alpha sort...
             applicableResources = resourceNames.ToArray();
 
@@ -105,7 +132,14 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 subContainerData[i] = new SubContainerDefinition(this, applicableResources[i]);
-                subContainersByName.Add(subContainerData[i].name, subContainerData[i]);
+                if (subContainersByName.ContainsKey(subContainerData[i].name))
+                {
+                    MonoBehaviour.print("ERROR:  Duplicate resoruce detected for name: " + subContainerData[i].name + " while loading data for part: " + module.part);
+                }
+                else
+                {
+                    subContainersByName.Add(subContainerData[i].name, subContainerData[i]);
+                }
             }
 
             //setup preset data
@@ -305,7 +339,7 @@ namespace SSTUTools
         /// <param name="preset"></param>
         public void setFuelPreset(ContainerFuelPreset preset)
         {
-            if (preset == null) { throw new NullReferenceException("Fuel preset was null when calling setFuelPreset"); }
+            if (preset == null) { throw new NullReferenceException("Fuel preset was null when calling setFuelPreset for part: "+module.part); }
             currentFuelPreset = preset.name;
             internalClearRatios();
             internalAddPresetRatios(preset);
@@ -494,7 +528,10 @@ namespace SSTUTools
             this.container = container;
             this.name = name;
             def = PartResourceLibrary.Instance.resourceDefinitions[name];
-            if (def == null) { throw new NullReferenceException("Resource definition was null for name: " + name); }
+            if (def == null)
+            {
+                throw new NullReferenceException("Resource definition was null for name: " + name+" while loading resources for part: "+container.module.part);
+            }
         }
 
         public float resourceMass { get { return resourceUnits * unitMass; } }
