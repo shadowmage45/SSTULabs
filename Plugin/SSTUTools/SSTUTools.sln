@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUTools", "SSTUTools\SSTUTools.csproj", "{0BCB8074-A14F-42BA-BDCF-8A28765479B6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUUtilDDS", "SSTUUtilDDS\SSTUUtilDDS.csproj", "{33B446E5-5C37-4969-8C5F-8C962DC17E21}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUPartTools", "SSTUPartTools\SSTUPartTools.csproj", "{91DA2680-2E4C-49AD-940B-E12D14E29457}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUBuildTools", "SSTUBuildTools\SSTUBuildTools.csproj", "{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,14 @@ Global
 		{91DA2680-2E4C-49AD-940B-E12D14E29457}.Release|Any CPU.Build.0 = Release|Any CPU
 		{91DA2680-2E4C-49AD-940B-E12D14E29457}.Release|x86.ActiveCfg = Release|Any CPU
 		{91DA2680-2E4C-49AD-940B-E12D14E29457}.Release|x86.Build.0 = Release|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Debug|x86.Build.0 = Debug|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Release|x86.ActiveCfg = Release|Any CPU
+		{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

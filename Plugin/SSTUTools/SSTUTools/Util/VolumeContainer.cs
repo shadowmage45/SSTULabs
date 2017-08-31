@@ -81,7 +81,7 @@ namespace SSTUTools
             //setup applicable resources
             List<string> resourceNames = new List<string>();
             int len = availableResources.Length;
-            for (int i = 0; i < Length; i++)
+            for (int i = 0; i < len; i++)
             {
                 if (!resourceNames.Contains(availableResources[i]))
                 {
@@ -89,7 +89,7 @@ namespace SSTUTools
                 }
                 else
                 {
-                    MonoBehaviour.print("ERROR:  Duplicate resource detected for name: " + availableResources[i]+" while loading data for part: "+module.part);
+                    MonoBehaviour.print("ERROR:  Duplicate resource detected for name: " + availableResources[i] + " while loading data for part: " + module.part);
                 }
             }
             len = resourceSets.Length;
@@ -105,14 +105,14 @@ namespace SSTUTools
                     resourceNames.AddUnique(set.availableResources[k]);
                 }
             }
-
+            
             //validate vs part resource library, make sure they are all valid resource entries
             PartResourceLibrary prl = PartResourceLibrary.Instance;
             PartResourceDefinition prd;
             len = resourceNames.Count;
             for (int i = len-1; i >= 0; i--)//inverted loop to allow for removal by index while traversing
             {
-                prd = prl.GetDefinition(applicableResources[i]);
+                prd = prl.GetDefinition(resourceNames[i]);
                 if (prd == null)
                 {
                     MonoBehaviour.print("ERROR: Could not find resource definition for: " + resourceNames[i] + " while loading data for part: " + module.part+" -- resource removed from VolumeContainer");
@@ -125,7 +125,7 @@ namespace SSTUTools
             applicableResources = resourceNames.ToArray();
 
             if (string.IsNullOrEmpty(defaultFuelPreset) && string.IsNullOrEmpty(defaultResources) && applicableResources.Length > 0) { defaultResources = applicableResources[0]+",1"; }
-
+            
             //setup volume data
             len = applicableResources.Length;
             subContainerData = new SubContainerDefinition[len];
@@ -141,7 +141,7 @@ namespace SSTUTools
                     subContainersByName.Add(subContainerData[i].name, subContainerData[i]);
                 }
             }
-
+            
             //setup preset data
             List<ContainerFuelPreset> usablePresets = new List<ContainerFuelPreset>();
             ContainerFuelPreset[] presets = VolumeContainerLoader.getPresets();
