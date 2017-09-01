@@ -1,0 +1,5 @@
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTools.exe
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTools.pdb
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\obj\Debug\SSTUBuildTools.csprojResolveAssemblyReference.cache
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\obj\Debug\SSTUBuildTools.exe
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\obj\Debug\SSTUBuildTools.pdb
