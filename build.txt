@@ -1,0 +1,9 @@
+//SSTULabs build script
+versionFile = GameData/SSTU/MiniAVC/SSTULabs.version
+CMD:newPack.bat
+ZIP:SSTU-%version%.zip
+{
+    +d Build/GameData:GameData
+    +f README.md:GameData/test.txt
+}
+//CMD:rd Build /s/q

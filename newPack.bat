@@ -1,3 +1,4 @@
+rd Build /s /q
 md Build
 md Build\Source
 md Build\Source\Plugin
@@ -24,6 +25,6 @@ del Build\Source\Plugin\.gitignore
 del Build\Source\Plugin\SSTUTools.csproj
 del Build\Source\Plugin\SSTUTools.csproj.user
 xcopy CustomShaders Build\Source\Shaders
-powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('Build', '../SSTU.zip'); }"
-rd build /s /q
-pause
+rem powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('Build', '../SSTU.zip'); }"
+rem rd build /s /q
+rem pause
