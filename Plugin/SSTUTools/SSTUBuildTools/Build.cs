@@ -52,7 +52,7 @@ namespace SSTUBuildTools
                 line = configLines[i];
                 if (line.StartsWith("versionFile"))
                 {
-                    versionFile = new VersionFile(line.Split('=')[1].Trim());
+                    versionFilePath = line.Split('=')[1].Trim();
                 }
                 else if (line.StartsWith("CMD:"))
                 {
@@ -72,11 +72,7 @@ namespace SSTUBuildTools
                 cmdLines.Clear();
             }
             buildActions = actions.ToArray();
-            if (versionFile == null)
-            {
-                SSTUBuildTools.print("Creating default .version file...");
-                versionFile = new VersionFile("");
-            }            
+            versionFile = new VersionFile(versionFilePath);
         }
 
     }
@@ -88,7 +84,49 @@ namespace SSTUBuildTools
         public VersionFile(string path)
         {
             this.filePath = path;
-            this.version = "f00";
+            SSTUBuildTools.print("Loading version file from: " + path);
+            string[] lines = File.ReadAllLines(path);
+            int len = lines.Length;
+            string line;
+            for (int i = 0; i < len; i++)
+            {
+                line = lines[i].Trim();
+                if (line.StartsWith("\"VERSION\""))
+                {
+                    string major = lines[i + 2].Split(':')[1].Replace(",","");
+                    string minor = lines[i + 3].Split(':')[1].Replace(",","");
+                    string patch = lines[i + 4].Split(':')[1].Replace(",", "");
+                    string build = lines[i + 5].Split(':')[1].Replace(",", "");
+                    version = major + "." + minor + "." + patch + "." + build;
+                    break;
+                }
+            }
+            SSTUBuildTools.print("Parsed version string: " + version);
+        }
+
+        public void incrementMajor()
+        {
+
+        }
+
+        public void incrementMinor()
+        {
+
+        }
+
+        public void incrementPatch()
+        {
+
+        }
+
+        public void incrementBuild()
+        {
+
+        }
+
+        public void saveFile()
+        {
+
         }
     }
 
@@ -196,7 +234,7 @@ namespace SSTUBuildTools
                     archive.GetEntry(line.Split(' ')[1]).Delete();
                 }
             }
-            SSTUBuildTools.print("Building .zip file, please wait...");
+            SSTUBuildTools.print("Building .zip file, please wait, this may take a few minutes...");
             archive.Dispose();
             SSTUBuildTools.print("Zip file built.");
         }
