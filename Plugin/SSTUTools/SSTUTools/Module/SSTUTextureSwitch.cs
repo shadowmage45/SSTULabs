@@ -22,7 +22,7 @@ namespace SSTUTools
         /// <summary>
         /// Current texture set.  ChooseOption UI widget is initialized inside of texture-set-container helper object
         /// </summary>
-        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true),
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Texture Set"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
 
