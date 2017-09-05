@@ -26,6 +26,7 @@ namespace SSTUBuildTools
             for (int i = 0; i < len; i++)
             {
                 config.buildActions[i].execute();
+                SSTUBuildTools.pause();
             }
         }
     }
@@ -53,6 +54,10 @@ namespace SSTUBuildTools
                 if (line.StartsWith("versionFile"))
                 {
                     versionFilePath = line.Split('=')[1].Trim();
+                }
+                else if (line.StartsWith("INC:"))
+                {
+                    actions.Add(new VersionAction(this, new string[] { line }));
                 }
                 else if (line.StartsWith("CMD:"))
                 {
@@ -106,27 +111,27 @@ namespace SSTUBuildTools
 
         public void incrementMajor()
         {
-
+            SSTUBuildTools.print("Version increment - major");
         }
 
         public void incrementMinor()
         {
-
+            SSTUBuildTools.print("Version increment - minor");
         }
 
         public void incrementPatch()
         {
-
+            SSTUBuildTools.print("Version increment - patch");
         }
 
         public void incrementBuild()
         {
-
+            SSTUBuildTools.print("Version increment - build");
         }
 
         public void saveFile()
         {
-
+            SSTUBuildTools.print("Version File Save out");
         }
     }
 
@@ -147,6 +152,38 @@ namespace SSTUBuildTools
         }
     }
 
+    public class VersionAction : BuildAction
+    {
+        public string command;
+
+        public VersionAction(BuildConfig config, string[] cmdLines) : base(config, cmdLines)
+        {
+            command = actionLines[0].Split(':')[1].Trim();
+        }
+
+        public override void execute()
+        {
+            base.execute();
+            if (command == "major")
+            {
+                config.versionFile.incrementMajor();
+            }
+            else if (command == "minor")
+            {
+                config.versionFile.incrementMinor();
+            }
+            else if (command == "patch")
+            {
+                config.versionFile.incrementPatch();
+            }
+            else if (command == "build")
+            {
+                config.versionFile.incrementBuild();
+            }
+            config.versionFile.saveFile();
+        }
+    }
+
     public class CommandAction : BuildAction
     {
         public string command;
@@ -163,8 +200,11 @@ namespace SSTUBuildTools
             Process process = new Process();
             ProcessStartInfo si = new ProcessStartInfo();
             string[] sp = command.Split(' ');
-            si.FileName = sp[0];
-            if (sp.Length > 1) { si.Arguments = sp[1]; }
+            si.FileName = "cmd.exe";
+            si.Arguments = "/C " + command;
+            si.CreateNoWindow = true;
+            si.UseShellExecute = false;
+            si.WindowStyle = ProcessWindowStyle.Hidden;            
             try
             {
                 process.StartInfo = si;
@@ -174,6 +214,7 @@ namespace SSTUBuildTools
             catch (Exception e)
             {
                 SSTUBuildTools.print("Caught exception while running command: " + e.Message);
+                SSTUBuildTools.pause();
                 Environment.Exit(1);
             }
         }
@@ -214,7 +255,7 @@ namespace SSTUBuildTools
                         file = files[k].Replace('\\', '/');
                         destFile = file.Replace(src, dest);
                         if (!File.Exists(file)) { continue; }
-                        SSTUBuildTools.print("Adding file to archive: " + file + " : " + destFile);
+                        //SSTUBuildTools.print("Adding file to archive: " + file + " : " + destFile);
                         archive.CreateEntryFromFile(file, destFile);
                     }
                 }
@@ -223,7 +264,7 @@ namespace SSTUBuildTools
                     string src = line.Substring(3).Split(':')[0];
                     string dest = line.Substring(3).Split(':')[1];
                     SSTUBuildTools.print("Adding file to archive: "+ src + " : "+ dest);
-                    archive.CreateEntryFromFile(config.buildPath + "/" + src, dest);
+                    archive.CreateEntryFromFile(src, dest);
                 }
                 else if (line.StartsWith("-d"))//dir remove
                 {

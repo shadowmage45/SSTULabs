@@ -15,7 +15,6 @@ namespace SSTUBuildTools
             else if (args[0] == "build") { build(args); }
             else if (args[0] == "increment") { increment(args); }
             else if (args[0] == "cmd") { cmd(args); }
-            pause();
         }
 
         private static void build(string[] args)
@@ -30,7 +29,6 @@ namespace SSTUBuildTools
             }
             pause();
             build.execute();
-            pause();
         }
 
         private static void zip(string[] args)

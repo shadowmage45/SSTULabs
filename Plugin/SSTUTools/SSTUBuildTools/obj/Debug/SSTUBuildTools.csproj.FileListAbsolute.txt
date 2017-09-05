@@ -9,3 +9,4 @@ C:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTo
 C:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTools.pdb
 C:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\obj\Debug\SSTUBuildTools.csprojResolveAssemblyReference.cache
 C:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTools.exe.config
+F:\git_source\git\SSTULabs\Plugin\SSTUTools\SSTUBuildTools\bin\Debug\SSTUBuildTools.exe.config
