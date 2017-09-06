@@ -12,7 +12,7 @@ namespace SSTUBuildTools
     {
         private string buildFilePath;
 
-        private BuildConfig config;
+        internal BuildConfig config;
 
         public Build(string buildConfig, string execPath)
         {
@@ -38,6 +38,7 @@ namespace SSTUBuildTools
         internal VersionFile versionFile;
         internal BuildAction[] buildActions;
         internal string buildPath;
+        internal bool incrementVersions = true;
 
         public BuildConfig(string path, string execPath)
         {
@@ -55,7 +56,7 @@ namespace SSTUBuildTools
                 {
                     versionFilePath = line.Split('=')[1].Trim();
                 }
-                else if (line.StartsWith("INC:"))
+                else if (line.StartsWith("INC:") && incrementVersions)
                 {
                     actions.Add(new VersionAction(this, new string[] { line }));
                 }
@@ -98,8 +99,8 @@ namespace SSTUBuildTools
                 line = lines[i].Trim();
                 if (line.StartsWith("\"VERSION\""))
                 {
-                    string major = lines[i + 2].Split(':')[1].Replace(",","");
-                    string minor = lines[i + 3].Split(':')[1].Replace(",","");
+                    string major = lines[i + 2].Split(':')[1].Replace(",", "");
+                    string minor = lines[i + 3].Split(':')[1].Replace(",", "");
                     string patch = lines[i + 4].Split(':')[1].Replace(",", "");
                     string build = lines[i + 5].Split(':')[1].Replace(",", "");
                     version = major + "." + minor + "." + patch + "." + build;

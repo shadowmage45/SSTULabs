@@ -22,11 +22,7 @@ namespace SSTUBuildTools
             string fullPath = Path.GetFullPath(args[1]);
             Build build = new Build(fullPath, Environment.CurrentDirectory.Replace('\\', '/'));
             print("Building application.  Build config: " + fullPath);
-            int len = args.Length;
-            for (int i = 0; i < len; i++)
-            {
-                print(args[i]);
-            }
+            if (args[2] == "noinc") { build.config.incrementVersions = false; }
             pause();
             build.execute();
         }
