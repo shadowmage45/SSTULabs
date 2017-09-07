@@ -15,6 +15,9 @@ namespace SSTUTools
         
         [KSPField]
         public float ablationStartTemp = 500f;
+
+        [KSPField]
+        public float ablationEndTemp = 2500f;
         
         [KSPField]
         public float heatShieldMinDot = 0.2f;
@@ -253,15 +256,12 @@ namespace SSTUTools
             if (heatCurve == null)
             {
                 heatCurve = new FloatCurve();
-                heatCurve.Add(0, 0.00002f);//very minimal initial ablation factor
-                heatCurve.Add(50, 0.00005f);//ramp it up fairly quickly though
-                heatCurve.Add(150, 0.00015f);
-                heatCurve.Add(500, 0.00050f);
-                heatCurve.Add(750, 0.00075f);
-                heatCurve.Add(1000, 0.00100f);
-                heatCurve.Add(2000, 0.00400f);
-                heatCurve.Add(3000, 0.00800f);//generally, things will explode before this point
-                heatCurve.Add(10000, 0.05000f);//but just in case, continue the curve up to insane levels
+                heatCurve.Add(0.000f, 0.0000000f, 0.00f, 0.00f);
+                heatCurve.Add(0.155f, 0.0166667f, 0.80f, 0.80f);
+                heatCurve.Add(0.175f, 0.0444444f);
+                heatCurve.Add(0.265f, 0.8333333f);
+                heatCurve.Add(0.295f, 0.8888889f, 0.12f, 0.12f);
+                heatCurve.Add(1.000f, 1.0000000f, 0.00f, 0.00f);
             }
             double hsp = 1;
             double dens = 1;
@@ -370,7 +370,10 @@ namespace SSTUTools
             part.skinInternalConductionMult = mult;
             if (part.skinTemperature > ablationStartTemp)
             {
+                //convert input value to 0-1 domain
                 double d = part.skinTemperature - ablationStartTemp;
+                d /= ablationEndTemp;
+                d = UtilMath.Clamp(d, 0, 1);
                 applyAblation(d, directionalEffectiveness);
             }
         }
@@ -408,10 +411,10 @@ namespace SSTUTools
                 if (maxResourceUsed > resource.amount)
                 {
                     maxResourceUsed = resource.amount;
-                    maxFluxRemoved = maxResourceUsed * useToFluxMultiplier;
+                    maxFluxRemoved = maxResourceUsed * useToFluxMultiplier / TimeWarp.fixedDeltaTime;
                 }
                 part.TransferResource(resource.info.id, -maxResourceUsed);
-                part.AddExposedThermalFlux(-maxFluxRemoved);
+                part.AddExposedThermalFlux(-maxFluxRemoved);//flux is specified in non-delta-frame-time-multiplied manner
                 guiShieldFlux = maxFluxRemoved;
                 guiShieldUse = maxResourceUsed;
             }
@@ -524,6 +527,8 @@ namespace SSTUTools
         public readonly String name;
         public readonly String tech;
         public readonly float resourceMult = 1f;
+        public readonly float ablationStart = 500f;
+        public readonly float ablationEnd = 2500f;
         public readonly float ablationMult;
         public readonly float massMult = 1f;
         public readonly FloatCurve heatCurve;
@@ -531,8 +536,23 @@ namespace SSTUTools
         public HeatShieldType(ConfigNode node)
         {
             name = node.GetStringValue("name");
-            heatCurve = node.GetFloatCurve("heatCurve");
+            if (node.HasNode("heatCurve"))
+            {
+                heatCurve = node.GetFloatCurve("heatCurve");
+            }
+            else
+            {
+                heatCurve = new FloatCurve();
+                heatCurve.Add(0.000f, 0.0000000f, 0.00f, 0.00f);
+                heatCurve.Add(0.155f, 0.0166667f, 0.80f, 0.80f);
+                heatCurve.Add(0.175f, 0.0444444f);
+                heatCurve.Add(0.265f, 0.8333333f);
+                heatCurve.Add(0.295f, 0.8888889f, 0.12f, 0.12f);
+                heatCurve.Add(1.000f, 1.0000000f, 0.00f, 0.00f);
+            }
             resourceMult = node.GetFloatValue("resourceMult", resourceMult);
+            ablationStart = node.GetFloatValue("ablationStart", ablationStart);
+            ablationEnd = node.GetFloatValue("ablationEnd", ablationEnd);
             ablationMult = node.GetFloatValue("ablationMult", ablationMult);
             massMult = node.GetFloatValue("massMult", massMult);
         }
