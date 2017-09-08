@@ -118,11 +118,16 @@ namespace SSTUTools
         public double guiDebugEfficiency = 0;
         [KSPField(guiActive = true, guiName = "Abl Mult")]
         public double guiDebugAblMult = 0;
-
-        //[KSPField(guiActive = true, guiName = "Flux/area")]
-        //public double fluxPerSquareMeter;
-        //[KSPField(guiActive = true, guiName = "Flux/mass")]
-        //public double fluxPerTMass;
+        [KSPField(guiActive = true, guiName = "Peak Heat")]
+        public double guiDebugPeakHeat = 0;
+        [KSPField(guiActive = true, guiName = "Peak Flux")]
+        public double guiDebugPeakFlux = 0;
+        [KSPField(guiActive = true, guiName = "Peak G")]
+        public double guiDebugPeakG = 0;
+        [KSPField(guiActive = true, guiName = "Flux/m")]
+        public double guiDebugFluxPerSqMeter = 0;
+        [KSPField(guiActive = true, guiName = "Mass/m")]
+        public double guiDebugMassPerSqMeter = 0;
 
         #endregion
 
@@ -399,16 +404,25 @@ namespace SSTUTools
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
+            guiDebugPeakFlux = Math.Max(guiDebugPeakFlux, part.thermalConvectionFlux);
+            guiDebugPeakHeat = Math.Max(guiDebugPeakHeat, part.skinTemperature);
+            guiDebugPeakG = Math.Max(guiDebugPeakG, vessel.geeForce);
+            guiDebugFluxPerSqMeter = part.thermalConvectionFlux / part.skinExposedArea;
+            guiDebugMassPerSqMeter = vessel.GetTotalMass() / part.skinExposedArea;
             guiDebugEfficiency = ablationEfficiency;
             guiDebugAblMult = ablationMult;
             guiDebugHCInput = tempDelta;
             double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
             maxFluxRemoved = UtilMath.Clamp(maxFluxRemoved, 0, 1);
             guiDebugHCOutput = maxFluxRemoved;
-            maxFluxRemoved *= effectiveness * ablationMult;
 
-            //fluxPerSquareMeter = part.thermalConvectionFlux / part.skinExposedArea;
-            //fluxPerTMass = part.thermalConvectionFlux / (part.skinThermalMass * part.skinExposedAreaFrac);
+            if (PhysicsGlobals.ThermalDataDisplay)
+            {
+                string output = string.Format("MHSDebug: In temp: {0,4:N4} : in flux {1,4:N4} : curve out: {2,4:N4}", part.skinTemperature, part.thermalConductionFlux, maxFluxRemoved);
+                MonoBehaviour.print(output);
+            }
+                        
+            maxFluxRemoved *= effectiveness * ablationMult;
             if (areaAdjusted)
             {
                 maxFluxRemoved *= part.skinExposedArea;
@@ -485,7 +499,7 @@ namespace SSTUTools
                 PartResource res = part.Resources[resourceName];
                 modifiedCost = ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
                 modifiedCost += scale * (part.partInfo == null ? 0 : part.partInfo.cost);
-            }            
+            }
             modifiedMass = scale * shieldMass * currentShieldTypeData.massMult;
         }
 
@@ -563,7 +577,7 @@ namespace SSTUTools
             {
                 heatCurve = new FloatCurve();
                 heatCurve.Add(0.000f, 0.0000000f, 0.00f, 0.00f);
-                heatCurve.Add(0.155f, 0.0166667f, 0.80f, 0.80f);
+                heatCurve.Add(0.155f, 0.0166667f, 0.08f, 0.08f);
                 heatCurve.Add(0.175f, 0.0444444f);
                 heatCurve.Add(0.265f, 0.8333333f);
                 heatCurve.Add(0.295f, 0.8888889f, 0.12f, 0.12f);
