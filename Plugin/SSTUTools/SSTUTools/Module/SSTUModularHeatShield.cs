@@ -29,12 +29,6 @@ namespace SSTUTools
         public float ablationEfficiency = 6000f;
 
         [KSPField]
-        public float ablationMult = 1f;
-
-        [KSPField]
-        public float fluxMult = 1f;
-
-        [KSPField]
         public bool heatSoak = false;
 
         [KSPField]
@@ -116,6 +110,14 @@ namespace SSTUTools
         public double guiShieldTemp = 0;
         [KSPField(guiActive = true, guiName = "HS Eff")]
         public double guiShieldEff = 0;
+        [KSPField(guiActive = true, guiName = "HC In")]
+        public double guiDebugHCInput = 0;
+        [KSPField(guiActive = true, guiName = "HC Out")]
+        public double guiDebugHCOutput = 0;
+        [KSPField(guiActive = true, guiName = "Abl Eff")]
+        public double guiDebugEfficiency = 0;
+        [KSPField(guiActive = true, guiName = "Abl Mult")]
+        public double guiDebugAblMult = 0;
 
         //[KSPField(guiActive = true, guiName = "Flux/area")]
         //public double fluxPerSquareMeter;
@@ -126,9 +128,18 @@ namespace SSTUTools
 
         #region REGION - private working variables
 
+        private double ablationMult = 1f;
+
         //cached vars for heat-shield thermal processing
         private double baseSkinIntMult = 1;
+
+        /// <summary>
+        /// Pre-calculated value that can be used to convert between flux and resource units.  Each unit of resource will remove this much flux over a duration of 1s.  So... kW?<para />
+        /// flux = resourceUnits * useToFluxMultiplier / TimeWarp.fixedDeltaTime;<para/>
+        /// units = (flux / useToFluxMultiplier) * TimeWarp.fixedDeltaTime;
+        /// </summary>
         private double useToFluxMultiplier = 1;
+
         private PartResource resource;
 
         //modular heat-shield fields, for updating shield type
@@ -253,16 +264,6 @@ namespace SSTUTools
 
         private void initialize()
         {
-            if (heatCurve == null)
-            {
-                heatCurve = new FloatCurve();
-                heatCurve.Add(0.000f, 0.0000000f, 0.00f, 0.00f);
-                heatCurve.Add(0.155f, 0.0166667f, 0.80f, 0.80f);
-                heatCurve.Add(0.175f, 0.0444444f);
-                heatCurve.Add(0.265f, 0.8333333f);
-                heatCurve.Add(0.295f, 0.8888889f, 0.12f, 0.12f);
-                heatCurve.Add(1.000f, 1.0000000f, 0.00f, 0.00f);
-            }
             double hsp = 1;
             double dens = 1;
             if (heatSoak)
@@ -285,7 +286,7 @@ namespace SSTUTools
                     dens = 0.005f;
                 }
             }
-            useToFluxMultiplier = hsp * ablationEfficiency * dens * ablationMult;
+            useToFluxMultiplier = hsp * ablationEfficiency * dens;
             baseSkinIntMult = part.skinInternalConductionMult;
             
             //stand-alone modular heat-shield setup
@@ -293,7 +294,7 @@ namespace SSTUTools
             {
                 if (string.IsNullOrEmpty(modelName))
                 {
-                    MonoBehaviour.print("SEVERE ERROR: SSTUModularHeatShield could has no model specified for part: " + part.name);
+                    MonoBehaviour.print("SEVERE ERROR: SSTUModularHeatShield has no model specified for part: " + part.name);
                 }
 
                 if (!String.IsNullOrEmpty(transformsToRemove))
@@ -323,13 +324,20 @@ namespace SSTUTools
             }
             if (shieldTypeNames.Length == 0) { shieldTypeNames = new string[] { "Medium" }; }
             currentShieldTypeData = SSTUDatabase.getHeatShieldType(currentShieldType);
-            heatCurve = currentShieldTypeData.heatCurve;
+            updateModuleStats();
 
             updatePartCost();
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 updatePartResources();
                 initializedResources = true;
+            }
+            MonoBehaviour.print(SSTUUtils.printFloatCurve(heatCurve));
+            for (int i = 0; i < 1000; i++)
+            {
+                float input = (float)i / 1000f;
+                float output = heatCurve.Evaluate(input);
+                MonoBehaviour.print("in: " + input + " :: " + output);
             }
         }
 
@@ -391,7 +399,14 @@ namespace SSTUTools
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
-            double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta) * fluxMult * effectiveness;
+            guiDebugEfficiency = ablationEfficiency;
+            guiDebugAblMult = ablationMult;
+            guiDebugHCInput = tempDelta;
+            double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
+            maxFluxRemoved = UtilMath.Clamp(maxFluxRemoved, 0, 1);
+            guiDebugHCOutput = maxFluxRemoved;
+            maxFluxRemoved *= effectiveness * ablationMult;
+
             //fluxPerSquareMeter = part.thermalConvectionFlux / part.skinExposedArea;
             //fluxPerTMass = part.thermalConvectionFlux / (part.skinThermalMass * part.skinExposedAreaFrac);
             if (areaAdjusted)
@@ -408,9 +423,11 @@ namespace SSTUTools
             {
                 double maxResourceUsed = maxFluxRemoved / useToFluxMultiplier;
                 maxResourceUsed *= TimeWarp.fixedDeltaTime; //convert to a per-tick usage amount
-                if (maxResourceUsed > resource.amount)
+                if (maxResourceUsed > resource.amount)//didn't have enough ablator for the full tick, calculate partial use
                 {
-                    maxResourceUsed = resource.amount;
+                    maxResourceUsed = resource.amount;//use all of the ablator
+                    //re-calculate the flux-removed from the ablator used
+                    //as ablator use in in 'per-tick' quantities, need to re-convert out to per-second
                     maxFluxRemoved = maxResourceUsed * useToFluxMultiplier / TimeWarp.fixedDeltaTime;
                 }
                 part.TransferResource(resource.info.id, -maxResourceUsed);
@@ -451,6 +468,8 @@ namespace SSTUTools
             float scale = mainModelData==null ? 1.0f : mainModelData.currentDiameterScale;
             float ablatMult = Mathf.Pow(scale, ablationScalePower) * currentShieldTypeData.ablationMult;
             ablationMult = ablatMult;
+            ablationStartTemp = currentShieldTypeData.ablationStart;
+            ablationEndTemp = currentShieldTypeData.ablationEnd;
             heatCurve = currentShieldTypeData.heatCurve;
         }
 
