@@ -402,6 +402,8 @@ namespace SSTUTools
             //Fields["fluxPerTMass"].guiActive = active;
         }
 
+        private double prevOut = 0f;
+
         private void applyAblation(double tempDelta, float effectiveness)
         {
             guiDebugPeakFlux = Math.Max(guiDebugPeakFlux, part.thermalConvectionFlux);
@@ -415,17 +417,27 @@ namespace SSTUTools
             double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
             maxFluxRemoved = UtilMath.Clamp(maxFluxRemoved, 0, 1);
             guiDebugHCOutput = maxFluxRemoved;
-
-            if (PhysicsGlobals.ThermalDataDisplay)
-            {
-                string output = string.Format("MHSDebug: In temp: {0,4:N4} : in flux {1,4:N4} : curve out: {2,4:N4}", part.skinTemperature, part.thermalConductionFlux, maxFluxRemoved);
-                MonoBehaviour.print(output);
-            }
                         
             maxFluxRemoved *= effectiveness * ablationMult;
             if (areaAdjusted)
             {
                 maxFluxRemoved *= part.skinExposedArea;
+            }
+            if (PhysicsGlobals.ThermalDataDisplay)
+            {
+                double inFlux = part.thermalConvectionFlux + part.thermalRadiationFlux + part.thermalConductionFlux;
+                double delta = inFlux - maxFluxRemoved;
+                double extTemp = vessel.externalTemperature;
+                double atmTemp = vessel.atmosphericTemperature;
+                double shockTemp = part.ptd.postShockExtTemp;
+                double velocity = vessel.velocityD.magnitude;
+                double alt = vessel.altitude;
+                double dens = vessel.atmDensity;
+                double dyn = vessel.dynamicPressurekPa;
+                double f1 = part.skinExposedAreaFrac;
+                double f2 = part.skinExposedMassMult;
+                string output = string.Format("MHSDebug: In temp: {0,8:0000.0000} : in flux {1,8:0000.0000} : flux out: {2,8:0000.0000} : ext: {3,8:0000.0000} : shock: {4,8:00000.000} : vel: {5,8:0000.0000} : alt: {6,8:000000.00} : dens: {7,8:0.0000000} : dyn: {8,8:0.0000000} : f1: {9,8:0000.0000} : f2: {10,8:0000.0000}", part.skinTemperature, inFlux, maxFluxRemoved, extTemp, shockTemp, velocity, alt, dens, dyn, f1, f2);
+                MonoBehaviour.print(output);
             }
             if (heatSoak)
             {
@@ -445,10 +457,11 @@ namespace SSTUTools
                     maxFluxRemoved = maxResourceUsed * useToFluxMultiplier / TimeWarp.fixedDeltaTime;
                 }
                 part.TransferResource(resource.info.id, -maxResourceUsed);
-                part.AddExposedThermalFlux(-maxFluxRemoved);//flux is specified in non-delta-frame-time-multiplied manner
+                part.AddExposedThermalFlux(-maxFluxRemoved);
                 guiShieldFlux = maxFluxRemoved;
                 guiShieldUse = maxResourceUsed;
             }
+            prevOut = maxFluxRemoved;
         }
 
         #endregion
