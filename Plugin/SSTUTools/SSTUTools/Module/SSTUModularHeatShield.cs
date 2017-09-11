@@ -29,6 +29,9 @@ namespace SSTUTools
         public float ablationEfficiency = 6000f;
 
         [KSPField]
+        public float tempSmoothing = 1f;
+
+        [KSPField]
         public bool heatSoak = false;
 
         [KSPField]
@@ -157,6 +160,9 @@ namespace SSTUTools
         //resizable heat-shield fields
         private SingleModelData mainModelData;
         private float prevDiameter;
+        
+        private double prevTemp = double.NaN;
+        private double skinTemp = double.NaN;
 
         #endregion
 
@@ -353,7 +359,19 @@ namespace SSTUTools
         public void FixedUpdate()
         {
             if (!HighLogic.LoadedSceneIsFlight) { return; }
-            guiShieldTemp = part.skinTemperature;
+            if (tempSmoothing < 1 && tempSmoothing > 0)
+            {
+                if (double.IsNaN(prevTemp))
+                {
+                    prevTemp = double.IsNaN(skinTemp) ? part.skinTemperature : skinTemp;
+                }
+                skinTemp = tempSmoothing * part.skinTemperature + (1.0 - tempSmoothing) * prevTemp;
+            }
+            else
+            {
+                skinTemp = part.skinTemperature;
+            }
+            guiShieldTemp = skinTemp;
             guiShieldFlux = 0;
             guiShieldUse = 0;
             guiShieldEff = 0;
@@ -381,10 +399,10 @@ namespace SSTUTools
             guiShieldEff = directionalEffectiveness;
             float mult = (float)baseSkinIntMult * (1.0f - (0.8f * directionalEffectiveness));
             part.skinInternalConductionMult = mult;
-            if (part.skinTemperature > ablationStartTemp)
+            if (skinTemp > ablationStartTemp)
             {
                 //convert input value to 0-1 domain
-                double d = part.skinTemperature - ablationStartTemp;
+                double d = skinTemp - ablationStartTemp;
                 d /= ablationEndTemp;
                 d = UtilMath.Clamp(d, 0, 1);
                 applyAblation(d, directionalEffectiveness);
@@ -398,11 +416,7 @@ namespace SSTUTools
             Fields["guiShieldFlux"].guiActive = active;
             Fields["guiShieldUse"].guiActive = active && !heatSoak;
             Fields["guiShieldEff"].guiActive = active;
-            //Fields["fluxPerSquareMeter"].guiActive = active;
-            //Fields["fluxPerTMass"].guiActive = active;
         }
-
-        private double prevOut = 0f;
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
@@ -425,19 +439,29 @@ namespace SSTUTools
             }
             if (PhysicsGlobals.ThermalDataDisplay)
             {
-                double inFlux = part.thermalConvectionFlux + part.thermalRadiationFlux + part.thermalConductionFlux;
-                double delta = inFlux - maxFluxRemoved;
-                double extTemp = vessel.externalTemperature;
-                double atmTemp = vessel.atmosphericTemperature;
-                double shockTemp = part.ptd.postShockExtTemp;
-                double velocity = vessel.velocityD.magnitude;
+                double pTemp = part.skinTemperature;
+                double ext = vessel.externalTemperature;
+                double shk = part.ptd.postShockExtTemp;
+                double atm = vessel.atmosphericTemperature;
                 double alt = vessel.altitude;
                 double dens = vessel.atmDensity;
+                double vel = vessel.velocityD.magnitude;
+                double mach = vessel.mach;
                 double dyn = vessel.dynamicPressurekPa;
-                double f1 = part.skinExposedAreaFrac;
-                double f2 = part.skinExposedMassMult;
-                string output = string.Format("MHSDebug: In temp: {0,8:0000.0000} : in flux {1,8:0000.0000} : flux out: {2,8:0000.0000} : ext: {3,8:0000.0000} : shock: {4,8:00000.000} : vel: {5,8:0000.0000} : alt: {6,8:000000.00} : dens: {7,8:0.0000000} : dyn: {8,8:0.0000000} : f1: {9,8:0000.0000} : f2: {10,8:0000.0000}", part.skinTemperature, inFlux, maxFluxRemoved, extTemp, shockTemp, velocity, alt, dens, dyn, f1, f2);
-                MonoBehaviour.print(output);
+                double pExp = part.skinExposedArea;
+                double convFlux = part.thermalConvectionFlux;
+                double condFlux = part.thermalConductionFlux;
+                double radFlux = part.ptd.radiationFlux;                
+                double tFluxPrev = part.thermalExposedFluxPrevious;
+                double hsFlux = maxFluxRemoved;
+                double skin = part.ptd.skinConductionFlux;
+                double skinin = part.ptd.skinInteralConductionFlux;
+                double skinskin = part.ptd.skinSkinConductionFlux;
+
+                string fString = "MHSDebug | tmp: {0,6:0000.00} | ext: {1,6:0000.00} | shk: {2,6:0000.00} | atm: {3,6:0000.00} | alt: {4,6:00000.0} | dns: {5,6:00.0000}"+
+                    " | vel: {6,6:0000.00} | mch: {7,6:0000.00} | dyn: {8,6:00.0000} | exp: {9,6:00.0000} | cnv: {10,6:0000.00} | cnd: {11,6:0000.00} | rad: {12,6:0000.00}"+
+                    " | prv: {13,6:0000.00} | hsf: {14,6:0000.00} | skn: {15,6:0000.00} | snn: {16,6:0000.00} | skk: {17,6:0000.00} |";
+                MonoBehaviour.print(string.Format(fString, pTemp, ext, shk, atm, alt, dens, vel, mach, dyn, pExp, convFlux, condFlux, radFlux, tFluxPrev, hsFlux, skin, skinin, skinskin));
             }
             if (heatSoak)
             {
@@ -461,7 +485,6 @@ namespace SSTUTools
                 guiShieldFlux = maxFluxRemoved;
                 guiShieldUse = maxResourceUsed;
             }
-            prevOut = maxFluxRemoved;
         }
 
         #endregion
