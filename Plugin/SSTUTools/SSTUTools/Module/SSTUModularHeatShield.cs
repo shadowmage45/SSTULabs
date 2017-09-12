@@ -29,7 +29,7 @@ namespace SSTUTools
         public float ablationEfficiency = 6000f;
 
         [KSPField]
-        public float tempSmoothing = 1f;
+        public float tempSmoothing = 0.5f;
 
         [KSPField]
         public bool heatSoak = false;
@@ -160,9 +160,6 @@ namespace SSTUTools
         //resizable heat-shield fields
         private SingleModelData mainModelData;
         private float prevDiameter;
-        
-        private double prevTemp = double.NaN;
-        private double skinTemp = double.NaN;
 
         #endregion
 
@@ -359,18 +356,7 @@ namespace SSTUTools
         public void FixedUpdate()
         {
             if (!HighLogic.LoadedSceneIsFlight) { return; }
-            if (tempSmoothing < 1 && tempSmoothing > 0)
-            {
-                if (double.IsNaN(prevTemp))
-                {
-                    prevTemp = double.IsNaN(skinTemp) ? part.skinTemperature : skinTemp;
-                }
-                skinTemp = tempSmoothing * part.skinTemperature + (1.0 - tempSmoothing) * prevTemp;
-            }
-            else
-            {
-                skinTemp = part.skinTemperature;
-            }
+            double skinTemp = part.skinTemperature;
             guiShieldTemp = skinTemp;
             guiShieldFlux = 0;
             guiShieldUse = 0;
