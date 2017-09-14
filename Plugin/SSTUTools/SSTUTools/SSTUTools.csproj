@@ -146,6 +146,7 @@
     <Compile Include="Module\SSTUSolarPanelDeployable.cs" />
     <Compile Include="Module\SSTUSolarPanelStatic.cs" />
     <Compile Include="Module\SSTUTextureSwitch.cs" />
+    <Compile Include="WIPModule\SSTUSoftLandingRocket.cs" />
     <Compile Include="WIPModule\SSTUUpgradeTest.cs" />
     <Compile Include="WIPModule\SSTUVesselStats.cs" />
     <Compile Include="WIPModule\SSTUWeldingDockingPort.cs" />
