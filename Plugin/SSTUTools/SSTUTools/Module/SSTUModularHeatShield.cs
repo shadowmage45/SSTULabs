@@ -340,13 +340,13 @@ namespace SSTUTools
                 updatePartResources();
                 initializedResources = true;
             }
-            MonoBehaviour.print(SSTUUtils.printFloatCurve(heatCurve));
-            for (int i = 0; i < 1000; i++)
-            {
-                float input = (float)i / 1000f;
-                float output = heatCurve.Evaluate(input);
-                MonoBehaviour.print("in: " + input + " :: " + output);
-            }
+            //MonoBehaviour.print(SSTUUtils.printFloatCurve(heatCurve));
+            //for (int i = 0; i < 1000; i++)
+            //{
+            //    float input = (float)i / 1000f;
+            //    float output = heatCurve.Evaluate(input);
+            //    MonoBehaviour.print("in: " + input + " :: " + output);
+            //}
         }
 
         #endregion

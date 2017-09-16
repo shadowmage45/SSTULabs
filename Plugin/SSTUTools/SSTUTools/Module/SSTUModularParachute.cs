@@ -190,6 +190,7 @@ namespace SSTUTools
         private double squareVelocity;
         private double dynamicPressure;
         private double externalTemp;
+        private double prevTemp;
 
         #endregion
 
@@ -596,7 +597,6 @@ namespace SSTUTools
         {
             chuteState = newState;
             this.chutePersistence = chuteState.ToString();
-            
             switch (chuteState)
             {
                 case ChuteState.CUT:
@@ -760,7 +760,8 @@ namespace SSTUTools
                 return;
             }
             atmoDensity = part.atmDensity;
-            squareVelocity = Krakensbane.GetFrameVelocity().sqrMagnitude + part.rb.velocity.sqrMagnitude;
+            squareVelocity = vessel.velocityD.sqrMagnitude;
+            prevTemp = externalTemp;
             externalTemp = vessel.externalTemperature;
             dynamicPressure = atmoDensity * squareVelocity * 0.5d;
             //print("dens: " + atmoDensity);
@@ -847,12 +848,12 @@ namespace SSTUTools
 
         private bool shouldDestroyMain()
         {
-            return dynamicPressure > mainMaxQ || externalTemp > mainMaxTemp || atmoDensity < mainMinAtm;
+            return dynamicPressure > mainMaxQ || (externalTemp > mainMaxTemp && prevTemp > mainMaxTemp) || atmoDensity < mainMinAtm;
         }
 
         private bool shouldDestroyDrogue()
         {
-            return dynamicPressure > drogueMaxQ || externalTemp > drogueMaxTemp || atmoDensity < drogueMinAtm;
+            return dynamicPressure > drogueMaxQ || (externalTemp > drogueMaxTemp && prevTemp > drogueMaxTemp) || atmoDensity < drogueMinAtm;
         }
 
         private bool shouldAutoCutLandedSpeed()
