@@ -146,86 +146,19 @@ namespace SSTUTools
         /// flux = resourceUnits * useToFluxMultiplier / TimeWarp.fixedDeltaTime;<para/>
         /// units = (flux / useToFluxMultiplier) * TimeWarp.fixedDeltaTime;
         /// </summary>
-        private double useToFluxMultiplier = 1;
+        private double fluxPerResourceUnit = 1;
 
         private PartResource resource;
 
         //modular heat-shield fields, for updating shield type
-        private string[] shieldTypeNames;
-        private HeatShieldType currentShieldTypeData;
-        private string prevType;
+        private HeatShieldTypeData[] shieldTypeData;
+        private HeatShieldTypeData currentShieldTypeData;
         private float modifiedCost;
         private float modifiedMass;
 
         //resizable heat-shield fields
         private SingleModelData mainModelData;
         private float prevDiameter;
-
-        #endregion
-
-        #region REGION - GUI interaction methods
-
-        public void onTypeUpdated(BaseField field, object obj)
-        {
-            if (prevType != currentShieldType)
-            {
-                prevType = currentShieldType;
-                setShieldTypeFromEditor(currentShieldType, true);
-            }
-        }
-
-        private void setShieldTypeFromEditor(String newType, bool updateSymmetry)
-        {
-            currentShieldType = newType;
-            currentShieldTypeData = SSTUDatabase.getHeatShieldType(newType);
-            updateModuleStats();
-            updatePartResources();
-            updatePartCost();
-            updateEditorFields();
-            if (updateSymmetry)
-            {
-                SSTUModularHeatShield mhs;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    mhs = p.GetComponent<SSTUModularHeatShield>();
-                    mhs.setShieldTypeFromEditor(newType, false);
-                }
-                SSTUStockInterop.fireEditorUpdate();
-            }
-        }
-
-        public void onDiameterUpdated(BaseField field, object obj)
-        {            
-            if (standAlonePart && currentDiameter != prevDiameter)
-            {
-                prevDiameter = currentDiameter;
-                setDiameterFromEditor(currentDiameter, true);
-                updateFairing(true);
-            }
-        }
-
-        private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            currentDiameter = newDiameter;
-            setModelDiameter(currentDiameter);
-            updateModuleStats();
-            updatePartResources();
-            updatePartCost();
-            updateAttachNodes(true);
-            updateDragCube();
-            updateEditorFields();
-            if (updateSymmetry)
-            {
-                SSTUModularHeatShield mhs;
-                foreach (Part p in part.symmetryCounterparts)
-                {
-                    mhs = p.GetComponent<SSTUModularHeatShield>();
-                    mhs.setDiameterFromEditor(newDiameter, false);
-                }
-            }
-        }
 
         #endregion
 
@@ -239,12 +172,35 @@ namespace SSTUTools
             {
                 PhysicsGlobals.ThermalDataDisplay = true;
             }
-            string[] options = shieldTypeNames;
-            this.updateUIChooseOptionControl("currentShieldType", options, options, true, currentShieldType);
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.5f, true, currentDiameter);
-            this.Fields["currentShieldType"].uiControlEditor.onFieldChanged = onTypeUpdated;
-            this.Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
-            this.Fields["currentDiameter"].guiActiveEditor = standAlonePart;
+            string[] options = SSTUUtils.getNames(shieldTypeData, m => m.baseType.name);
+            this.updateUIChooseOptionControl(nameof(currentShieldType), options, options, true, currentShieldType);
+            this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.5f, true, currentDiameter);
+            this.Fields[nameof(currentShieldType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
+                this.actionWithSymmetry(m => 
+                {
+                    if (m != this) { m.currentShieldType = currentShieldType; }
+                    m.updateModuleStats();
+                    m.updatePartResources();
+                    m.updatePartCost();
+                });
+            };
+            this.Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    if (m != this) { m.currentDiameter = currentDiameter; }
+                    m.updateFairing(true);
+                    m.setModelDiameter(currentDiameter);
+                    m.updateModuleStats();
+                    m.updatePartResources();
+                    m.updatePartCost();
+                    m.updateAttachNodes(true);
+                    m.updateDragCube();
+                });
+            };
+            this.Fields[nameof(currentDiameter)].guiActiveEditor = standAlonePart;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -294,7 +250,7 @@ namespace SSTUTools
                     dens = 0.005f;
                 }
             }
-            useToFluxMultiplier = hsp * ablationEfficiency * dens;
+            fluxPerResourceUnit = hsp * ablationEfficiency * dens;
             baseSkinIntMult = part.skinInternalConductionMult;
             
             //stand-alone modular heat-shield setup
@@ -309,8 +265,6 @@ namespace SSTUTools
                 {
                     SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
                 }
-                
-                shieldTypeNames = SSTUDatabase.getHeatShieldNames();
 
                 ConfigNode modelNode = new ConfigNode("MODEL");
                 modelNode.AddValue("name", modelName);
@@ -319,19 +273,12 @@ namespace SSTUTools
                 setModelDiameter(currentDiameter);
                 updateAttachNodes(false);
                 updateDragCube();
-                updateEditorFields();
             }
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
-            int len = typeNodes.Length;
-            shieldTypeNames = new string[len];
-            for (int i = 0; i < len; i++)
-            {
-                shieldTypeNames[i] = typeNodes[i].GetStringValue("name");
-            }
-            if (shieldTypeNames.Length == 0) { shieldTypeNames = new string[] { "Medium" }; }
-            currentShieldTypeData = SSTUDatabase.getHeatShieldType(currentShieldType);
+            shieldTypeData = HeatShieldTypeData.load(typeNodes);
+            currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
             updateModuleStats();
 
             updatePartCost();
@@ -457,14 +404,14 @@ namespace SSTUTools
             }
             else
             {
-                double maxResourceUsed = maxFluxRemoved / useToFluxMultiplier;
+                double maxResourceUsed = maxFluxRemoved / (fluxPerResourceUnit * currentShieldTypeData.efficiencyMult);
                 maxResourceUsed *= TimeWarp.fixedDeltaTime; //convert to a per-tick usage amount
                 if (maxResourceUsed > resource.amount)//didn't have enough ablator for the full tick, calculate partial use
                 {
                     maxResourceUsed = resource.amount;//use all of the ablator
                     //re-calculate the flux-removed from the ablator used
                     //as ablator use in in 'per-tick' quantities, need to re-convert out to per-second
-                    maxFluxRemoved = maxResourceUsed * useToFluxMultiplier / TimeWarp.fixedDeltaTime;
+                    maxFluxRemoved = maxResourceUsed * (fluxPerResourceUnit * currentShieldTypeData.efficiencyMult) / TimeWarp.fixedDeltaTime;
                 }
                 part.TransferResource(resource.info.id, -maxResourceUsed);
                 part.AddExposedThermalFlux(-maxFluxRemoved);
@@ -491,12 +438,6 @@ namespace SSTUTools
             }
             data.setEnable(true);
             fairing.updateExternal(data);
-        }
-
-        private void updateEditorFields()
-        {
-            prevDiameter = currentDiameter;
-            prevType = currentShieldType;
         }
 
         private void updateModuleStats()
@@ -577,10 +518,45 @@ namespace SSTUTools
 
     }
 
+    public class HeatShieldTypeData
+    {
+        public readonly HeatShieldType baseType;
+        public readonly float resourceMult = 1f;
+        public readonly float ablationStart;
+        public readonly float ablationEnd;
+        public readonly float ablationMult;
+        public readonly float massMult = 1f;
+        public readonly FloatCurve heatCurve;
+        public readonly float efficiencyMult;
+
+        public HeatShieldTypeData(ConfigNode node)
+        {
+            string typeName = node.GetValue("name");
+            baseType = SSTUDatabase.getHeatShieldType(typeName);
+            resourceMult = node.GetFloatValue("resourceMult", baseType.resourceMult);
+            ablationStart = node.GetFloatValue("ablationStart", baseType.ablationStart);
+            ablationEnd = node.GetFloatValue("ablationEnd", baseType.ablationEnd);
+            ablationMult = node.GetFloatValue("ablationMult", baseType.ablationMult);
+            massMult = node.GetFloatValue("massMult", baseType.massMult);
+            heatCurve = node.GetFloatCurve("heatCurve", baseType.heatCurve);
+            efficiencyMult = node.GetFloatValue("efficiencyMult", 1.0f);
+        }
+
+        public static HeatShieldTypeData[] load(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            HeatShieldTypeData[] data = new HeatShieldTypeData[len];
+            for (int i = 0; i < len; i++)
+            {
+                data[i] = new HeatShieldTypeData(nodes[i]);
+            }
+            return data;
+        }
+    }
+
     public class HeatShieldType
     {
         public readonly String name;
-        public readonly String tech;
         public readonly float resourceMult = 1f;
         public readonly float ablationStart = 500f;
         public readonly float ablationEnd = 2500f;
