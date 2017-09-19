@@ -140,6 +140,7 @@ namespace SSTUTools
 
         //cached vars for heat-shield thermal processing
         private double baseSkinIntMult = 1;
+        private double baseCondMult = 1;
 
         /// <summary>
         /// Pre-calculated value that can be used to convert between flux and resource units.  Each unit of resource will remove this much flux over a duration of 1s.  So... kW?<para />
@@ -177,10 +178,10 @@ namespace SSTUTools
             this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.5f, true, currentDiameter);
             this.Fields[nameof(currentShieldType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
-                currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
                 this.actionWithSymmetry(m => 
                 {
                     if (m != this) { m.currentShieldType = currentShieldType; }
+                    m.currentShieldTypeData = Array.Find(m.shieldTypeData, s => s.baseType.name == m.currentShieldType);
                     m.updateModuleStats();
                     m.updatePartResources();
                     m.updatePartCost();
@@ -252,6 +253,7 @@ namespace SSTUTools
             }
             fluxPerResourceUnit = hsp * ablationEfficiency * dens;
             baseSkinIntMult = part.skinInternalConductionMult;
+            baseCondMult = part.heatConductivity;
             
             //stand-alone modular heat-shield setup
             if (standAlonePart)
@@ -309,6 +311,7 @@ namespace SSTUTools
             guiShieldUse = 0;
             guiShieldEff = 0;
             part.skinInternalConductionMult = baseSkinIntMult;
+            part.heatConductivity = baseCondMult;
             updateDebugGuiStatus();
             if (part.atmDensity <= 0) { return; }
             if (part.temperature > part.skinTemperature) { return; }
@@ -330,8 +333,9 @@ namespace SSTUTools
                 directionalEffectiveness = offset / minMaxDelta;
             }
             guiShieldEff = directionalEffectiveness;
-            float mult = (float)baseSkinIntMult * (1.0f - (0.8f * directionalEffectiveness));
-            part.skinInternalConductionMult = mult;
+            float mult =  (1.0f - (0.8f * directionalEffectiveness));
+            part.skinInternalConductionMult = mult * baseSkinIntMult;
+            part.heatConductivity = mult * baseCondMult;
             if (skinTemp > ablationStartTemp)
             {
                 //convert input value to 0-1 domain
