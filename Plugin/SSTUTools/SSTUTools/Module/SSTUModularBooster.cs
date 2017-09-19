@@ -281,7 +281,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.mountModule.model.setupTransformDefaults(m.part.transform.FindRecursive(m.thrustTransformName), m.part.transform.FindRecursive(m.gimbalTransformName));
+                    m.mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName);
                     m.reInitEngineModule();
                     m.updateGimbalOffset();
                     m.updateThrustOutput();
@@ -443,13 +443,6 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            if (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor)
-            {
-                //init thrust transforms and/or other persistent models
-                //these transforms need to be present on the part at all times or the stock modules will error out during loading
-                //as such these transform are left on the model even when resetting all the other model-module data
-                initiaizePrefab();
-            }
             loadConfigNodeData();
             updateEditorStats(false);
             SSTUModInterop.onPartGeometryUpdate(part, true);
@@ -473,22 +466,6 @@ namespace SSTUTools
             updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
             this.updateUIFloatEditControl(nameof(currentVScale), min, max, diff * 0.25f, diff * 0.05f, diff * 0.005f, true, currentVScale);
             Fields[nameof(currentVScale)].guiActive = min < 1 || max > 1;
-        }
-
-        /// <summary>
-        /// Initializes thrust transforms for the part; should only be called during prefab init.  Transforms will then be cloned into live model as-is.
-        /// </summary>
-        private void initiaizePrefab()
-        {
-            Transform modelBase = part.transform.FindRecursive("model");
-
-            GameObject thrustTransformGO = new GameObject(thrustTransformName);
-            thrustTransformGO.transform.NestToParent(modelBase.transform);
-            thrustTransformGO.SetActive(true);
-
-            GameObject gimbalTransformGO = new GameObject(gimbalTransformName);
-            gimbalTransformGO.transform.NestToParent(modelBase.transform);
-            gimbalTransformGO.SetActive(true);
         }
 
         /// <summary>
@@ -520,9 +497,7 @@ namespace SSTUTools
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.setupModelList(SingleModelData.parseModels<SRBNozzleData>(node.GetNodes("NOZZLE"), m => new SRBNozzleData(m)));
             mountModule.setupModel();
-
-            //lastly, re-insert gimbal and thrust transforms into model hierarchy and reset default gimbal rotation offset
-            mountModule.model.setupTransformDefaults(part.transform.FindRecursive(thrustTransformName), part.transform.FindRecursive(gimbalTransformName));
+            mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName);
 
             int len;
             //if had custom thrust curve data, reload it now (else it will default to whatever is on the engine)
@@ -1070,7 +1045,9 @@ namespace SSTUTools
         public readonly bool enableRCSY = true;
         public readonly bool enableRCSZ = true;
 
-        public Quaternion[] gimbalDefaultOrientations;
+        private Quaternion[] gimbalDefaultOrientations;
+        private Transform[] thrustTransforms;
+        private Transform[] gimbalTransforms;
 
         public SRBNozzleData(ConfigNode node) : base(node)
         {
@@ -1089,34 +1066,26 @@ namespace SSTUTools
             enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
         }
 
-        public Transform[] getGimbalTransforms()
+        public void setupTransforms(string moduleThrustTransformName, string moduleGimbalTransformName)
         {
-            return model.transform.FindChildren(gimbalTransformName);
-        }
-
-        public Transform[] getThrustTransforms()
-        {
-            return model.transform.FindChildren(thrustTransformName);
-        }
-
-        /// <summary>
-        /// Positions the input thrust transform as a child of the models existing gimbal transform
-        /// in the same orientation as the models existing thrust transform.
-        /// </summary>
-        /// <param name="partThrustTransform"></param>
-        public void setupTransformDefaults(Transform partThrustTransform, Transform partGimbalTransform)
-        {
-            Transform[] modelGimbalTransform = getGimbalTransforms();
-            partGimbalTransform.position = modelGimbalTransform.position;
-            partGimbalTransform.rotation = modelGimbalTransform.rotation;
-            partGimbalTransform.parent = modelGimbalTransform.parent;
-            modelGimbalTransform.parent = partGimbalTransform;
-            gimbalDefaultOrientation = modelGimbalTransform.localRotation;
-
-            Transform[] modelThrustTransform = getThrustTransforms();
-            partThrustTransform.position = modelThrustTransform.position;
-            partThrustTransform.rotation = modelThrustTransform.rotation;
-            partThrustTransform.parent = modelGimbalTransform;
+            Transform[] origThrustTransforms = model.transform.FindChildren(this.thrustTransformName);
+            int len = origThrustTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                origThrustTransforms[i].gameObject.name = moduleThrustTransformName;
+                origThrustTransforms[i].name = moduleThrustTransformName;
+            }
+            Transform[] origGimbalTransforms = model.transform.FindChildren(this.gimbalTransformName);
+            len = origGimbalTransforms.Length;
+            gimbalDefaultOrientations = new Quaternion[len];
+            for (int i = 0; i < len; i++)
+            {
+                origGimbalTransforms[i].gameObject.name = moduleGimbalTransformName;
+                origGimbalTransforms[i].name = moduleGimbalTransformName;
+                gimbalDefaultOrientations[i] = origGimbalTransforms[i].localRotation;
+            }
+            this.gimbalTransforms = origGimbalTransforms;
+            this.thrustTransforms = origThrustTransforms;
         }
 
         /// <summary>
@@ -1126,13 +1095,11 @@ namespace SSTUTools
         /// <param name="newRotation"></param>
         public void updateGimbalRotation(Vector3 worldAxis, float newRotation)
         {
-            //MonoBehaviour.print("updating rotation for angle: " + newRotation);
-            Transform[] modelGimbalTransforms = getGimbalTransforms();
-            int len = modelGimbalTransforms.Length;
+            int len = gimbalTransforms.Length;
             for (int i = 0; i < len; i++)
             {
-                modelGimbalTransforms[i].localRotation = gimbalDefaultOrientations[i];
-                modelGimbalTransforms[i].Rotate(worldAxis, -newRotation, Space.World);
+                gimbalTransforms[i].localRotation = gimbalDefaultOrientations[i];
+                gimbalTransforms[i].Rotate(worldAxis, -newRotation, Space.World);
             }
         }
 
