@@ -84,6 +84,7 @@ namespace SSTUTools
         public readonly TextureSet[] textureSets;
         public readonly CompoundModelData compoundModelData;
         public readonly ModelAnimationData[] animationData;
+        public readonly ConfigNode constraintData;
 
         public ModelDefinition(ConfigNode node)
         {
@@ -159,6 +160,11 @@ namespace SSTUTools
             if (node.HasNode("ANIMATION"))
             {
                 animationData = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
+            }
+
+            if (node.HasNode("CONSTRAINT"))
+            {
+                constraintData = node.GetNode("CONSTRAINT");
             }
         }
 

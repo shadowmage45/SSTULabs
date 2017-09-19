@@ -32,6 +32,12 @@ namespace SSTUTools
             initialize();
         }
 
+        public void loadExternalData(ConfigNode node)
+        {
+            configNodeData = node.ToString();
+            initialize();
+        }
+
         public void Update()
         {
             updateConstraints();

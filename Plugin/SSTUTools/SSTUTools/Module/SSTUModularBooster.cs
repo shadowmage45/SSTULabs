@@ -614,7 +614,16 @@ namespace SSTUTools
             SSTUModelConstraint constraint = part.GetComponent<SSTUModelConstraint>();
             if (constraint != null)
             {
-                constraint.reInitialize();
+                ConfigNode constraintData;
+                if (mountModule.model.modelDefinition.constraintData == null)
+                {
+                    constraintData = new ConfigNode("CONSTRAINT");
+                }
+                else
+                {
+                    constraintData = mountModule.model.modelDefinition.constraintData;
+                }
+                constraint.loadExternalData(constraintData);
             }
 
             SSTUAnimateEngineHeat[] heatAnims = part.GetComponents<SSTUAnimateEngineHeat>();
@@ -1045,6 +1054,8 @@ namespace SSTUTools
         public readonly bool enableRCSY = true;
         public readonly bool enableRCSZ = true;
 
+        public readonly ConfigNode constraintData;
+
         private Quaternion[] gimbalDefaultOrientations;
         private Transform[] thrustTransforms;
         private Transform[] gimbalTransforms;
@@ -1064,6 +1075,10 @@ namespace SSTUTools
             enableRCSX = node.GetBoolValue("enableRCSX", enableRCSX);
             enableRCSY = node.GetBoolValue("enableRCSY", enableRCSY);
             enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
+            if (node.HasNode("CONSTRAINTS"))
+            {
+                constraintData = node.GetNode("CONSTRAINTS");
+            }
         }
 
         public void setupTransforms(string moduleThrustTransformName, string moduleGimbalTransformName)
