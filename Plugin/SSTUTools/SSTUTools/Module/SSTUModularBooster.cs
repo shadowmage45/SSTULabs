@@ -282,6 +282,7 @@ namespace SSTUTools
                 {
                     m.updateEditorStats(true);
                     m.mountModule.model.setupTransformDefaults(m.part.transform.FindRecursive(m.thrustTransformName), m.part.transform.FindRecursive(m.gimbalTransformName));
+                    m.reInitEngineModule();
                     m.updateGimbalOffset();
                     m.updateThrustOutput();
                     m.rebuildRCSThrustTransforms(true);
@@ -345,7 +346,8 @@ namespace SSTUTools
         }
 
         public void Start()
-        {            
+        {
+            reInitEngineModule();
             updateGimbalOffset();
             updateThrustOutput();
             updateRCSThrust();
@@ -617,8 +619,7 @@ namespace SSTUTools
         /// </summary>
         private void updateThrustOutput()
         {
-            float scale = diameterForThrustScaling == -1 ? bodyModule.model.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
-            scale = Mathf.Pow(scale, thrustScalePower);
+            float scale = getThrustScale();
             if (engineModule == null) { engineModule = part.GetComponent<ModuleEnginesFX>(); }
             if (engineModule != null)
             {
@@ -629,6 +630,43 @@ namespace SSTUTools
                 engineModule.thrustCurve = thrustCurveCache;
                 engineModule.useThrustCurve = thrustCurveCache.Curve.length > 1;
                 updateEngineGuiStats();
+            }
+        }
+
+        private void reInitEngineModule()
+        {
+            //model constraints need to be updated whenever the number of models (or just the game-objects) are updated
+            SSTUModelConstraint constraint = part.GetComponent<SSTUModelConstraint>();
+            if (constraint != null)
+            {
+                constraint.reInitialize();
+            }
+
+            SSTUAnimateEngineHeat[] heatAnims = part.GetComponents<SSTUAnimateEngineHeat>();
+            foreach (SSTUAnimateEngineHeat heatAnim in heatAnims)
+            {
+                heatAnim.reInitialize();
+            }
+
+            StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;
+            float scale = getThrustScale();
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (thrustCurveCache == null) { thrustCurveCache = engineModule.thrustCurve; }
+            SSTUStockInterop.updateEngineThrust(engine, scale * bodyModule.model.minThrust, scale * bodyModule.model.maxThrust);
+            engine.OnStart(state);//re-initialize the effects
+            engineModule.thrustCurve = thrustCurveCache;
+            engineModule.useThrustCurve = thrustCurveCache.Curve.length > 1;
+
+            //update the gimbal modules, force them to reload transforms
+            ModuleGimbal[] gimbals = part.GetComponents<ModuleGimbal>();
+            float limit = 0;
+            for (int i = 0; i < gimbals.Length; i++)
+            {
+                limit = gimbals[i].gimbalLimiter;
+                gimbals[i].gimbalTransforms = null;
+                gimbals[i].initRots = null;
+                gimbals[i].OnStart(state);
+                gimbals[i].gimbalLimiter = limit;
             }
         }
 
@@ -982,6 +1020,13 @@ namespace SSTUTools
             return name;
         }
 
+        private float getThrustScale()
+        {
+            float scale = diameterForThrustScaling == -1 ? bodyModule.model.currentDiameterScale : (currentDiameter / diameterForThrustScaling);
+            scale = Mathf.Pow(scale, thrustScalePower);
+            return scale;
+        }
+
         #endregion ENDREGION - Update Methods
     }
 
@@ -1025,7 +1070,7 @@ namespace SSTUTools
         public readonly bool enableRCSY = true;
         public readonly bool enableRCSZ = true;
 
-        public Quaternion gimbalDefaultOrientation;
+        public Quaternion[] gimbalDefaultOrientations;
 
         public SRBNozzleData(ConfigNode node) : base(node)
         {
@@ -1044,24 +1089,14 @@ namespace SSTUTools
             enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
         }
 
-        public Transform getGimbalTransform()
+        public Transform[] getGimbalTransforms()
         {
-            Transform transform = null;
-            if (!String.IsNullOrEmpty(gimbalTransformName))
-            {
-                transform = model.transform.FindRecursive(gimbalTransformName);
-            }
-            return transform;
+            return model.transform.FindChildren(gimbalTransformName);
         }
 
-        public Transform getThrustTransform()
+        public Transform[] getThrustTransforms()
         {
-            Transform transform = null;
-            if (!String.IsNullOrEmpty(thrustTransformName))
-            {
-                transform = model.transform.FindRecursive(thrustTransformName);
-            }
-            return transform;
+            return model.transform.FindChildren(thrustTransformName);
         }
 
         /// <summary>
@@ -1071,19 +1106,17 @@ namespace SSTUTools
         /// <param name="partThrustTransform"></param>
         public void setupTransformDefaults(Transform partThrustTransform, Transform partGimbalTransform)
         {
-            Transform modelGimbalTransform = getGimbalTransform();
-            Transform modelThrustTransform = getThrustTransform();
-
+            Transform[] modelGimbalTransform = getGimbalTransforms();
             partGimbalTransform.position = modelGimbalTransform.position;
             partGimbalTransform.rotation = modelGimbalTransform.rotation;
             partGimbalTransform.parent = modelGimbalTransform.parent;
             modelGimbalTransform.parent = partGimbalTransform;
             gimbalDefaultOrientation = modelGimbalTransform.localRotation;
 
+            Transform[] modelThrustTransform = getThrustTransforms();
             partThrustTransform.position = modelThrustTransform.position;
             partThrustTransform.rotation = modelThrustTransform.rotation;
             partThrustTransform.parent = modelGimbalTransform;
-            //MonoBehaviour.print("set up transform default parenting and orientations; default orientation: "+gimbalDefaultOrientation);
         }
 
         /// <summary>
@@ -1094,9 +1127,13 @@ namespace SSTUTools
         public void updateGimbalRotation(Vector3 worldAxis, float newRotation)
         {
             //MonoBehaviour.print("updating rotation for angle: " + newRotation);
-            Transform modelGimbalTransform = getGimbalTransform();
-            modelGimbalTransform.localRotation = gimbalDefaultOrientation;
-            modelGimbalTransform.Rotate(worldAxis, -newRotation, Space.World);
+            Transform[] modelGimbalTransforms = getGimbalTransforms();
+            int len = modelGimbalTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                modelGimbalTransforms[i].localRotation = gimbalDefaultOrientations[i];
+                modelGimbalTransforms[i].Rotate(worldAxis, -newRotation, Space.World);
+            }
         }
 
         public GameObject[] createRCSThrustTransforms(string name, Transform parent)
