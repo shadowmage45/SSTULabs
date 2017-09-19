@@ -249,6 +249,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     m.jettisonFairing();
+                    m.updateGuiState();
                 });
             }
         }
