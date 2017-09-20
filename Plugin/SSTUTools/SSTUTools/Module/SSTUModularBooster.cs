@@ -112,6 +112,13 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentGimbalOffset;
 
+        /// <summary>
+        /// Percent of volume of the part that is dedicated to EC/hypergolics
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Support Tank %"),
+         UI_FloatRange(suppressEditorShipModified = true, minValue = 0, maxValue = 20, stepIncrement = 0.25f)]
+        public float supportPercent = 5f;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentNoseTexture;
@@ -281,7 +288,18 @@ namespace SSTUTools
                     m.updateThrustOutput();
                     m.reInitRCSModule();
                     m.updateRCSThrust();
+                    m.updateSupportSliderVisibility();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(supportPercent)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.supportPercent = supportPercent; }//else it conflicts with stock slider functionality
+                    m.updateContainerVolume();
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -356,6 +374,7 @@ namespace SSTUTools
                 initializedFairing = true;
                 updateFairing(true);
             }
+            updateSupportSliderVisibility();
         }
 
         //IModuleCostModifier Override
@@ -623,6 +642,13 @@ namespace SSTUTools
             }
         }
 
+        private void updateSupportSliderVisibility()
+        {
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            bool supportSliderVisible = vc != null && vc.numberOfContainers > 1 && mountModule.model.hasRCS;
+            Fields[nameof(supportPercent)].guiActiveEditor = supportSliderVisible;
+        }
+
         /// <summary>
         /// Updates the current gimbal transform angle to the GUI offset gimbal angle
         /// </summary>
@@ -862,7 +888,22 @@ namespace SSTUTools
         /// </summary>
         private void updateContainerVolume()
         {
-            SSTUModInterop.onPartFuelVolumeUpdate(part, bodyModule.model.getModuleVolume() * 1000f);
+            float totalTankVolume = bodyModule.model.getModuleVolume();
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            if (vc != null && vc.numberOfContainers > 1)
+            {
+                float tankPercent = 100 - supportPercent;
+                float monoPercent = supportPercent;
+                float[] pcts = new float[2];
+                pcts[0] = mountModule.model.hasRCS? tankPercent * 0.01f : 1;
+                pcts[1] = mountModule.model.hasRCS? monoPercent * 0.01f : 0;
+                vc.setContainerPercents(pcts, totalTankVolume * 1000f);
+            }
+            else
+            {
+                //default volume updating / real-fuels handling
+                SSTUModInterop.onPartFuelVolumeUpdate(part, totalTankVolume * 1000f);
+            }
         }
 
         private void updatePartCostAndMass()
