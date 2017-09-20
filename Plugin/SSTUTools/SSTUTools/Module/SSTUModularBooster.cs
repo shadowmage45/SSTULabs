@@ -36,7 +36,6 @@ namespace SSTUTools
         [KSPField]
         public int topFairingIndex = 0;
 
-
         [KSPField]
         public int lowerFairingIndex = 1;
 
@@ -149,8 +148,6 @@ namespace SSTUTools
         
         [Persistent]
         public string configNodeData = string.Empty;
-
-        public GameObject[] rcsThrustTransforms = null;
 
         #endregion ENDREGION - Persistent variables
 
@@ -273,19 +270,16 @@ namespace SSTUTools
 
             Fields[nameof(currentNozzleName)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
             {
-                this.actionWithSymmetry(m =>
-                {
-                    m.resetTransformParents();
-                });
                 mountModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName);
-                    m.reInitEngineModule();
+                    m.mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName, rcsThrustTransformName);
+                    m.reInitExternalModules();
                     m.updateGimbalOffset();
+                    m.reInitGimbalModule();
                     m.updateThrustOutput();
-                    m.rebuildRCSThrustTransforms(true);
+                    m.reInitRCSModule();
                     m.updateRCSThrust();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -347,8 +341,9 @@ namespace SSTUTools
 
         public void Start()
         {
-            reInitEngineModule();
-            updateGimbalOffset();
+            reInitExternalModules();
+            reInitGimbalModule();
+            reInitRCSModule();
             updateThrustOutput();
             updateRCSThrust();
             if (!initializedResources && HighLogic.LoadedSceneIsEditor)
@@ -473,10 +468,6 @@ namespace SSTUTools
         /// </summary>
         private void loadConfigNodeData()
         {
-            //reset existing gimbal/thrust transforms, remove them from the model hierarchy so they do not get deleted when setting up models
-            //this resets the thrust transform parent in case it was changed during prefab; we don't want to delete the thrust transform
-            resetTransformParents();
-
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             //load all main modules from MAINMODEL nodes
@@ -497,7 +488,9 @@ namespace SSTUTools
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.setupModelList(SingleModelData.parseModels<SRBNozzleData>(node.GetNodes("NOZZLE"), m => new SRBNozzleData(m)));
             mountModule.setupModel();
-            mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName);
+            mountModule.model.setupTransforms(thrustTransformName, gimbalTransformName, rcsThrustTransformName);
+
+            updateGimbalOffset();
 
             int len;
             //if had custom thrust curve data, reload it now (else it will default to whatever is on the engine)
@@ -541,28 +534,7 @@ namespace SSTUTools
             {
                 currentVariantName = bodyModule.model.variant;
             }
-
-            rebuildRCSThrustTransforms(false);
         }        
-
-        /// <summary>
-        /// Utility method to -temporarily- reset the parent of the thrust transform to the parts base model transform.<para></para>
-        /// This should be used before deleting a nozzle/mount model to keep the same thrust transform object in use, 
-        /// and the transforms should subsequently be re-parented to thier proper hierarchy after the new/updated model/module is initialized.
-        /// </summary>
-        /// <param name="modelBase"></param>
-        private void resetTransformParents()
-        {
-            Transform modelBase = part.transform.FindRecursive("model");
-            //re-parent the thrust transform so they do not get deleted when clearing the existing models
-            Transform gimbal = modelBase.FindRecursive(gimbalTransformName);
-            foreach (Transform tr in gimbal) { tr.parent = gimbal.parent; }
-            gimbal.parent = modelBase;
-
-            Transform thrust = modelBase.FindRecursive(thrustTransformName);
-            foreach (Transform tr in thrust) { tr.parent = thrust.parent; }
-            thrust.parent = modelBase;
-        }
 
         #endregion ENDREGION - Initialization Methods
 
@@ -586,7 +558,6 @@ namespace SSTUTools
             noseModule.model.updateModel();
             bodyModule.model.updateModel();
             mountModule.model.updateModel();
-            mountModule.model.updateRCSThrustTransformPositions(rcsThrustTransforms);
         }
 
         /// <summary>
@@ -608,9 +579,12 @@ namespace SSTUTools
             }
         }
 
-        private void reInitEngineModule()
+        /// <summary>
+        /// Force-updates external SSTU constraint and heat-animation modules
+        /// TODO -- add support for standard sstu-animate system (controlled/usable) for extending nozzles
+        /// </summary>
+        private void reInitExternalModules()
         {
-            //model constraints need to be updated whenever the number of models (or just the game-objects) are updated
             SSTUModelConstraint constraint = part.GetComponent<SSTUModelConstraint>();
             if (constraint != null)
             {
@@ -631,27 +605,6 @@ namespace SSTUTools
             {
                 heatAnim.reInitialize();
             }
-
-            StartState state = HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None;
-            float scale = getThrustScale();
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (thrustCurveCache == null) { thrustCurveCache = engineModule.thrustCurve; }
-            SSTUStockInterop.updateEngineThrust(engine, scale * bodyModule.model.minThrust, scale * bodyModule.model.maxThrust);
-            engine.OnStart(state);//re-initialize the effects
-            engineModule.thrustCurve = thrustCurveCache;
-            engineModule.useThrustCurve = thrustCurveCache.Curve.length > 1;
-
-            //update the gimbal modules, force them to reload transforms
-            ModuleGimbal[] gimbals = part.GetComponents<ModuleGimbal>();
-            float limit = 0;
-            for (int i = 0; i < gimbals.Length; i++)
-            {
-                limit = gimbals[i].gimbalLimiter;
-                gimbals[i].gimbalTransforms = null;
-                gimbals[i].initRots = null;
-                gimbals[i].OnStart(state);
-                gimbals[i].gimbalLimiter = limit;
-            }
         }
 
         private void updateEngineGuiStats()
@@ -670,34 +623,24 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Updates the current gimbal transform angle and the gimbal modules range values to the values for the current nozzle module
+        /// Updates the current gimbal transform angle to the GUI offset gimbal angle
         /// </summary>
         private void updateGimbalOffset()
         {
-            //update the transform orientation for the gimbal so that the moduleGimbal gets the correct 'defaultOrientation'
             mountModule.model.updateGimbalRotation(part.transform.forward, currentGimbalOffset);
+        }
 
-            //update the ModuleGimbals transform and orientation data
+        private void reInitGimbalModule()
+        {
             ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
             if (gimbal != null)
             {
-                if (gimbal.initRots == null)//gimbal is uninitialized; do nothing...
+                gimbal.gimbalRange = mountModule.model.gimbalFlightRange;
+                if (gimbal.initRots != null)//gimbal is uninitialized; do nothing...
                 {
-                    //MonoBehaviour.print("Gimbal module rotations are null; gimbal uninitialized.");
-                    gimbal.gimbalTransformName = gimbalTransformName;
-                }
-                else
-                {
-                    //MonoBehaviour.print("Updating gimbal module data...");
                     //set gimbal actuation range
-                    gimbal.gimbalTransformName = gimbalTransformName;
-                    gimbal.gimbalRange = mountModule.model.gimbalFlightRange;
                     gimbal.OnStart(StartState.Flying);//forces gimbal to re-init its transform and default orientation data
                 }
-            }
-            else
-            {
-                MonoBehaviour.print("ERROR: Could not update gimbal, no module found");
             }
         }
 
@@ -880,66 +823,37 @@ namespace SSTUTools
         /// </summary>
         private void updateRCSThrust()
         {
-            ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
-            int len = rcsMod.Length;
             float scale = currentDiameter / bodyModule.model.modelDefinition.diameter;
             float thrust = mountModule.model.rcsPower * scale * scale;
-            if (!mountModule.model.hasRCS)
-            {
-                thrust = 0;
-            }
+            ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+            int len = modules.Length;
             for (int i = 0; i < len; i++)
             {
-                rcsMod[i].thrusterPower = thrust;
-                rcsMod[i].moduleIsEnabled = thrust > 0;
-                rcsMod[i].enablePitch = mountModule.model.enableRCSPitch;
-                rcsMod[i].enableYaw = mountModule.model.enableRCSYaw;
-                rcsMod[i].enableRoll = mountModule.model.enableRCSRoll;
-                rcsMod[i].enableX = mountModule.model.enableRCSX;
-                rcsMod[i].enableY = mountModule.model.enableRCSY;
-                rcsMod[i].enableZ = mountModule.model.enableRCSZ;
+                modules[i].thrusterPower = thrust;
             }
             guiRcsThrust = thrust;
         }
 
-        private void rebuildRCSThrustTransforms(bool updateRCSModule)
+        private void reInitRCSModule()
         {
-            if (rcsThrustTransforms != null)
+            ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+            int len = modules.Length;
+            for (int i = 0; i < len; i++)
             {
-                //destroy immediate on existing, or optionally attempt to copy and re-use some of them?
-                int l = rcsThrustTransforms.Length;
-                for (int i = 0; i < l; i++)
-                {
-                    rcsThrustTransforms[i].transform.parent = null;//so that it doesn't get found by the rcs module, free-floating transform for one frame until destroyed
-                    GameObject.Destroy(rcsThrustTransforms[i]);//destroy
-                    rcsThrustTransforms[i] = null;//dereference
-                }
-                rcsThrustTransforms = null;//dump the whole array
+                modules[i].moduleIsEnabled = mountModule.model.rcsPower > 0;
+                modules[i].enablePitch = mountModule.model.enableRCSPitch;
+                modules[i].enableYaw = mountModule.model.enableRCSYaw;
+                modules[i].enableRoll = mountModule.model.enableRCSRoll;
+                modules[i].enableX = mountModule.model.enableRCSX;
+                modules[i].enableY = mountModule.model.enableRCSY;
+                modules[i].enableZ = mountModule.model.enableRCSZ;
+                modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
+                modules[i].OnStart(StartState.Editor);//force update of fx/etc
             }
-            rcsThrustTransforms = mountModule.model.createRCSThrustTransforms(rcsThrustTransformName, part.transform.FindRecursive("model"));
-            if (updateRCSModule)
+            if (modules.Length > 0)
             {
-                ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
-                int len = modules.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    part.fxGroups.RemoveAll(m => modules[i].thrusterFX.Contains(m));
-                    part.fxGroups.ForEach(m => MonoBehaviour.print(m.name));
-                    modules[i].thrusterFX.ForEach(m => m.fxEmitters.ForEach(s => GameObject.Destroy(s.gameObject)));
-                    modules[i].thrusterFX.Clear();
-                    modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
-                    modules[i].OnStart(StartState.Editor);//force update of fx/etc
-                    modules[i].DeactivateFX();//doesn't appear to work
-                    //TODO -- clean up this mess of linked stuff
-                    modules[i].thrusterFX.ForEach(m =>
-                    {
-                        m.setActive(false);
-                        m.SetPower(0);
-                        m.fxEmitters.ForEach(s => s.enabled = false);
-                    });
-                }
+                part.stackIcon.SetIcon(DefaultIcons.SOLID_BOOSTER);
             }
-            //SSTUUtils.recursePrintComponents(part.transform.gameObject, "");
         }
 
         /// <summary>
@@ -1046,7 +960,7 @@ namespace SSTUTools
 
         public readonly bool hasRCS = false;
         public readonly string rcsThrustTransformName;
-        public readonly float rcsPower = 1f;
+        public readonly float rcsPower = 0;
         public readonly bool enableRCSPitch = true;
         public readonly bool enableRCSYaw = true;
         public readonly bool enableRCSRoll = true;
@@ -1059,6 +973,7 @@ namespace SSTUTools
         private Quaternion[] gimbalDefaultOrientations;
         private Transform[] thrustTransforms;
         private Transform[] gimbalTransforms;
+        private Transform[] rcsTransforms;
 
         public SRBNozzleData(ConfigNode node) : base(node)
         {
@@ -1081,23 +996,27 @@ namespace SSTUTools
             }
         }
 
-        public void setupTransforms(string moduleThrustTransformName, string moduleGimbalTransformName)
+        public void setupTransforms(string moduleThrustTransformName, string moduleGimbalTransformName, string rcsTransformName)
         {
             Transform[] origThrustTransforms = model.transform.FindChildren(this.thrustTransformName);
             int len = origThrustTransforms.Length;
             for (int i = 0; i < len; i++)
             {
-                origThrustTransforms[i].gameObject.name = moduleThrustTransformName;
-                origThrustTransforms[i].name = moduleThrustTransformName;
+                origThrustTransforms[i].name = origThrustTransforms[i].gameObject.name = moduleThrustTransformName;
             }
             Transform[] origGimbalTransforms = model.transform.FindChildren(this.gimbalTransformName);
             len = origGimbalTransforms.Length;
             gimbalDefaultOrientations = new Quaternion[len];
             for (int i = 0; i < len; i++)
             {
-                origGimbalTransforms[i].gameObject.name = moduleGimbalTransformName;
-                origGimbalTransforms[i].name = moduleGimbalTransformName;
+                origGimbalTransforms[i].name = origGimbalTransforms[i].gameObject.name = moduleGimbalTransformName;
                 gimbalDefaultOrientations[i] = origGimbalTransforms[i].localRotation;
+            }
+            Transform[] origRcsTransforms = model.transform.FindChildren(this.rcsThrustTransformName);
+            len = origRcsTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                origRcsTransforms[i].name = origRcsTransforms[i].gameObject.name = rcsTransformName;
             }
             this.gimbalTransforms = origGimbalTransforms;
             this.thrustTransforms = origThrustTransforms;
@@ -1142,25 +1061,6 @@ namespace SSTUTools
                 goList.Add(go);
             }
             return goList.ToArray();
-        }
-
-        public void updateRCSThrustTransformPositions(GameObject[] gos)
-        {
-            MonoBehaviour.print("Updating rcs transform positions");
-            if (!hasRCS) { return; }
-            Transform[] trs;
-            int len;
-            GameObject go;
-            int index = 0;
-            int goLen = gos.Length;
-            trs = model.transform.FindChildren(rcsThrustTransformName);
-            len = trs.Length;
-            for (int i = 0; i < len && index < goLen; i++, index++)
-            {
-                go = gos[index];
-                go.transform.position = trs[i].position;
-                go.transform.rotation = trs[i].rotation;
-            }
         }
     }
 
