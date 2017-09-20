@@ -481,6 +481,7 @@ namespace SSTUTools
 
             tankModule = new ModelModule<TankModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
             tankModule.getSymmetryModule = m => m.tankModule;
+            tankModule.getDisplayNames = m => SSTUUtils.getNames(tankModule.models, s => s.setName);
             tankModule.setupModelList(mainTankModules);
 
             currentTankSetModule = Array.Find(tankSets, m => m.name == tankModule.model.setName);

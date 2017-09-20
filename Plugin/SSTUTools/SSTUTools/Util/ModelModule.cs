@@ -14,6 +14,8 @@ namespace SSTUTools
 
         public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
 
+        public delegate String[] DisplayNames(IEnumerable<T> validSelections);
+
         public readonly Part part;
         public readonly PartModule partModule;
         public readonly Transform root;
@@ -22,6 +24,10 @@ namespace SSTUTools
         public ValidSelections getValidSelections = delegate (IEnumerable<T> allSelections)
         {
             return allSelections;
+        };
+        public DisplayNames getDisplayNames = delegate (IEnumerable<T> validSelections) 
+        {
+            return SSTUUtils.getNames(validSelections, m => m.modelDefinition.title);
         };
 
         public List<T> models = new List<T>();
@@ -201,7 +207,7 @@ namespace SSTUTools
         {
             IEnumerable<T> validSelections = getValidSelections(models);
             string[] names = SSTUUtils.getNames(validSelections, s => s.name);
-            string[] displays = SSTUUtils.getNames(validSelections, s => s.modelDefinition.title);
+            string[] displays = getDisplayNames(validSelections);
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
         }

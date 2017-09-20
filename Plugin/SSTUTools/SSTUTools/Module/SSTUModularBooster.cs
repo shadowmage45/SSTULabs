@@ -474,6 +474,7 @@ namespace SSTUTools
             bodyModule = new ModelModule<SRBModelData, SSTUModularBooster>(part, this, createRootTransform(baseTransformName + "Root"), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentMainName), nameof(currentMainTexture));
             bodyModule.getSymmetryModule = m => m.bodyModule;
             bodyModule.getValidSelections = m => bodyModule.models.FindAll(s => s.variant == currentVariantName);
+            bodyModule.getDisplayNames = m => SSTUUtils.getNames(bodyModule.models, s => s.length);
             bodyModule.setupModelList(SingleModelData.parseModels<SRBModelData>(node.GetNodes("MAINMODEL"), m => new SRBModelData(m)));
             bodyModule.setupModel();
 
