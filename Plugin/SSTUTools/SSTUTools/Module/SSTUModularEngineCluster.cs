@@ -236,13 +236,17 @@ namespace SSTUTools
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            this.actionWithSymmetry(m =>
+            if (mountModule.models.Find(m => m.name == "Mount-None") != null)
             {
-                m.mountModule.modelSelected("Mount-None");
-                m.currentMountName = m.mountModule.model.name;
-                m.updateEditorStats(true);
-                m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
-            });
+                currentMountName = "Mount-None";
+                mountModule.modelSelected(Fields[nameof(currentMountName)], currentMountName);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEditorStats(true);
+                    m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
+                    MonoUtilities.RefreshContextWindows(m.part);
+                });
+            }
         }
 
         #endregion ENDREGION - GUI Interaction Methods
