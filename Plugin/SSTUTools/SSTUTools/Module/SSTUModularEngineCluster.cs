@@ -239,6 +239,7 @@ namespace SSTUTools
             this.actionWithSymmetry(m =>
             {
                 m.mountModule.modelSelected("Mount-None");
+                m.currentMountName = m.mountModule.model.name;
                 m.updateEditorStats(true);
                 m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
             });
