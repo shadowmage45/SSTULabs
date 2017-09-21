@@ -232,7 +232,7 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m =>
                 {
-                    m.currentDiameter = currentDiameter;
+                    if (m != this) { m.currentDiameter = currentDiameter; }
                     m.updateEditorStats(true);
                     m.updateThrustOutput();
                     m.updateRCSThrust();
@@ -300,6 +300,19 @@ namespace SSTUTools
                 {
                     if (m != this) { m.supportPercent = supportPercent; }//else it conflicts with stock slider functionality
                     m.updateContainerVolume();
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentVScale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentVScale = currentVScale; }
+                    m.updateEditorStats(true);
+                    m.updateThrustOutput();
+                    m.updateRCSThrust();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -462,6 +475,10 @@ namespace SSTUTools
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
+        /// <summary>
+        /// Rescale and position model for current setup.  Updates models, effects, attach nodes, mass/cost, resource volume, and fairings.
+        /// </summary>
+        /// <param name="userInput"></param>
         private void updateEditorStats(bool userInput)
         {
             float min = bodyModule.model.minVerticalScale;
@@ -479,7 +496,7 @@ namespace SSTUTools
             }
             updateFairing(userInput || (!HighLogic.LoadedSceneIsFlight && !HighLogic.LoadedSceneIsEditor));
             this.updateUIFloatEditControl(nameof(currentVScale), min, max, diff * 0.25f, diff * 0.05f, diff * 0.005f, true, currentVScale);
-            Fields[nameof(currentVScale)].guiActive = min < 1 || max > 1;
+            Fields[nameof(currentVScale)].guiActiveEditor = min < 1 || max > 1;
         }
 
         /// <summary>
@@ -571,9 +588,10 @@ namespace SSTUTools
             bodyModule.model.updateScale(hScale, vScale);
             mountModule.model.updateScaleForDiameter(currentDiameter);
 
-            noseModule.model.currentVerticalPosition = bodyModule.model.currentHeight * 0.5f;
-            bodyModule.model.currentVerticalPosition = 0f;
-            mountModule.model.currentVerticalPosition = -bodyModule.model.currentHeight * 0.5f;
+            float halfHeight = bodyModule.model.currentHeight * 0.5f;
+            noseModule.setPosition(halfHeight, ModelOrientation.TOP);
+            bodyModule.setPosition(-halfHeight, bodyModule.model.modelDefinition.orientation);
+            mountModule.setPosition(-halfHeight, ModelOrientation.BOTTOM);
 
             noseModule.model.updateModel();
             bodyModule.model.updateModel();
@@ -817,7 +835,7 @@ namespace SSTUTools
             SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
             if (bottomFairing != null)
             {
-                float bottomFairingTopY = mountModule.model.getPosition(ModelOrientation.BOTTOM) - mountModule.model.getFairingOffset();
+                float bottomFairingTopY = mountModule.model.getPosition(ModelOrientation.BOTTOM) + mountModule.model.getFairingOffset();
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopRadius(currentDiameter * 0.5f);
                 data.setTopY(bottomFairingTopY);
