@@ -29,15 +29,24 @@ namespace SSTUTools
 
         [KSPField]
         public float dragCoef = 1.0f;
-        
+
         /// <summary>
-        /// The base transform name to be created; all parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
+        /// The base transform name to be created; all drogue parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
         /// </summary>
         [KSPField]
-        public String baseTransformName = "SSTUMPBaseTransform";
+        public String drogueBaseTransformName = "PDrogueChuteTransform";
 
+        /// <summary>
+        /// The base transform name to be created; all main parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
+        /// </summary>
         [KSPField]
-        public String targetTransformName = "SSTUMPTargetTransform";
+        public String mainBaseTransformName = "MainChuteTransform";
+
+        /// <summary>
+        /// A transform of this name is created and added to the model; it is used as a look-target container for the parachutes -- individual look-target transforms are added for each canopy.
+        /// </summary>
+        [KSPField]
+        public String targetTransformName = "ChuteTargetTransform";
 
         /// <summary>
         /// Determines if this part is capable of having its parachutes repacked by a qualified kerbal.
@@ -141,10 +150,6 @@ namespace SSTUTools
 
         [KSPField]
         public float drogueFullDeploySpeed = 2f;
-
-        [KSPField]
-        public float defaultBodyLiftMultiplier = 1f;
-
 
         /// <summary>
         /// Used to track the ChuteState variable for the main chutes; restored during OnLoad
@@ -331,15 +336,18 @@ namespace SSTUTools
         /// </summary>
         private void initializeModels()
         {
-            Transform baseTransform = part.transform.FindRecursive("model").FindOrCreate(baseTransformName);
-            baseTransform.NestToParent(part.transform.FindRecursive("model"));
+            Transform mainBaseTransform = part.transform.FindRecursive("model").FindOrCreate(mainBaseTransformName);
+            mainBaseTransform.NestToParent(part.transform.FindRecursive("model"));
 
-            targetTransform = baseTransform.FindOrCreate(targetTransformName);
-            targetTransform.NestToParent(baseTransform);
+            Transform drogueBaseTransform = part.transform.FindRecursive("model").FindOrCreate(drogueBaseTransformName);
+            drogueBaseTransform.NestToParent(part.transform.FindRecursive("model"));
+
+            targetTransform = part.transform.FindRecursive("model").FindOrCreate(targetTransformName);
+            targetTransform.NestToParent(part.transform.FindRecursive("model"));
             targetTransform.rotation = Quaternion.LookRotation(part.transform.up, part.transform.forward);
                         
-            foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, baseTransform, targetTransform); }
-            foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, baseTransform, targetTransform); }
+            foreach (ParachuteModelData droge in drogueChuteModules) { droge.setupModel(part, drogueBaseTransform, targetTransform); }
+            foreach (ParachuteModelData main in mainChuteModules) { main.setupModel(part, mainBaseTransform, targetTransform); }
             hasDrogueChute = drogueChuteModules.Length > 0;
             mainCapTransforms = part.transform.FindRecursive("model").FindChildren(mainCapName);
             drogueCapTransforms = part.transform.FindRecursive("model").FindChildren(drogueCapName);
