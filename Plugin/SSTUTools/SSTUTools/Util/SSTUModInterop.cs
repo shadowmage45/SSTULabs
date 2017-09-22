@@ -231,10 +231,12 @@ namespace SSTUTools
 
         public static void onPartKISInventoryVolumeChanged(Part part, float liters)
         {
+            return;
             if (!isKISInstalled())
             {
                 return;
             }
+            MonoBehaviour.print("a");
             string typeName = "KIS.ModuleKISInventory,KIS";
             Type kisModuleType = Type.GetType(typeName);
             if (kisModuleType == null)
@@ -242,7 +244,8 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: Could not locate KIS module for name: "+typeName);
             }
             PartModule pm = (PartModule)part.GetComponent(kisModuleType);
-            if(pm == null)
+            MonoBehaviour.print("b");
+            if (pm == null)
             {
                 if (liters != 0)
                 {
@@ -250,10 +253,20 @@ namespace SSTUTools
                 }
                 return;
             }
+            MonoBehaviour.print("c");
             FieldInfo fi = kisModuleType.GetField("maxVolume");
+            MonoBehaviour.print("d "+fi);
             fi.SetValue(pm, liters);
-            BaseEvent inventoryEvent = pm.Events["ShowInventory"];
+            BaseEvent inventoryEvent = pm.Events["ToggleInventory"];
             inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
+
+            //interesting -- https://www.codeproject.com/Articles/15292/Setting-Enum-s-Through-Reflection
+            PropertyInfo info = kisModuleType.GetProperty("InventoryType");
+            int curVal = (int)info.GetValue(pm, null);
+            MonoBehaviour.print("curval: " + curVal);
+            Type inventoryTypeEnumType = Type.GetType("KIS.ModuleKISInventory.InventoryType,KIS");
+            MonoBehaviour.print("f: " + inventoryTypeEnumType);
+            FieldInfo containerEnumItem = inventoryTypeEnumType.GetField("Container");
         }
 
         public static bool isFARInstalled()
