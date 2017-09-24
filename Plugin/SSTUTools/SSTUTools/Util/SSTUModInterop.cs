@@ -231,42 +231,54 @@ namespace SSTUTools
 
         public static void onPartKISInventoryVolumeChanged(Part part, float liters)
         {
-            return;
-            if (!isKISInstalled())
+            PartModule pm = part.Modules["ModuleKISInventory"];
+            if (pm != null)
             {
-                return;
-            }
-            MonoBehaviour.print("a");
-            string typeName = "KIS.ModuleKISInventory,KIS";
-            Type kisModuleType = Type.GetType(typeName);
-            if (kisModuleType == null)
-            {
-                MonoBehaviour.print("ERROR: Could not locate KIS module for name: "+typeName);
-            }
-            PartModule pm = (PartModule)part.GetComponent(kisModuleType);
-            MonoBehaviour.print("b");
-            if (pm == null)
-            {
-                if (liters != 0)
+                //TODO exclude crewed parts / make sure to not mess with crew-seat volumes
+                BaseField bf = pm.Fields["maxVolume"];
+                if (bf != null)
                 {
-                    MonoBehaviour.print("ERROR: Could not locate KIS module on part for type: " + part + " :: " + kisModuleType);
+                    bf.SetValue(liters, pm);
                 }
-                return;
+                BaseEvent be = pm.Events["ToggleInventory"];
+                if (be != null)
+                {
+                    be.guiActive = be.guiActiveEditor = liters > 0;
+                }
+                //TODO clear out inventory contents when volume changes??
             }
-            MonoBehaviour.print("c");
-            FieldInfo fi = kisModuleType.GetField("maxVolume");
-            MonoBehaviour.print("d "+fi);
-            fi.SetValue(pm, liters);
-            BaseEvent inventoryEvent = pm.Events["ToggleInventory"];
-            inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
+            //if (!isKISInstalled())
+            //{
+            //    return;
+            //}
+            //string typeName = "KIS.ModuleKISInventory,KIS";
+            //Type kisModuleType = Type.GetType(typeName);
+            //if (kisModuleType == null)
+            //{
+            //    MonoBehaviour.print("ERROR: Could not locate KIS module for name: " + typeName);
+            //}
+            //PartModule pm = (PartModule)part.GetComponent(kisModuleType);
+            //if (pm == null)
+            //{
+            //    if (liters != 0)
+            //    {
+            //        MonoBehaviour.print("ERROR: Could not locate KIS module on part for type: " + part + " :: " + kisModuleType);
+            //    }
+            //    return;
+            //}
+            //FieldInfo fi = kisModuleType.GetField("maxVolume");
+            //fi.SetValue(pm, liters);
+            //BaseEvent inventoryEvent = pm.Events["ToggleInventory"];
+            //inventoryEvent.guiActive = inventoryEvent.guiActiveEditor = liters > 0;
 
-            //interesting -- https://www.codeproject.com/Articles/15292/Setting-Enum-s-Through-Reflection
-            PropertyInfo info = kisModuleType.GetProperty("InventoryType");
-            int curVal = (int)info.GetValue(pm, null);
-            MonoBehaviour.print("curval: " + curVal);
-            Type inventoryTypeEnumType = Type.GetType("KIS.ModuleKISInventory.InventoryType,KIS");
-            MonoBehaviour.print("f: " + inventoryTypeEnumType);
-            FieldInfo containerEnumItem = inventoryTypeEnumType.GetField("Container");
+            ////interesting -- https://www.codeproject.com/Articles/15292/Setting-Enum-s-Through-Reflection
+            ////but doesn't seem to work as used below; the enum type is null
+            //PropertyInfo info = kisModuleType.GetProperty("InventoryType");
+            //int curVal = (int)info.GetValue(pm, null);
+            //MonoBehaviour.print("curval: " + curVal);
+            //Type inventoryTypeEnumType = Type.GetType("KIS.ModuleKISInventory.InventoryType,KIS");
+            //MonoBehaviour.print("f: " + inventoryTypeEnumType);
+            //FieldInfo containerEnumItem = inventoryTypeEnumType.GetField("Container");
         }
 
         public static bool isFARInstalled()
