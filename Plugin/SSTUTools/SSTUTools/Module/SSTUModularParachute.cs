@@ -34,7 +34,7 @@ namespace SSTUTools
         /// The base transform name to be created; all drogue parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)
         /// </summary>
         [KSPField]
-        public String drogueBaseTransformName = "PDrogueChuteTransform";
+        public String drogueBaseTransformName = "DrogueChuteTransform";
 
         /// <summary>
         /// The base transform name to be created; all main parachute models and objects will be parented to this transform (so they are not scattered all over the "model" transform direct children)

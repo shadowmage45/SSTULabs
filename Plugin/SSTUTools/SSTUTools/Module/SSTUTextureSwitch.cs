@@ -79,6 +79,7 @@ namespace SSTUTools
             this.updateUIChooseOptionControl(nameof(currentTextureSet), SSTUTextureUtils.getTextureSetNames(setNodes), SSTUTextureUtils.getTextureSetTitles(setNodes), true, currentTextureSet);
             //MonoBehaviour.print("Current texture set: " + currentTextureSet);
             textureSets.enableCurrentSet(getModelTransform());
+            Fields[nameof(currentTextureSet)].guiName = sectionName + " Texture";
             //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
 
