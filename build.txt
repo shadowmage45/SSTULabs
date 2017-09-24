@@ -2,7 +2,6 @@
 //read by SSTUBuildTools.exe
 //currently only supported options are MS-DOS Command-Line options (CMD:) and Zip operations (ZIP:{})
 versionFile = GameData/SSTU/MiniAVC/SSTULabs.version
-INC:build
 CMD:newPack.bat
 ZIP:SSTU-%version%.zip
 {

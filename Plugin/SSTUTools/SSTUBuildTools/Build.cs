@@ -38,7 +38,7 @@ namespace SSTUBuildTools
         internal VersionFile versionFile;
         internal BuildAction[] buildActions;
         internal string buildPath;
-        internal bool incrementVersions = true;
+        internal bool incrementVersions = false;
 
         public BuildConfig(string path, string execPath)
         {
