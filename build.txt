@@ -6,6 +6,8 @@ CMD:newPack.bat
 ZIP:SSTU-%version%.zip
 {
     +d Build/GameData:GameData
+	+d Build/Source:Source
+	+f Build/Installation_Instructions.txt:Installation_Instructions.txt
 }
 CMD:rd Build /s/q
 CMD:rd Build /s/q
