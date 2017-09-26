@@ -751,6 +751,21 @@ namespace SSTUTools
             }
             return totalCost;
         }
+
+        public ConfigNode getPropellantNode()
+        {
+            ConfigNode node = new ConfigNode();
+            int len = resourceRatios.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ConfigNode propNode = new ConfigNode("PROPELLANT");
+                propNode.AddValue("name", resourceRatios[i].resourceName);
+                propNode.AddValue("ratio", resourceRatios[i].resourceRatio);
+                node.AddNode(propNode);
+            }
+            return node;
+        }
+
     }
 
     /// <summary>
