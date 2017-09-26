@@ -274,6 +274,12 @@ namespace SSTUTools
 
         #region Transform extensionMethods
 
+        /// <summary>
+        /// Same as transform.FindChildren() but also searches for children with the (Clone) tag on the name.
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="modelName"></param>
+        /// <returns></returns>
         public static Transform[] FindModels(this Transform transform, String modelName)
         {
             Transform[] trs = transform.FindChildren(modelName);
@@ -291,6 +297,12 @@ namespace SSTUTools
             return trs3;
         }
 
+        /// <summary>
+        /// Same as transform.FindRecursive() but also searches for models with "(Clone)" added to the end of the transform name
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="modelName"></param>
+        /// <returns></returns>
         public static Transform FindModel(this Transform transform, String modelName)
         {
             Transform tr = transform.FindRecursive(modelName);
@@ -298,6 +310,12 @@ namespace SSTUTools
             return transform.FindRecursive(modelName + "(Clone)");
         }
 
+        /// <summary>
+        /// Same as transform.FindRecursive() but returns an array of all children with that name under the entire heirarchy of the model
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static Transform[] FindChildren(this Transform transform, String name)
         {
             List<Transform> trs = new List<Transform>();
@@ -315,6 +333,12 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Searches entire model heirarchy from the input transform to end of branches for transforms with the input transform name and returns the first match found, or null if none.
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static Transform FindRecursive(this Transform transform, String name)
         {
             if (transform.name == name) { return transform; }//was the original input transform
@@ -328,16 +352,19 @@ namespace SSTUTools
             return null;
         }
 
+        /// <summary>
+        /// Uses transform.FindRecursive to search for the given transform as a child of the input transform; if it does not exist, it creates a new transform and nests it to the input transform (0,0,0 local position and scale).
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static Transform FindOrCreate(this Transform transform, String name)
         {
             Transform newTr = transform.FindRecursive(name);
             if (newTr != null)
             {
-                //MonoBehaviour.print("found existing go for: " + name);
                 return newTr;
             }
-            //MonoBehaviour.print("creating new game object for: " + name);
-            //SSTUUtils.recursePrintComponents(transform.gameObject, "");
             GameObject newGO = new GameObject(name);
             newGO.SetActive(true);
             newGO.name = newGO.transform.name = name;
@@ -345,6 +372,11 @@ namespace SSTUTools
             return newGO.transform;
         }
 
+        /// <summary>
+        /// Returns -ALL- children/grand-children/etc transforms of the input; everything in the heirarchy.
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <returns></returns>
         public static Transform[] GetAllChildren(this Transform transform)
         {
             List<Transform> trs = new List<Transform>();
@@ -362,6 +394,13 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Returns true if the input 'isParent' transform exists anywhere upwards of the input transform in the heirarchy.
+        /// </summary>
+        /// <param name="transform"></param>
+        /// <param name="isParent"></param>
+        /// <param name="checkUpwards"></param>
+        /// <returns></returns>
         public static bool isParent(this Transform transform, Transform isParent, bool checkUpwards = true)
         {
             if (isParent == null) { return false; }
@@ -378,15 +417,6 @@ namespace SSTUTools
                 }
             }
             return false;
-        }
-
-        #endregion
-
-        #region Vector3 extensionMethods
-
-        public static Vector3 CopyVector(this Vector3 input)
-        {
-            return new Vector3(input.x, input.y, input.z);
         }
 
         #endregion
