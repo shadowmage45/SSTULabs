@@ -90,6 +90,8 @@ namespace SSTUTools
                     m.updateRCSFuelType();
                 });
             };
+
+            Fields[nameof(currentFuelType)].guiActiveEditor = updateFuel && fuelTypes.Length > 1;
         }
 
         public void Start()
