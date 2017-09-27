@@ -681,11 +681,26 @@ namespace SSTUTools
             if (gimbal != null)
             {
                 gimbal.gimbalRange = mountModule.model.gimbalFlightRange;
+                MonoBehaviour.print("Gimbal range  : " + gimbal.gimbalRange);
+                if (gimbal.gimbalTransforms != null)
+                {
+                    MonoBehaviour.print("Transforms-pre: " + gimbal.gimbalTransforms.Count);
+                }
+                else
+                {
+                    MonoBehaviour.print("Gimbal has no transform list!");
+                }
                 if (gimbal.initRots != null)//gimbal is uninitialized; do nothing...
                 {
                     //set gimbal actuation range
+                    MonoBehaviour.print("Restarting gimbal module for transform changes");
                     gimbal.OnStart(StartState.Flying);//forces gimbal to re-init its transform and default orientation data
+                    MonoBehaviour.print("Transforms-post: " + gimbal.gimbalTransforms.Count);
                 }
+            }
+            else
+            {
+                MonoBehaviour.print("SSTUModularBooster -- Could not locate gimbal module for update.");
             }
         }
 
