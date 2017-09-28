@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUModularRCS : PartModule
+    public class SSTUModularRCS : PartModule, IPartCostModifier, IPartMassModifier
     {
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
@@ -69,7 +69,9 @@ namespace SSTUTools
                 standoffModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
+                    m.updateModelScale();
                     m.updateAttachNodes(true);
+                    m.updateMassAndCost();
                 });
             };
 
@@ -80,6 +82,7 @@ namespace SSTUTools
                     m.updateModelScale();
                     m.updateRCSThrust();
                     m.updateAttachNodes(true);
+                    m.updateMassAndCost();
                 });
             };
 
@@ -92,12 +95,36 @@ namespace SSTUTools
             };
 
             Fields[nameof(currentFuelType)].guiActiveEditor = updateFuel && fuelTypes.Length > 1;
+            string[] names = SSTUUtils.getNames(fuelTypes, m => m.name);
+            this.updateUIChooseOptionControl(nameof(currentFuelType), names, names, true, currentFuelType);
         }
 
         public void Start()
         {
             updateRCSFuelType();
             updateRCSThrust();
+        }
+
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
+        {
+            float scaleMod = (defaultCost * currentScale * currentScale) - defaultCost;
+            return modifiedCost + scaleMod;
+        }
+
+        public ModifierChangeWhen GetModuleCostChangeWhen()
+        {
+            return ModifierChangeWhen.CONSTANTLY;
+        }
+
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
+        {
+            float scaleMod = (defaultMass * currentScale * currentScale) - defaultMass;
+            return modifiedMass + scaleMod;
+        }
+
+        public ModifierChangeWhen GetModuleMassChangeWhen()
+        {
+            return ModifierChangeWhen.CONSTANTLY;
         }
 
         private void init()
@@ -115,6 +142,7 @@ namespace SSTUTools
             modelTransform = part.transform.FindModel(modelName);
 
             updateModelScale();
+            updateMassAndCost();
 
             updateAttachNodes(false);
 
@@ -130,6 +158,7 @@ namespace SSTUTools
 
         private void updateModelScale()
         {
+            standoffModule.setPosition(0, ModelOrientation.BOTTOM);
             standoffModule.model.updateScale(currentScale * structureScale);
             standoffModule.updateModel();
             modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
@@ -173,5 +202,10 @@ namespace SSTUTools
             }
         }
 
+        private void updateMassAndCost()
+        {
+            modifiedMass = standoffModule.moduleMass;
+            modifiedCost = standoffModule.moduleCost;
+        }
     }
 }
