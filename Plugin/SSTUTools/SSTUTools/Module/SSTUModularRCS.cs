@@ -189,6 +189,7 @@ namespace SSTUTools
             {
                 if (rcsThrust < 0) { rcsThrust = rcsModule.thrusterPower; }
                 rcsModule.thrusterPower = Mathf.Pow(currentScale, thrustScalePower) * rcsThrust;
+                MonoBehaviour.print("set rcs thrust to: " + rcsModule.thrusterPower);
             }
         }
 
@@ -198,10 +199,13 @@ namespace SSTUTools
             ModuleRCS rcsModule = part.GetComponent<ModuleRCS>();
             if (rcsModule != null)
             {
-                rcsModule.propellants.Clear();
-                ConfigNode pNode = fuelType.getPropellantNode();
-                rcsModule.OnLoad(pNode);
-                MonoBehaviour.print("props: " + rcsModule.propellants.Count+ "from :\n"+pNode);
+                MonoBehaviour.print("Skipping adjustment of fuel type...");
+                //rcsModule.propellants.Clear();
+                //ConfigNode pNode = fuelType.getPropellantNode();
+                //rcsModule.OnLoad(pNode);
+                //MonoBehaviour.print("props: " + rcsModule.propellants.Count+ "from :\n"+pNode);
+                //MonoBehaviour.print("density: " + rcsModule.mixtureDensity + " maxflow: " + rcsModule.maxFuelFlow);
+                //MonoBehaviour.print("trs: " + rcsModule.thrusterTransforms.Count);
             }
         }
 

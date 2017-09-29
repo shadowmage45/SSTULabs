@@ -671,6 +671,42 @@ namespace SSTUTools
     }
 
     /// <summary>
+    /// A set of tank bodies with the same 'style'.  Will contain multiple models of varying lengths.
+    /// </summary>
+    public class TankVariant
+    {
+        public readonly string name;
+        public readonly string[] tankNames;
+        public readonly string[] noseNames;
+        public readonly string[] mountNames;
+
+        public List<TankModelData> tanks;
+
+        public TankVariant(ConfigNode node)
+        {
+            name = node.GetValue("name");
+            tankNames = node.GetStringValues("tank");
+            noseNames = node.GetStringValues("nose");
+            mountNames = node.GetStringValues("mount");
+        }
+
+        public string[] getAvailableTankNames() { return tankNames; }
+        public string[] getAvailableNoseNames() { return noseNames; }
+        public string[] getAvailableMountNames() { return mountNames; }
+
+        public ModelData getTank(string length)
+        {
+            return tanks.Find(m => m.setName == length);
+        }
+
+        public bool isValidNose(string name) { return Array.Exists(noseNames, m => m == name); }
+        public bool isValidMount(string name) { return Array.Exists(mountNames, m => m == name); }
+
+        public string getDefaultNose() { return noseNames[0]; }
+        public string getDefaultMount() { return mountNames[0]; }
+    }
+
+    /// <summary>
     /// A set of tanks of the same length.  Used to group up tanks by length and variant type.
     /// </summary>
     public class TankSet
