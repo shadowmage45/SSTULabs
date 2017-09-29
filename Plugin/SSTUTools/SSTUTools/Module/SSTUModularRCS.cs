@@ -13,13 +13,13 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.05f, maxValue = 5f, incrementSmall = 0.25f, incrementLarge = 1f, incrementSlide = 0.05f)]
         public float currentScale = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Standoff"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Structure"),
             UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentStandoff = string.Empty;
+        public string currentStructure = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Standoff Texture"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Structure Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentStandoffTexture = string.Empty;
+        public string currentStructureTexture = string.Empty;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Fuel Type"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -32,13 +32,16 @@ namespace SSTUTools
         public float structureScale = 1f;
 
         [KSPField]
-        public float thrustScalePower = 2;
+        public float thrustScalePower = 2f;
+
+        [KSPField]
+        public float structureOffset = 0f;
 
         [KSPField]
         public bool updateFuel = true;
 
         [KSPField(isPersistant = true)]
-        public string standoffPersistentData;
+        public string structurePersistentData;
 
         [Persistent]
         public string configNodeData;
@@ -64,7 +67,7 @@ namespace SSTUTools
         {
             base.OnStart(state);
             init();
-            Fields[nameof(currentStandoff)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            Fields[nameof(currentStructure)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 standoffModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
@@ -79,6 +82,7 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m =>
                 {
+                    if (m != this) { m.currentScale = currentScale; }
                     m.updateModelScale();
                     m.updateRCSThrust();
                     m.updateAttachNodes(true);
@@ -90,6 +94,8 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m =>
                 {
+                    if (m != this) { m.currentFuelType = currentFuelType; }
+                    m.fuelType = Array.Find(m.fuelTypes, s => s.name == m.currentFuelType);
                     m.updateRCSFuelType();
                 });
             };
@@ -134,7 +140,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
             standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
-            standoffModule = new ModelModule<SingleModelData, SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.BOTTOM, nameof(standoffPersistentData), nameof(currentStandoff), nameof(currentStandoffTexture));
+            standoffModule = new ModelModule<SingleModelData, SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.BOTTOM, nameof(structurePersistentData), nameof(currentStructure), nameof(currentStructureTexture));
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(ModelData.parseModels<SingleModelData>(node.GetNodes("STRUCTURE"), m => new SingleModelData(m)));
             standoffModule.setupModel();
@@ -154,14 +160,26 @@ namespace SSTUTools
                 fuelTypes[i] = VolumeContainerLoader.getPreset(fuelTypeNodes[i].GetValue("name"));
             }
             fuelType = Array.Find(fuelTypes, m => m.name == currentFuelType);
+            if (fuelType == null && (fuelTypes != null && fuelTypes.Length > 0))
+            {
+                MonoBehaviour.print("ERROR: SSTUModularRCS - currentFuelType was null for value: " + currentFuelType);
+                fuelType = fuelTypes[0];
+                currentFuelType = fuelType.name;
+                MonoBehaviour.print("Assigned default fuel type of: " + currentFuelType + ".  This is likely a config error that needs to be corrected.");
+            }
+            else if (fuelTypes == null || fuelTypes.Length < 1)
+            {
+                //TODO -- handle cases of disabled fuel switching
+                MonoBehaviour.print("ERROR: No fuel type definitions found");
+            }
         }
 
         private void updateModelScale()
         {
-            standoffModule.setPosition(0, ModelOrientation.BOTTOM);
-            standoffModule.model.updateScale(currentScale * structureScale);
-            standoffModule.updateModel();
             modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
+            standoffModule.model.updateScale(currentScale * structureScale);
+            standoffModule.setPosition(structureOffset*currentScale, ModelOrientation.BOTTOM);
+            standoffModule.updateModel();
         }
 
         private void updateRCSThrust()
@@ -180,7 +198,10 @@ namespace SSTUTools
             ModuleRCS rcsModule = part.GetComponent<ModuleRCS>();
             if (rcsModule != null)
             {
-                rcsModule.OnLoad(fuelType.getPropellantNode());
+                rcsModule.propellants.Clear();
+                ConfigNode pNode = fuelType.getPropellantNode();
+                rcsModule.OnLoad(pNode);
+                MonoBehaviour.print("props: " + rcsModule.propellants.Count+ "from :\n"+pNode);
             }
         }
 
@@ -189,15 +210,15 @@ namespace SSTUTools
             AttachNode srf = part.srfAttachNode;
             if (srf != null)
             {
-                float standoffHeight = standoffModule.model.currentHeight;
-                Vector3 pos = new Vector3(-standoffHeight, 0, 0);
+                float standoffHeight = standoffModule.model.currentHeight + currentScale * structureOffset;
+                Vector3 pos = new Vector3(standoffHeight, 0, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, srf, pos, srf.orientation, userInput);
             }
             AttachNode btm = part.FindAttachNode("bottom");
             if (btm != null)
             {
-                float standoffHeight = standoffModule.model.currentHeight;
-                Vector3 pos = new Vector3(-standoffHeight, 0, 0);
+                float standoffHeight = standoffModule.model.currentHeight + currentScale * structureOffset;
+                Vector3 pos = new Vector3(standoffHeight, 0, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, btm, pos, btm.orientation, userInput);
             }
         }
