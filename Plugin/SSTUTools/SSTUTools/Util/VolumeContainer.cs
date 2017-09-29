@@ -752,7 +752,7 @@ namespace SSTUTools
             return totalCost;
         }
 
-        public ConfigNode getPropellantNode()
+        public ConfigNode getPropellantNode(ResourceFlowMode flowMode)
         {
             ConfigNode node = new ConfigNode();
             int len = resourceRatios.Length;
@@ -761,6 +761,7 @@ namespace SSTUTools
                 ConfigNode propNode = new ConfigNode("PROPELLANT");
                 propNode.AddValue("name", resourceRatios[i].resourceName);
                 propNode.AddValue("ratio", resourceRatios[i].resourceRatio);
+                propNode.AddValue("resourceFlowMode", flowMode.ToString());
                 node.AddNode(propNode);
             }
             return node;

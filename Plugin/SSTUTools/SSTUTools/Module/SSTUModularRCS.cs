@@ -140,7 +140,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
             standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
-            standoffModule = new ModelModule<SingleModelData, SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.BOTTOM, nameof(structurePersistentData), nameof(currentStructure), nameof(currentStructureTexture));
+            standoffModule = new ModelModule<SingleModelData, SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(structurePersistentData), nameof(currentStructure), nameof(currentStructureTexture));
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(ModelData.parseModels<SingleModelData>(node.GetNodes("STRUCTURE"), m => new SingleModelData(m)));
             standoffModule.setupModel();
@@ -170,7 +170,7 @@ namespace SSTUTools
             else if (fuelTypes == null || fuelTypes.Length < 1)
             {
                 //TODO -- handle cases of disabled fuel switching
-                MonoBehaviour.print("ERROR: No fuel type definitions found");
+                MonoBehaviour.print("ERROR: SSTUModularRCS - No fuel type definitions found.");
             }
         }
 
@@ -178,7 +178,7 @@ namespace SSTUTools
         {
             modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
             standoffModule.model.updateScale(currentScale * structureScale);
-            standoffModule.setPosition(structureOffset*currentScale, ModelOrientation.BOTTOM);
+            standoffModule.setPosition(structureOffset*currentScale - standoffModule.model.currentHeight, ModelOrientation.TOP);
             standoffModule.updateModel();
         }
 
@@ -189,7 +189,6 @@ namespace SSTUTools
             {
                 if (rcsThrust < 0) { rcsThrust = rcsModule.thrusterPower; }
                 rcsModule.thrusterPower = Mathf.Pow(currentScale, thrustScalePower) * rcsThrust;
-                MonoBehaviour.print("set rcs thrust to: " + rcsModule.thrusterPower);
             }
         }
 
@@ -199,13 +198,9 @@ namespace SSTUTools
             ModuleRCS rcsModule = part.GetComponent<ModuleRCS>();
             if (rcsModule != null)
             {
-                MonoBehaviour.print("Skipping adjustment of fuel type...");
-                //rcsModule.propellants.Clear();
-                //ConfigNode pNode = fuelType.getPropellantNode();
-                //rcsModule.OnLoad(pNode);
-                //MonoBehaviour.print("props: " + rcsModule.propellants.Count+ "from :\n"+pNode);
-                //MonoBehaviour.print("density: " + rcsModule.mixtureDensity + " maxflow: " + rcsModule.maxFuelFlow);
-                //MonoBehaviour.print("trs: " + rcsModule.thrusterTransforms.Count);
+                rcsModule.propellants.Clear();
+                ConfigNode pNode = fuelType.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
+                rcsModule.OnLoad(pNode);
             }
         }
 
