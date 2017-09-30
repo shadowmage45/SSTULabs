@@ -177,7 +177,7 @@ namespace SSTUTools
         private void updateModelScale()
         {
             modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
-            standoffModule.model.updateScale(currentScale * structureScale);
+            standoffModule.model.updateScaleForDiameter(currentScale * structureScale);
             standoffModule.setPosition(structureOffset*currentScale - standoffModule.model.currentHeight, ModelOrientation.TOP);
             standoffModule.updateModel();
         }
