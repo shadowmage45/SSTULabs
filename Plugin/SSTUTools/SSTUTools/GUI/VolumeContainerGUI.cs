@@ -367,7 +367,7 @@ namespace SSTUTools
             volume = container.getResourceVolume(resourceName);
             resourceMass = container.getResourceMass(resourceName);
             cost = container.getResourceCost(resourceName);
-            percent = container.getResourceVolume(resourceName) / container.usableVolume;
+            percent = container.usableVolume<=0? 0 : container.getResourceVolume(resourceName) / container.usableVolume;
             fillPercent = container.getResourceFillPercent(resourceName);
         }
     }
