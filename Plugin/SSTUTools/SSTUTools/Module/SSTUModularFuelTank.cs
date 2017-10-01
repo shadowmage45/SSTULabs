@@ -129,6 +129,8 @@ namespace SSTUTools
         private TankSet[] tankSets;
         private TankSet currentTankSetModule;
 
+        private TankVariant[] variantData;
+
         protected ModelModule<TankModelData, SSTUModularFuelTank> tankModule;
         protected ModelModule<SingleModelData, SSTUModularFuelTank> noseModule;
         protected ModelModule<SingleModelData, SSTUModularFuelTank> mountModule;
@@ -238,6 +240,8 @@ namespace SSTUTools
                     //persist the variant if the newly selected set did not contain the selected variant
                     //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
                     if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
+                    m.noseModule.updateSelections();
+                    m.mountModule.updateSelections();
                     m.updateEditorStats(true);
                     m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -262,6 +266,8 @@ namespace SSTUTools
                 tankModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
+                    m.noseModule.updateSelections();
+                    m.mountModule.updateSelections();
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
                     m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model, 3);
@@ -452,6 +458,8 @@ namespace SSTUTools
             ConfigNode[] tankNodes = node.GetNodes("TANK");
             ConfigNode[] mountNodes = node.GetNodes("CAP");
 
+            variantData = TankVariant.parseVariants(node.GetNodes("VARIANT"));
+
             tankSets = TankSet.parseSets(tankSetsNodes);
             //if no sets exist, initialize a default set to add all models to
             if (tankSets.Length == 0)
@@ -513,13 +521,19 @@ namespace SSTUTools
             
             noseModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseType), nameof(currentNoseTexture));
             noseModule.getSymmetryModule = m => m.noseModule;
-            noseModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, topNodeNames)); };
+            noseModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) 
+            {
+                return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, topNodeNames) && TankVariant.isValidNose(m.name, tankModule.model.variantName, variantData));
+            };
             noseModule.setupModelList(noses);
             noseModule.setupModel();
 
             mountModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountType), nameof(currentMountTexture));
             mountModule.getSymmetryModule = m => m.mountModule;
-            mountModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) { return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, bottomNodeNames)); };
+            mountModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) 
+            {
+                return System.Linq.Enumerable.Where(data, m => m.canSwitchTo(part, bottomNodeNames) && TankVariant.isValidMount(m.name, tankModule.model.variantName, variantData));
+            };
             mountModule.setupModelList(mounts);
             mountModule.setupModel();
         }
@@ -676,7 +690,6 @@ namespace SSTUTools
     public class TankVariant
     {
         public readonly string name;
-        public readonly string[] tankNames;
         public readonly string[] noseNames;
         public readonly string[] mountNames;
 
@@ -685,25 +698,49 @@ namespace SSTUTools
         public TankVariant(ConfigNode node)
         {
             name = node.GetValue("name");
-            tankNames = node.GetStringValues("tank");
             noseNames = node.GetStringValues("nose");
             mountNames = node.GetStringValues("mount");
         }
-
-        public string[] getAvailableTankNames() { return tankNames; }
+        
         public string[] getAvailableNoseNames() { return noseNames; }
         public string[] getAvailableMountNames() { return mountNames; }
-
-        public ModelData getTank(string length)
-        {
-            return tanks.Find(m => m.setName == length);
-        }
 
         public bool isValidNose(string name) { return Array.Exists(noseNames, m => m == name); }
         public bool isValidMount(string name) { return Array.Exists(mountNames, m => m == name); }
 
         public string getDefaultNose() { return noseNames[0]; }
         public string getDefaultMount() { return mountNames[0]; }
+
+        public static bool isValidNose(string name, string variantName, TankVariant[] variantData)
+        {
+            TankVariant v = Array.Find(variantData, m => m.name == variantName);
+            if (v != null)
+            {
+                return v.isValidNose(name);
+            }
+            return true;
+        }
+
+        public static bool isValidMount(string name, string variantName, TankVariant[] variantData)
+        {
+            TankVariant v = Array.Find(variantData, m => m.name == variantName);
+            if (v != null)
+            {
+                return v.isValidMount(name);
+            }
+            return true;
+        }
+
+        public static TankVariant[] parseVariants(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            TankVariant[] vs = new TankVariant[len];
+            for (int i = 0; i < len; i++)
+            {
+                vs[i] = new TankVariant(nodes[i]);
+            }
+            return vs;
+        }
     }
 
     /// <summary>
