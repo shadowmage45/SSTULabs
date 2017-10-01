@@ -394,7 +394,7 @@ namespace SSTUTools
         public void onVesselModified(Vessel v)
         {
             if (!HighLogic.LoadedSceneIsFlight) { return; }
-            MonoBehaviour.print("Flight Vessel Modified, checking status");
+            //MonoBehaviour.print("Flight Vessel Modified, checking status");
             //updateFairingStatus();
             needsStatusUpdate = true;
         }
@@ -427,7 +427,7 @@ namespace SSTUTools
                     if (n != null && n.attachedPart != null)
                     {
                         prevAttachedPart = n.attachedPart;
-                        MonoBehaviour.print("Setting initial attached part to: " + prevAttachedPart);
+                        //MonoBehaviour.print("Setting initial attached part to: " + prevAttachedPart);
                     }
                 }
             }
@@ -548,7 +548,7 @@ namespace SSTUTools
                     }
                     data.topRadius = eData.topRadius;
                     guiTopDiameter = data.topRadius * 2f;
-                    MonoBehaviour.print("Set top rad: " + eData.topRadius);
+                    //MonoBehaviour.print("Set top rad: " + eData.topRadius);
                 }
                 if (eData.hasBottomRad && data.canAdjustBottom)
                 {
@@ -558,7 +558,7 @@ namespace SSTUTools
                     }
                     data.bottomRadius = eData.bottomRadius;
                     guiBottomDiameter = data.bottomRadius * 2f;
-                    MonoBehaviour.print("Set bot rad: " + eData.bottomRadius);
+                   // MonoBehaviour.print("Set bot rad: " + eData.bottomRadius);
                 }
             }
             if (eData.hasEnable)
@@ -695,7 +695,7 @@ namespace SSTUTools
         /// </summary>
         private void updateFairingStatus()
         {
-            MonoBehaviour.print("Updating fairing status");
+            //MonoBehaviour.print("Updating fairing status");
             needsStatusUpdate = false;
 
             if (fairingForceDisabled || fairingJettisoned || !fairingEnabled)
@@ -720,7 +720,7 @@ namespace SSTUTools
             float fairingPos = 0;
             if (shouldSpawnFairingForNode(out watchedNode, out triggerPart, out fairingPos))
             {
-                MonoBehaviour.print("Triggering (re)build from node attachment");
+                //MonoBehaviour.print("Triggering (re)build from node attachment");
                 needsRebuilt = needsRebuilt || !fairingCreated;
                 if (snapToNode)
                 {
@@ -737,7 +737,7 @@ namespace SSTUTools
             }
             else if (prevAttachedPart != null)
             {
-                MonoBehaviour.print("Triggering jettison/disable from node detachment: "+prevAttachedPart);
+                //MonoBehaviour.print("Triggering jettison/disable from node detachment: "+prevAttachedPart);
                 if (HighLogic.LoadedSceneIsFlight)
                 {
                     if (canAutoJettison)
@@ -756,7 +756,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("Destroying fairing due to no prev part / no node attachment");
+                //MonoBehaviour.print("Destroying fairing due to no prev part / no node attachment");
                 destroyFairing();
             }
         }
@@ -776,16 +776,16 @@ namespace SSTUTools
         
         private void jettisonFairing()
         {
-            MonoBehaviour.print("Jettisoning fairing - prev: "+prevAttachedPart);
+            //MonoBehaviour.print("Jettisoning fairing - prev: "+prevAttachedPart);
             if (numOfSections == 1 && prevAttachedPart != null)
             {
-                MonoBehaviour.print("Reparenting fairing to: " + prevAttachedPart);
+                //MonoBehaviour.print("Reparenting fairing to: " + prevAttachedPart);
                 reparentFairing(prevAttachedPart);
                 SSTUModInterop.onPartGeometryUpdate(prevAttachedPart, true);//update other parts highlight renderers, to add the new fairing bits to it.
             }
             else
             {
-                MonoBehaviour.print("Jettisoning Panels: " + fairingParts.Length);
+                //MonoBehaviour.print("Jettisoning Panels: " + fairingParts.Length);
                 foreach (SSTUNodeFairingData data in fairingParts)
                 {
                     data.jettisonPanels(part);
@@ -812,7 +812,7 @@ namespace SSTUTools
 
         private void buildFairing()
         {
-            MonoBehaviour.print("Building Fairing "+guiTopDiameter+" : "+guiBottomDiameter);
+            //MonoBehaviour.print("Building Fairing "+guiTopDiameter+" : "+guiBottomDiameter);
             needsRebuilt = false;
             fairingCreated = true;
             int len = fairingParts.Length;            
@@ -820,7 +820,7 @@ namespace SSTUTools
             {
                 for (int i = 0; i < len; i++)
                 {
-                    MonoBehaviour.print("pt t/b " + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
+                    //MonoBehaviour.print("pt t/b " + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
                     if (fairingParts[i].canAdjustTop && canAdjustTop)
                     {
                         fairingParts[i].topRadius = guiTopDiameter * 0.5f;
@@ -829,7 +829,7 @@ namespace SSTUTools
                     {
                         fairingParts[i].bottomRadius = guiBottomDiameter * 0.5f;
                     }
-                    MonoBehaviour.print("pt t/b 2" + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
+                    //MonoBehaviour.print("pt t/b 2" + fairingParts[i].topRadius + " : " + fairingParts[i].bottomRadius);
                 }
             }
             for (int i = 0; i < len; i++)
@@ -852,7 +852,7 @@ namespace SSTUTools
 
         public void destroyFairing()
         {
-            MonoBehaviour.print("Destroying Fairing");
+            //MonoBehaviour.print("Destroying Fairing");
             int len = fairingParts.Length;
             for (int i = 0; i < len; i++)
             {
