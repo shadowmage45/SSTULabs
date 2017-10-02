@@ -208,7 +208,7 @@ namespace SSTUTools
             IEnumerable<T> validSelections = getValidSelections(models);
             string[] names = SSTUUtils.getNames(validSelections, s => s.name);
             string[] displays = getDisplayNames(validSelections);
-            if (!Array.Exists(names, m => m == modelName))
+            if (updateIfInvalid && !Array.Exists(names, m => m == modelName))
             {
                 modelSelected(names[0]);
             }
