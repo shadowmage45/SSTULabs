@@ -75,6 +75,7 @@ namespace SSTUTools
                     m.updateModelScale();
                     m.updateAttachNodes(true);
                     m.updateMassAndCost();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
             };
 
@@ -87,6 +88,7 @@ namespace SSTUTools
                     m.updateRCSThrust();
                     m.updateAttachNodes(true);
                     m.updateMassAndCost();
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
             };
 
