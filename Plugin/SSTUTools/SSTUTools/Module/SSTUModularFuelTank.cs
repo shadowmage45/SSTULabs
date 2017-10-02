@@ -147,10 +147,10 @@ namespace SSTUTools
 
         #region REGION - GUI Events/Interaction methods
 
-        private void updateAvailableVariants()
+        private void updateAvailableVariants(bool useDefaultIfInvalid)
         {
-            noseModule.updateSelections();
-            mountModule.updateSelections();
+            noseModule.updateSelections(useDefaultIfInvalid);
+            mountModule.updateSelections(useDefaultIfInvalid);
             Fields[nameof(currentNoseType)].guiActiveEditor = noseModule.models.Count > 1;
             Fields[nameof(currentMountType)].guiActiveEditor = mountModule.models.Count > 1;
         }
@@ -186,11 +186,11 @@ namespace SSTUTools
             initialize();
 
             string[] groupNames = TankSet.getSetNames(tankSets);
-            this.updateUIChooseOptionControl("currentTankSet", groupNames, groupNames, true, currentTankSet);
+            this.updateUIChooseOptionControl(nameof(currentTankSet), groupNames, groupNames, true, currentTankSet);
 
             string[] names = currentTankSetModule.getModelNames();
             string[] descs = currentTankSetModule.getTankDescriptions();
-            this.updateUIChooseOptionControl("currentTankType", names, descs, true, currentTankType);
+            this.updateUIChooseOptionControl(nameof(currentTankType), names, descs, true, currentTankType);
 
             if (maxTankDiameter == minTankDiameter)
             {
@@ -200,7 +200,7 @@ namespace SSTUTools
             {
                 this.updateUIFloatEditControl(nameof(currentTankDiameter), minTankDiameter, maxTankDiameter, tankDiameterIncrement * 2, tankDiameterIncrement, tankDiameterIncrement * 0.05f, true, currentTankDiameter);
             }
-            updateAvailableVariants();
+            updateAvailableVariants(false);
             updateUIScaleControls();
 
             Fields[nameof(currentTankDiameter)].uiControlEditor.onFieldChanged = delegate(BaseField a, object b) 
@@ -240,8 +240,10 @@ namespace SSTUTools
                     //persist the variant if the newly selected set did not contain the selected variant
                     //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
                     if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
-                    m.noseModule.updateSelections();
-                    m.mountModule.updateSelections();
+                    if (variantData != null)
+                    {
+                        m.updateAvailableVariants(true);
+                    }
                     m.updateEditorStats(true);
                     m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -266,8 +268,10 @@ namespace SSTUTools
                 tankModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.noseModule.updateSelections();
-                    m.mountModule.updateSelections();
+                    if (variantData != null)
+                    {
+                        m.updateAvailableVariants(true);
+                    }
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
                     m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model, 3);
@@ -391,7 +395,7 @@ namespace SSTUTools
         {
             // really we only care about parts being attached to the nodes on the mount/nose
             // but have to update available variants regardless of whatever caused the editor event callback
-            updateAvailableVariants();
+            updateAvailableVariants(true);
         }
         
         public string[] getSectionNames()

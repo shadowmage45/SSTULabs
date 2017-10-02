@@ -203,11 +203,15 @@ namespace SSTUTools
         /// <summary>
         /// NON-Symmetry enabled method
         /// </summary>
-        public void updateSelections()
+        public void updateSelections(bool updateIfInvalid = false)
         {
             IEnumerable<T> validSelections = getValidSelections(models);
             string[] names = SSTUUtils.getNames(validSelections, s => s.name);
             string[] displays = getDisplayNames(validSelections);
+            if (!Array.Exists(names, m => m == modelName))
+            {
+                modelSelected(names[0]);
+            }
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
         }
