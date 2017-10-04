@@ -230,17 +230,17 @@ namespace SSTUTools
                 {
                     TankSet newSet = Array.Find(m.tankSets, s => s.name == m.currentTankSet);
                     m.currentTankSetModule = newSet;
-                    string variant = lastSelectedVariant;
-                    m.currentTankType = newSet.getDefaultModel(lastSelectedVariant);
+                    string variant = m.lastSelectedVariant;
+                    m.currentTankType = newSet.getDefaultModel(m.lastSelectedVariant);
                     m.tankModule.updateSelections();
                     m.tankModule.modelSelected(m.currentTankType);
-                    m.Fields[nameof(currentTankType)].guiActiveEditor = newSet.Length > 1;
+                    m.Fields[nameof(m.currentTankType)].guiActiveEditor = newSet.Length > 1;
                     //re-seat this if it was changed in the 'setMainTankModuleFromEditor' method
                     //will allow for user-initiated main-tank changes to still change the 'last variant' but will
                     //persist the variant if the newly selected set did not contain the selected variant
                     //so that it will persist to the next set selection, OR be reseated on the next user-tank selection within the current set
-                    if (!currentTankSetModule.hasVariant(variant)) { lastSelectedVariant = variant; }
-                    if (variantData != null)
+                    if (!m.currentTankSetModule.hasVariant(variant)) { m.lastSelectedVariant = variant; }
+                    if (m.variantData != null)
                     {
                         m.updateAvailableVariants(true);
                     }
@@ -493,7 +493,7 @@ namespace SSTUTools
 
             tankModule = new ModelModule<TankModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
             tankModule.getSymmetryModule = m => m.tankModule;
-            tankModule.getDisplayNames = m => SSTUUtils.getNames(tankModule.models, s => s.variantName);
+            tankModule.getDisplayNames = m => SSTUUtils.getNames(m, s => s.variantName);
             tankModule.setupModelList(mainTankModules);
 
             currentTankSetModule = Array.Find(tankSets, m => m.name == tankModule.model.setName);
