@@ -113,24 +113,24 @@ namespace SSTUTools
         public double guiShieldTemp = 0;
         [KSPField(guiActive = true, guiName = "HS Eff")]
         public double guiShieldEff = 0;
-        [KSPField(guiActive = true, guiName = "HC In")]
-        public double guiDebugHCInput = 0;
-        [KSPField(guiActive = true, guiName = "HC Out")]
-        public double guiDebugHCOutput = 0;
-        [KSPField(guiActive = true, guiName = "Abl Eff")]
-        public double guiDebugEfficiency = 0;
-        [KSPField(guiActive = true, guiName = "Abl Mult")]
-        public double guiDebugAblMult = 0;
-        [KSPField(guiActive = true, guiName = "Peak Heat")]
-        public double guiDebugPeakHeat = 0;
-        [KSPField(guiActive = true, guiName = "Peak Flux")]
-        public double guiDebugPeakFlux = 0;
-        [KSPField(guiActive = true, guiName = "Peak G")]
-        public double guiDebugPeakG = 0;
-        [KSPField(guiActive = true, guiName = "Flux/m")]
-        public double guiDebugFluxPerSqMeter = 0;
-        [KSPField(guiActive = true, guiName = "Mass/m")]
-        public double guiDebugMassPerSqMeter = 0;
+        //[KSPField(guiActive = true, guiName = "HC In")]
+        //public double guiDebugHCInput = 0;
+        //[KSPField(guiActive = true, guiName = "HC Out")]
+        //public double guiDebugHCOutput = 0;
+        //[KSPField(guiActive = true, guiName = "Abl Eff")]
+        //public double guiDebugEfficiency = 0;
+        //[KSPField(guiActive = true, guiName = "Abl Mult")]
+        //public double guiDebugAblMult = 0;
+        //[KSPField(guiActive = true, guiName = "Peak Heat")]
+        //public double guiDebugPeakHeat = 0;
+        //[KSPField(guiActive = true, guiName = "Peak Flux")]
+        //public double guiDebugPeakFlux = 0;
+        //[KSPField(guiActive = true, guiName = "Peak G")]
+        //public double guiDebugPeakG = 0;
+        //[KSPField(guiActive = true, guiName = "Flux/m")]
+        //public double guiDebugFluxPerSqMeter = 0;
+        //[KSPField(guiActive = true, guiName = "Mass/m")]
+        //public double guiDebugMassPerSqMeter = 0;
 
         #endregion
 
@@ -357,49 +357,49 @@ namespace SSTUTools
 
         private void applyAblation(double tempDelta, float effectiveness)
         {
-            guiDebugPeakFlux = Math.Max(guiDebugPeakFlux, part.thermalConvectionFlux);
-            guiDebugPeakHeat = Math.Max(guiDebugPeakHeat, part.skinTemperature);
-            guiDebugPeakG = Math.Max(guiDebugPeakG, vessel.geeForce);
-            guiDebugFluxPerSqMeter = part.thermalConvectionFlux / part.skinExposedArea;
-            guiDebugMassPerSqMeter = vessel.GetTotalMass() / part.skinExposedArea;
-            guiDebugEfficiency = ablationEfficiency;
-            guiDebugAblMult = ablationMult;
-            guiDebugHCInput = tempDelta;
             double maxFluxRemoved = heatCurve.Evaluate((float)tempDelta);
             maxFluxRemoved = UtilMath.Clamp(maxFluxRemoved, 0, 1);
-            guiDebugHCOutput = maxFluxRemoved;
+            //guiDebugPeakFlux = Math.Max(guiDebugPeakFlux, part.thermalConvectionFlux);
+            //guiDebugPeakHeat = Math.Max(guiDebugPeakHeat, part.skinTemperature);
+            //guiDebugPeakG = Math.Max(guiDebugPeakG, vessel.geeForce);
+            //guiDebugFluxPerSqMeter = part.thermalConvectionFlux / part.skinExposedArea;
+            //guiDebugMassPerSqMeter = vessel.GetTotalMass() / part.skinExposedArea;
+            //guiDebugEfficiency = ablationEfficiency;
+            //guiDebugAblMult = ablationMult;
+            //guiDebugHCInput = tempDelta;
+            //guiDebugHCOutput = maxFluxRemoved;
                         
             maxFluxRemoved *= effectiveness * ablationMult;
             if (areaAdjusted)
             {
                 maxFluxRemoved *= part.skinExposedArea;
             }
-            if (PhysicsGlobals.ThermalDataDisplay)
-            {
-                double pTemp = part.skinTemperature;
-                double ext = vessel.externalTemperature;
-                double shk = part.ptd.postShockExtTemp;
-                double atm = vessel.atmosphericTemperature;
-                double alt = vessel.altitude;
-                double dens = vessel.atmDensity;
-                double vel = vessel.velocityD.magnitude;
-                double mach = vessel.mach;
-                double dyn = vessel.dynamicPressurekPa;
-                double pExp = part.skinExposedArea;
-                double convFlux = part.thermalConvectionFlux;
-                double condFlux = part.thermalConductionFlux;
-                double radFlux = part.ptd.radiationFlux;                
-                double tFluxPrev = part.thermalExposedFluxPrevious;
-                double hsFlux = maxFluxRemoved;
-                double skin = part.ptd.skinConductionFlux;
-                double skinin = part.ptd.skinInteralConductionFlux;
-                double skinskin = part.ptd.skinSkinConductionFlux;
+            //if (PhysicsGlobals.ThermalDataDisplay)
+            //{
+                //double pTemp = part.skinTemperature;
+                //double ext = vessel.externalTemperature;
+                //double shk = part.ptd.postShockExtTemp;
+                //double atm = vessel.atmosphericTemperature;
+                //double alt = vessel.altitude;
+                //double dens = vessel.atmDensity;
+                //double vel = vessel.velocityD.magnitude;
+                //double mach = vessel.mach;
+                //double dyn = vessel.dynamicPressurekPa;
+                //double pExp = part.skinExposedArea;
+                //double convFlux = part.thermalConvectionFlux;
+                //double condFlux = part.thermalConductionFlux;
+                //double radFlux = part.ptd.radiationFlux;                
+                //double tFluxPrev = part.thermalExposedFluxPrevious;
+                //double hsFlux = maxFluxRemoved;
+                //double skin = part.ptd.skinConductionFlux;
+                //double skinin = part.ptd.skinInteralConductionFlux;
+                //double skinskin = part.ptd.skinSkinConductionFlux;
 
-                string fString = "MHSDebug | tmp: {0,6:0000.00} | ext: {1,6:0000.00} | shk: {2,6:0000.00} | atm: {3,6:0000.00} | alt: {4,6:00000.0} | dns: {5,6:00.0000}"+
-                    " | vel: {6,6:0000.00} | mch: {7,6:0000.00} | dyn: {8,6:00.0000} | exp: {9,6:00.0000} | cnv: {10,6:0000.00} | cnd: {11,6:0000.00} | rad: {12,6:0000.00}"+
-                    " | prv: {13,6:0000.00} | hsf: {14,6:0000.00} | skn: {15,6:0000.00} | snn: {16,6:0000.00} | skk: {17,6:0000.00} |";
-                MonoBehaviour.print(string.Format(fString, pTemp, ext, shk, atm, alt, dens, vel, mach, dyn, pExp, convFlux, condFlux, radFlux, tFluxPrev, hsFlux, skin, skinin, skinskin));
-            }
+                //string fString = "MHSDebug | tmp: {0,6:0000.00} | ext: {1,6:0000.00} | shk: {2,6:0000.00} | atm: {3,6:0000.00} | alt: {4,6:00000.0} | dns: {5,6:00.0000}"+
+                //    " | vel: {6,6:0000.00} | mch: {7,6:0000.00} | dyn: {8,6:00.0000} | exp: {9,6:00.0000} | cnv: {10,6:0000.00} | cnd: {11,6:0000.00} | rad: {12,6:0000.00}"+
+                //    " | prv: {13,6:0000.00} | hsf: {14,6:0000.00} | skn: {15,6:0000.00} | snn: {16,6:0000.00} | skk: {17,6:0000.00} |";
+                //MonoBehaviour.print(string.Format(fString, pTemp, ext, shk, atm, alt, dens, vel, mach, dyn, pExp, convFlux, condFlux, radFlux, tFluxPrev, hsFlux, skin, skinin, skinskin));
+            //}
             if (heatSoak)
             {
                 part.AddExposedThermalFlux(-maxFluxRemoved);

@@ -772,19 +772,6 @@ namespace SSTUTools
             prevTemp = externalTemp;
             externalTemp = vessel.externalTemperature;
             dynamicPressure = atmoDensity * squareVelocity * 0.5d;
-            //print("dens: " + atmoDensity);
-            //print("sqvel: " + squareVelocity);
-            //print("extemp:" + externalTemp);
-            //print("dynpres:" + dynamicPressure);
-            //print("part.. bucn" + part.buoyancyUseCubeNamed);
-            //print("part.. cob" + part.CenterOfBuoyancy);
-            //print("part.. bus" + part.buoyancyUseSine);
-            //print("part.. cod" + part.CenterOfDisplacement);
-            //print("land: " + vessel.LandedOrSplashed);
-            //print("alt: " + vessel.altitude);
-            //print("alt2: " + vessel.terrainAltitude);
-            //print("alt3: " + vessel.heightFromSurface);
-            //print("alt4: " + vessel.heightFromTerrain);
         }
 
         private void removeParachuteCap(bool jettison, Transform[] modelTrs)
