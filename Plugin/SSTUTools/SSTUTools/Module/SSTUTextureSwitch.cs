@@ -54,7 +54,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.currentTextureSet = currentTextureSet;
-                    m.textureSets.enableCurrentSet(getModelTransform());
+                    m.textureSets.enableCurrentSet(getModelTransforms());
                 });
             };
         }
@@ -78,14 +78,14 @@ namespace SSTUTools
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), SSTUTextureUtils.getTextureSetNames(setNodes), SSTUTextureUtils.getTextureSetTitles(setNodes), true, currentTextureSet);
             //MonoBehaviour.print("Current texture set: " + currentTextureSet);
-            textureSets.enableCurrentSet(getModelTransform());
+            textureSets.enableCurrentSet(getModelTransforms());
             Fields[nameof(currentTextureSet)].guiName = sectionName + " Texture";
             //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
 
-        private Transform getModelTransform()
+        private Transform[] getModelTransforms()
         {
-            return string.IsNullOrEmpty(transformName) ? part.transform.FindRecursive("model") : part.transform.FindRecursive(transformName);
+            return string.IsNullOrEmpty(transformName) ? part.transform.FindChildren("model") : part.transform.FindChildren(transformName);
         }
 
         public string[] getSectionNames()
@@ -101,7 +101,7 @@ namespace SSTUTools
         public void setSectionColors(string name, Color[] colors)
         {
             textureSets.setCustomColors(colors);
-            textureSets.enableCurrentSet(getModelTransform());
+            textureSets.enableCurrentSet(getModelTransforms());
         }
     }
 
@@ -135,6 +135,24 @@ namespace SSTUTools
             this.textureSetField = textureSetField;
             this.persistentDataField = persistentDataField;
             loadPersistentData(persistentData);
+        }
+
+        public void enableCurrentSet(Transform[] roots)
+        {
+            TextureSet set = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            if (customColors == null || customColors.Length == 0)
+            {
+                customColors = new Color[3];
+                customColors[0] = set.maskColors[0];
+                customColors[1] = set.maskColors[1];
+                customColors[2] = set.maskColors[2];
+            }
+            int len = roots.Length;
+            for (int i = 0; i < len; i++)
+            {
+                set.enable(roots[i].gameObject, customColors);
+            }
+            saveColors(customColors);
         }
 
         public void enableCurrentSet(Transform root)
