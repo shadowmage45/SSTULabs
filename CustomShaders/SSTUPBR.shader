@@ -25,10 +25,6 @@ Shader "SSTU/PBR"
         #include "UnityShaderVariables.cginc"
         #include "UnityStandardConfig.cginc"
         #include "UnityLightingCommon.cginc"
-        #include "UnityGBuffer.cginc"
-        #include "UnityGlobalIllumination.cginc"
-        #include "AutoLight.cginc"
-        //#include "UnityImageBasedLighting.cginc"
         
         struct CSSO 
         {
@@ -41,50 +37,116 @@ Shader "SSTU/PBR"
             fixed Alpha;
         };
         
+        inline half PerceptualRoughnessToSpecPower (half perceptualRoughness)
+        {
+            half m = perceptualRoughness * perceptualRoughness;
+            half sq = max(1e-4f, m*m);
+            half n = (2.0 / sq) - 2.0;
+            n = max(n, 1e-4f);
+            return n;
+        }
+        
+        half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
+        {
+            half fd90 = 0.5 + 2 * LdotH * LdotH * perceptualRoughness;
+            // Two schlick fresnel term
+            half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
+            half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
+
+            return lightScatter * viewScatter;
+        }
+        
+        half4 BRDF1_Unity_PBS2 (half3 diffColor, half3 specColor, half oneMinusReflectivity, half smoothness, half3 normal, half3 viewDir, UnityLight light, UnityIndirect gi)
+        {
+            half perceptualRoughness = 1 - smoothness;
+            half3 halfDir = Unity_SafeNormalize (light.dir + viewDir);
+            
+            
+            half nv = abs(dot(normal, viewDir));
+            half nl = saturate(dot(normal, light.dir));
+            half nh = saturate(dot(normal, halfDir));
+
+            half lv = saturate(dot(light.dir, viewDir));
+            half lh = saturate(dot(light.dir, halfDir));
+
+            // Diffuse term
+            half diffuseTerm = DisneyDiffuse(nv, nl, lh, perceptualRoughness) * nl;
+
+            // Specular term
+            // HACK: theoretically we should divide diffuseTerm by Pi and not multiply specularTerm!
+            // BUT 1) that will make shader look significantly darker than Legacy ones
+            // and 2) on engine side "Non-important" lights have to be divided by Pi too in cases when they are injected into ambient SH
+            half roughness = perceptualRoughness * perceptualRoughness;
+            
+            half V = SmithBeckmannVisibilityTerm (nl, nv, roughness);
+            half D = NDFBlinnPhongNormalizedTerm (nh, PerceptualRoughnessToSpecPower(perceptualRoughness));
+
+            half specularTerm = V*D * UNITY_PI; // Torrance-Sparrow model, Fresnel is applied later
+
+            specularTerm = max(0, specularTerm * nl);
+            
+            half surfaceReduction = 1.0 / (roughness*roughness + 1.0);           // fade \in [0.5;1]
+
+            // To provide true Lambert lighting, we need to be able to kill specular completely.
+            specularTerm *= any(specColor) ? 1.0 : 0.0;
+
+            half grazingTerm = saturate(smoothness + (1-oneMinusReflectivity));
+            half3 color =   diffColor * (gi.diffuse + light.color * diffuseTerm)
+                            + specularTerm * light.color * FresnelTerm (specColor, lh)
+                            + surfaceReduction * gi.specular * FresnelLerp (specColor, grazingTerm, nv);
+            return half4(color, 1);
+        }
+        
         inline half4 LightingColoredSpecular (CSSO s, half3 viewDir, UnityGI gi)
         {
             s.Normal = normalize(s.Normal);
 
             // energy conservation
             half oneMinusReflectivity;
-            s.Albedo = EnergyConservationBetweenDiffuseAndSpecular (s.Albedo, s.Specular, /*out*/ oneMinusReflectivity);
-
-            // shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
-            // this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha
+            oneMinusReflectivity = 1 - max (max (s.Specular.r, s.Specular.g), s.Specular.b);
+            s.Albedo = s.Albedo * (half3(1,1,1) - s.Specular);
+            
+            //premult alpha
+            s.Albedo *= s.Alpha;
+            
+            //final post reflection alpha
             half outputAlpha;
-            s.Albedo = PreMultiplyAlpha (s.Albedo, s.Alpha, oneMinusReflectivity, /*out*/ outputAlpha);
+            outputAlpha = 1 - oneMinusReflectivity + s.Alpha * oneMinusReflectivity;
 
-            half4 c = UNITY_BRDF_PBS (s.Albedo, s.Specular, oneMinusReflectivity, s.Smoothness, s.Normal, viewDir, gi.light, gi.indirect);
+            //half4 c = UNITY_BRDF_PBS (s.Albedo, s.Specular, oneMinusReflectivity, s.Smoothness, s.Normal, viewDir, gi.light, gi.indirect);
+            half4 c = BRDF1_Unity_PBS2 (s.Albedo, s.Specular, oneMinusReflectivity, s.Smoothness, s.Normal, viewDir, gi.light, gi.indirect);
             c.a = outputAlpha;
             return c;
         }
         
         struct GED
         {
-            half    roughness;
-            half3   reflUVW;
+            half roughness;
+            half3 reflUVW;
         };
-
-        GED GEDS(half Smoothness, half3 worldViewDir, half3 Normal, half3 fresnel0)
-        {
-            GED g;
-            g.roughness = 1 - Smoothness;
-            g.reflUVW = reflect(-worldViewDir, Normal);
-            return g;
-        }
         
         inline void LightingColoredSpecular_GI (CSSO s, UnityGIInput data, inout UnityGI gi)
         {
-            GED g = GEDS(s.Smoothness, data.worldViewDir, s.Normal, s.Specular);
+            GED g;
+            g.roughness = 1 - s.Smoothness;
+            g.reflUVW = reflect(-data.worldViewDir, s.Normal);
             gi = UnityGlobalIllumination(data, s.Occlusion, s.Normal, g);
-        
-           // gi = UnityGlobalIllumination(data, s.Occlusion, s.Normal);
         }
         
-        half STPR(half smoothness)
-        {
-            return (1 - smoothness);
-        }
+        // inline half4 LightingColoredSpecular2 (CSSO s, half3 lightDir, half3 viewDir, half atten)
+        // {
+            // fixed3 fN = normalize(s.Normal);
+            // half diff = max (0, dot (fN, lightDir));
+            // half3 h = normalize (lightDir + viewDir);
+            // float nh = max (0, dot (fN, h));
+            // float spec = pow (nh, s.Specular * 128);
+            // half3 specCol = spec * s.GlossColor;
+            
+            // half4 c;
+            // c.rgb = (s.Albedo * _LightColor0.rgb * diff + _LightColor0.rgb * specCol) * atten;
+            // c.a = s.Alpha;
+            // return c;
+        // }
 		
 		sampler2D _MainTex;
 		sampler2D _SpecMap;
@@ -113,8 +175,8 @@ Shader "SSTU/PBR"
             float3 specColor = spec.rgb;
             float roughness = gloss.rgb;
 			
-            float3 worldRefl = WorldReflectionVector(IN, o.Normal);
-            float3 reflcol = texCUBE(_Cube, worldRefl);
+            //float3 worldRefl = WorldReflectionVector(IN, o.Normal);
+            //float3 reflcol = texCUBE(_Cube, worldRefl);
                         
 			o.Albedo = color;
             o.Occlusion = ao;
