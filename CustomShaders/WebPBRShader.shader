@@ -3,6 +3,9 @@
 
 Shader "Physically-Based-Lighting" {
     Properties {
+    _MainTex("_MainTex (RGB)", 2D) = "white" {}
+    _SpecMap("_SpecMap (RGB)", 2D) = "black" {}
+    _GlossMap("_GlossMap (RGB)", 2D) = "black" {}
 	_Color ("Main Color", Color) = (1,1,1,1)
 	_SpecularColor ("Specular Color", Color) = (1,1,1,1)
 	_SpecularPower("Specular Power", Range(0,1)) = 1
@@ -376,8 +379,14 @@ float SchlickGGXGeometricShadowingFunction (float NdotL, float NdotV, float roug
 
 //--------------------------
 
+    sampler2D _MainTex;
+    sampler2D _SpecMap;
+    sampler2D _GlossMap;
 
 float4 frag(VertexOutput i) : COLOR {
+    
+    _Color = tex2D(_MainTex,(i.UV0)).rgb;
+    _SpecularColor = tex2D(_SpecMap, (i.UV0)).rgb;
 
 //normal direction calculations
      float3 normalDirection = normalize(i.normalDir);
