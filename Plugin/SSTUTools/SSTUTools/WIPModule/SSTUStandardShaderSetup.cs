@@ -37,6 +37,7 @@ namespace SSTUTools
             standardMat.SetTexture("_BumpMap", SSTUUtils.findTexture(normalTexture, true));
             standardMat.EnableKeyword("_NORMALMAP");
             standardMat.EnableKeyword("_METALLICGLOSSMAP");
+            
 
             Transform tr = part.transform.FindRecursive("model");
             updateTransforms(tr, standardMat);   
@@ -48,6 +49,7 @@ namespace SSTUTools
             if (r != null)
             {
                 r.material = mat;
+                r.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
             }
             foreach (Transform child in root) { updateTransforms(child, mat); }
         }
