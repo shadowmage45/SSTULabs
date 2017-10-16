@@ -65,6 +65,9 @@
     <Reference Include="Assembly-UnityScript-firstpass">
       <HintPath>libs\Assembly-UnityScript-firstpass.dll</HintPath>
     </Reference>
+    <Reference Include="scatterer">
+      <HintPath>libs\scatterer.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">

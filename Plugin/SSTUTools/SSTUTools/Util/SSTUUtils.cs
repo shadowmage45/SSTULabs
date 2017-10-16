@@ -347,10 +347,20 @@ namespace SSTUTools
         {
             int childCount = go.transform.childCount;
             Component[] comps = go.GetComponents<Component>();
-            MonoBehaviour.print("Found gameObject: " + prefix + go.name+" enabled: "+go.activeSelf+ " inHierarchy: " +go.activeInHierarchy+" children: "+childCount+" components: "+comps.Length + " position: "+go.transform.position+" scale: "+go.transform.localScale);
+            MonoBehaviour.print("Found gameObject: " + prefix + go.name + " enabled: " + go.activeSelf + " inHierarchy: " + go.activeInHierarchy + " layer: " + go.layer + " children: "+childCount+" components: "+comps.Length + " position: "+go.transform.position+" scale: "+go.transform.localScale);
             foreach (Component comp in comps)
             {
-                MonoBehaviour.print("Found Component : " + prefix + "* " + comp);
+                if (comp is MeshRenderer)
+                {
+                    MeshRenderer r = (MeshRenderer)comp;
+                    Material m = r.material;
+                    Shader s = m == null ? null : m.shader;
+                    MonoBehaviour.print("Found Mesh Renderer component.  Mat/shader: "+m+" : "+s);
+                }
+                else
+                {
+                    MonoBehaviour.print("Found Component : " + prefix + "* " + comp);
+                }
             }
             Transform t = go.transform;
             foreach (Transform child in t)
