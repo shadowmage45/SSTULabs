@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using System.IO;
-using scatterer;
 
 namespace SSTUTools
 {
@@ -21,35 +20,38 @@ namespace SSTUTools
 
         [KSPField]
         public int cubeSize = 256;
-                
-        private RenderTexture envMap;
-        private Material skyMat;
-        private Cubemap cube2;
-        private GameObject go;
-        private Camera cam;
+
+        ////the texture we render into in order to update reflection map
+        //private RenderTexture envMap;
+        //the cubemap used to render reflections
+        private Cubemap envMap;
+        //the camera game object
+        private GameObject cameraObject;
+        //the camera used to render reflection probe cubemaps
+        private Camera reflectionCamera;
+        //the reflection probe -- these should be handled by a main/generic setup on a per-scene basis, rather than a per part/per module setup.  
         private ReflectionProbe rp;
+        //the cubemap used to render debug output cube textures (at 4x normal resolution)
+        private Cubemap debugCube;
 
         [KSPEvent(guiActive =true, guiActiveEditor = true, guiName = "Export", guiActiveUncommand =true, guiActiveUnfocused = true)]
         public void exportCube()
         {
-            toggleScattererMeshes(false);
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            Color bg = cam.backgroundColor;
-            cam.backgroundColor = Color.clear;
-            renderGalaxyBox(cube2);
-            exportCubemap(cube2, "galaxy");
-            renderScaledSpace(cube2);
-            exportCubemap(cube2, "scaled");
-            renderScenery(cube2);
-            exportCubemap(cube2, "scene");
-            renderSkybox(cube2);
-            exportCubemap(cube2, "skybox");
-            renderFullScene(cube2);
-            exportCubemap(cube2, "full");
-            cam.clearFlags = CameraClearFlags.Depth;
-            cam.backgroundColor = bg;
-            dumpScene();
-            toggleScattererMeshes(true);
+            reflectionCamera.clearFlags = CameraClearFlags.SolidColor;
+            Color bg = reflectionCamera.backgroundColor;
+            reflectionCamera.backgroundColor = Color.clear;
+            renderGalaxyBox(debugCube);
+            exportCubemap(debugCube, "galaxy");
+            renderScaledSpace(debugCube);
+            exportCubemap(debugCube, "scaled");
+            renderScenery(debugCube);
+            exportCubemap(debugCube, "scene");
+            renderSkybox(debugCube);
+            exportCubemap(debugCube, "skybox");
+            renderFullScene(debugCube);
+            exportCubemap(debugCube, "full");
+            reflectionCamera.clearFlags = CameraClearFlags.Depth;
+            reflectionCamera.backgroundColor = bg;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -64,10 +66,9 @@ namespace SSTUTools
             init();
         }
 
-        public void LateUpdate()
+        public void Update()
         {
-            if (scatGos.Count == 0) { locateScattererMeshes(); }
-            if (rp != null && cube2 != null && cam != null && GalaxyCubeControl.Instance != null && ScaledSpace.Instance != null)
+            if (rp != null && envMap != null && reflectionCamera != null && GalaxyCubeControl.Instance != null && ScaledSpace.Instance != null)
             {
                 updateReflectionCube();
             }
@@ -86,41 +87,42 @@ namespace SSTUTools
             standardMat.EnableKeyword("_METALLICGLOSSMAP");
 
             Transform tr = part.transform.FindRecursive("model");
-            updateTransforms(tr, standardMat);            
+            updateTransforms(tr, standardMat);
 
-            ReflectionProbe pr = tr.gameObject.GetComponent<ReflectionProbe>();
-            if (pr == null) { pr = tr.gameObject.AddComponent<ReflectionProbe>(); }
-
-            pr.type = UnityEngine.Rendering.ReflectionProbeType.Cube;
-            pr.mode = UnityEngine.Rendering.ReflectionProbeMode.Custom;
-            pr.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
-            pr.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.NoTimeSlicing;
-            pr.hdr = false;
-            pr.size = Vector3.one * 30;
-            pr.resolution = cubeSize;
-            pr.enabled = true;
-            MonoBehaviour.print("Added reflection probe: " + pr);
-            rp = pr;
             if (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor)
             {
-                envMap = new RenderTexture(cubeSize, cubeSize, 24);
-                envMap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
-                envMap.hideFlags = HideFlags.HideAndDontSave;
-                envMap.wrapMode = TextureWrapMode.Clamp;
+                //add reflection probe if not already present on game-object
+                //TODO move this out to a per-vessel / per-scene setup; probes should not actually be moved?
+                ReflectionProbe pr = tr.gameObject.GetComponent<ReflectionProbe>();
+                if (pr == null) { pr = tr.gameObject.AddComponent<ReflectionProbe>(); }
 
-                go = new GameObject("reflectCam");
-                go.transform.position = part.transform.position;
-                int mask = 32784;
-                cam = go.AddComponent<Camera>();
-                cam.cullingMask = mask;
-                cam.clearFlags = CameraClearFlags.Depth;
-                //cam.backgroundColor = Color.black;
-                updateReflectionCube();
+                pr.type = UnityEngine.Rendering.ReflectionProbeType.Cube;
+                pr.mode = UnityEngine.Rendering.ReflectionProbeMode.Custom;
+                pr.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+                pr.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+                pr.hdr = false;
+                pr.size = Vector3.one * 30;
+                pr.resolution = cubeSize;
+                pr.enabled = true;
+                MonoBehaviour.print("Added reflection probe: " + pr);
+                rp = pr;
+
+                //setup the reflection camera
+                //need to ignore meshes with these shaders:  "Scatterer/OceanWhiteCaps" || "Scatterer/UnderwaterScatter" || "Scatterer/AtmosphericScatter"
+                //use texture-replacer camera name, as it cleans up scatterer integration problems
+                cameraObject = new GameObject("TRReflectionCamera");
+                cameraObject.transform.position = part.transform.position;
+                reflectionCamera = cameraObject.AddComponent<Camera>();
+
+                //this is the actual reflection cubemap
+                envMap = new Cubemap(cubeSize, TextureFormat.ARGB32, true);
+
+                //this is a cubemap used to render debug reflections for output to file
+                debugCube = new Cubemap(cubeSize * 4, TextureFormat.ARGB32, true);
                 
-                cube2 = new Cubemap(cubeSize*4, TextureFormat.ARGB32, true);
-                Shader skyboxShader = SSTUDatabase.getShader("Skybox/Cubemap");
-                skyMat = new Material(skyboxShader);
-                skyMat.SetTexture("_Tex", cube2);
+                //finally, update the reflections for their current state
+                //TODO -- should this be delayed until the first frame update?  (e.g. Unity Update()?)
+                updateReflectionCube();
             }
         }
 
@@ -138,155 +140,142 @@ namespace SSTUTools
 
         private void updateReflectionCube()
         {
-            toggleScattererMeshes(false);
-            cam.enabled = true;
+            reflectionCamera.enabled = true;
 
-            //only clear the depth buffer
-            cam.clearFlags = CameraClearFlags.Depth;
+            //only clear the depth buffer, this allows for 'layered' rendering
+            reflectionCamera.clearFlags = CameraClearFlags.Depth;
             //need to render each face individually due to layering
+            int galaxyMask = 1 << 18;
+            int atmosphereMask = (1 << 9) | (1 << 23);
+            int scaledSpaceMask = 1 << 10;
+            int sceneMask = 32784;//no clue...
+            float farClip = 100f;
+            float nearClip = 0.01f;
             for (int i = 0; i < 6; i++)
             {
                 CubemapFace face = (CubemapFace)i;
-                int mask = 1 << i;
+                nearClip = reflectionCamera.nearClipPlane;
+                farClip = 3.0e7f;
 
-                //capture the galaxy
-                cam.farClipPlane = 100000f;
-                cam.cullingMask = 1 << 18;
-                cam.gameObject.transform.position = GalaxyCubeControl.Instance.transform.position;
-                cam.RenderToCubemap(envMap, mask);
+                //galaxy
+                renderCubeFace(envMap, face, GalaxyCubeControl.Instance.transform.position, galaxyMask, reflectionCamera.nearClipPlane, farClip);
 
-                //atmosphere
-                cam.farClipPlane = 3.0e7f;
-                cam.cullingMask = (1 << 9) | (1 << 23);
-                cam.gameObject.transform.position = part.transform.position;
-                cam.RenderToCubemap(envMap, mask);
+                //atmo
+                renderCubeFace(envMap, face, part.transform.position, atmosphereMask, nearClip, farClip);
 
                 //scaled space
-                cam.transform.position = ScaledSpace.Instance.transform.position;
-                cam.farClipPlane = 3.0e7f;
-                cam.cullingMask = 1 << 10;
-                cam.RenderToCubemap(envMap, mask);
-                
+                renderCubeFace(envMap, face, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
+
                 //scene
-                cam.transform.position = part.transform.position;
-                cam.farClipPlane = 6000f;
-                cam.cullingMask = 32784;
-                cam.RenderToCubemap(envMap, mask);
+                farClip = 2000f;
+                renderCubeFace(envMap, face, part.transform.position, sceneMask, nearClip, farClip);
             }
-            
-            go.transform.position = part.transform.position;
+            //TODO convolution on cubemap
+            //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
+
+            //update the reflection probes texture
             rp.customBakedTexture = envMap;
-            cam.enabled = false;
-            toggleScattererMeshes(true);
+            reflectionCamera.enabled = false;
+
+            //TODO -- replace with custom baked skybox...
+            //use in areas where other reflection probes don't make sense (space?)
+            //RenderSettings.customReflection;
+            
         }
 
         private void renderGalaxyBox(Cubemap envMap)
         {
-            cam.enabled = true;
-            cam.farClipPlane = 100000f;
-            cam.cullingMask = 1 << 18;
-            cam.gameObject.transform.position = GalaxyCubeControl.Instance.transform.position;
-            cam.RenderToCubemap(envMap);
-            cam.enabled = false;
+            reflectionCamera.enabled = true;
+            reflectionCamera.farClipPlane = 100000f;
+            reflectionCamera.cullingMask = 1 << 18;
+            reflectionCamera.gameObject.transform.position = GalaxyCubeControl.Instance.transform.position;
+            reflectionCamera.RenderToCubemap(envMap);
+            reflectionCamera.enabled = false;
         }
 
         private void renderScaledSpace(Cubemap envMap)
         {
-            cam.enabled = true;
-            cam.transform.position = ScaledSpace.Instance.transform.position;
-            cam.farClipPlane = 3.0e7f;
-            cam.cullingMask = (1 << 10);
-            cam.RenderToCubemap(envMap);
-            cam.enabled = false;
+            reflectionCamera.enabled = true;
+            reflectionCamera.transform.position = ScaledSpace.Instance.transform.position;
+            reflectionCamera.farClipPlane = 3.0e7f;
+            reflectionCamera.cullingMask = (1 << 10);
+            reflectionCamera.RenderToCubemap(envMap);
+            reflectionCamera.enabled = false;
         }
 
         private void renderSkybox(Cubemap envMap)
         {
-            cam.gameObject.transform.position = GalaxyCubeControl.Instance.transform.position;
+            reflectionCamera.gameObject.transform.position = GalaxyCubeControl.Instance.transform.position;
             renderLayer(envMap, (1 << 9) | (1<<23), 3.0e7f);
         }
 
         private void renderScenery(Cubemap envMap)
         {
-            cam.transform.position = part.transform.position;
+            reflectionCamera.transform.position = part.transform.position;
             renderLayer(envMap, 32784, 2000f);
         }
 
         private void renderFullScene(Cubemap envMap)
         {
-            cam.transform.position = part.transform.position;
+            reflectionCamera.transform.position = part.transform.position;
             renderLayer(envMap, ~0, 3.0e7f);
         }
 
         private void renderLayer(Cubemap envMap, int layerMask, float farClip)
         {
-            cam.enabled = true;
-            cam.farClipPlane = farClip;
-            cam.cullingMask = layerMask;
-            cam.RenderToCubemap(envMap);
-            cam.enabled = false;
+            reflectionCamera.enabled = true;
+            int len = 6;
+            for (int i = 0; i < len; i++)
+            {
+                renderCubeFace(envMap, (CubemapFace)i, reflectionCamera.transform.position, layerMask, reflectionCamera.nearClipPlane, farClip);
+            }
+            reflectionCamera.enabled = false;
         }
 
-        private void exportCubemap(Cubemap cube, string name)
+        private void renderCubeFace(Cubemap envMap, CubemapFace face, Vector3 cameraPos, int layerMask, float nearClip, float farClip)
         {
-            Texture2D tex = new Texture2D(cube.width, cube.height, TextureFormat.RGB24, false);
+            reflectionCamera.transform.position = cameraPos;
+            reflectionCamera.cullingMask = layerMask;
+            reflectionCamera.nearClipPlane = nearClip;
+            reflectionCamera.farClipPlane = farClip;
+            int faceMask = 1 << (int)face;
+            reflectionCamera.RenderToCubemap(envMap, faceMask);
+        }
+
+        private void exportCubemap(Cubemap envMap, string name)
+        {
+            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.RGB24, false);
             for (int i = 0; i < 6; i++)
             {
-                tex.SetPixels(cube.GetPixels((CubemapFace)i));
+                tex.SetPixels(envMap.GetPixels((CubemapFace)i));
                 byte[] bytes = tex.EncodeToPNG();
                 File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
             }
             GameObject.Destroy(tex);
         }
-
-        private void dumpScene()
-        {
-            MonoBehaviour.print("SCENE DUMP LAYER 23 -------------------------------------------- ");
-            GameObject[] allGos = FindObjectsOfType<GameObject>();
-            int len = allGos.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (allGos[i] != null && allGos[i].layer == 23)
-                {
-                    MonoBehaviour.print("found rendered object: " + allGos[i]+" parent: "+allGos[i].transform.parent);
-                    SSTUUtils.recursePrintComponents(allGos[i], "");
-                }
-            }
-        }
         
-        private List<GameObject> scatGos = new List<GameObject>();
-
-        private void locateScattererMeshes()
-        {
-            scatGos.Clear();
-            GameObject[] allGos = FindObjectsOfType<GameObject>();
-            int len = allGos.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (allGos[i] != null && allGos[i].layer == 23)
-                {
-                    MeshRenderer r = allGos[i].GetComponent<MeshRenderer>();
-                    if (r != null)
-                    {
-                        Material m = r.material;
-                        if (m != null && m.shader != null && (m.shader.name == "Scatterer/OceanWhiteCaps" || m.shader.name == "Scatterer/UnderwaterScatter" || m.shader.name == "Scatterer/AtmosphericScatter"))
-                        {
-                            scatGos.Add(allGos[i]);
-                        }
-                    }
-                }
-            }
-            MonoBehaviour.print("Found: " + scatGos.Count + " scatterer meshes");
-        }
-
-        private void toggleScattererMeshes(bool enable)
-        {
-            int len = scatGos.Count;
-            for (int i = 0; i < len; i++)
-            {
-                scatGos[i].layer = enable ? 23 : 15;
-            }
-        }
+        //private void locateScattererMeshes()
+        //{
+        //    scatGos.Clear();
+        //    GameObject[] allGos = FindObjectsOfType<GameObject>();
+        //    int len = allGos.Length;
+        //    for (int i = 0; i < len; i++)
+        //    {
+        //        if (allGos[i] != null && allGos[i].layer == 23)
+        //        {
+        //            MeshRenderer r = allGos[i].GetComponent<MeshRenderer>();
+        //            if (r != null)
+        //            {
+        //                Material m = r.material;
+        //                if (m != null && m.shader != null && (m.shader.name == "Scatterer/OceanWhiteCaps" || m.shader.name == "Scatterer/UnderwaterScatter" || m.shader.name == "Scatterer/AtmosphericScatter"))
+        //                {
+        //                    scatGos.Add(allGos[i]);
+        //                }
+        //            }
+        //        }
+        //    }
+        //    MonoBehaviour.print("Found: " + scatGos.Count + " scatterer meshes");
+        //}
 
     }
 }
