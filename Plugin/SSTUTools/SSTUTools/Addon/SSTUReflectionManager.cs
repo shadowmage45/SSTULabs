@@ -156,6 +156,7 @@ namespace SSTUTools
         public void debugGuiDisable()
         {
             GameObject.Destroy(gui);
+            gui = null;
         }
 
         public void OnDestroy()
@@ -168,6 +169,11 @@ namespace SSTUTools
             if (vesselDestroyedEvent != null)
             {
                 GameEvents.onVesselDestroy.Remove(vesselDestroyedEvent);
+            }
+            if (gui != null)
+            {
+                GameObject.Destroy(gui);
+                gui = null;
             }
             //TODO proper resource cleanup -- is it even applicable if the lifetime of the class is the same as the lifetime of the application?
             //TODO do materials and render textures need to be released?
