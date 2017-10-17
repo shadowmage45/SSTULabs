@@ -133,6 +133,7 @@ namespace SSTUTools
 
         public void Awake()
         {
+            MonoBehaviour.print("SSTUReflectionManager Awake()");
             instance = this;
             init();
             vesselCreateEvent = new EventData<Vessel>.OnEvent(vesselCreated);
@@ -161,6 +162,7 @@ namespace SSTUTools
 
         public void OnDestroy()
         {
+            MonoBehaviour.print("SSTUReflectionManager OnDestroy()");
             if (instance == this) { instance = null; }
             if (vesselCreateEvent != null)
             {
@@ -210,20 +212,19 @@ namespace SSTUTools
             //TODO -- pre-bake cubemap to use as the custom skybox in the reflection probe camera; this can be higher res and updated far less often (every couple of seconds?)
         }
 
-        public void vesselCreated(Vessel v)
+        public void vesselCreated(Vessel vessel)
         {
-            GameObject reflect = new GameObject("SSTUReflectionProbe");
-            reflect.transform.parent = v.transform;
-            reflect.transform.localPosition = Vector3.zero;
-            ReflectionProbe probe = createProbe(reflect);
-            RenderTexture tex = createTexture(envMapSize);
-            ReflectionProbeData data = new ReflectionProbeData(probe, tex);
-            VesselReflectionData d = new VesselReflectionData(v, data);
-            vesselReflectionProbeDict.Add(v, d);
+            MonoBehaviour.print("SSTUReflectionManager vesselCreated() : " + vessel);
+            GameObject probeObject = new GameObject("SSTUReflectionProbe");
+            probeObject.transform.parent = vessel.transform;
+            probeObject.transform.localPosition = Vector3.zero;
+            VesselReflectionData d = new VesselReflectionData(vessel, new ReflectionProbeData(createProbe(probeObject), createTexture(envMapSize)));
+            vesselReflectionProbeDict.Add(vessel, d);
         }
 
         public void vesselDestroyed(Vessel v)
         {
+            MonoBehaviour.print("SSTUReflectionManager vesselDestroyed() : " + v);
             vesselReflectionProbeDict.Remove(v);
         }
 
