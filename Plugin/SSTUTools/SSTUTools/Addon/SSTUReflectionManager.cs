@@ -93,6 +93,14 @@ namespace SSTUTools
         {
             cameraObject = new GameObject("TRReflectionCamera");
             reflectionCamera = cameraObject.AddComponent<Camera>();
+
+
+
+            //TODO -- replace with custom baked skybox...
+            //use in areas where other reflection probes don't make sense (space?)
+            //RenderSettings.customReflection = customCubemap;
+
+            //TODO -- pre-bake cubemap to use as the custom skybox in the reflection probe camera; this can be higher res and updated far less often (every couple of seconds?)
         }
 
         /// <summary>
