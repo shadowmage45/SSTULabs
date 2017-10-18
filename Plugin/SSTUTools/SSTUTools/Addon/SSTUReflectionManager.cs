@@ -113,14 +113,14 @@ namespace SSTUTools
         //internal data -- event handling, app-launcher button and debug-GUI handling
 
         private bool renderedEditor = false;
-
-        private Material skyboxMateral;
-
+        
         private EventData<Vessel>.OnEvent vesselCreateEvent;
         private EventData<Vessel>.OnEvent vesselDestroyedEvent;
 
         private ReflectionDebugGUI gui;
         private static ApplicationLauncherButton debugAppButton;
+
+        private static Shader skyboxShader;
 
         private static SSTUReflectionManager instance;
 
@@ -149,9 +149,76 @@ namespace SSTUTools
             Texture2D tex;
             if (debugAppButton == null)
             {
+                //create a new button
                 tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
-                debugAppButton = ApplicationLauncher.Instance.AddModApplication(debugGuiEnable, debugGuiDisable, null, null, null, null, ApplicationLauncher.AppScenes.FLIGHT|ApplicationLauncher.AppScenes.SPH|ApplicationLauncher.AppScenes.VAB, tex);
+                debugAppButton = ApplicationLauncher.Instance.AddModApplication(debugGuiEnable, debugGuiDisable, null, null, null, null, ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.SPH | ApplicationLauncher.AppScenes.VAB, tex);
             }
+            else
+            {
+                //reseat callback refs to the ones from THIS instance of the KSPAddon (old refs were stale, pointing to methods for a deleted class instance)
+                debugAppButton.onEnable = debugGuiEnable;
+                debugAppButton.onDisable = debugGuiDisable;
+            }
+        }
+
+        /// <summary>
+        /// Unity per-frame update method.  Should update any reflection maps that need updating.
+        /// </summary>
+        public void Update()
+        {
+            if (!reflectionsEnabled) { return; }
+            renderCubes();
+
+            //TODO convolution on cubemap
+            //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
+            //http://codeflow.org/entries/2011/apr/18/advanced-webgl-part-3-irradiance-environment-map/
+            //https://developer.nvidia.com/gpugems/GPUGems2/gpugems2_chapter10.html
+            //https://gist.github.com/Farfarer/5664694
+            //https://codegists.com/code/render-cubemap-unity/
+
+            //TODO conversion of existing textures:
+            //https://www.marmoset.co/posts/pbr-texture-conversion/
+
+            //https://forum.unity.com/threads/directly-draw-a-cubemap-rendertexture.296236/
+            //In function Graphics.SetRenderTarget(), you can select cubemap face. 
+
+            //convolution processing:
+            //1.) CPU based
+            //      Render to standard Cubemap
+            //      Sample and convolve in CPU
+            //      Update Cubemap from convolved data
+            //      
+            //2.) GPU based
+            //      Shader has single Cubemap input from raw rendered (no MIPs)
+            //      Shader samples cubemap, renders out to standard surface rendertexture, one face at a time
+            //      Recompose the 6x render textures back into a single Cubemap (with MIPs)
+
+            //debug code below here
+            //if (true) { return; }
+            ////GPU based convolution
+            //int mipLevel = 0;
+            //Material mat;
+            //RenderTexture staticMap = null;//the cubemap that the camera renders into; mipmaps disabled for single LOD / base sample
+            //RenderTexture convoluted = null;//the output cubemap that we will render into
+            //mat.SetTexture("_Input", staticMap);
+            //mat.SetFloat("_Level", mipLevel);
+            ////run convolution pass on each face
+            //for (int face = 0; face < 6; face++)
+            //{
+            //    Graphics.SetRenderTarget(convoluted, mipLevel, (CubemapFace)face);
+            //    //Graphics.SetRenderTarget()
+            //    mat.SetFloat("_Face", face);
+            //    GL.PushMatrix();
+            //    GL.LoadOrtho();
+            //    mat.SetPass(0);
+            //    GL.Begin(GL.QUADS);
+            //    GL.Vertex3(0, 0, 0.5f);
+            //    GL.Vertex3(1, 0, 0.5f);
+            //    GL.Vertex3(1, 1, 0.5f);
+            //    GL.Vertex3(0, 1, 0.5f);
+            //    GL.End();
+            //    GL.PopMatrix();
+            //}
         }
 
         private void debugGuiEnable()
@@ -201,19 +268,19 @@ namespace SSTUTools
                 reflectionCamera.enabled = false;
                 MonoBehaviour.print("SSTUReflectionManager created camera: "+reflectionCamera);
             }
-            if (skyboxMateral == null)
+            if (skyboxShader == null)
             {
-                Shader shader = SSTUDatabase.getShader("Skybox/Cubemap");
-                skyboxMateral = new Material(shader);
-                MonoBehaviour.print("Created skybox material from shader: " + skyboxMateral + " :: " + shader);
+                skyboxShader = SSTUDatabase.getShader("SSTU/Skybox/Cubemap");
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
-                GameObject probeObject = new GameObject("SSTUReflectionProbe");
+                GameObject probeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                probeObject.name = "SSTUReflectionProbe";
+                Material probeMat = new Material(skyboxShader);
                 ReflectionProbe probe = createProbe(probeObject);
                 probe.size = new Vector3(50, 150, 50);
                 RenderTexture tex = createTexture(envMapSize);
-                editorReflectionData = new EditorReflectionData(new ReflectionProbeData(probe, tex));
+                editorReflectionData = new EditorReflectionData(new ReflectionProbeData(probeObject, probeMat, probe, tex));
                 MonoBehaviour.print("SSTUReflectionManager created editor reflection data: " + probeObject + " :: " + probe + " :: " + tex + " :: "+editorReflectionData);
             }
             else if (HighLogic.LoadedSceneIsFlight)
@@ -230,35 +297,21 @@ namespace SSTUTools
 
         public void vesselCreated(Vessel vessel)
         {
-            MonoBehaviour.print("SSTUReflectionManager vesselCreated() : " + vessel);
-            GameObject probeObject = new GameObject("SSTUReflectionProbe");
+            GameObject probeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            probeObject.name = "SSTUReflectionProbe";
             probeObject.transform.parent = vessel.transform;
             probeObject.transform.localPosition = Vector3.zero;
-            VesselReflectionData d = new VesselReflectionData(vessel, new ReflectionProbeData(createProbe(probeObject), createTexture(envMapSize)));
+            probeObject.layer = 26;//wheel collider ignore
+            Material probeMat = new Material(skyboxShader);
+            VesselReflectionData d = new VesselReflectionData(vessel, new ReflectionProbeData(probeObject, probeMat, createProbe(probeObject), createTexture(envMapSize)));
             vesselReflectionProbeDict.Add(vessel, d);
+            MonoBehaviour.print("SSTUReflectionManager vesselCreated() : " + vessel+" :: "+d);
         }
 
         public void vesselDestroyed(Vessel v)
         {
             MonoBehaviour.print("SSTUReflectionManager vesselDestroyed() : " + v);
             vesselReflectionProbeDict.Remove(v);
-        }
-
-        /// <summary>
-        /// Unity per-frame update method.  Should update any reflection maps that need updating.
-        /// </summary>
-        public void Update()
-        {
-            if (!reflectionsEnabled) { return; }
-            renderCubes();
-
-            //TODO convolution on cubemap
-            //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
-            //http://codeflow.org/entries/2011/apr/18/advanced-webgl-part-3-irradiance-environment-map/
-            //https://developer.nvidia.com/gpugems/GPUGems2/gpugems2_chapter10.html
-
-            //TODO conversion of existing textures:
-            //https://www.marmoset.co/posts/pbr-texture-conversion/
         }
 
         public void renderCubes()
@@ -293,20 +346,11 @@ namespace SSTUTools
         private void renderCube(ReflectionProbeData data, Vector3 pos)
         {
             int faces = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
-            renderPartialCube(data.reflectionMap, faces, pos);
-            //data.probe.customBakedTexture = data.reflectionMap;
-            skyboxMateral.SetTexture("_Tex", data.reflectionMap);
-            Material prev = RenderSettings.skybox;
-            RenderSettings.skybox = skyboxMateral;
-            DynamicGI.UpdateEnvironment();
+            renderPartialCube(data.renderedCube, faces, pos);
+            data.skyboxMateral.SetTexture("_Tex", data.renderedCube);            
             data.probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
-            data.probe.cullingMask = 0;
-            data.probe.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.Skybox;
-            int id = data.probe.RenderProbe();
-            if (data.probe.IsFinishedRendering(id))
-            {
-                RenderSettings.skybox = prev;
-            }
+            data.probe.cullingMask = 1<<26;//wheelColliderIgnore layer
+            data.probe.RenderProbe();
         }
 
         private void renderPartialCube(RenderTexture envMap, int faceMask, Vector3 partPos)
@@ -497,14 +541,16 @@ namespace SSTUTools
 
         public class ReflectionProbeData
         {
+            public readonly GameObject reflectionSphere;//also the owner of the probe
             public readonly ReflectionProbe probe;
-            public readonly RenderTexture reflectionMap;
-            public int updateFace = 0;
-            public float lastUpdateTime = 0;
-            public ReflectionProbeData(ReflectionProbe probe, RenderTexture envMap)
+            public readonly RenderTexture renderedCube;
+            public readonly Material skyboxMateral;
+            public ReflectionProbeData(GameObject sphere, Material mat, ReflectionProbe probe, RenderTexture envMap)
             {
+                this.reflectionSphere = sphere;
+                this.skyboxMateral = mat;
                 this.probe = probe;
-                this.reflectionMap = envMap;
+                this.renderedCube = envMap;
             }
         }
 
