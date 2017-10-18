@@ -114,6 +114,8 @@ namespace SSTUTools
 
         private bool renderedEditor = false;
 
+        private Material skyboxMateral;
+
         private EventData<Vessel>.OnEvent vesselCreateEvent;
         private EventData<Vessel>.OnEvent vesselDestroyedEvent;
 
@@ -198,6 +200,12 @@ namespace SSTUTools
                 eveCameraFix = cameraObject.AddComponent<CameraAlphaFix>();
                 reflectionCamera.enabled = false;
                 MonoBehaviour.print("SSTUReflectionManager created camera: "+reflectionCamera);
+            }
+            if (skyboxMateral == null)
+            {
+                Shader shader = SSTUDatabase.getShader("Skybox/Cubemap");
+                skyboxMateral = new Material(shader);
+                MonoBehaviour.print("Created skybox material from shader: " + skyboxMateral + " :: " + shader);
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -286,12 +294,19 @@ namespace SSTUTools
         {
             int faces = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
             renderPartialCube(data.reflectionMap, faces, pos);
-
             //data.probe.customBakedTexture = data.reflectionMap;
-            data.probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Baked;
-            data.probe.RenderProbe();
-            
-            RenderSettings.skybox = "foo";//TODO - re-add the skybox cubemapped shader asset, re-export it in shader bundle
+            skyboxMateral.SetTexture("_Tex", data.reflectionMap);
+            Material prev = RenderSettings.skybox;
+            RenderSettings.skybox = skyboxMateral;
+            DynamicGI.UpdateEnvironment();
+            data.probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+            data.probe.cullingMask = 0;
+            data.probe.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.Skybox;
+            int id = data.probe.RenderProbe();
+            if (data.probe.IsFinishedRendering(id))
+            {
+                RenderSettings.skybox = prev;
+            }
         }
 
         private void renderPartialCube(RenderTexture envMap, int faceMask, Vector3 partPos)

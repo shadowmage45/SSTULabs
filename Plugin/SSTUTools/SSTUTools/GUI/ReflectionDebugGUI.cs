@@ -41,12 +41,14 @@ namespace SSTUTools
             manager.renderScaled = addButtonRow("Render Scaled", scaled);
             manager.renderScenery = addButtonRow("Render Scenery", scenery);
             manager.eveInstalled = addButtonRow("Eve Fix", manager.eveInstalled);
-            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Force Refl update"))
+            {
+                manager.renderCubes();
+            }
             if (GUILayout.Button("Render Debug Cubes"))
             {
                 manager.renderDebugCubes();
             }
-            GUILayout.EndHorizontal();
             GUILayout.EndVertical();
         }
 
