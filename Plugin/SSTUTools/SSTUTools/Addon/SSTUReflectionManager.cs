@@ -196,6 +196,7 @@ namespace SSTUTools
                 cameraObject = new GameObject("TRReflectionCamera");
                 reflectionCamera = cameraObject.AddComponent<Camera>();
                 eveCameraFix = cameraObject.AddComponent<CameraAlphaFix>();
+                reflectionCamera.enabled = false;
                 MonoBehaviour.print("SSTUReflectionManager created camera: "+reflectionCamera);
             }
             if (HighLogic.LoadedSceneIsEditor)
@@ -285,7 +286,12 @@ namespace SSTUTools
         {
             int faces = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
             renderPartialCube(data.reflectionMap, faces, pos);
-            data.probe.customBakedTexture = data.reflectionMap;
+
+            //data.probe.customBakedTexture = data.reflectionMap;
+            data.probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Baked;
+            data.probe.RenderProbe();
+            
+            RenderSettings.skybox = "foo";//TODO - re-add the skybox cubemapped shader asset, re-export it in shader bundle
         }
 
         private void renderPartialCube(RenderTexture envMap, int faceMask, Vector3 partPos)
