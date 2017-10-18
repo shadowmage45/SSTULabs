@@ -174,8 +174,10 @@ namespace SSTUTools
             }
             else
             {
-                //TODO -- what should the default value for 'no default colors' be?
-                maskColors = new Color[0];
+                maskColors = new Color[3];
+                maskColors[0] = Color.white;
+                maskColors[1] = Color.white;
+                maskColors[2] = Color.white;
             }
         }
 

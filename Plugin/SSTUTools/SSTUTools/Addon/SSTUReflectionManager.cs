@@ -86,6 +86,8 @@ namespace SSTUTools
         public bool renderAtmo = true;        
         public bool renderScenery = true;
 
+        public bool reflectionsEnabled = false;
+
         #endregion
 
         #region INTERNAL FIELDS
@@ -107,15 +109,16 @@ namespace SSTUTools
 
         public bool eveInstalled = true;//TODO -- load this value from config
         public CameraAlphaFix eveCameraFix;
-        
+
         //internal data -- event handling, app-launcher button and debug-GUI handling
+
+        private bool renderedEditor = false;
 
         private EventData<Vessel>.OnEvent vesselCreateEvent;
         private EventData<Vessel>.OnEvent vesselDestroyedEvent;
 
         private ReflectionDebugGUI gui;
-        private ApplicationLauncherButton debugAppButton;
-        private ApplicationLauncherButton controlsAppButton;
+        private static ApplicationLauncherButton debugAppButton;
 
         private static SSTUReflectionManager instance;
 
@@ -142,7 +145,7 @@ namespace SSTUTools
             GameEvents.onVesselDestroy.Add(vesselDestroyedEvent);
 
             Texture2D tex;
-            if (debugAppButton == null && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
+            if (debugAppButton == null)
             {
                 tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
                 debugAppButton = ApplicationLauncher.Instance.AddModApplication(debugGuiEnable, debugGuiDisable, null, null, null, null, ApplicationLauncher.AppScenes.FLIGHT|ApplicationLauncher.AppScenes.SPH|ApplicationLauncher.AppScenes.VAB, tex);
@@ -187,18 +190,22 @@ namespace SSTUTools
 
         private void init()
         {
+            MonoBehaviour.print("SSTUReflectionManager init()");
             if (cameraObject == null)
             {
                 cameraObject = new GameObject("TRReflectionCamera");
                 reflectionCamera = cameraObject.AddComponent<Camera>();
                 eveCameraFix = cameraObject.AddComponent<CameraAlphaFix>();
+                MonoBehaviour.print("SSTUReflectionManager created camera: "+reflectionCamera);
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameObject probeObject = new GameObject("SSTUReflectionProbe");
                 ReflectionProbe probe = createProbe(probeObject);
+                probe.size = new Vector3(50, 150, 50);
                 RenderTexture tex = createTexture(envMapSize);
                 editorReflectionData = new EditorReflectionData(new ReflectionProbeData(probe, tex));
+                MonoBehaviour.print("SSTUReflectionManager created editor reflection data: " + probeObject + " :: " + probe + " :: " + tex + " :: "+editorReflectionData);
             }
             else if (HighLogic.LoadedSceneIsFlight)
             {
@@ -233,26 +240,41 @@ namespace SSTUTools
         /// </summary>
         public void Update()
         {
+            if (!reflectionsEnabled) { return; }
+            renderCubes();
+
+            //TODO convolution on cubemap
+            //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
+            //http://codeflow.org/entries/2011/apr/18/advanced-webgl-part-3-irradiance-environment-map/
+            //https://developer.nvidia.com/gpugems/GPUGems2/gpugems2_chapter10.html
+
+            //TODO conversion of existing textures:
+            //https://www.marmoset.co/posts/pbr-texture-conversion/
+        }
+
+        public void renderCubes()
+        {
             reflectionCamera.enabled = true;
             reflectionCamera.clearFlags = CameraClearFlags.Depth;
             if (editorReflectionData != null)
             {
-                renderCube(editorReflectionData.probeData, Vector3.zero);
+                if (!renderedEditor)
+                {
+                    renderedEditor = true;
+                    renderCube(editorReflectionData.probeData, new Vector3(0, 10, 0));
+                }
             }
             else
             {
                 foreach (VesselReflectionData d in vesselReflectionProbeDict.Values)
                 {
-                    renderCube(d.probeData, d.vessel.transform.position);
+                    if (d.vessel.loaded)
+                    {
+                        renderCube(d.probeData, d.vessel.transform.position);
+                    }
                 }
             }
             reflectionCamera.enabled = false;
-
-            //TODO convolution on cubemap
-            //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
-
-            //TODO conversion of existing textures:
-            //https://www.marmoset.co/posts/pbr-texture-conversion/
         }
 
         #endregion
@@ -261,8 +283,9 @@ namespace SSTUTools
 
         private void renderCube(ReflectionProbeData data, Vector3 pos)
         {
-            int faces = 63;// (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
-            renderPartialCube(editorReflectionData.probeData.reflectionMap, faces, pos);
+            int faces = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
+            renderPartialCube(data.reflectionMap, faces, pos);
+            data.probe.customBakedTexture = data.reflectionMap;
         }
 
         private void renderPartialCube(RenderTexture envMap, int faceMask, Vector3 partPos)
@@ -271,39 +294,36 @@ namespace SSTUTools
             float farClip = 3.0e7f;
             for (int i = 0; i < 6; i++)
             {
-                if ((i & faceMask) != 0)
+                int face = 1 << i;
+                if (renderGalaxy)
                 {
-                    CubemapFace face = (CubemapFace)i;
-                    if (renderGalaxy)
-                    {
-                        //galaxy
-                        renderCubeFace(envMap, face, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
-                    }
-                    if (renderAtmo)
-                    {
-                        //atmo
-                        renderCubeFace(envMap, face, partPos, atmosphereMask, nearClip, farClip);
-                    }
-                    if (renderScaled)
-                    {
-                        //scaled space
-                        renderCubeFace(envMap, face, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
-                    }
-                    if (renderScenery)
-                    {
-                        //scene
-                        eveCameraFix.overwriteAlpha = eveInstalled;
-                        renderCubeFace(envMap, face, partPos, sceneryMask, nearClip, farClip);
-                        eveCameraFix.overwriteAlpha = false;
-                    }
+                    //galaxy
+                    renderCubeFace(envMap, face, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
+                }
+                //TODO -- scaled and atmo need to be rendered in oposite order while in orbit
+                if (renderScaled)
+                {
+                    //scaled space
+                    renderCubeFace(envMap, face, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
+                }
+                if (renderAtmo)
+                {
+                    //atmo
+                    renderCubeFace(envMap, face, partPos, atmosphereMask, nearClip, farClip);
+                }
+                if (renderScenery)
+                {
+                    //scene
+                    eveCameraFix.overwriteAlpha = eveInstalled;
+                    renderCubeFace(envMap, face, partPos, sceneryMask, nearClip, farClip);
+                    eveCameraFix.overwriteAlpha = false;
                 }
             }
         }
 
-        private void renderCubeFace(RenderTexture envMap, CubemapFace face, Vector3 cameraPos, int layerMask, float nearClip, float farClip)
+        private void renderCubeFace(RenderTexture envMap, int faceMask, Vector3 cameraPos, int layerMask, float nearClip, float farClip)
         {
             cameraSetup(cameraPos, layerMask, nearClip, farClip);
-            int faceMask = 1 << (int)face;
             reflectionCamera.RenderToCubemap(envMap, faceMask);
         }
 
@@ -346,7 +366,8 @@ namespace SSTUTools
             int size = envMapSize * 4;
             Cubemap map = new Cubemap(size, TextureFormat.ARGB32, false);
             Texture2D exportTex = new Texture2D(size, size, TextureFormat.ARGB32, false);
-            exportCubes(map, FlightIntegrator.ActiveVesselFI.Vessel.transform.position);
+            Vector3 pos = HighLogic.LoadedSceneIsEditor ? new Vector3(0, 10, 0) : FlightIntegrator.ActiveVesselFI.Vessel.transform.position;
+            exportCubes(map, pos);
         }
 
         private void exportCubes(Cubemap debugCube, Vector3 pos)
@@ -395,7 +416,9 @@ namespace SSTUTools
                 if (renderScenery)
                 {
                     //scene
+                    eveCameraFix.overwriteAlpha = eveInstalled;
                     renderCubeFace(debugCube, face, pos, sceneryMask, nearClip, farClip);
+                    eveCameraFix.overwriteAlpha = false;
                 }
             }
             exportCubemap(debugCube, "reflect");
@@ -467,27 +490,17 @@ namespace SSTUTools
         //from unity post: https://forum.unity.com/threads/render-texture-alpha.2065/
         //potential fix to EVE writing 0 into alpha channel on areas subject to cloud textures
         //this should be somehow ran a single time -after- the last layer of a cube-side is rendered
+        //had to move to a pre-compiled shader as apparently run-time compilation is completely unsupported now
         public class CameraAlphaFix : MonoBehaviour
         {
             private float alpha = 1.0f;
             private Material mat;
-            public bool overwriteAlpha = false;
+            public bool overwriteAlpha = true;
      
             public void Start()
             {
-                mat = new Material(
-                    "Shader \"Hidden/Clear Alpha\" {" +
-                    "Properties { _Alpha(\"Alpha\", Float)=1.0 } " +
-                    "SubShader {" +
-                    "    Pass {" +
-                    "        ZTest Always Cull Off ZWrite Off" +
-                    "        ColorMask A" +
-                    "        SetTexture [_Dummy] {" +
-                    "            constantColor(0,0,0,[_Alpha]) combine constant }" +
-                    "    }" +
-                    "}" +
-                    "}"
-                );
+                Shader setAlpha = SSTUDatabase.getShader("SSTU/SetAlpha");
+                mat = new Material(setAlpha);
             }
 
             public void OnPostRender()
@@ -505,10 +518,10 @@ namespace SSTUTools
                 mat.SetFloat("_Alpha", alpha);
                 mat.SetPass(0);
                 GL.Begin(GL.QUADS);
-                GL.Vertex3(0, 0, 0.1f);
-                GL.Vertex3(1, 0, 0.1f);
-                GL.Vertex3(1, 1, 0.1f);
-                GL.Vertex3(0, 1, 0.1f);
+                GL.Vertex3(0, 0, 0.5f);
+                GL.Vertex3(1, 0, 0.5f);
+                GL.Vertex3(1, 1, 0.5f);
+                GL.Vertex3(0, 1, 0.5f);
                 GL.End();
                 GL.PopMatrix();
             }

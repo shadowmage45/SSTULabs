@@ -35,10 +35,12 @@ namespace SSTUTools
             bool scaled = manager.renderScaled;
             bool scenery = manager.renderScenery;
             GUILayout.BeginVertical();
+            manager.reflectionsEnabled = addButtonRow("Reflections Enabled", manager.reflectionsEnabled);
             manager.renderGalaxy = addButtonRow("Render Galaxy", galaxy);
             manager.renderAtmo = addButtonRow("Render Atmo", atmo);
             manager.renderScaled = addButtonRow("Render Scaled", scaled);
             manager.renderScenery = addButtonRow("Render Scenery", scenery);
+            manager.eveInstalled = addButtonRow("Eve Fix", manager.eveInstalled);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Render Debug Cubes"))
             {

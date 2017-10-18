@@ -19,6 +19,9 @@ namespace SSTUTools
         [KSPField]
         public string sectionName = "Recolorable";
 
+        [KSPField]
+        public bool canChangeInFlight = false;
+
         /// <summary>
         /// Current texture set.  ChooseOption UI widget is initialized inside of texture-set-container helper object
         /// </summary>
@@ -49,7 +52,7 @@ namespace SSTUTools
             base.OnStart(state);
             initialize();
 
-            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            Callback<BaseField, System.Object> onChangeAction = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m =>
                 {
@@ -57,6 +60,10 @@ namespace SSTUTools
                     m.textureSets.enableCurrentSet(getModelTransforms());
                 });
             };
+            BaseField field = Fields[nameof(currentTextureSet)];
+            field.uiControlEditor.onFieldChanged = onChangeAction;
+            field.uiControlFlight.onFieldChanged = onChangeAction;
+            field.guiActive = canChangeInFlight;
         }
 
         //restores texture set data and either loads default texture set or saved texture set (if any)
