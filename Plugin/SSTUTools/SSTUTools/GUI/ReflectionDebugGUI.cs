@@ -43,7 +43,7 @@ namespace SSTUTools
             manager.eveInstalled = addButtonRow("Eve Fix", manager.eveInstalled);
             if (GUILayout.Button("Force Refl update"))
             {
-                manager.renderCubes();
+                manager.updateReflections(true);
             }
             if (GUILayout.Button("Render Debug Cubes"))
             {

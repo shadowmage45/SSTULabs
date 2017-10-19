@@ -50,6 +50,11 @@ namespace SSTUTools
         /// Must be a power-of-two size; e.g. 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048.
         /// </summary>
         public int envMapSize = 128;
+
+        /// <summary>
+        /// Layer to use for skybox hack
+        /// </summary>
+        public int skyboxLayer = 26;
         
         // Skybox specific settings -- as the skybox is rendered and updated independently from the rest of the scene.
         // It can use different udpate frequency as well as resolution.
@@ -86,7 +91,7 @@ namespace SSTUTools
         public bool renderAtmo = true;        
         public bool renderScenery = true;
 
-        public bool reflectionsEnabled = false;
+        public bool reflectionsEnabled = true;
 
         #endregion
 
@@ -148,7 +153,7 @@ namespace SSTUTools
 
             Texture2D tex;
             if (debugAppButton == null)
-            {
+            {                
                 //create a new button
                 tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
                 debugAppButton = ApplicationLauncher.Instance.AddModApplication(debugGuiEnable, debugGuiDisable, null, null, null, null, ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.SPH | ApplicationLauncher.AppScenes.VAB, tex);
@@ -156,8 +161,8 @@ namespace SSTUTools
             else
             {
                 //reseat callback refs to the ones from THIS instance of the KSPAddon (old refs were stale, pointing to methods for a deleted class instance)
-                debugAppButton.onEnable = debugGuiEnable;
-                debugAppButton.onDisable = debugGuiDisable;
+                debugAppButton.onTrue = debugGuiEnable;
+                debugAppButton.onFalse = debugGuiDisable;
             }
         }
 
@@ -167,7 +172,7 @@ namespace SSTUTools
         public void Update()
         {
             if (!reflectionsEnabled) { return; }
-            renderCubes();
+            updateReflections();
 
             //TODO convolution on cubemap
             //https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
@@ -189,36 +194,9 @@ namespace SSTUTools
             //      Update Cubemap from convolved data
             //      
             //2.) GPU based
-            //      Shader has single Cubemap input from raw rendered (no MIPs)
+            //      Shader has single Cubemap input from raw rendered
             //      Shader samples cubemap, renders out to standard surface rendertexture, one face at a time
-            //      Recompose the 6x render textures back into a single Cubemap (with MIPs)
-
-            //debug code below here
-            //if (true) { return; }
-            ////GPU based convolution
-            //int mipLevel = 0;
-            //Material mat;
-            //RenderTexture staticMap = null;//the cubemap that the camera renders into; mipmaps disabled for single LOD / base sample
-            //RenderTexture convoluted = null;//the output cubemap that we will render into
-            //mat.SetTexture("_Input", staticMap);
-            //mat.SetFloat("_Level", mipLevel);
-            ////run convolution pass on each face
-            //for (int face = 0; face < 6; face++)
-            //{
-            //    Graphics.SetRenderTarget(convoluted, mipLevel, (CubemapFace)face);
-            //    //Graphics.SetRenderTarget()
-            //    mat.SetFloat("_Face", face);
-            //    GL.PushMatrix();
-            //    GL.LoadOrtho();
-            //    mat.SetPass(0);
-            //    GL.Begin(GL.QUADS);
-            //    GL.Vertex3(0, 0, 0.5f);
-            //    GL.Vertex3(1, 0, 0.5f);
-            //    GL.Vertex3(1, 1, 0.5f);
-            //    GL.Vertex3(0, 1, 0.5f);
-            //    GL.End();
-            //    GL.PopMatrix();
-            //}
+            //      Recompose the 6x render textures back into a single Cubemap (with MIPs)            
         }
 
         private void debugGuiEnable()
@@ -249,7 +227,7 @@ namespace SSTUTools
                 GameObject.Destroy(gui);
                 gui = null;
             }
-            //TODO proper resource cleanup -- is it even applicable if the lifetime of the class is the same as the lifetime of the application?
+            //TODO proper resource cleanup
             //TODO do materials and render textures need to be released?
         }
 
@@ -274,14 +252,10 @@ namespace SSTUTools
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
-                GameObject probeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                probeObject.name = "SSTUReflectionProbe";
-                Material probeMat = new Material(skyboxShader);
-                ReflectionProbe probe = createProbe(probeObject);
-                probe.size = new Vector3(50, 150, 50);
-                RenderTexture tex = createTexture(envMapSize);
-                editorReflectionData = new EditorReflectionData(new ReflectionProbeData(probeObject, probeMat, probe, tex));
-                MonoBehaviour.print("SSTUReflectionManager created editor reflection data: " + probeObject + " :: " + probe + " :: " + tex + " :: "+editorReflectionData);
+                ReflectionProbeData data = createProbe();
+                data.reflectionSphere.transform.position = new Vector3(0, 10, 0);
+                editorReflectionData = new EditorReflectionData(data);
+                MonoBehaviour.print("SSTUReflectionManager created editor reflection data: " + data + " :: " +editorReflectionData);
             }
             else if (HighLogic.LoadedSceneIsFlight)
             {
@@ -297,13 +271,11 @@ namespace SSTUTools
 
         public void vesselCreated(Vessel vessel)
         {
-            GameObject probeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            probeObject.name = "SSTUReflectionProbe";
-            probeObject.transform.parent = vessel.transform;
-            probeObject.transform.localPosition = Vector3.zero;
-            probeObject.layer = 26;//wheel collider ignore
-            Material probeMat = new Material(skyboxShader);
-            VesselReflectionData d = new VesselReflectionData(vessel, new ReflectionProbeData(probeObject, probeMat, createProbe(probeObject), createTexture(envMapSize)));
+            ReflectionProbeData data = createProbe();
+            data.reflectionSphere.transform.parent = vessel.transform;        
+            data.reflectionSphere.transform.localPosition = Vector3.zero;
+            //data.reflectionSphere.transform.rotation = Quaternion.identity;
+            VesselReflectionData d = new VesselReflectionData(vessel, data);
             vesselReflectionProbeDict.Add(vessel, d);
             MonoBehaviour.print("SSTUReflectionManager vesselCreated() : " + vessel+" :: "+d);
         }
@@ -314,16 +286,23 @@ namespace SSTUTools
             vesselReflectionProbeDict.Remove(v);
         }
 
-        public void renderCubes()
+        public void updateReflections(bool force = false)
         {
             reflectionCamera.enabled = true;
             reflectionCamera.clearFlags = CameraClearFlags.Depth;
             if (editorReflectionData != null)
             {
-                if (!renderedEditor)
+                if (!renderedEditor || force)
                 {
+                    //TODO editor update needs to be delayed a few frames.. at least one?
+                    MonoBehaviour.print("updating editor reflection");
                     renderedEditor = true;
-                    renderCube(editorReflectionData.probeData, new Vector3(0, 10, 0));
+                    renderFullCube(editorReflectionData.probeData.renderedCube, new Vector3(0, 10, 0));
+                    updateProbe(editorReflectionData.probeData);
+                    if (force)
+                    {
+                        exportCubemap(editorReflectionData.probeData.renderedCube, "editorReflect");
+                    }
                 }
             }
             else
@@ -332,7 +311,26 @@ namespace SSTUTools
                 {
                     if (d.vessel.loaded)
                     {
-                        renderCube(d.probeData, d.vessel.transform.position);
+                        if (force)
+                        {
+                            renderFullCube(d.probeData.renderedCube, d.vessel.transform.position);
+                            updateProbe(d.probeData);
+                            exportCubemap(d.probeData.renderedCube, "vesselReflect-" + d.vessel.name);
+                            continue;
+                        }
+                        d.probeData.updateTime++;
+                        if (d.probeData.updateTime >= mapUpdateSpacing)
+                        {
+                            //MonoBehaviour.print("Updating reflection for vessel: "+d.vessel+ " : face: "+d.probeData.updateFace);
+                            renderFace(d.probeData.renderedCube, d.probeData.updateFace, d.vessel.transform.position);
+                            d.probeData.updateFace++;
+                            if (d.probeData.updateFace >= 6)
+                            {
+                                updateProbe(d.probeData);
+                                d.probeData.updateTime = 0;
+                                d.probeData.updateFace = 0;
+                            }
+                        }
                     }
                 }
             }
@@ -343,46 +341,49 @@ namespace SSTUTools
 
         #region UPDATE UTILITY METHODS
 
-        private void renderCube(ReflectionProbeData data, Vector3 pos)
+        private void updateProbe(ReflectionProbeData data)
         {
-            int faces = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5);//all faces
-            renderPartialCube(data.renderedCube, faces, pos);
-            data.skyboxMateral.SetTexture("_Tex", data.renderedCube);            
-            data.probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
-            data.probe.cullingMask = 1<<26;//wheelColliderIgnore layer
+            data.skyboxMateral.SetTexture("_Tex", data.renderedCube);
+            data.reflectionSphere.transform.rotation = Quaternion.identity;//align to world space
+            data.render.material = data.skyboxMateral;
             data.probe.RenderProbe();
         }
 
-        private void renderPartialCube(RenderTexture envMap, int faceMask, Vector3 partPos)
+        private void renderFullCube(RenderTexture envMap, Vector3 partPos)
+        {
+            for (int face = 0; face < 6; face++)
+            {
+                renderFace(envMap, face, partPos);
+            }
+        }
+
+        private void renderFace(RenderTexture envMap, int face, Vector3 partPos)
         {
             float nearClip = 0.3f;
             float farClip = 3.0e7f;
-            for (int i = 0; i < 6; i++)
+            int faceMask = 1 << face;
+            if (renderGalaxy)
             {
-                int face = 1 << i;
-                if (renderGalaxy)
-                {
-                    //galaxy
-                    renderCubeFace(envMap, face, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
-                }
-                //TODO -- scaled and atmo need to be rendered in oposite order while in orbit
-                if (renderScaled)
-                {
-                    //scaled space
-                    renderCubeFace(envMap, face, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
-                }
-                if (renderAtmo)
-                {
-                    //atmo
-                    renderCubeFace(envMap, face, partPos, atmosphereMask, nearClip, farClip);
-                }
-                if (renderScenery)
-                {
-                    //scene
-                    eveCameraFix.overwriteAlpha = eveInstalled;
-                    renderCubeFace(envMap, face, partPos, sceneryMask, nearClip, farClip);
-                    eveCameraFix.overwriteAlpha = false;
-                }
+                //galaxy
+                renderCubeFace(envMap, faceMask, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
+            }
+            //TODO -- scaled and atmo need to be rendered in oposite order while in orbit
+            if (renderScaled)
+            {
+                //scaled space
+                renderCubeFace(envMap, faceMask, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
+            }
+            if (renderAtmo)
+            {
+                //atmo
+                renderCubeFace(envMap, faceMask, partPos, atmosphereMask, nearClip, farClip);
+            }
+            if (renderScenery)
+            {
+                //scene
+                eveCameraFix.overwriteAlpha = eveInstalled;
+                renderCubeFace(envMap, faceMask, partPos, sceneryMask, nearClip, farClip);
+                eveCameraFix.overwriteAlpha = false;
             }
         }
 
@@ -400,17 +401,37 @@ namespace SSTUTools
             reflectionCamera.farClipPlane = far;
         }
 
+        private ReflectionProbeData createProbe()
+        {
+            GameObject refSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject.Destroy(refSphere.GetComponent<Collider>());
+            refSphere.transform.localScale = new Vector3(10, 10, 10);
+            refSphere.layer = skyboxLayer;
+            refSphere.name = "SSTUReflectionProbe";
+
+            MeshRenderer rend = refSphere.GetComponent<MeshRenderer>();
+            Material mat = new Material(skyboxShader);
+            rend.material = mat;//still has to be updated later
+            ReflectionProbe probe = createProbe(refSphere);
+            RenderTexture tex = createTexture(envMapSize);
+            ReflectionProbeData data = new ReflectionProbeData(refSphere, rend, mat, probe, tex);
+            data.updateTime = mapUpdateSpacing;//force update on the first frame it is 'loaded'
+            return data;
+        }
+
         private ReflectionProbe createProbe(GameObject host)
         {
             ReflectionProbe pr = host.AddComponent<ReflectionProbe>();
             pr.type = UnityEngine.Rendering.ReflectionProbeType.Cube;
-            pr.mode = UnityEngine.Rendering.ReflectionProbeMode.Custom;
+            pr.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
             pr.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
-            pr.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+            pr.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.SolidColor;
+            pr.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.IndividualFaces;
             pr.hdr = false;
-            pr.size = Vector3.one * 30;
+            pr.size = new Vector3(50, 150, 50);
             pr.resolution = envMapSize;
             pr.enabled = true;
+            pr.cullingMask = 1 << skyboxLayer;
             return pr;
         }
 
@@ -418,7 +439,10 @@ namespace SSTUTools
         {
             RenderTexture tex = new RenderTexture(size, size, 24);
             tex.dimension = UnityEngine.Rendering.TextureDimension.Cube;
-            tex.generateMips = true;
+            tex.format = RenderTextureFormat.ARGB32;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Trilinear;
+            tex.generateMips = false;
             return tex;
         }
 
@@ -486,7 +510,7 @@ namespace SSTUTools
                     eveCameraFix.overwriteAlpha = false;
                 }
             }
-            exportCubemap(debugCube, "reflect");
+            //exportCubemap(debugCube, "reflect");
             reflectionCamera.enabled = false;
         }
 
@@ -509,6 +533,20 @@ namespace SSTUTools
             for (int i = 0; i < 6; i++)
             {
                 tex.SetPixels(envMap.GetPixels((CubemapFace)i));
+                byte[] bytes = tex.EncodeToPNG();
+                File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
+            }
+            GameObject.Destroy(tex);
+        }
+
+        private void exportCubemap(RenderTexture envMap, string name)
+        {
+            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
+            for (int i = 0; i < 6; i++)
+            {
+                Graphics.SetRenderTarget(envMap, 0, (CubemapFace)i);
+                tex.ReadPixels(new Rect(0, 0, envMap.width, envMap.height), 0, 0);
+                tex.Apply();
                 byte[] bytes = tex.EncodeToPNG();
                 File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
             }
@@ -545,9 +583,13 @@ namespace SSTUTools
             public readonly ReflectionProbe probe;
             public readonly RenderTexture renderedCube;
             public readonly Material skyboxMateral;
-            public ReflectionProbeData(GameObject sphere, Material mat, ReflectionProbe probe, RenderTexture envMap)
+            public readonly MeshRenderer render;
+            public int updateFace = 0;
+            public int updateTime = 0;
+            public ReflectionProbeData(GameObject sphere, MeshRenderer rend, Material mat, ReflectionProbe probe, RenderTexture envMap)
             {
                 this.reflectionSphere = sphere;
+                this.render = rend;
                 this.skyboxMateral = mat;
                 this.probe = probe;
                 this.renderedCube = envMap;
