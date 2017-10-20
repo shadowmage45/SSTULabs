@@ -975,8 +975,19 @@ namespace SSTUTools
         {
             if (model != null)
             {
-                model.transform.localScale = new Vector3(currentDiameterScale * baseScale * scale.x, currentHeightScale * baseScale * scale.y, currentDiameterScale * baseScale * scale.z);
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0) + position;
+            }
+            if (model != null)
+            {
+                if (modelDefinition.compoundModelData != null)
+                {
+                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale * scale.x, currentHeightScale * baseScale * scale.y, modelDefinition.orientation);
+                }
+                else
+                {
+                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
+                }
+                model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
                 model.transform.localRotation = Quaternion.Euler(rotation);
             }
         }

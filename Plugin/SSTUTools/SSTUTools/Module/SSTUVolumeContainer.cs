@@ -218,6 +218,41 @@ namespace SSTUTools
             updateGUIControls();
         }
 
+        /// <summary>
+        /// Recalculates volume for all containers by finding all IContainerVolumeContributor implementors, and summing the volume for each container from the returned values.
+        /// Removes the need to manually calculate new % values for each container.
+        /// TODO -- this needs to be called from somewhere.
+        /// </summary>
+        public void recalcVolume()
+        {
+            float[] volumes = new float[numberOfContainers];
+            float[] percents = new float[numberOfContainers];
+            float totalVolume = 0;
+
+            IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
+            int len = contributors.Length;
+            float[] contVols;
+            int[] contIndices;
+            for (int i = 0; i < len; i++)
+            {
+                contIndices = contributors[i].getContainerIndices();
+                contVols = contributors[i].getContainerVolumes();
+                int len2 = contIndices.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    volumes[contIndices[k]] += contVols[k];
+                    totalVolume += contVols[k];
+                }
+            }
+            len = volumes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                percents[i] = volumes[i] / totalVolume;
+            }
+            //TODO -- is this proper?  forget which method should be used.... (sign of class being too complex)
+            setContainerPercents(percents, totalVolume);
+        }
+
         public int numberOfContainers { get { return containers.Length; } }
 
         public void setContainerPercents(float[] percents, float totalVolume)

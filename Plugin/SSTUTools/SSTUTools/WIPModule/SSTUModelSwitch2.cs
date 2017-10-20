@@ -3,11 +3,11 @@ using System;
 
 namespace SSTUTools
 {
-    public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor
     {
 
         /// <summary>
-        /// Index of the container in VolumeContainer that this model will influence the volume of
+        /// Index of the container in VolumeContainer that this model will control the volume of
         /// </summary>
         [KSPField]
         public int containerIndex = 0;
@@ -37,23 +37,21 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentModel = string.Empty;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant Texture"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentTexture = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string modelPersistentData;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
         private float modifiedVolume;
         private float modifiedCost;
         private float modifiedMass;
-        private PositionedModelData[] modelData;
-        private PositionedModelData activeModel;
+        private ModelModule<PositionedModelData, SSTUModelSwitch2> models;
         private bool initialized = false;
-
-        private void modelSelected(BaseField field, object obj)
-        {
-            this.actionWithSymmetry(delegate (SSTUModelSwitch2 module)
-            {
-                module.setActiveModel(this.currentModel);
-            });
-        }
 
         public override void OnLoad(ConfigNode node)
         {
@@ -65,10 +63,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            initialize();
-            string[] names = SingleModelData.getModelNames(modelData);
-            this.updateUIChooseOptionControl("currentModel", names, names, true, currentModel);
-            Fields["currentModel"].uiControlEditor.onFieldChanged = modelSelected;
+            initialize();            
         }
 
         public override string GetInfo()
@@ -82,10 +77,7 @@ namespace SSTUTools
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
             if (vc != null)
             {
-                //TODO
-                //really, the VC needs to poll other modules for a given interface, or method, or ??
-                // and use the volume returned by that for each container index to determine
-                // actual volume for each container
+
             }
         }
 
@@ -108,35 +100,34 @@ namespace SSTUTools
         {
             return ModifierChangeWhen.CONSTANTLY;
         }
+        
+        public int[] getContainerIndices()
+        {
+            return new int[] { containerIndex };
+        }
+
+        public float[] getContainerVolumes()
+        {
+            return new float[] { models.moduleVolume };
+        }
 
         private void initialize()
         {
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] nodes = node.GetNodes("MODEL");
-            modelData = ModelData.parseModels<PositionedModelData>(nodes, m => new PositionedModelData(m));
-            setActiveModel(currentModel);
+            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, part.transform.FindRecursive("model"), ModelOrientation.TOP, nameof(modelPersistentData), nameof(currentModel), nameof(currentTexture));
+            models.getSymmetryModule = m => m.models;
+            models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
+            models.setupModel();
             updateMassAndCost();
         }
 
         private void updateMassAndCost()
         {
-            if (activeModel == null) { return; }
-            modifiedMass = activeModel.getModuleMass();
-            modifiedCost = activeModel.getModuleCost();
-        }
-
-        private void setActiveModel(string newModelName)
-        {
-            if (activeModel != null) { activeModel.destroyCurrentModel(); }
-            activeModel = Array.Find(modelData, m => m.name == newModelName);
-            currentModel = activeModel.name;
-            Transform root = part.transform.FindRecursive("model").FindOrCreate("SSTUModelSwitchRoot-" + moduleID);
-            activeModel.setupModel(root, ModelOrientation.TOP);
-            activeModel.updateScale(1.0f);
-            activeModel.setPosition(0f, ModelOrientation.TOP);
-            activeModel.updateModel();
+            if (models == null) { return; }
+            modifiedMass = models.model.getModuleMass();
+            modifiedCost = models.model.getModuleCost();
         }
     }
 }

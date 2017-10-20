@@ -23,6 +23,12 @@ namespace SSTUTools
         void geometryUpdated(Part part);
     }
 
+    public interface IContainerVolumeContributor
+    {
+        int[] getContainerIndices();
+        float[] getContainerVolumes();
+    }
+
     public class PresetColor
     {
         private static List<PresetColor> colorList = new List<PresetColor>();
