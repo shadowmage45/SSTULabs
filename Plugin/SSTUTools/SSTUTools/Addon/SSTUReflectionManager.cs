@@ -38,7 +38,7 @@ namespace SSTUTools
         /// <summary>
         /// Number of frames inbetween reflection map updates.
         /// </summary>
-        public int mapUpdateSpacing = 1;
+        public int mapUpdateSpacing = 60;
 
         /// <summary>
         /// Number of faces to happen on any given update.
@@ -49,7 +49,7 @@ namespace SSTUTools
         /// Size of the rendered reflection map.  Higher resolutions result in higher fidelity reflections, but at a much higher run-time cost.
         /// Must be a power-of-two size; e.g. 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048.
         /// </summary>
-        public int envMapSize = 128;
+        public int envMapSize = 512;
 
         /// <summary>
         /// Layer to use for skybox hack
@@ -310,7 +310,7 @@ namespace SSTUTools
                 foreach (VesselReflectionData d in vesselReflectionProbeDict.Values)
                 {
                     if (d.vessel.loaded)
-                    {
+                    {                        
                         if (force)
                         {
                             renderFullCube(d.probeData.renderedCube, d.vessel.transform.position);
@@ -348,6 +348,8 @@ namespace SSTUTools
             data.render.material = data.skyboxMateral;
             data.probe.RenderProbe();
         }
+
+        private void continueProbeUpdate() { }
 
         private void renderFullCube(RenderTexture envMap, Vector3 partPos)
         {
