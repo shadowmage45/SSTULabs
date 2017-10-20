@@ -11,6 +11,7 @@ namespace SSTUTools
 
         private static List<Part> dragCubeUpdateParts = new List<Part>();
         private static List<Part> delayedUpdateDragCubeParts = new List<Part>();
+        private static List<Part> FARUpdateParts = new List<Part>();
 
         private static bool fireEditorEvent = false;
 
@@ -41,6 +42,14 @@ namespace SSTUTools
             SSTUAssetBundleShaderLoader.PartListLoaded();
         }
 
+        public static void addFarUpdatePart(Part part)
+        {
+            if (part != null && !FARUpdateParts.Contains(part))
+            {
+                FARUpdateParts.Add(part);
+            }
+        }
+
         public static void addDragUpdatePart(Part part)
         {
             if(part != null && HighLogic.LoadedSceneIsFlight && !dragCubeUpdateParts.Contains(part))
@@ -56,18 +65,29 @@ namespace SSTUTools
 
         public void FixedUpdate()
         {
-            int len = dragCubeUpdateParts.Count;
-            if (len>0 && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
+            if (!(HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
-                Part p;
-                for (int i = 0; i < len; i++)
-                {
-                    p = dragCubeUpdateParts[i];
-                    if (p == null) { continue; }
-                    updatePartDragCube(p);
-                    if( p.collider == null) { seatFirstCollider(p); }
-                }
-                dragCubeUpdateParts.Clear();
+                return;
+            }
+
+            int len = dragCubeUpdateParts.Count;
+            Part p;
+            for (int i = 0; i < len; i++)
+            {
+                p = dragCubeUpdateParts[i];
+                if (p == null) { continue; }
+                updatePartDragCube(p);
+                if (p.collider == null) { seatFirstCollider(p); }
+            }
+            dragCubeUpdateParts.Clear();
+
+            len = FARUpdateParts.Count;
+            for (int i = 0; i < len; i++)
+            {
+                p = FARUpdateParts[i];
+                if (p == null) { continue; }
+                p.SendMessage("GeometryPartModuleRebuildMeshData");
+                FARUpdateParts.Clear();
             }
         }
 

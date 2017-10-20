@@ -69,8 +69,9 @@ namespace SSTUTools
             partGeometryUpdate(part);
             if (isFARInstalled())
             {
+                SSTUStockInterop.addFarUpdatePart(part);
                 //FARdebug(part);
-                part.SendMessage("GeometryPartModuleRebuildMeshData");
+                //part.SendMessage("GeometryPartModuleRebuildMeshData");
             }
             else if (createDefaultCube && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
