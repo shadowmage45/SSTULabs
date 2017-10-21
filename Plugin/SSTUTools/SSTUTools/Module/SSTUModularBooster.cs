@@ -334,13 +334,10 @@ namespace SSTUTools
                 currentMainName = newModel;
                 this.actionWithSymmetry(m =>
                 {
-                    m.currentMainName = currentMainName;
+                    m.currentMainName = this.currentMainName;
                     m.currentVariantName = currentVariantName;
                     m.bodyModule.updateSelections();
-                });
-                bodyModule.modelSelected(newModel);
-                this.actionWithSymmetry(m =>
-                {
+                    m.bodyModule.modelSelected(m.currentMainName);
                     m.updateEditorStats(true);
                     m.updateThrustOutput();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
