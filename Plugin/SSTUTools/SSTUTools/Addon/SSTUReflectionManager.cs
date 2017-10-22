@@ -60,26 +60,6 @@ namespace SSTUTools
         // It can use different udpate frequency as well as resolution.
         // Rendered skybox includes only the galaxy and atmosphere color (and clouds when EVE is in use?).
 
-        /// <summary>
-        /// Should a static skybox image be used, or should it be updated at runtime?
-        /// </summary>
-        public bool useStaticSkybox = false;
-
-        /// <summary>
-        /// Number of frames inbetween updating of the skybox
-        /// </summary>
-        public int skyboxUpdateSpacing = 180;
-
-        /// <summary>
-        /// The number of faces to update on a single frame for the skybox
-        /// </summary>
-        public int skyboxFaceUpdates = 1;
-
-        /// <summary>
-        /// The resolution of the skybox texture
-        /// </summary>
-        public int skyboxSize = 256;
-
         #endregion
 
         #region DEBUG FIELDS
@@ -145,6 +125,19 @@ namespace SSTUTools
         {
             MonoBehaviour.print("SSTUReflectionManager Awake()");
             instance = this;
+
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_REFLECTIONS");
+            if (nodes == null || nodes.Length < 1)
+            {
+                reflectionsEnabled = false;
+                return;
+            }
+            ConfigNode node = nodes[0];
+            reflectionsEnabled = node.GetBoolValue("enabled", false);
+            envMapSize = node.GetIntValue("resolution", envMapSize);
+            mapUpdateSpacing = node.GetIntValue("interval", mapUpdateSpacing);
+            numberOfFaces = node.GetIntValue("faces", numberOfFaces);
+
             init();
             vesselCreateEvent = new EventData<Vessel>.OnEvent(vesselCreated);
             vesselDestroyedEvent = new EventData<Vessel>.OnEvent(vesselDestroyed);
