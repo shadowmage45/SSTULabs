@@ -294,7 +294,7 @@ namespace SSTUTools
                     updateProbe(editorReflectionData.probeData);
                     if (force)
                     {
-                        exportCubemap(editorReflectionData.probeData.renderedCube, "editorReflect");
+                        //exportCubemap(editorReflectionData.probeData.renderedCube, "editorReflect");
                     }
                 }
             }
@@ -308,7 +308,7 @@ namespace SSTUTools
                         {
                             renderFullCube(d.probeData.renderedCube, d.vessel.transform.position);
                             updateProbe(d.probeData);
-                            exportCubemap(d.probeData.renderedCube, "vesselReflect-" + d.vessel.name);
+                            //exportCubemap(d.probeData.renderedCube, "vesselReflect-" + d.vessel.name);
                             continue;
                         }
                         d.probeData.updateTime++;
@@ -524,28 +524,28 @@ namespace SSTUTools
 
         private void exportCubemap(Cubemap envMap, string name)
         {
-            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
-            for (int i = 0; i < 6; i++)
-            {
-                tex.SetPixels(envMap.GetPixels((CubemapFace)i));
-                byte[] bytes = tex.EncodeToPNG();
-                File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
-            }
-            GameObject.Destroy(tex);
+            //Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
+            //for (int i = 0; i < 6; i++)
+            //{
+            //    tex.SetPixels(envMap.GetPixels((CubemapFace)i));
+            //    byte[] bytes = tex.EncodeToPNG();
+            //    File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
+            //}
+            //GameObject.Destroy(tex);
         }
 
         private void exportCubemap(RenderTexture envMap, string name)
         {
-            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
-            for (int i = 0; i < 6; i++)
-            {
-                Graphics.SetRenderTarget(envMap, 0, (CubemapFace)i);
-                tex.ReadPixels(new Rect(0, 0, envMap.width, envMap.height), 0, 0);
-                tex.Apply();
-                byte[] bytes = tex.EncodeToPNG();
-                File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
-            }
-            GameObject.Destroy(tex);
+            //Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
+            //for (int i = 0; i < 6; i++)
+            //{
+            //    Graphics.SetRenderTarget(envMap, 0, (CubemapFace)i);
+            //    tex.ReadPixels(new Rect(0, 0, envMap.width, envMap.height), 0, 0);
+            //    tex.Apply();
+            //    byte[] bytes = tex.EncodeToPNG();
+            //    File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
+            //}
+            //GameObject.Destroy(tex);
         }
 
         #endregion DEBUG RENDERING
