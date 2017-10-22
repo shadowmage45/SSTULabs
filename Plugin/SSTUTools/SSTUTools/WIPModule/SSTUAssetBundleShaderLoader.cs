@@ -10,17 +10,28 @@ namespace SSTUTools
 
         public static void Load(Dictionary<String, Shader> shaderDict)
         {
-            String shadersPath = KSPUtil.ApplicationRootPath + "GameData/SSTU/Shaders";
-            String assetBundleName = "sstushaders";
-            if (Application.platform == RuntimePlatform.WindowsPlayer) { assetBundleName += "-x64"; }
-            else if (Application.platform == RuntimePlatform.LinuxPlayer) { assetBundleName += "-lin"; }
-            else if (Application.platform == RuntimePlatform.OSXPlayer) { assetBundleName += "-osx"; }
-            assetBundleName += ".ssf";
+            ConfigNode[] shaderNodes = GameDatabase.Instance.GetConfigNodes("SSTU_SHADERBUNDLE");
+            int len = shaderNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                loadBundle(shaderNodes[i], shaderDict);
+            }
+            applyToModelDatabase();
+        }
+
+        private static void loadBundle(ConfigNode node, Dictionary<String, Shader> shaderDict)
+        {
+            string assetBundleName = "";
+            if (Application.platform == RuntimePlatform.WindowsPlayer) { assetBundleName = node.GetStringValue("win64"); }
+            else if (Application.platform == RuntimePlatform.LinuxPlayer) { assetBundleName = node.GetStringValue("linux"); }
+            else if (Application.platform == RuntimePlatform.OSXPlayer) { assetBundleName = node.GetStringValue("osx"); }
+            assetBundleName = KSPUtil.ApplicationRootPath + "GameData/" + assetBundleName;
+
             // KSP-PartTools built AssetBunldes are in the Web format, 
-            // and must be loaded using a WWW reference; you cannot use the 
+            // and must be loaded using a WWW reference; you cannot use the
             // AssetBundle.CreateFromFile/LoadFromFile methods unless you 
             // manually compiled your bundles for stand-alone use
-            WWW www = CreateWWW(shadersPath + "/" + assetBundleName);
+            WWW www = CreateWWW(assetBundleName);
 
             if (!string.IsNullOrEmpty(www.error))
             {
@@ -49,7 +60,6 @@ namespace SSTUTools
             }
             //this unloads the compressed assets inside the bundle, but leaves any instantiated models in-place
             bundle.Unload(false);
-            applyToModelDatabase();
         }
 
         /// <summary>
