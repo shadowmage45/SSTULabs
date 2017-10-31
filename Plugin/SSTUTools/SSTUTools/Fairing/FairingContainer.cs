@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
@@ -193,7 +194,7 @@ namespace SSTUTools
 
         public void enableTextureSet(string name, Color[] userColors)
         {
-            TextureSet set = TextureSet.getGlobalTextureSet(name);
+            TextureSet set = KSPShaderLoader.getTextureSet(name);
             if (set != null)
             {
                 set.enable(rootObject, userColors);

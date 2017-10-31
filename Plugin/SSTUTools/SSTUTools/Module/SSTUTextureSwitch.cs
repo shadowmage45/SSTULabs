@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
@@ -83,7 +84,7 @@ namespace SSTUTools
             {
                 currentTextureSet = setNodes[0].GetValue("name");
             }
-            this.updateUIChooseOptionControl(nameof(currentTextureSet), SSTUTextureUtils.getTextureSetNames(setNodes), SSTUTextureUtils.getTextureSetTitles(setNodes), true, currentTextureSet);
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), TextureSet.getTextureSetNames(setNodes), TextureSet.getTextureSetTitles(setNodes), true, currentTextureSet);
             //MonoBehaviour.print("Current texture set: " + currentTextureSet);
             textureSets.enableCurrentSet(getModelTransforms());
             Fields[nameof(currentTextureSet)].guiName = sectionName + " Texture";
@@ -146,7 +147,7 @@ namespace SSTUTools
 
         public void enableCurrentSet(Transform[] roots)
         {
-            TextureSet set = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            TextureSet set = KSPShaderLoader.getTextureSet(currentTextureSet);
             if (customColors == null || customColors.Length == 0)
             {
                 customColors = new Color[3];
@@ -164,7 +165,7 @@ namespace SSTUTools
 
         public void enableCurrentSet(Transform root)
         {
-            TextureSet set = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            TextureSet set = KSPShaderLoader.getTextureSet(currentTextureSet);
             if (customColors == null || customColors.Length == 0)
             {
                 customColors = new Color[3];

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
@@ -650,13 +651,13 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
-            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
-            TextureSet t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            string[] names = TextureSet.getTextureSetNames(textureNodes);
+            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
                 currentTextureSet = names[0];
-                t = SSTUTextureUtils.getTextureSet(currentTextureSet);
+                t = KSPShaderLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -761,7 +762,7 @@ namespace SSTUTools
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
             Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             fairingBase.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

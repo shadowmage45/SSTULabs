@@ -1,5 +1,7 @@
 using UnityEngine;
 using System;
+using KSPShaderTools;
+
 namespace SSTUTools
 {
     public class SSTUProceduralDecoupler : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
@@ -249,15 +251,14 @@ namespace SSTUTools
         private void loadConfigData()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            TextureSet[] textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
-            int len = textureSetData.Length;
-            TextureSet currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
+            string[] textureSetNames = TextureSet.getTextureSetNames(textureNodes);
+            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            TextureSet currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
-                currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.name;
+                currentTextureSet = textureSetNames[0];
+                currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -269,9 +270,7 @@ namespace SSTUTools
                 customColor3 = cs[2];
             }
             fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
-            Fields["currentTextureSet"].guiActiveEditor = textureSetData.Length > 1;
-            string[] textureSetNames = SSTUTextureUtils.getTextureSetNames(textureNodes);
-            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
+            Fields["currentTextureSet"].guiActiveEditor = textureNodes.Length > 1;
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, titles, true, currentTextureSet);
         }
 
@@ -416,7 +415,7 @@ namespace SSTUTools
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
             Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             model.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

@@ -12,7 +12,6 @@ namespace SSTUTools
         {
             loadHeatShieldTypes();
             loadShaders();
-            PresetColor.loadColors();
         }
         
         #region REGION - Modular Heat Shield data

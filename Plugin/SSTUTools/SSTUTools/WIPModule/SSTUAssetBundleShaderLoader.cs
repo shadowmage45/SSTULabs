@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
@@ -116,7 +117,7 @@ namespace SSTUTools
                         MonoBehaviour.print("ERROR: Could not locate model: " + modelNames[k] + ".  Could not update shader or textures for model for shader assignment set: "+name);
                         continue;
                     }
-                    SSTUTextureUtils.updateModelMaterial(model.transform, excludeMeshes, meshes, shader, props);
+                    TextureSet.updateModelMaterial(model.transform, excludeMeshes, meshes, shader, props);
                 }
             }
         }

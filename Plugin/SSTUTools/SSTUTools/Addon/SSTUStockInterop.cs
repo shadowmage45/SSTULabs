@@ -131,7 +131,6 @@ namespace SSTUTools
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
             SSTUDatabase.loadConfigData();//needs to load prior to model-data, as model-data uses colors from DB
-            SSTUTextureUtils.loadTextureSets();
             SSTUModelData.loadConfigData();
         }
 
