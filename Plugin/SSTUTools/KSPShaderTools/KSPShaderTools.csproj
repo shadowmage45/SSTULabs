@@ -63,11 +63,13 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CraftRecolorGUI.cs" />
     <Compile Include="IRecolorable.cs" />
     <Compile Include="KSPShaderLoader.cs" />
     <Compile Include="KSPTextureSwitch.cs" />
     <Compile Include="ReflectionDebugGUI.cs" />
-    <Compile Include="SSTUReflectionManager.cs" />
+    <Compile Include="ReflectionManager.cs" />
+    <Compile Include="SSTURecolorGUI.cs" />
     <Compile Include="TextureSet.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
@@ -75,6 +77,11 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(TargetPath)" "$(SolutionDir)\..\..\GameData\KSPShaderTools\Plugins\$(TargetFileName)"
+
+</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

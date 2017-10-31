@@ -83,7 +83,6 @@
     <Compile Include="Addon\SSTUStockInterop.cs" />
     <Compile Include="Fairing\FairingContainer.cs" />
     <Compile Include="Fairing\FairingData.cs" />
-    <Compile Include="GUI\CraftRecolorGUI.cs" />
     <Compile Include="GUI\ThrustCurveEditorGUI.cs" />
     <Compile Include="GUI\VolumeContainerGUI.cs" />
     <Compile Include="MeshGenerator\MeshGenerators.cs" />
@@ -93,7 +92,6 @@
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
     <Compile Include="Module\SSTUModularUpperStage.cs" />
-    <Compile Include="Module\SSTURecolorGUI.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />
     <Compile Include="Module\SSTUControlTransform.cs" />
