@@ -1,6 +1,7 @@
-
 using System;
 using UnityEngine;
+using KSPShaderTools;
+
 namespace SSTUTools
 {
     public class ProceduralModel
@@ -49,7 +50,7 @@ namespace SSTUTools
 
         public void enableTextureSet(string name, Color[] userColors)
         {
-            TextureSet s = TextureSet.getGlobalTextureSet(name);
+            TextureSet s = KSPShaderLoader.getTextureSet(name);
             if (s != null)
             {
                 s.enable(root, userColors);

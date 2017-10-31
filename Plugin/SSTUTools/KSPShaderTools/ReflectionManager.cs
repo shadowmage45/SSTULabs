@@ -3,10 +3,10 @@ using UnityEngine;
 using KSP.UI.Screens;
 using System.IO;
 
-namespace SSTUTools
+namespace KSPShaderTools
 {
     [KSPAddon(KSPAddon.Startup.FlightAndEditor, false)]
-    public class SSTUReflectionManager : MonoBehaviour
+    public class ReflectionManager : MonoBehaviour
     {
 
         #region CONSTANTS
@@ -107,9 +107,9 @@ namespace SSTUTools
 
         private static Shader skyboxShader;
 
-        private static SSTUReflectionManager instance;
+        private static ReflectionManager instance;
 
-        public static SSTUReflectionManager Instance
+        public static ReflectionManager Instance
         {
             get
             {
@@ -123,10 +123,10 @@ namespace SSTUTools
 
         public void Awake()
         {
-            MonoBehaviour.print("SSTUReflectionManager Awake()");
+            MonoBehaviour.print("ReflectionManager Awake()");
             instance = this;
 
-            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("SSTU_REFLECTIONS");
+            ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("REFLECTION_CONFIG");
             if (nodes == null || nodes.Length < 1)
             {
                 reflectionsEnabled = false;
@@ -241,7 +241,7 @@ namespace SSTUTools
             }
             if (skyboxShader == null)
             {
-                skyboxShader = SSTUDatabase.getShader("SSTU/Skybox/Cubemap");
+                skyboxShader = KSPShaderTools.KSPShaderLoader.getShader("SSTU/Skybox/Cubemap");
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -603,7 +603,7 @@ namespace SSTUTools
      
             public void Start()
             {
-                Shader setAlpha = SSTUDatabase.getShader("SSTU/SetAlpha");
+                Shader setAlpha = KSPShaderTools.KSPShaderLoader.getShader("SSTU/SetAlpha");
                 mat = new Material(setAlpha);
             }
 

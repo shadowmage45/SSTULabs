@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using KSPShaderTools;
 
-namespace SSTUTools
+namespace KSPShaderTools
 {
     // Resonsible for tracking list of texture switch options, 
     // managing of actual switching of textures,
     // and restoring persistent option on reload.
     // may be controlled through external module (e.g resource or mesh-switch) through the two methods restoreDefaultTexture() and enableTextureSet(String setName)
-    public class SSTUTextureSwitch : PartModule, IRecolorable
+    public class KSPTextureSwitch : PartModule, IRecolorable
     {
+
         [KSPField]
         public bool allowInFlightChange = false;
 
@@ -52,7 +52,6 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-
             Callback<BaseField, System.Object> onChangeAction = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m =>
@@ -65,6 +64,10 @@ namespace SSTUTools
             field.uiControlEditor.onFieldChanged = onChangeAction;
             field.uiControlFlight.onFieldChanged = onChangeAction;
             field.guiActive = canChangeInFlight;
+            if (textureSets.textureSets.Length <= 1)
+            {
+                field.guiActive = field.guiActiveEditor = false;
+            }
         }
 
         //restores texture set data and either loads default texture set or saved texture set (if any)
@@ -75,20 +78,21 @@ namespace SSTUTools
 
         private void loadConfigData()
         {
-            if (textureSets != null) { return; }//already initialized from OnLoad (prefab, some in-editor parts)
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            if (textureSets != null)
+            {
+                //already initialized from OnLoad (prefab, some in-editor parts)
+                return;
+            }
+            ConfigNode node = Utils.parseConfigNode(configNodeData);
             ConfigNode[] setNodes = node.GetNodes("TEXTURESET");
-            //MonoBehaviour.print("Set nodes length: " + setNodes.Length + " from node: \n" + node.ToString());
             textureSets = new TextureSetContainer(this, Fields[nameof(currentTextureSet)], Fields[nameof(persistentData)], setNodes);
             if (string.IsNullOrEmpty(currentTextureSet))
             {
                 currentTextureSet = setNodes[0].GetValue("name");
             }
-            this.updateUIChooseOptionControl(nameof(currentTextureSet), TextureSet.getTextureSetNames(setNodes), TextureSet.getTextureSetTitles(setNodes), true, currentTextureSet);
-            //MonoBehaviour.print("Current texture set: " + currentTextureSet);
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), textureSets.getTextureSetNames(), textureSets.getTextureSetTitles(), true, currentTextureSet);
             textureSets.enableCurrentSet(getModelTransforms());
             Fields[nameof(currentTextureSet)].guiName = sectionName + " Texture";
-            //SSTUUtils.recursePrintComponents(part.gameObject, "");
         }
 
         private Transform[] getModelTransforms()
@@ -124,6 +128,8 @@ namespace SSTUTools
         private BaseField textureSetField;
         private BaseField persistentDataField;
 
+        internal TextureSet[] textureSets;
+
         internal Color[] customColors;
 
         private string currentTextureSet
@@ -143,11 +149,16 @@ namespace SSTUTools
             this.textureSetField = textureSetField;
             this.persistentDataField = persistentDataField;
             loadPersistentData(persistentData);
+            this.textureSets = KSPShaderLoader.getTextureSets(textureSetNodes);
         }
 
         public void enableCurrentSet(Transform[] roots)
         {
-            TextureSet set = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet set = Array.Find(textureSets, m => m.name == currentTextureSet);
+            if (set == null)
+            {
+                MonoBehaviour.print("ERROR: KSPTextureSwitch could not locate texture set for name: " + currentTextureSet);
+            }
             if (customColors == null || customColors.Length == 0)
             {
                 customColors = new Color[3];
@@ -165,7 +176,11 @@ namespace SSTUTools
 
         public void enableCurrentSet(Transform root)
         {
-            TextureSet set = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet set = Array.Find(textureSets, m => m.name == currentTextureSet);
+            if (set == null)
+            {
+                MonoBehaviour.print("ERROR: KSPTextureSwitch could not locate texture set for name: " + currentTextureSet);
+            }
             if (customColors == null || customColors.Length == 0)
             {
                 customColors = new Color[3];
@@ -183,6 +198,28 @@ namespace SSTUTools
             saveColors(customColors);
         }
 
+        public string[] getTextureSetNames()
+        {
+            int len = textureSets.Length;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = textureSets[i].name;
+            }
+            return names;
+        }
+
+        public string[] getTextureSetTitles()
+        {
+            int len = textureSets.Length;
+            string[] names = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                names[i] = textureSets[i].title;
+            }
+            return names;
+        }
+
         private void loadPersistentData(string data)
         {
             if (!string.IsNullOrEmpty(data))
@@ -195,10 +232,10 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     dataSplits = colorSplits[i].Split(',');
-                    r = SSTUUtils.safeParseFloat(dataSplits[0]);
-                    g = SSTUUtils.safeParseFloat(dataSplits[1]);
-                    b = SSTUUtils.safeParseFloat(dataSplits[2]);
-                    a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]) : 1f;
+                    r = Utils.safeParseFloat(dataSplits[0]);
+                    g = Utils.safeParseFloat(dataSplits[1]);
+                    b = Utils.safeParseFloat(dataSplits[2]);
+                    a = dataSplits.Length >= 4 ? Utils.safeParseFloat(dataSplits[3]) : 1f;
                     customColors[i] = new Color(r, g, b, a);
                 }
             }

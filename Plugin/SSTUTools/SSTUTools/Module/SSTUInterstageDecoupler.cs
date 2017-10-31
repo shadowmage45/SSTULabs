@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools.Module
 {
@@ -420,12 +421,13 @@ namespace SSTUTools.Module
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            TextureSet[] textureSetData = TextureSet.loadGlobalTextureSets(textureNodes);
-            TextureSet currentTextureSetData = Array.Find(textureSetData, m => m.name == currentTextureSet);
+            string[] names = TextureSet.getTextureSetNames(textureNodes);
+            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            TextureSet currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
-                currentTextureSetData = textureSetData[0];
-                currentTextureSet = currentTextureSetData.name;
+                currentTextureSet = names[0];
+                currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -436,10 +438,8 @@ namespace SSTUTools.Module
                 customColor2 = cs[1];
                 customColor3 = cs[2];
             }
-            string[] names = SSTUTextureUtils.getTextureSetNames(textureNodes);
-            string[] titles = SSTUTextureUtils.getTextureSetTitles(textureNodes);
             this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
-            Fields[nameof(currentTextureSet)].guiActiveEditor = textureSetData.Length > 1;
+            Fields[nameof(currentTextureSet)].guiActiveEditor = textureNodes.Length > 1;
             
             fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
 
@@ -630,7 +630,7 @@ namespace SSTUTools.Module
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = SSTUTextureUtils.getTextureSet(currentTextureSet);
+            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
             Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             fairingBase.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

@@ -79,13 +79,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Addon\SSTUReflectionManager.cs" />
     <Compile Include="Addon\SSTUDatabase.cs" />
     <Compile Include="Addon\SSTUStockInterop.cs" />
     <Compile Include="Fairing\FairingContainer.cs" />
     <Compile Include="Fairing\FairingData.cs" />
-    <Compile Include="GUI\CraftRecolorGUI.cs" />
-    <Compile Include="GUI\ReflectionDebugGUI.cs" />
     <Compile Include="GUI\ThrustCurveEditorGUI.cs" />
     <Compile Include="GUI\VolumeContainerGUI.cs" />
     <Compile Include="MeshGenerator\MeshGenerators.cs" />
@@ -95,7 +92,6 @@
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
     <Compile Include="Module\SSTUModularUpperStage.cs" />
-    <Compile Include="Module\SSTURecolorGUI.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />
     <Compile Include="Module\SSTUControlTransform.cs" />
@@ -104,9 +100,8 @@
     <Compile Include="Module\SSTUModelFix.cs" />
     <Compile Include="Module\SSTUModelSwitch.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
-    <Compile Include="Util\IRecolorable.cs" />
+    <Compile Include="Util\Interfaces.cs" />
     <Compile Include="Util\ModelModule.cs" />
-    <Compile Include="Util\SSTUTextureUtils.cs" />
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
     <Compile Include="WIPModule\SSTULinearMultiDock.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
@@ -114,7 +109,6 @@
     <Compile Include="Module\SSTUDecalSwitch.cs" />
     <Compile Include="Module\SSTUFieldManipulator.cs" />
     <Compile Include="WIPModule\SSTUAnimateRotation.cs" />
-    <Compile Include="WIPModule\SSTUAssetBundleShaderLoader.cs" />
     <Compile Include="WIPModule\SSTUInflatable.cs" />
     <Compile Include="Module\SSTUModularStationCore.cs" />
     <Compile Include="Module\SSTUResourceBoiloff.cs" />
@@ -162,6 +156,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\KSPShaderTools\KSPShaderTools.csproj">
+      <Project>{90c22d61-2261-4b94-844c-59536357b09d}</Project>
+      <Name>KSPShaderTools</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

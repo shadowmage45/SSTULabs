@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SSTUTools
+namespace KSPShaderTools
 {
     public class CraftRecolorGUI : MonoBehaviour
     {

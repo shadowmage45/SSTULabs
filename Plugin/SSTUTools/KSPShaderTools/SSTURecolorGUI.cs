@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace SSTUTools
+namespace KSPShaderTools
 {
     public class SSTURecolorGUI : PartModule, IPartGeometryUpdated, IPartTextureUpdated
     {

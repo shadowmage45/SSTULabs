@@ -26,7 +26,6 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));
             GameEvents.onGameStateLoad.Add(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
-            GameEvents.OnPartLoaderLoaded.Add(new EventVoid.OnEvent(PartListLoaded));
         }
 
         public void OnDestroy()
@@ -34,12 +33,6 @@ namespace SSTUTools
             MonoBehaviour.print("SSTUStockInterop Destroy");
             GameEvents.OnGameSettingsApplied.Remove(new EventVoid.OnEvent(gameSettingsApplied));
             GameEvents.onGameStateLoad.Remove(new EventData<ConfigNode>.OnEvent(gameStateLoaded));
-            GameEvents.OnPartLoaderLoaded.Remove(new EventVoid.OnEvent(PartListLoaded));
-        }
-
-        public void PartListLoaded()
-        {
-            SSTUAssetBundleShaderLoader.PartListLoaded();
         }
 
         public static void addFarUpdatePart(Part part)
@@ -131,7 +124,6 @@ namespace SSTUTools
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
             SSTUDatabase.loadConfigData();//needs to load prior to model-data, as model-data uses colors from DB
-            SSTUTextureUtils.loadTextureSets();
             SSTUModelData.loadConfigData();
         }
 
