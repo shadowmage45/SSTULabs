@@ -66,6 +66,8 @@
     <Compile Include="IRecolorable.cs" />
     <Compile Include="KSPShaderLoader.cs" />
     <Compile Include="KSPTextureSwitch.cs" />
+    <Compile Include="ReflectionDebugGUI.cs" />
+    <Compile Include="SSTUReflectionManager.cs" />
     <Compile Include="TextureSet.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
