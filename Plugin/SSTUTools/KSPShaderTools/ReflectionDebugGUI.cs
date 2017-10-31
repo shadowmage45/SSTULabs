@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SSTUTools
+namespace KSPShaderTools
 {
     public class ReflectionDebugGUI : MonoBehaviour
     {
@@ -29,7 +29,7 @@ namespace SSTUTools
 
         private void updateWindow(int id)
         {
-            SSTUReflectionManager manager = SSTUReflectionManager.Instance;
+            ReflectionManager manager = ReflectionManager.Instance;
             bool galaxy = manager.renderGalaxy;
             bool atmo = manager.renderAtmo;
             bool scaled = manager.renderScaled;
