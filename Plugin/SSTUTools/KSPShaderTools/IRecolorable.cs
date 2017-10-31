@@ -15,4 +15,8 @@ namespace KSPShaderTools
         void textureUpdated(Part part);
     }
 
+    public interface IPartGeometryUpdated
+    {
+        void geometryUpdated(Part part);
+    }
 }
