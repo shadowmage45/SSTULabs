@@ -241,7 +241,7 @@ namespace SSTUTools
             }
             if (skyboxShader == null)
             {
-                skyboxShader = SSTUDatabase.getShader("SSTU/Skybox/Cubemap");
+                skyboxShader = KSPShaderTools.KSPShaderLoader.getShader("SSTU/Skybox/Cubemap");
             }
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -603,7 +603,7 @@ namespace SSTUTools
      
             public void Start()
             {
-                Shader setAlpha = SSTUDatabase.getShader("SSTU/SetAlpha");
+                Shader setAlpha = KSPShaderTools.KSPShaderLoader.getShader("SSTU/SetAlpha");
                 mat = new Material(setAlpha);
             }
 
