@@ -6,11 +6,6 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    
-    public interface IPartTextureUpdated
-    {
-        void textureUpdated(Part part);
-    }
 
     public interface IPartGeometryUpdated
     {
