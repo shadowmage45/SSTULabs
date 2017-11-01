@@ -29,6 +29,8 @@ namespace KSPShaderTools
          *
          */
 
+        public static KSPShaderLoader INSTANCE;
+
         /// <summary>
         /// List of loaded shaders and corresponding icon shader.  Loaded from KSP_SHADER_DATA config nodes.
         /// </summary>
@@ -39,14 +41,19 @@ namespace KSPShaderTools
         /// </summary>
         public static Dictionary<string, TextureSet> loadedTextureSets = new Dictionary<string, TextureSet>();
 
-        private static EventVoid.OnEvent partListLoadedEvent;
+        private static List<Action> postLoadCallbacks = new List<Action>();
 
-        public void Awake()
+        private static EventVoid.OnEvent partListLoadedEvent;
+        
+        public void Start()
         {
+            INSTANCE = this;
             DontDestroyOnLoad(this);
+            MonoBehaviour.print("KSPShaderLoader Start()");
             if (partListLoadedEvent == null)
             {
                 partListLoadedEvent = new EventVoid.OnEvent(onPartListLoaded);
+                MonoBehaviour.print("evt: " + partListLoadedEvent);
                 GameEvents.OnPartLoaderLoaded.Add(partListLoadedEvent);
             }
         }
@@ -70,9 +77,11 @@ namespace KSPShaderTools
             PresetColor.loadColors();
             loadTextureSets();
             applyToModelDatabase();
+            MonoBehaviour.print("KSPShaderLoader - Calling PostLoad handlers");
+            foreach (Action act in postLoadCallbacks) { act.Invoke(); }
         }
 
-        private static void onPartListLoaded()
+        private void onPartListLoaded()
         {
             MonoBehaviour.print("KSPShaderLoader - Updating part icon shaders.");
             applyToPartIcons();
@@ -97,6 +106,8 @@ namespace KSPShaderTools
             else if (Application.platform == RuntimePlatform.OSXPlayer) { assetBundleName = node.GetStringValue("osx"); }
             assetBundleName = KSPUtil.ApplicationRootPath + "GameData/" + assetBundleName;
 
+            MonoBehaviour.print("KSPShaderLoader - Loading shader bundle: " + node.GetStringValue("name") + " :: " + assetBundleName);
+
             // KSP-PartTools built AssetBunldes are in the Web format, 
             // and must be loaded using a WWW reference; you cannot use the
             // AssetBundle.CreateFromFile/LoadFromFile methods unless you 
@@ -111,6 +122,7 @@ namespace KSPShaderTools
             else if (www.assetBundle == null)
             {
                 MonoBehaviour.print("KSPShaderLoader - Could not load AssetBundle from WWW - " + www);
+                MonoBehaviour.print("isDone" + www.isDone);
                 return;
             }
 
@@ -126,6 +138,7 @@ namespace KSPShaderTools
                     shader = bundle.LoadAsset<Shader>(assetNames[i]);
                     MonoBehaviour.print("KSPShaderLoader - Loaded Shader: " + shader.name + " :: " + assetNames[i]+" from bundle: "+assetBundleName);
                     shaderDict.Add(shader.name, shader);
+                    GameDatabase.Instance.databaseShaders.AddUnique(shader);
                 }
             }
             //this unloads the compressed assets inside the bundle, but leaves any instantiated shaders in-place
@@ -141,8 +154,8 @@ namespace KSPShaderTools
             for (int i = 0; i < len; i++)
             {
                 node = shaderNodes[i];
-                sName = node.GetStringValue("shader");
-                iName = node.GetStringValue("iconShader", "KSP/Diffuse");
+                sName = node.GetStringValue("shader", "KSP/Diffuse");
+                iName = node.GetStringValue("iconShader", "KSP/ScreenSpaceMask");
                 Shader shader = dict[sName];
                 Shader iconShader = dict[iName];
                 ShaderData data = new ShaderData(shader, iconShader);
@@ -185,18 +198,20 @@ namespace KSPShaderTools
             ConfigNode[] modelShaderNodes = GameDatabase.Instance.GetConfigNodes("KSP_MODEL_SHADER");
             TextureSet set;
             ConfigNode textureNode;
+            string setName;
             int len = modelShaderNodes.Length;
             string[] modelNames;
             GameObject model;
             for (int i = 0; i < len; i++)
             {
                 textureNode = modelShaderNodes[i];
-                set = loadedTextureSets[textureNode.GetStringValue("textureSet")];
+                setName = textureNode.GetStringValue("textureSet");
+                set = getTextureSet(setName);
                 modelNames = textureNode.GetStringValues("model");
                 int len2 = modelNames.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    model = GameDatabase.Instance.GetModelPrefab(modelNames[i]);
+                    model = GameDatabase.Instance.GetModelPrefab(modelNames[k]);
                     if (model != null)
                     {
                         set.enable(model, set.maskColors);
@@ -277,6 +292,16 @@ namespace KSPShaderTools
                 sets[i] = getTextureSet(setNodes[i].GetStringValue("name"));
             }
             return sets;
+        }
+
+        public static void addPostLoadCallback(Action func)
+        {
+            postLoadCallbacks.AddUnique(func);
+        }
+
+        public static void removePostLoadCallback(Action func)
+        {
+            postLoadCallbacks.Remove(func);
         }
 
     }
@@ -476,8 +501,16 @@ namespace KSPShaderTools
             for (int i = 0; i < len; i++)
             {
                 color = new PresetColor(colorNodes[i]);
-                colorList.Add(color);
-                presetColors.Add(color.name, color);
+                if (!presetColors.ContainsKey(color.name))
+                {
+                    colorList.Add(color);
+                    presetColors.Add(color.name, color);
+                    MonoBehaviour.print("KSPShaderTools - Loaded Color Preset: " + color.name);
+                }
+                else
+                {
+                    MonoBehaviour.print("KSPShaderTools - ERROR: Found duplicate definition for color: "+color.name);
+                }
             }
         }
 

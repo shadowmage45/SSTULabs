@@ -16,12 +16,11 @@ namespace SSTUTools
         private static bool fireEditorEvent = false;
 
         public static SSTUStockInterop INSTANCE;
-
-        private int tick = 0;
         
         public void Start()
         {
             INSTANCE = this;
+            KSPShaderTools.KSPShaderLoader.addPostLoadCallback(KSPShaderToolsPostLoad);
             GameObject.DontDestroyOnLoad(this);
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));
@@ -80,8 +79,8 @@ namespace SSTUTools
                 p = FARUpdateParts[i];
                 if (p == null) { continue; }
                 p.SendMessage("GeometryPartModuleRebuildMeshData");
-                FARUpdateParts.Clear();
             }
+            FARUpdateParts.Clear();
         }
 
         private void gameSettingsApplied()
@@ -117,13 +116,14 @@ namespace SSTUTools
             //    }
             //}
         }
-        
-        public void ModuleManagerPostLoad()
+
+        //called from the ModuleManagerPostLoad() callback for KSPShaderTools
+        public void KSPShaderToolsPostLoad()
         {
             MonoBehaviour.print("Reloading config databases (fuel types, model data, etc...)");
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
-            SSTUDatabase.loadConfigData();//needs to load prior to model-data, as model-data uses colors from DB
+            SSTUDatabase.loadConfigData();//loads heat-shield types
             SSTUModelData.loadConfigData();
         }
 

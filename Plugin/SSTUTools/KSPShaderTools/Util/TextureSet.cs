@@ -7,7 +7,7 @@ namespace KSPShaderTools
 {
     public class TextureSet
     {
-        //the registered name of this texture set -- MUST be unique, or name collisions will occur.
+        //the registered name of this texture set -- MUST be unique (for global sets), or name collisions will occur.
         public readonly String name;
         //the display-title of this texture set, can be non-unique (but for UI purposes should be unique within a given part)
         public readonly string title;
@@ -30,9 +30,9 @@ namespace KSPShaderTools
             if (node.HasNode("COLORS"))
             {
                 ConfigNode colorsNode = node.GetNode("COLORS");
-                Color c1 = Utils.parseColorFromFloats(colorsNode.GetStringValue("mainColor"));
-                Color c2 = Utils.parseColorFromFloats(colorsNode.GetStringValue("secondColor"));
-                Color c3 = Utils.parseColorFromFloats(colorsNode.GetStringValue("detailColor"));
+                Color c1 = Utils.parseColorFromName(colorsNode.GetStringValue("mainColor"));
+                Color c2 = Utils.parseColorFromName(colorsNode.GetStringValue("secondColor"));
+                Color c3 = Utils.parseColorFromName(colorsNode.GetStringValue("detailColor"));
                 maskColors = new Color[] { c1, c2, c3 };
             }
             else
