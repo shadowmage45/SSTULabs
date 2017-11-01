@@ -423,7 +423,7 @@ namespace KSPShaderTools
             pr.clearFlags = UnityEngine.Rendering.ReflectionProbeClearFlags.SolidColor;
             pr.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.IndividualFaces;
             pr.hdr = false;
-            pr.size = new Vector3(50, 150, 50);
+            pr.size = new Vector3(2000, 2000, 2000);
             pr.resolution = envMapSize;
             pr.enabled = true;
             pr.cullingMask = 1 << skyboxLayer;

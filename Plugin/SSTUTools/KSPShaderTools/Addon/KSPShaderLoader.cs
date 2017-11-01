@@ -196,7 +196,7 @@ namespace KSPShaderTools
         private static void applyToModelDatabase()
         {
             ConfigNode[] modelShaderNodes = GameDatabase.Instance.GetConfigNodes("KSP_MODEL_SHADER");
-            TextureSet set;
+            TextureSet set = null;
             ConfigNode textureNode;
             string setName;
             int len = modelShaderNodes.Length;
@@ -205,8 +205,16 @@ namespace KSPShaderTools
             for (int i = 0; i < len; i++)
             {
                 textureNode = modelShaderNodes[i];
-                setName = textureNode.GetStringValue("textureSet");
-                set = getTextureSet(setName);
+                if (textureNode.HasNode("TEXTURE"))
+                {
+                    set = new TextureSet(textureNode);
+                    setName = set.name;
+                }
+                else if (textureNode.HasValue("textureSet"))
+                {
+                    setName = textureNode.GetStringValue("textureSet");
+                    set = getTextureSet(setName);
+                }
                 modelNames = textureNode.GetStringValues("model");
                 int len2 = modelNames.Length;
                 for (int k = 0; k < len2; k++)
