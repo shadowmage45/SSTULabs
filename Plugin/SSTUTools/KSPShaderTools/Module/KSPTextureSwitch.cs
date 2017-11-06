@@ -115,6 +115,11 @@ namespace KSPShaderTools
             textureSets.setCustomColors(colors);
             textureSets.enableCurrentSet(getModelTransforms());
         }
+
+        public TextureSet getSectionTexture(string section)
+        {
+            return textureSets.getCurrentTextureSet();
+        }
     }
 
     /// <summary>
@@ -196,6 +201,11 @@ namespace KSPShaderTools
         {
             customColors = colors;
             saveColors(customColors);
+        }
+
+        public TextureSet getCurrentTextureSet()
+        {
+            return Array.Find(textureSets, m => m.name == currentTextureSet);
         }
 
         public string[] getTextureSetNames()

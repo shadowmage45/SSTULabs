@@ -457,6 +457,24 @@ namespace SSTUTools
             }
         }
 
+        //IRecolorable override
+        public TextureSet getSectionTexture(string section)
+        {
+            if (section == "Top")
+            {
+                return KSPShaderLoader.getTextureSet(currentNoseTexture);
+            }
+            else if (section == "Body")
+            {
+                return KSPShaderLoader.getTextureSet(currentMainTexture);
+            }
+            else if (section == "Bottom")
+            {
+                return KSPShaderLoader.getTextureSet(currentNozzleTexture);
+            }
+            return KSPShaderLoader.getTextureSet(currentMainTexture);
+        }
+
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Initialization Methods

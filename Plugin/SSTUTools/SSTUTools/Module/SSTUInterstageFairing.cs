@@ -451,6 +451,12 @@ namespace SSTUTools
             updateTextureSet(false);
         }
 
+        //IRecolorable override
+        public TextureSet getSectionTexture(string section)
+        {
+            return KSPShaderLoader.getTextureSet(currentTextureSet);
+        }
+
         #endregion
 
         #region private action handling methods

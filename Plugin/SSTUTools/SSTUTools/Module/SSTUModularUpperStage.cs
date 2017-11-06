@@ -514,6 +514,32 @@ namespace SSTUTools
             }
         }
 
+        //IRecolorable override
+        public TextureSet getSectionTexture(string section)
+        {
+            if (section == "Nose")
+            {
+                return KSPShaderLoader.getTextureSet(currentNoseTexture);
+            }
+            else if (section == "Upper")
+            {
+                return KSPShaderLoader.getTextureSet(currentUpperTexture);
+            }
+            else if (section == "Intertank")
+            {
+                return KSPShaderLoader.getTextureSet(currentIntertankTexture);
+            }
+            else if (section == "Lower")
+            {
+                return KSPShaderLoader.getTextureSet(currentLowerTexture);
+            }
+            else if (section == "Mount")
+            {
+                return KSPShaderLoader.getTextureSet(currentMountTexture);
+            }
+            return KSPShaderLoader.getTextureSet(currentUpperTexture);
+        }
+
         #endregion
 
         #region ----------------- REGION - Initialization Methods ----------------- 

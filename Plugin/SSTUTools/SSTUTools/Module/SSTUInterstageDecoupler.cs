@@ -409,6 +409,12 @@ namespace SSTUTools.Module
             updateTextureSet(false);
         }
 
+        //IRecolorable override
+        public TextureSet getSectionTexture(string section)
+        {
+            return KSPShaderLoader.getTextureSet(currentTextureSet);
+        }
+
         private void initialize()
         {
             if (initialized) { return; }

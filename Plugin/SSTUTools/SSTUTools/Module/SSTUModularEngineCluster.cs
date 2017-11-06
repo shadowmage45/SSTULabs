@@ -433,6 +433,12 @@ namespace SSTUTools
             mountModule.setSectionColors(colors);
         }
 
+        //IRecolorable override
+        public TextureSet getSectionTexture(string section)
+        {
+            return KSPShaderLoader.getTextureSet(currentMountTexture);
+        }
+
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Initialization
