@@ -70,7 +70,7 @@ namespace KSPShaderTools
 
         internal void refreshGui(Part part)
         {
-            MonoBehaviour.print("Refreshing GUI: " + part + " :: " + openPart);
+            //MonoBehaviour.print("Refreshing Recoloring GUI: " + part + " :: " + openPart);
             if (part != openPart) { return; }
 
             moduleRecolorData.Clear();
@@ -129,7 +129,8 @@ namespace KSPShaderTools
             rStr = (editingColor.color.r * 255f).ToString("F0");
             gStr = (editingColor.color.g * 255f).ToString("F0");
             bStr = (editingColor.color.b * 255f).ToString("F0");
-            aStr = (editingColor.color.a * 255f).ToString("F0");
+            aStr = (editingColor.specular * 255f).ToString("F0");
+            mStr = (editingColor.metallic * 255f).ToString("F0");
         }
 
         private void closeSectionGUI()
