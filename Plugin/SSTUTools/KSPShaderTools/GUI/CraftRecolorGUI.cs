@@ -164,6 +164,10 @@ namespace KSPShaderTools
                 int len2 = moduleRecolorData[i].sectionData.Length;
                 for (int k = 0; k < len2; k++)
                 {
+                    if (!moduleRecolorData[i].sectionData[k].sectionTexture.supportsRecoloring)
+                    {
+                        continue;
+                    }
                     GUILayout.BeginHorizontal();
                     if ( k == sectionIndex && i == moduleIndex )
                     {
@@ -172,15 +176,23 @@ namespace KSPShaderTools
                     GUILayout.Label(moduleRecolorData[i].sectionData[k].sectionName, GUILayout.Width(sectionTitleWidth));
                     for (int m = 0; m < 3; m++)
                     {
-                        guiColor = moduleRecolorData[i].sectionData[k].colors[m].color;
-                        guiColor.a = 1;
-                        GUI.color = guiColor;
-                        if (GUILayout.Button("Recolor", GUILayout.Width(70)))
+                        int mask = 1 << m;
+                        if ((moduleRecolorData[i].sectionData[k].sectionTexture.recolorableChannelMask & mask) != 0)
                         {
-                            moduleIndex = i;
-                            sectionIndex = k;
-                            colorIndex = m;
-                            setupSectionData(moduleRecolorData[i].sectionData[k], m);
+                            guiColor = moduleRecolorData[i].sectionData[k].colors[m].color;
+                            guiColor.a = 1;
+                            GUI.color = guiColor;
+                            if (GUILayout.Button("Recolor", GUILayout.Width(70)))
+                            {
+                                moduleIndex = i;
+                                sectionIndex = k;
+                                colorIndex = m;
+                                setupSectionData(moduleRecolorData[i].sectionData[k], m);
+                            }
+                        }
+                        else
+                        {
+                            GUILayout.Label("", GUILayout.Width(70));
                         }
                     }
                     GUI.color = old;
@@ -206,7 +218,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Red", ref editingColor.color.r, ref rStr)) { updated = true; }
+            if (drawColorInputLine("Red", ref editingColor.color.r, ref rStr, sectionData.colorSupported())) { updated = true; }
             if (GUILayout.Button("Load Pattern", GUILayout.Width(120)))
             {
                 sectionData.colors[0] = storedPattern[0];
@@ -218,7 +230,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Green", ref editingColor.color.g, ref gStr)) { updated = true; }
+            if (drawColorInputLine("Green", ref editingColor.color.g, ref gStr, sectionData.colorSupported())) { updated = true; }
             if (GUILayout.Button("Store Pattern", GUILayout.Width(120)))
             {
                 storedPattern = new RecoloringData[3];
@@ -229,7 +241,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Blue", ref editingColor.color.b, ref bStr)) { updated = true; }
+            if (drawColorInputLine("Blue", ref editingColor.color.b, ref bStr, sectionData.colorSupported())) { updated = true; }
             if (GUILayout.Button("Load Color", GUILayout.Width(120)))
             {
                 editingColor = storedColor;
@@ -238,7 +250,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Specular", ref editingColor.specular, ref aStr)) { updated = true; }
+            if (drawColorInputLine("Specular", ref editingColor.specular, ref aStr, sectionData.specularSupported())) { updated = true; }
             if (GUILayout.Button("Store Color", GUILayout.Width(120)))
             {
                 storedColor = editingColor;
@@ -246,7 +258,18 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Metallic", ref editingColor.metallic, ref mStr)) { updated = true; }
+            if (sectionData.metallicSupported())
+            {
+                if (drawColorInputLine("Metallic", ref editingColor.metallic, ref mStr, true)) { updated = true; }
+            }
+            else if (sectionData.hardnessSupported())
+            {
+                if (drawColorInputLine("Hardness", ref editingColor.metallic, ref mStr, true)) { updated = true; }
+            }
+            else
+            {
+                if (drawColorInputLine("Metallic", ref editingColor.metallic, ref mStr, false)) { updated = true; }
+            }
             GUILayout.EndHorizontal();
 
             if (updated)
@@ -303,8 +326,13 @@ namespace KSPShaderTools
             }
         }
 
-        private bool drawColorInputLine(string label, ref float val, ref string sVal)
+        private bool drawColorInputLine(string label, ref float val, ref string sVal, bool enabled)
         {
+            if (!enabled)
+            {
+                GUILayout.Label("", GUILayout.Width(60 + 120 + 60));
+                return false;
+            }
             //TODO -- text input validation for numbers only -- http://answers.unity3d.com/questions/18736/restrict-characters-in-guitextfield.html
             // also -- https://forum.unity3d.com/threads/text-field-for-numbers-only.106418/
             GUILayout.Label(label, GUILayout.Width(60));
@@ -363,7 +391,7 @@ namespace KSPShaderTools
             sectionData = new SectionRecolorData[len];
             for (int i = 0; i < len; i++)
             {
-                sectionData[i] = new SectionRecolorData(iModule, names[i], iModule.getSectionColors(names[i]));
+                sectionData[i] = new SectionRecolorData(iModule, names[i], iModule.getSectionColors(names[i]), iModule.getSectionTexture(names[i]));
             }
         }
     }
@@ -373,18 +401,41 @@ namespace KSPShaderTools
         public readonly IRecolorable owner;
         public readonly string sectionName;
         public RecoloringData[] colors;
+        public TextureSet sectionTexture;
 
-        public SectionRecolorData(IRecolorable owner, string name, RecoloringData[] colors)
+        public SectionRecolorData(IRecolorable owner, string name, RecoloringData[] colors, TextureSet set)
         {
             this.owner = owner;
             this.sectionName = name;
             this.colors = colors;
+            this.sectionTexture = set;
         }
 
         public void updateColors()
         {
             owner.setSectionColors(sectionName, colors);
         }
+
+        public bool colorSupported()
+        {
+            return (sectionTexture.featureMask & 1) != 0;
+        }
+
+        public bool specularSupported()
+        {
+            return (sectionTexture.featureMask & 2) != 0;
+        }
+
+        public bool metallicSupported()
+        {
+            return (sectionTexture.featureMask & 4) != 0;
+        }
+
+        public bool hardnessSupported()
+        {
+            return (sectionTexture.featureMask & 8) != 0;
+        }
+
     }
 
 }
