@@ -64,13 +64,7 @@ namespace SSTUTools
         public String currentTextureSet = "Fairings-White";
 
         [KSPField(isPersistant = true)]
-        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+        public string customColorData = string.Empty;
 
         [KSPField(isPersistant = true)]
         public bool initializedColors = false;
@@ -78,8 +72,10 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
+        private bool initialized = false;
         private float prevDiameter;
         private ModuleProceduralFairing mpf = null;
+        private RecoloringHandler recolorHandler;
 
         public void onTextureUpdated(BaseField field, object obj)
         {
@@ -117,30 +113,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            mpf = part.GetComponent<ModuleProceduralFairing>();
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-
-            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] names = TextureSet.getTextureSetNames(textureNodes);
-            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
-            if (t == null)
-            {
-                currentTextureSet = names[0];
-                t = KSPShaderLoader.getTextureSet(currentTextureSet);
-                initializedColors = false;
-            }
-            if (!initializedColors)
-            {
-                initializedColors = true;
-                Color[] cs = t.maskColors;
-                customColor1 = cs[0];
-                customColor2 = cs[1];
-                customColor3 = cs[2];
-            }
-            this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            Fields[nameof(currentTextureSet)].guiActiveEditor = names.Length > 1;
-
+            initialize();
             updateModelScale();
             updateTextureSet(false);
             updateNodePositions(false);
@@ -154,7 +127,7 @@ namespace SSTUTools
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
-            mpf = part.GetComponent<ModuleProceduralFairing>();
+            initialize();
             updateModelScale();//for prefab part...
             updateEditorFields();
         }
@@ -185,17 +158,44 @@ namespace SSTUTools
             return new string[] { "Decoupler" };
         }
 
-        public Color[] getSectionColors(string name)
+        public RecoloringData[] getSectionColors(string name)
         {
-            return new Color[] { customColor1, customColor2, customColor3 };
+            return recolorHandler.getColorData();
         }
 
-        public void setSectionColors(string name, Color[] colors)
+        public void setSectionColors(string name, RecoloringData[] colors)
         {
-            customColor1 = colors[0];
-            customColor2 = colors[1];
-            customColor3 = colors[2];
+            recolorHandler.setColorData(colors);
             updateTextureSet(false);
+        }
+
+        private void initialize()
+        {
+            if (initialized) { return; }
+            initialized = true;
+
+            recolorHandler = new RecoloringHandler(Fields[nameof(customColorData)]);
+
+            mpf = part.GetComponent<ModuleProceduralFairing>();
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+
+            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
+            string[] names = TextureSet.getTextureSetNames(textureNodes);
+            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
+            if (t == null)
+            {
+                currentTextureSet = names[0];
+                t = KSPShaderLoader.getTextureSet(currentTextureSet);
+                initializedColors = false;
+            }
+            if (!initializedColors)
+            {
+                initializedColors = true;
+                recolorHandler.setColorData(t.maskColors);
+            }
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
+            Fields[nameof(currentTextureSet)].guiActiveEditor = names.Length > 1;
         }
 
         private void updateEditorFields()
@@ -235,7 +235,7 @@ namespace SSTUTools
         {
             if (mpf == null) { return; }
             TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
-            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             Material fm = mpf.FairingMaterial;
             if (fm != null)
             {
@@ -247,9 +247,7 @@ namespace SSTUTools
             }
             if (useDefaults)
             {
-                customColor1 = colors[0];
-                customColor2 = colors[1];
-                customColor3 = colors[2];
+                recolorHandler.setColorData(colors);
             }
             SSTUModInterop.onPartTextureUpdated(part);
         }

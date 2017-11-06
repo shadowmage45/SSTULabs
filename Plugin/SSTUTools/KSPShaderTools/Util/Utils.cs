@@ -90,7 +90,10 @@ namespace KSPShaderTools
             color.r = vals[0] / 255f;
             color.g = vals[1] / 255f;
             color.b = vals[2] / 255f;
-            color.a = vals[3] / 255f;
+            if (vals.Length > 3)
+            {
+                color.a = vals[3] / 255f;
+            }            
             return color;
         }
 
@@ -101,19 +104,11 @@ namespace KSPShaderTools
             color.r = vals[0];
             color.g = vals[1];
             color.b = vals[2];
-            color.a = vals[3];
-            return color;
-        }
-
-        public static Color parseColorFromName(string value)
-        {
-            if (value.Contains(","))
+            if (vals.Length > 3)
             {
-                return Utils.parseColorFromBytes(value);
-            }
-            PresetColor color = PresetColor.getColor(value);
-            if (color != null) { return color.color; }
-            return Color.white;
+                color.a = vals[3];
+            }            
+            return color;
         }
 
         public static ConfigNode parseConfigNode(String input)
@@ -375,11 +370,6 @@ namespace KSPShaderTools
         public static Color GetColorFromByteCSV(this ConfigNode node, String name)
         {
             return parseColorFromBytes(node.GetStringValue(name));
-        }
-
-        public static Color GetColorFromName(this ConfigNode node, string name)
-        {
-            return parseColorFromName(node.GetStringValue(name));
         }
 
         #endregion

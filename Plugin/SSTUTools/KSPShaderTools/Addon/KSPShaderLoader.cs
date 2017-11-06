@@ -485,50 +485,36 @@ namespace KSPShaderTools
     
     public class PresetColor
     {
-        private static List<PresetColor> colorList = new List<PresetColor>();
-        private static Dictionary<String, PresetColor> presetColors = new Dictionary<string, PresetColor>();
-
-        public readonly string name;
-        public readonly string title;
-        public readonly Color color;
-
-        public PresetColor(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            title = node.GetStringValue("title");
-            color = node.GetColorFromByteCSV("color");
-        }
-
+        private static List<RecoloringDataPreset> colorList = new List<RecoloringDataPreset>();
+        private static Dictionary<String, RecoloringDataPreset> presetColors = new Dictionary<string, RecoloringDataPreset>();
+        
         internal static void loadColors()
         {
             colorList.Clear();
             presetColors.Clear();
-            PresetColor color;
             ConfigNode[] colorNodes = GameDatabase.Instance.GetConfigNodes("KSP_COLOR_PRESET");
             int len = colorNodes.Length;
             for (int i = 0; i < len; i++)
             {
-                color = new PresetColor(colorNodes[i]);
-                if (!presetColors.ContainsKey(color.name))
+                RecoloringDataPreset data = new RecoloringDataPreset(colorNodes[i]);
+                if (!presetColors.ContainsKey(data.name))
                 {
-                    colorList.Add(color);
-                    presetColors.Add(color.name, color);
-                    MonoBehaviour.print("KSPShaderTools - Loaded Color Preset: " + color.name);
-                }
-                else
-                {
-                    MonoBehaviour.print("KSPShaderTools - ERROR: Found duplicate definition for color: "+color.name);
+                    presetColors.Add(data.name, data);
+                    colorList.Add(data);
                 }
             }
         }
 
-        public static PresetColor getColor(string name)
+        public static RecoloringDataPreset getColor(string name)
         {
-            if (!presetColors.ContainsKey(name)) { MonoBehaviour.print("ERROR: No Color data for name: " + name); }
+            if (!presetColors.ContainsKey(name))
+            {
+                MonoBehaviour.print("ERROR: No Color data for name: " + name);
+            }
             return presetColors[name];
         }
 
-        public static List<PresetColor> getColorList() { return colorList; }
+        public static List<RecoloringDataPreset> getColorList() { return colorList; }
 
     }
 

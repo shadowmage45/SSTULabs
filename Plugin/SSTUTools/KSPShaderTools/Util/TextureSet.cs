@@ -14,7 +14,7 @@ namespace KSPShaderTools
         //the list of mesh->material assignments; each material data contains a list of meshes/excluded-meshes, along with the shaders and textures to apply to each mesh
         public readonly TextureSetMaterialData[] textureData;
         //default mask colors for this texture set
-        public readonly Color[] maskColors;
+        public readonly RecoloringData[] maskColors;
 
         public TextureSet(ConfigNode node)
         {
@@ -30,21 +30,22 @@ namespace KSPShaderTools
             if (node.HasNode("COLORS"))
             {
                 ConfigNode colorsNode = node.GetNode("COLORS");
-                Color c1 = Utils.parseColorFromName(colorsNode.GetStringValue("mainColor"));
-                Color c2 = Utils.parseColorFromName(colorsNode.GetStringValue("secondColor"));
-                Color c3 = Utils.parseColorFromName(colorsNode.GetStringValue("detailColor"));
-                maskColors = new Color[] { c1, c2, c3 };
+                RecoloringData c1 = new RecoloringData(colorsNode.GetStringValue("mainColor"));
+                RecoloringData c2 = new RecoloringData(colorsNode.GetStringValue("secondColor"));
+                RecoloringData c3 = new RecoloringData(colorsNode.GetStringValue("detailColor"));
+                maskColors = new RecoloringData[] { c1, c2, c3 };
             }
             else
             {
-                maskColors = new Color[3];
-                maskColors[0] = Color.white;
-                maskColors[1] = Color.white;
-                maskColors[2] = Color.white;
+                maskColors = new RecoloringData[3];
+                Color white = Color.white;
+                maskColors[0] = new RecoloringData(white, 0, 0);
+                maskColors[1] = new RecoloringData(white, 0, 0);
+                maskColors[2] = new RecoloringData(white, 0, 0);
             }
         }
 
-        public void enable(GameObject root, Color[] userColors)
+        public void enable(GameObject root, RecoloringData[] userColors)
         {
             foreach (TextureSetMaterialData mtd in textureData)
             {
@@ -190,27 +191,37 @@ namespace KSPShaderTools
             props = ShaderProperty.parse(node);
         }
 
-        public void enable(GameObject root, Color[] userColors)
+        public void enable(GameObject root, RecoloringData[] userColors)
         {
             List<ShaderProperty> ps = new List<ShaderProperty>();
             ps.AddRange(props);
-            int len = userColors.Length;
+            int len = userColors.Length;            
             for (int i = 0; i < len; i++)
             {
-                ps.Add(new ShaderPropertyColor("_MaskColor" + (i + 1), userColors[i]));
+                ps.Add(new ShaderPropertyColor("_MaskColor" + (i + 1), userColors[i].getShaderColor()));
             }
+            Color metallicInput = new Color();
+            if (len > 0) { metallicInput.r = userColors[0].metallic; }            
+            if (len > 1) { metallicInput.g = userColors[1].metallic; }
+            if (len > 2) { metallicInput.b = userColors[2].metallic; }            
+            ps.Add(new ShaderPropertyColor("_MaskMetallic", metallicInput));
             TextureSet.updateModelMaterial(root.transform, excludedMeshes, meshNames, shader, ps.ToArray());
         }
 
-        public void enable(Material mat, Color[] userColors)
+        public void enable(Material mat, RecoloringData[] userColors)
         {
             List<ShaderProperty> ps = new List<ShaderProperty>();
             ps.AddRange(props);
             int len = userColors.Length;
             for (int i = 0; i < len; i++)
             {
-                ps.Add(new ShaderPropertyColor("_MaskColor" + (i + 1), userColors[i]));
+                ps.Add(new ShaderPropertyColor("_MaskColor" + (i + 1), userColors[i].getShaderColor()));
             }
+            Color metallicInput = new Color();
+            if (len > 0) { metallicInput.r = userColors[0].metallic; }
+            if (len > 1) { metallicInput.g = userColors[1].metallic; }
+            if (len > 2) { metallicInput.b = userColors[2].metallic; }
+            ps.Add(new ShaderPropertyColor("_MaskMetallic", metallicInput));
             TextureSet.updateMaterial(mat, shader, ps.ToArray());
         }
 
@@ -234,4 +245,5 @@ namespace KSPShaderTools
             return mat;
         }
     }
+
 }

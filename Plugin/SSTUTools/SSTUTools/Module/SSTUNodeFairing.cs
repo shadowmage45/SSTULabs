@@ -171,13 +171,7 @@ namespace SSTUTools
         public bool fairingForceDisabled = false;
 
         [KSPField(isPersistant = true)]
-        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+        public string customColorData = string.Empty;
 
         [KSPField(isPersistant = true)]
         public bool initializedColors = false;
@@ -195,6 +189,8 @@ namespace SSTUTools
         #endregion
 
         #region REGION - private working vars, not user editable
+
+        private RecoloringHandler recolorHandler;
                 
         //the current fairing panels
         private SSTUNodeFairingData[] fairingParts;
@@ -495,16 +491,14 @@ namespace SSTUTools
             return new string[] { fairingName };
         }
 
-        public Color[] getSectionColors(string name)
+        public RecoloringData[] getSectionColors(string name)
         {
-            return new Color[] { customColor1, customColor2, customColor3 };
+            return recolorHandler.getColorData();
         }
 
-        public void setSectionColors(string name, Color[] colors)
+        public void setSectionColors(string name, RecoloringData[] colors)
         {
-            customColor1 = colors[0];
-            customColor2 = colors[1];
-            customColor3 = colors[2];
+            recolorHandler.setColorData(colors);
             updateTextureSet(false);
         }
 
@@ -591,6 +585,8 @@ namespace SSTUTools
         //creates/recreates FairingData instances from data from config node and any persistent node (if applicable)
         private void loadFairingData(ConfigNode node)
         {
+            recolorHandler = new RecoloringHandler(Fields[nameof(customColorData)]);
+
             ConfigNode[] fairingNodes = node.GetNodes("FAIRING");
             fairingParts = new SSTUNodeFairingData[fairingNodes.Length];
 
@@ -653,10 +649,7 @@ namespace SSTUTools
             if (!initializedColors)
             {
                 initializedColors = true;
-                Color[] css = t.maskColors;
-                customColor1 = css[0];
-                customColor2 = css[1];
-                customColor3 = css[2];
+                recolorHandler.setColorData(t.maskColors);
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
             fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
@@ -870,7 +863,7 @@ namespace SSTUTools
         private void updateTextureSet(bool useDefaults)
         {
             TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
-            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             int len = fairingParts.Length;
             for (int i = 0; i < len; i++)
             {
@@ -878,9 +871,7 @@ namespace SSTUTools
             }
             if (useDefaults)
             {
-                customColor1 = colors[0];
-                customColor2 = colors[1];
-                customColor3 = colors[2];
+                recolorHandler.setColorData(colors);
             }
             updateOpacity();
             SSTUModInterop.onPartTextureUpdated(part);

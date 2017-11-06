@@ -148,13 +148,7 @@ namespace SSTUTools.Module
         public String currentTextureSet = String.Empty;
 
         [KSPField(isPersistant = true)]
-        public Vector4 customColor1 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor2 = new Vector4(1, 1, 1, 1);
-
-        [KSPField(isPersistant = true)]
-        public Vector4 customColor3 = new Vector4(1, 1, 1, 1);
+        public String customColorData = string.Empty;
 
         [KSPField(isPersistant = true)]
         public bool initializedColors = false;
@@ -171,6 +165,8 @@ namespace SSTUTools.Module
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
         private InterstageDecouplerEngine[] engineModels;
+
+        private RecoloringHandler recolorHandler;
 
         private ContainerFuelPreset fuelType;
 
@@ -401,17 +397,15 @@ namespace SSTUTools.Module
         }
 
         //IRecolorable override
-        public Color[] getSectionColors(string name)
+        public RecoloringData[] getSectionColors(string name)
         {
-            return new Color[] { customColor1, customColor2, customColor3 };
+            return recolorHandler.getColorData();
         }
 
         //IRecolorable override
-        public void setSectionColors(string name, Color[] colors)
+        public void setSectionColors(string name, RecoloringData[] colors)
         {
-            customColor1 = colors[0];
-            customColor2 = colors[1];
-            customColor3 = colors[2];
+            recolorHandler.setColorData(colors);
             updateTextureSet(false);
         }
 
@@ -419,6 +413,7 @@ namespace SSTUTools.Module
         {
             if (initialized) { return; }
             initialized = true;
+            recolorHandler = new RecoloringHandler(Fields[nameof(customColorData)]);
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = TextureSet.getTextureSetNames(textureNodes);
@@ -433,10 +428,7 @@ namespace SSTUTools.Module
             if (!initializedColors)
             {
                 initializedColors = true;
-                Color[] cs = currentTextureSetData.maskColors;
-                customColor1 = cs[0];
-                customColor2 = cs[1];
-                customColor3 = cs[2];
+                recolorHandler.setColorData(currentTextureSetData.maskColors);
             }
             this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
             Fields[nameof(currentTextureSet)].guiActiveEditor = textureNodes.Length > 1;
@@ -631,13 +623,11 @@ namespace SSTUTools.Module
         private void updateTextureSet(bool useDefaults)
         {
             TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
-            Color[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
+            RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             fairingBase.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)
             {
-                customColor1 = colors[0];
-                customColor2 = colors[1];
-                customColor3 = colors[2];
+                recolorHandler.setColorData(colors);
             }
             SSTUModInterop.onPartTextureUpdated(part);
         }

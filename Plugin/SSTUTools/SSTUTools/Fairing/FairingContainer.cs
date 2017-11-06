@@ -192,7 +192,7 @@ namespace SSTUTools
             SSTUUtils.enableColliderRecursive(rootObject.transform, val);
         }
 
-        public void enableTextureSet(string name, Color[] userColors)
+        public void enableTextureSet(string name, RecoloringData[] userColors)
         {
             TextureSet set = KSPShaderLoader.getTextureSet(name);
             if (set != null)

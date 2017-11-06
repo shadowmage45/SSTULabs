@@ -702,7 +702,7 @@ namespace SSTUTools
         /// Enables the input texture set name, or default texture for the model if 'none' or 'default' is input for the set name
         /// </summary>
         /// <param name="setName"></param>
-        public void enableTextureSet(String setName, Color[] userColors)
+        public void enableTextureSet(String setName, RecoloringData[] userColors)
         {
             if (setName == "none" || setName == "default" || String.IsNullOrEmpty(setName))
             {

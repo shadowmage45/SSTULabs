@@ -465,7 +465,7 @@ namespace SSTUTools
             return new string[] { "Nose", "Upper", "Mount" };
         }
 
-        public Color[] getSectionColors(string section)
+        public RecoloringData[] getSectionColors(string section)
         {
             if (section == "Nose")
             {
@@ -487,10 +487,10 @@ namespace SSTUTools
             {
                 return mountModule.customColors;
             }
-            return new Color[] { Color.white, Color.white, Color.white };
+            return upperModule.customColors;
         }
 
-        public void setSectionColors(string section, Color[] colors)
+        public void setSectionColors(string section, RecoloringData[] colors)
         {
             if (section == "Nose")
             {

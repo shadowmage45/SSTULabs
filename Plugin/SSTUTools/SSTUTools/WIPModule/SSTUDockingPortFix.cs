@@ -121,7 +121,6 @@ namespace SSTUTools
             Part p;
             ModuleDockingNode[] mdns;
             ModuleDockingNode mdn;
-            SSTUDockingPortFix dpf;
             ConfigNode dpfNode = new ConfigNode("MODULE");
             dpfNode.AddValue("name", nameof(SSTUDockingPortFix));
             for (int i = 0; i < len; i++)

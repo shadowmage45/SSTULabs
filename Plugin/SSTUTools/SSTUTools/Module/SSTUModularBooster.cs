@@ -424,7 +424,7 @@ namespace SSTUTools
             return new string[] { "Top", "Body", "Bottom" };
         }
 
-        public Color[] getSectionColors(string section)
+        public RecoloringData[] getSectionColors(string section)
         {
             if (section == "Top")
             {
@@ -441,7 +441,7 @@ namespace SSTUTools
             return bodyModule.customColors;
         }
 
-        public void setSectionColors(string section, Color[] colors)
+        public void setSectionColors(string section, RecoloringData[] colors)
         {
             if (section == "Top")
             {

@@ -48,7 +48,7 @@ namespace SSTUTools
             updateModelMaterial();
         }
 
-        public void enableTextureSet(string name, Color[] userColors)
+        public void enableTextureSet(string name, RecoloringData[] userColors)
         {
             TextureSet s = KSPShaderLoader.getTextureSet(name);
             if (s != null)

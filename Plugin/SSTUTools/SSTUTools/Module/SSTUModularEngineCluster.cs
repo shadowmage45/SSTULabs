@@ -423,12 +423,12 @@ namespace SSTUTools
             return new string[] { "Mount" };
         }
 
-        public Color[] getSectionColors(string section)
+        public RecoloringData[] getSectionColors(string section)
         {
             return mountModule.customColors;
         }
 
-        public void setSectionColors(string section, Color[] colors)
+        public void setSectionColors(string section, RecoloringData[] colors)
         {
             mountModule.setSectionColors(colors);
         }

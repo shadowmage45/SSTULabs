@@ -105,12 +105,12 @@ namespace KSPShaderTools
             return new string[] { sectionName };
         }
 
-        public Color[] getSectionColors(string name)
+        public RecoloringData[] getSectionColors(string name)
         {
             return textureSets.customColors;
         }
 
-        public void setSectionColors(string name, Color[] colors)
+        public void setSectionColors(string name, RecoloringData[] colors)
         {
             textureSets.setCustomColors(colors);
             textureSets.enableCurrentSet(getModelTransforms());
@@ -130,7 +130,7 @@ namespace KSPShaderTools
 
         internal TextureSet[] textureSets;
 
-        internal Color[] customColors;
+        internal RecoloringData[] customColors;
 
         private string currentTextureSet
         {
@@ -161,7 +161,7 @@ namespace KSPShaderTools
             }
             if (customColors == null || customColors.Length == 0)
             {
-                customColors = new Color[3];
+                customColors = new RecoloringData[3];
                 customColors[0] = set.maskColors[0];
                 customColors[1] = set.maskColors[1];
                 customColors[2] = set.maskColors[2];
@@ -183,7 +183,7 @@ namespace KSPShaderTools
             }
             if (customColors == null || customColors.Length == 0)
             {
-                customColors = new Color[3];
+                customColors = new RecoloringData[3];
                 customColors[0] = set.maskColors[0];
                 customColors[1] = set.maskColors[1];
                 customColors[2] = set.maskColors[2];
@@ -192,7 +192,7 @@ namespace KSPShaderTools
             saveColors(customColors);
         }
 
-        public void setCustomColors(Color[] colors)
+        public void setCustomColors(RecoloringData[] colors)
         {
             customColors = colors;
             saveColors(customColors);
@@ -225,27 +225,20 @@ namespace KSPShaderTools
             if (!string.IsNullOrEmpty(data))
             {
                 string[] colorSplits = data.Split(';');
-                string[] dataSplits;
                 int len = colorSplits.Length;
-                customColors = new Color[len];
-                float r, g, b, a;
+                customColors = new RecoloringData[len];
                 for (int i = 0; i < len; i++)
                 {
-                    dataSplits = colorSplits[i].Split(',');
-                    r = Utils.safeParseFloat(dataSplits[0]);
-                    g = Utils.safeParseFloat(dataSplits[1]);
-                    b = Utils.safeParseFloat(dataSplits[2]);
-                    a = dataSplits.Length >= 4 ? Utils.safeParseFloat(dataSplits[3]) : 1f;
-                    customColors[i] = new Color(r, g, b, a);
+                    customColors[i] = new RecoloringData(colorSplits[i]);
                 }
             }
             else
             {
-                customColors = new Color[0];
+                customColors = new RecoloringData[0];
             }
         }
 
-        private void saveColors(Color[] colors)
+        private void saveColors(RecoloringData[] colors)
         {
             if (colors == null || colors.Length == 0) { return; }
             int len = colors.Length;
@@ -253,10 +246,7 @@ namespace KSPShaderTools
             for (int i = 0; i < len; i++)
             {
                 if (i > 0) { data = data + ";"; }
-                data = data + colors[i].r + ",";
-                data = data + colors[i].g + ",";
-                data = data + colors[i].b + ",";
-                data = data + colors[i].a;
+                data = data + colors[i].getPersistentData();
             }
             persistentData = data;
         }

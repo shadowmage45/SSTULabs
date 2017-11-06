@@ -22,10 +22,10 @@ namespace KSPShaderTools
         private int moduleIndex = -1;
         private int sectionIndex = -1;
         private int colorIndex = -1;
-        private string rStr, gStr, bStr, aStr;//string caches of color values//TODO -- set initial state when a section color is selected
-        private static Color editingColor;
-        private static Color[] storedPattern;
-        private static Color storedColor;
+        private string rStr, gStr, bStr, aStr, mStr;//string caches of color values//TODO -- set initial state when a section color is selected
+        private static RecoloringData editingColor;
+        private static RecoloringData[] storedPattern;
+        private static RecoloringData storedColor;
 
         public static Part openPart;
 
@@ -126,16 +126,16 @@ namespace KSPShaderTools
             this.sectionData = section;
             this.colorIndex = colorIndex;
             editingColor = sectionData.colors[colorIndex];
-            rStr = (editingColor.r * 255f).ToString("F0");
-            gStr = (editingColor.g * 255f).ToString("F0");
-            bStr = (editingColor.b * 255f).ToString("F0");
-            aStr = (editingColor.a * 255f).ToString("F0");
+            rStr = (editingColor.color.r * 255f).ToString("F0");
+            gStr = (editingColor.color.g * 255f).ToString("F0");
+            bStr = (editingColor.color.b * 255f).ToString("F0");
+            aStr = (editingColor.color.a * 255f).ToString("F0");
         }
 
         private void closeSectionGUI()
         {
             sectionData = null;
-            editingColor = Color.white;
+            editingColor = new RecoloringData(Color.white, 0, 0);
             rStr = gStr = bStr = aStr = "255";
             colorIndex = 0;
         }
@@ -172,7 +172,7 @@ namespace KSPShaderTools
                     GUILayout.Label(moduleRecolorData[i].sectionData[k].sectionName, GUILayout.Width(sectionTitleWidth));
                     for (int m = 0; m < 3; m++)
                     {
-                        guiColor = moduleRecolorData[i].sectionData[k].colors[m];
+                        guiColor = moduleRecolorData[i].sectionData[k].colors[m].color;
                         guiColor.a = 1;
                         GUI.color = guiColor;
                         if (GUILayout.Button("Recolor", GUILayout.Width(70)))
@@ -206,7 +206,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Red", ref editingColor.r, ref rStr)) { updated = true; }
+            if (drawColorInputLine("Red", ref editingColor.color.r, ref rStr)) { updated = true; }
             if (GUILayout.Button("Load Pattern", GUILayout.Width(120)))
             {
                 sectionData.colors[0] = storedPattern[0];
@@ -218,10 +218,10 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Green", ref editingColor.g, ref gStr)) { updated = true; }
+            if (drawColorInputLine("Green", ref editingColor.color.g, ref gStr)) { updated = true; }
             if (GUILayout.Button("Store Pattern", GUILayout.Width(120)))
             {
-                storedPattern = new Color[3];
+                storedPattern = new RecoloringData[3];
                 storedPattern[0] = sectionData.colors[0];
                 storedPattern[1] = sectionData.colors[1];
                 storedPattern[2] = sectionData.colors[2];
@@ -229,7 +229,7 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Blue", ref editingColor.b, ref bStr)) { updated = true; }
+            if (drawColorInputLine("Blue", ref editingColor.color.b, ref bStr)) { updated = true; }
             if (GUILayout.Button("Load Color", GUILayout.Width(120)))
             {
                 editingColor = storedColor;
@@ -238,11 +238,15 @@ namespace KSPShaderTools
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (drawColorInputLine("Specular", ref editingColor.a, ref aStr)) { updated = true; }
+            if (drawColorInputLine("Specular", ref editingColor.specular, ref aStr)) { updated = true; }
             if (GUILayout.Button("Store Color", GUILayout.Width(120)))
             {
                 storedColor = editingColor;
             }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (drawColorInputLine("Metallic", ref editingColor.metallic, ref mStr)) { updated = true; }
             GUILayout.EndHorizontal();
 
             if (updated)
@@ -263,7 +267,7 @@ namespace KSPShaderTools
             bool update = false;
             Color old = GUI.color;
             Color guiColor = old;
-            List<PresetColor> presetColors = PresetColor.getColorList();
+            List<RecoloringDataPreset> presetColors = PresetColor.getColorList();
             int len = presetColors.Count;
             GUILayout.BeginHorizontal();
             for (int i = 0; i < len; i++)
@@ -279,11 +283,12 @@ namespace KSPShaderTools
                 GUI.color = guiColor;
                 if (GUILayout.Button("Select", GUILayout.Width(55)))
                 {
-                    editingColor = presetColors[i].color;
-                    rStr = (editingColor.r * 255f).ToString("F0");
-                    gStr = (editingColor.g * 255f).ToString("F0");
-                    bStr = (editingColor.b * 255f).ToString("F0");
-                    aStr = (editingColor.a * 255f).ToString("F0");
+                    editingColor = presetColors[i].getRecoloringData();
+                    rStr = (editingColor.color.r * 255f).ToString("F0");
+                    gStr = (editingColor.color.g * 255f).ToString("F0");
+                    bStr = (editingColor.color.b * 255f).ToString("F0");
+                    aStr = (editingColor.specular * 255f).ToString("F0");
+                    mStr = (editingColor.metallic * 255f).ToString("F0");
                     update = true;
                 }
                 GUI.color = old;
@@ -367,9 +372,9 @@ namespace KSPShaderTools
     {
         public readonly IRecolorable owner;
         public readonly string sectionName;
-        public Color[] colors = new Color[3];
+        public RecoloringData[] colors;
 
-        public SectionRecolorData(IRecolorable owner, string name, Color[] colors)
+        public SectionRecolorData(IRecolorable owner, string name, RecoloringData[] colors)
         {
             this.owner = owner;
             this.sectionName = name;

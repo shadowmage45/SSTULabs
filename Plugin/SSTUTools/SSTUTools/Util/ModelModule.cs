@@ -32,7 +32,7 @@ namespace SSTUTools
 
         public List<T> models = new List<T>();
         public T model;
-        public Color[] customColors = new Color[0];//zero-length array triggers default color assignment from texture set colors (if present)
+        public RecoloringData[] customColors = new RecoloringData[0];//zero-length array triggers default color assignment from texture set colors (if present)
 
         private BaseField dataField;
         private BaseField textureField;
@@ -179,7 +179,7 @@ namespace SSTUTools
         /// Symmetry enabled
         /// </summary>
         /// <param name="colors"></param>
-        public void setSectionColors(Color[] colors)
+        public void setSectionColors(RecoloringData[] colors)
         {
             actionWithSymmetry(m =>
             {
@@ -232,14 +232,15 @@ namespace SSTUTools
                 TextureSet ts = Array.Find(model.modelDefinition.textureSets, m => m.name == setName);
                 if (ts!=null && ts.maskColors != null && ts.maskColors.Length > 0)
                 {
-                    customColors = new Color[3];
+                    customColors = new RecoloringData[3];
                     customColors[0] = ts.maskColors[0];
                     customColors[1] = ts.maskColors[1];
                     customColors[2] = ts.maskColors[2];
                 }
                 else
                 {
-                    customColors = new Color[] { Color.white, Color.white, Color.white };
+                    RecoloringData dummy = new RecoloringData(Color.white, 0, 0);
+                    customColors = new RecoloringData[] { dummy, dummy, dummy };
                 }
                 saveColors(customColors);
             }
@@ -266,27 +267,20 @@ namespace SSTUTools
             if (!string.IsNullOrEmpty(data))
             {
                 string[] colorSplits = data.Split(';');
-                string[] dataSplits;
                 int len = colorSplits.Length;
-                customColors = new Color[len];
-                float r, g, b, a;
+                customColors = new RecoloringData[len];
                 for (int i = 0; i < len; i++)
                 {
-                    dataSplits = colorSplits[i].Split(',');
-                    r = SSTUUtils.safeParseFloat(dataSplits[0]);
-                    g = SSTUUtils.safeParseFloat(dataSplits[1]);
-                    b = SSTUUtils.safeParseFloat(dataSplits[2]);
-                    a = dataSplits.Length >= 4 ? SSTUUtils.safeParseFloat(dataSplits[3]) : 1f;
-                    customColors[i] = new Color(r, g, b, a);
+                    customColors[i] = new RecoloringData(colorSplits[i]);
                 }
             }
             else
             {
-                customColors = new Color[0];
+                customColors = new RecoloringData[0];
             }
         }
 
-        private void saveColors(Color[] colors)
+        private void saveColors(RecoloringData[] colors)
         {
             if (colors == null || colors.Length == 0) { return; }
             int len = colors.Length;
@@ -294,10 +288,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 if (i > 0) { data = data + ";"; }
-                data = data + colors[i].r + ",";
-                data = data + colors[i].g + ",";
-                data = data + colors[i].b + ",";
-                data = data + colors[i].a;
+                data = data + colors[i].getPersistentData();
             }
             persistentData = data;
         }
