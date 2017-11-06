@@ -16,6 +16,10 @@ namespace KSPShaderTools
         //default mask colors for this texture set
         public readonly RecoloringData[] maskColors;
 
+        public readonly bool supportsRecoloring;
+        public readonly int recolorableChannelMask;//1 = main, 2 = secondary, 4 = detail
+        public readonly int featureMask;//1 = color, 2 = specular, 4 = metallic, 8 = hardness
+
         public TextureSet(ConfigNode node)
         {
             name = node.GetStringValue("name");
@@ -27,6 +31,9 @@ namespace KSPShaderTools
             {
                 textureData[i] = new TextureSetMaterialData(texNodes[i]);
             }
+            supportsRecoloring = node.GetBoolValue("recolorable", false);
+            recolorableChannelMask = node.GetIntValue("channelMask", 1 | 2 | 4);
+            featureMask = node.GetIntValue("featureMask", 1 | 2 | 4);
             if (node.HasNode("COLORS"))
             {
                 ConfigNode colorsNode = node.GetNode("COLORS");

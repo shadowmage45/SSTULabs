@@ -7,6 +7,7 @@ namespace KSPShaderTools
     {
         string[] getSectionNames();
         RecoloringData[] getSectionColors(string name);
+        TextureSet getSectionTexture(string name);
         void setSectionColors(string name, RecoloringData[] colors);
     }
 
@@ -59,6 +60,7 @@ namespace KSPShaderTools
                 if (len < 3)
                 {
                     MonoBehaviour.print("ERROR: Not enough data in: " + data + " to construct color values.");
+                    values = new string[] { "255", "255", "255", "0", "0"};
                 }
                 string redString = values[0];
                 string greenString = values[1];
