@@ -98,6 +98,9 @@ namespace KSPShaderTools
         //internal data -- event handling, app-launcher button and debug-GUI handling
 
         private bool renderedEditor = false;
+        private int editorDelay = 0;
+        private int editorTarget = 2;
+        private bool export = false;
         
         private EventData<Vessel>.OnEvent vesselCreateEvent;
         private EventData<Vessel>.OnEvent vesselDestroyedEvent;
@@ -287,14 +290,20 @@ namespace KSPShaderTools
             {
                 if (!renderedEditor || force)
                 {
-                    //TODO editor update needs to be delayed a few frames.. at least one?
-                    MonoBehaviour.print("updating editor reflection");
-                    renderedEditor = true;
-                    renderFullCube(editorReflectionData.probeData.renderedCube, new Vector3(0, 10, 0));
-                    updateProbe(editorReflectionData.probeData);
-                    if (force)
+                    if (editorDelay >= editorTarget)
                     {
-                        //exportCubemap(editorReflectionData.probeData.renderedCube, "editorReflect");
+                        renderedEditor = true;
+                    }
+                    editorDelay++;
+                    if (force || renderedEditor)
+                    {
+                        MonoBehaviour.print("updating editor reflection");
+                        renderFullCube(editorReflectionData.probeData.renderedCube, new Vector3(0, 10, 0));
+                        updateProbe(editorReflectionData.probeData);
+                    }
+                    if (force && export)
+                    {
+                        exportCubemap(editorReflectionData.probeData.renderedCube, "editorReflect");
                     }
                 }
             }
