@@ -101,10 +101,21 @@ namespace KSPShaderTools
             this.persistentDataField = persistentDataField;
             int len = 3;
             colorData = new RecoloringData[len];
-            string[] channelData = this.persistentDataField.GetValue<string>(persistentDataField.host).Split(';');
-            for (int i = 0; i < len; i++)
+            string data = this.persistentDataField.GetValue<string>(persistentDataField.host);
+            if (string.IsNullOrEmpty(data))
             {
-                colorData[i] = new RecoloringData(channelData[i]);
+                for (int i = 0; i < len; i++)
+                {
+                    colorData[i] = new RecoloringData(Color.white, 0, 0);
+                }
+            }
+            else
+            {
+                string[] channelData = data.Split(';');
+                for (int i = 0; i < len; i++)
+                {
+                    colorData[i] = new RecoloringData(channelData[i]);
+                }
             }
         }
 
