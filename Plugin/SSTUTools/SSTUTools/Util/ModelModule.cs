@@ -70,6 +70,11 @@ namespace SSTUTools
 
         public void updateModel() { model.updateModel(); }
 
+        public TextureSet currentTextureSet
+        {
+            get { return model.modelDefinition.findTextureSet(textureSet); }
+        }
+
         #region REGION - Constructors and Init Methods
 
         public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, string dataFieldName, string modelFieldName, string textureFieldName)

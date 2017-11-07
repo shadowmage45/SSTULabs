@@ -183,6 +183,11 @@ namespace SSTUTools
             return SSTUUtils.getNames(textureSets, m => m.title);
         }
 
+        public TextureSet findTextureSet(string name)
+        {
+            return Array.Find(textureSets, m => m.name == name);
+        }
+
         internal bool shouldInvert(ModelOrientation orientation)
         {
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);

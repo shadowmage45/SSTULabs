@@ -436,7 +436,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentMountTexture);
+            return mountModule.currentTextureSet;
         }
 
         #endregion ENDREGION - Standard KSP Overrides

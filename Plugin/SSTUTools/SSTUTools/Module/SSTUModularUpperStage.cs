@@ -519,25 +519,25 @@ namespace SSTUTools
         {
             if (section == "Nose")
             {
-                return KSPShaderLoader.getTextureSet(currentNoseTexture);
+                return noseModule.currentTextureSet;
             }
             else if (section == "Upper")
             {
-                return KSPShaderLoader.getTextureSet(currentUpperTexture);
+                return upperModule.currentTextureSet;
             }
             else if (section == "Intertank")
             {
-                return KSPShaderLoader.getTextureSet(currentIntertankTexture);
+                return intertankModule.currentTextureSet;
             }
             else if (section == "Lower")
             {
-                return KSPShaderLoader.getTextureSet(currentLowerTexture);
+                return lowerModule.currentTextureSet;
             }
             else if (section == "Mount")
             {
-                return KSPShaderLoader.getTextureSet(currentMountTexture);
+                return mountModule.currentTextureSet;
             }
-            return KSPShaderLoader.getTextureSet(currentUpperTexture);
+            return upperModule.currentTextureSet;
         }
 
         #endregion

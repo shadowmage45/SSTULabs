@@ -255,17 +255,17 @@ namespace SSTUTools
         {
             if (section == "Top")
             {
-                return KSPShaderLoader.getTextureSet(currentTopTexture);
+                return topModule.currentTextureSet;
             }
             else if (section == "Body")
             {
-                return KSPShaderLoader.getTextureSet(currentCoreTexture);
+                return coreModule.currentTextureSet;
             }
             else if (section == "Bottom")
             {
-                return KSPShaderLoader.getTextureSet(currentBottomTexture);
+                return bottomModule.currentTextureSet;
             }
-            return KSPShaderLoader.getTextureSet(currentCoreTexture);
+            return coreModule.currentTextureSet;
         }
 
         #endregion ENDREGION - Standard KSP Overrides
