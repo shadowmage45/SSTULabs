@@ -127,6 +127,16 @@ namespace SSTUTools
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
+            if (node.HasValue("customColor1"))
+            {
+                Color c1 = node.GetColorFromFloatCSV("customColor1");
+                Color c2 = node.GetColorFromFloatCSV("customColor2");
+                Color c3 = node.GetColorFromFloatCSV("customColor3");
+                string colorData = c1.r + "," + c1.g + "," + c1.b + "," + c1.a + ",0;";
+                colorData = colorData + c2.r + "," + c2.g + "," + c2.b + "," + c2.a + ",0;";
+                colorData = colorData + c3.r + "," + c3.g + "," + c3.b + "," + c3.a + ",0";
+                customColorData = colorData;
+            }
             initialize();
             updateModelScale();//for prefab part...
             updateEditorFields();
