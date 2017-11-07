@@ -99,6 +99,8 @@ namespace KSPShaderTools
 
         public static Color parseColorFromFloats(string input)
         {
+            input = input.Replace("(", "");
+            input = input.Replace(")", "");
             Color color = new Color();
             float[] vals = parseFloatArray(input);
             color.r = vals[0];
