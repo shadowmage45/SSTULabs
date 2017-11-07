@@ -15,6 +15,7 @@ Shader "SSTU/MaskedIcon"
 		_MaxX ("MaxX", Range(0.000000,1.000000)) = 1.000000
 		_MinY ("MinY", Range(0.000000,1.000000)) = 0.000000
 		_MaxY ("MaxY", Range(0.000000,1.000000)) = 1.000000
+		_Multiplier("Multiplier", Float) = 2
 	}
 	
 	SubShader
@@ -26,7 +27,7 @@ Shader "SSTU/MaskedIcon"
 
 		CGPROGRAM
 
-		#pragma surface surf ColoredSpecular
+		#pragma surface surf Icon
 		#pragma target 3.0
 		#include "SSTUShaders.cginc"
 		
@@ -39,6 +40,7 @@ Shader "SSTU/MaskedIcon"
 		sampler2D _AOMap;
 
 		half _Shininess;
+		half _Multiplier;
 		float4 _MaskColor1;
 		float4 _MaskColor2;
 		float4 _MaskColor3;
@@ -54,7 +56,7 @@ Shader "SSTU/MaskedIcon"
 			float4 screenPos;
 		};
 
-		void surf (Input IN, inout ColoredSpecularSurfaceOutput o)
+		void surf (Input IN, inout IconSurfaceOutput o)
 		{
 			//as the clip test needs to be performed regardless of the surface properties, run it first as an early exit
 			//should save some texture sampling and processing of data that would just be discarded anyway.
@@ -85,6 +87,7 @@ Shader "SSTU/MaskedIcon"
 			half3 baseSpec = spec * m;
 			half3 detailSpec = (spec - 0.5) * (1 - m);
 
+			o.Multiplier = _Multiplier;
 			o.Albedo = saturate(userColor + diffuseColor + detailColor) * ao;
 			o.GlossColor = spec.rgb;
 			o.Specular = _Shininess;

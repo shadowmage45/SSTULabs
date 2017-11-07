@@ -1,3 +1,14 @@
+struct IconSurfaceOutput 
+{
+	half3 Albedo;
+	half3 Normal;
+	half3 Emission;
+	half Specular;
+	half3 GlossColor;
+	fixed Alpha;
+	half Multiplier;
+};
+
 struct ColoredSpecularSurfaceOutput 
 {
 	half3 Albedo;
@@ -19,6 +30,25 @@ struct SolarSurfaceOutput
 	half3 BackLight;
 	half BackClamp;
 };	
+
+inline half4 LightingIcon (IconSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
+{
+    //fixed normal, as Unity de-normalizes it somewhere between the lighting functions
+	fixed3 fN = normalize(s.Normal);
+	//diffuse light intensity, from surface normal and light direction
+	half diff = max (0, dot (fN, lightDir));
+	//specular light calculations
+	half3 h = normalize (lightDir + viewDir);
+	float nh = max (0, dot (fN, h));
+	float spec = pow (nh, s.Specular * 128);
+	half3 specCol = spec * s.GlossColor;
+	
+	//output fragment color; Unity adds Emission to it through some other method
+	half4 c;
+	c.rgb = (s.Albedo * _LightColor0.rgb * diff + _LightColor0.rgb * specCol) * atten * s.Multiplier;
+	c.a = s.Alpha;
+	return c;
+}
 		
 inline half4 LightingColoredSpecular (ColoredSpecularSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
 {
