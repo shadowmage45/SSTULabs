@@ -165,7 +165,7 @@ namespace KSPShaderTools
                 int len2 = moduleRecolorData[i].sectionData.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    if (!moduleRecolorData[i].sectionData[k].sectionTexture.supportsRecoloring)
+                    if (!moduleRecolorData[i].sectionData[k].recoloringSupported())
                     {
                         continue;
                     }
@@ -178,7 +178,7 @@ namespace KSPShaderTools
                     for (int m = 0; m < 3; m++)
                     {
                         int mask = 1 << m;
-                        if ((moduleRecolorData[i].sectionData[k].sectionTexture.recolorableChannelMask & mask) != 0)
+                        if (moduleRecolorData[i].sectionData[k].channelSupported(mask))
                         {
                             guiColor = moduleRecolorData[i].sectionData[k].colors[m].color;
                             guiColor.a = 1;
@@ -402,7 +402,7 @@ namespace KSPShaderTools
         public readonly IRecolorable owner;
         public readonly string sectionName;
         public RecoloringData[] colors;
-        public TextureSet sectionTexture;
+        private TextureSet sectionTexture;
 
         public SectionRecolorData(IRecolorable owner, string name, RecoloringData[] colors, TextureSet set)
         {
@@ -410,6 +410,15 @@ namespace KSPShaderTools
             this.sectionName = name;
             this.colors = colors;
             this.sectionTexture = set;
+            MonoBehaviour.print("Created section recolor data with texture set: " + set+" for section: "+name);
+            if (set != null)
+            {
+                MonoBehaviour.print("Set name: " + set.name + " :: " + set.title + " recolorable: " + set.supportsRecoloring);
+            }
+            else
+            {
+                MonoBehaviour.print("Set was null");
+            }
         }
 
         public void updateColors()
@@ -417,23 +426,39 @@ namespace KSPShaderTools
             owner.setSectionColors(sectionName, colors);
         }
 
+        public bool recoloringSupported()
+        {
+            if (sectionTexture == null) { return false; }
+            return sectionTexture.supportsRecoloring;
+        }
+
         public bool colorSupported()
         {
+            if (sectionTexture == null) { return false; }
             return (sectionTexture.featureMask & 1) != 0;
+        }
+
+        public bool channelSupported(int mask)
+        {
+            if (sectionTexture == null) { return false; }
+            return (sectionTexture.recolorableChannelMask & mask) != 0;
         }
 
         public bool specularSupported()
         {
+            if (sectionTexture == null) { return false; }
             return (sectionTexture.featureMask & 2) != 0;
         }
 
         public bool metallicSupported()
         {
+            if (sectionTexture == null) { return false; }
             return (sectionTexture.featureMask & 4) != 0;
         }
 
         public bool hardnessSupported()
         {
+            if (sectionTexture == null) { return false; }
             return (sectionTexture.featureMask & 8) != 0;
         }
 
