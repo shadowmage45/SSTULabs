@@ -21,29 +21,6 @@ namespace KSPShaderTools
         void geometryUpdated(Part part);
     }
 
-    public struct RecoloringDataPreset
-    {
-        public string name;
-        public string title;
-        public Color color;
-        public float specular;
-        public float metallic;
-
-        public RecoloringDataPreset(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            title = node.GetStringValue("title");
-            color = Utils.parseColorFromBytes(node.GetStringValue("color"));
-            specular = node.GetFloatValue("specular");
-            metallic = node.GetFloatValue("metallic");
-        }
-
-        public RecoloringData getRecoloringData()
-        {
-            return new RecoloringData(color, specular, metallic);
-        }
-    }
-
     public struct RecoloringData
     {
 

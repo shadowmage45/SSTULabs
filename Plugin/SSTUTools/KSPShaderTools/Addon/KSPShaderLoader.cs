@@ -483,6 +483,29 @@ namespace KSPShaderTools
         }
     }
     
+    public struct RecoloringDataPreset
+    {
+        public string name;
+        public string title;
+        public Color color;
+        public float specular;
+        public float metallic;
+
+        public RecoloringDataPreset(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            title = node.GetStringValue("title");
+            color = Utils.parseColorFromBytes(node.GetStringValue("color"));
+            specular = node.GetFloatValue("specular") / 255f;//specified in byte, stored/used as float
+            metallic = node.GetFloatValue("metallic") / 255f;//specified in byte, stored/used as float
+        }
+
+        public RecoloringData getRecoloringData()
+        {
+            return new RecoloringData(color, specular, metallic);
+        }
+    }
+
     public class PresetColor
     {
         private static List<RecoloringDataPreset> colorList = new List<RecoloringDataPreset>();
