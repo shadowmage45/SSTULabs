@@ -227,8 +227,13 @@ namespace SSTUTools
         // cached thrust values, to remove the need to query the part config for the engine module config node
         // are initialized the first time the engines stats are updated (during Start())
         // this should allow it to catch any 'upgraded' stats for the engines.
-        private float[] minThrustBase, maxThrustBase;
-        private float[][] trsMults;
+        // marked as public-persistent to work around problems of KSPs in-editor part copying crap
+        [Persistent]
+        public float[] minThrustBase;
+        [Persistent]
+        public float[] maxThrustBase;
+        [Persistent]
+        public float[][] trsMults;
 
         #endregion ENDREGION - Private working variables
 
