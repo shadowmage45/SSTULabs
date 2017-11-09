@@ -55,10 +55,6 @@ namespace KSPShaderTools
         /// Layer to use for skybox hack
         /// </summary>
         public int skyboxLayer = 26;
-        
-        // Skybox specific settings -- as the skybox is rendered and updated independently from the rest of the scene.
-        // It can use different udpate frequency as well as resolution.
-        // Rendered skybox includes only the galaxy and atmosphere color (and clouds when EVE is in use?).
 
         #endregion
 
@@ -101,6 +97,9 @@ namespace KSPShaderTools
         private int editorDelay = 0;
         private int editorTarget = 2;
         private bool export = false;
+        private bool debug = false;
+
+        internal List<ReflectionPass> renderStack = new List<ReflectionPass>();
         
         private EventData<Vessel>.OnEvent vesselCreateEvent;
         private EventData<Vessel>.OnEvent vesselDestroyedEvent;
@@ -129,6 +128,14 @@ namespace KSPShaderTools
             MonoBehaviour.print("ReflectionManager Awake()");
             instance = this;
 
+            if (renderStack.Count <= 0)
+            {
+                renderStack.Add(ReflectionPass.GALAXY);
+                renderStack.Add(ReflectionPass.ATMOSPHERE);
+                renderStack.Add(ReflectionPass.SCALED);
+                renderStack.Add(ReflectionPass.SCENERY);
+            }
+
             ConfigNode[] nodes = GameDatabase.Instance.GetConfigNodes("REFLECTION_CONFIG");
             if (nodes == null || nodes.Length < 1)
             {
@@ -140,6 +147,9 @@ namespace KSPShaderTools
             envMapSize = node.GetIntValue("resolution", envMapSize);
             mapUpdateSpacing = node.GetIntValue("interval", mapUpdateSpacing);
             numberOfFaces = node.GetIntValue("faces", numberOfFaces);
+            eveInstalled = node.GetBoolValue("eveInstalled", false);
+            debug = node.GetBoolValue("debug", false);
+            export = node.GetBoolValue("exportDebugCubes", false);
 
             init();
             vesselCreateEvent = new EventData<Vessel>.OnEvent(vesselCreated);
@@ -148,7 +158,7 @@ namespace KSPShaderTools
             GameEvents.onVesselDestroy.Add(vesselDestroyedEvent);
 
             Texture2D tex;
-            if (debugAppButton == null)
+            if (debugAppButton == null && debug)//static reference; track if the button was EVER created, as KSP keeps them even if the addon is destroyed
             {                
                 //create a new button
                 tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
@@ -268,9 +278,7 @@ namespace KSPShaderTools
         public void vesselCreated(Vessel vessel)
         {
             ReflectionProbeData data = createProbe();
-            data.reflectionSphere.transform.parent = vessel.transform;        
-            data.reflectionSphere.transform.localPosition = Vector3.zero;
-            //data.reflectionSphere.transform.rotation = Quaternion.identity;
+            data.reflectionSphere.transform.position = vessel.transform.position;
             VesselReflectionData d = new VesselReflectionData(vessel, data);
             vesselReflectionProbeDict.Add(vessel, d);
             MonoBehaviour.print("SSTUReflectionManager vesselCreated() : " + vessel+" :: "+d);
@@ -312,20 +320,26 @@ namespace KSPShaderTools
                 foreach (VesselReflectionData d in vesselReflectionProbeDict.Values)
                 {
                     if (d.vessel.loaded)
-                    {                        
+                    {
+                        d.probeData.reflectionSphere.transform.position = d.vessel.transform.position;
                         if (force)
                         {
                             renderFullCube(d.probeData.renderedCube, d.vessel.transform.position);
                             updateProbe(d.probeData);
-                            //exportCubemap(d.probeData.renderedCube, "vesselReflect-" + d.vessel.name);
+                            if (export)
+                            {
+                                exportCubemap(d.probeData.renderedCube, "vesselReflect-" + d.vessel.name);
+                            }
                             continue;
                         }
                         d.probeData.updateTime++;
                         if (d.probeData.updateTime >= mapUpdateSpacing)
                         {
-                            //MonoBehaviour.print("Updating reflection for vessel: "+d.vessel+ " : face: "+d.probeData.updateFace);
-                            renderFace(d.probeData.renderedCube, d.probeData.updateFace, d.vessel.transform.position);
-                            d.probeData.updateFace++;
+                            for (int i = 0; i < numberOfFaces && d.probeData.updateFace < 6; i++)
+                            {
+                                renderFace(d.probeData.renderedCube, d.probeData.updateFace, d.vessel.transform.position);
+                                d.probeData.updateFace++;
+                            }
                             if (d.probeData.updateFace >= 6)
                             {
                                 updateProbe(d.probeData);
@@ -351,8 +365,6 @@ namespace KSPShaderTools
             data.probe.RenderProbe();
         }
 
-        private void continueProbeUpdate() { }
-
         private void renderFullCube(RenderTexture envMap, Vector3 partPos)
         {
             for (int face = 0; face < 6; face++)
@@ -363,31 +375,55 @@ namespace KSPShaderTools
 
         private void renderFace(RenderTexture envMap, int face, Vector3 partPos)
         {
+            //TODO -- scaled and atmo need to be rendered in oposite order while in orbit
+            //or something....
+
+            //TODO -- investigate splitting the near/far rendering of scenery to reduce the massively massive far-clip plane.
+
             float nearClip = 0.3f;
             float farClip = 3.0e7f;
             int faceMask = 1 << face;
-            if (renderGalaxy)
+
+            int len = renderStack.Count;
+            ReflectionPass pass;
+            for (int i = 0; i < len; i++)
             {
-                //galaxy
-                renderCubeFace(envMap, faceMask, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
-            }
-            //TODO -- scaled and atmo need to be rendered in oposite order while in orbit
-            if (renderScaled)
-            {
-                //scaled space
-                renderCubeFace(envMap, faceMask, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
-            }
-            if (renderAtmo)
-            {
-                //atmo
-                renderCubeFace(envMap, faceMask, partPos, atmosphereMask, nearClip, farClip);
-            }
-            if (renderScenery)
-            {
-                //scene
-                eveCameraFix.overwriteAlpha = eveInstalled;
-                renderCubeFace(envMap, faceMask, partPos, sceneryMask, nearClip, farClip);
-                eveCameraFix.overwriteAlpha = false;
+                pass = renderStack[i];
+                switch (pass)
+                {
+                    case ReflectionPass.GALAXY:
+                        if (renderGalaxy)
+                        {
+                            //galaxy
+                            renderCubeFace(envMap, faceMask, GalaxyCubeControl.Instance.transform.position, galaxyMask, nearClip, farClip);
+                        }
+                        break;
+                    case ReflectionPass.SCALED:
+                        if (renderScaled)
+                        {
+                            //scaled space
+                            renderCubeFace(envMap, faceMask, ScaledSpace.Instance.transform.position, scaledSpaceMask, nearClip, farClip);
+                        }
+                        break;
+                    case ReflectionPass.SCENERY:
+                        if (renderScenery)
+                        {
+                            //scene
+                            eveCameraFix.overwriteAlpha = eveInstalled;
+                            renderCubeFace(envMap, faceMask, partPos, sceneryMask, nearClip, farClip);
+                            eveCameraFix.overwriteAlpha = false;
+                        }
+                        break;
+                    case ReflectionPass.ATMOSPHERE:
+                        if (renderAtmo)
+                        {
+                            //atmo
+                            renderCubeFace(envMap, faceMask, partPos, atmosphereMask, nearClip, farClip);
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
@@ -514,7 +550,7 @@ namespace KSPShaderTools
                     eveCameraFix.overwriteAlpha = false;
                 }
             }
-            //exportCubemap(debugCube, "reflect");
+            exportCubemap(debugCube, "reflect");
             reflectionCamera.enabled = false;
         }
 
@@ -533,33 +569,43 @@ namespace KSPShaderTools
 
         private void exportCubemap(Cubemap envMap, string name)
         {
-            //Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
-            //for (int i = 0; i < 6; i++)
-            //{
-            //    tex.SetPixels(envMap.GetPixels((CubemapFace)i));
-            //    byte[] bytes = tex.EncodeToPNG();
-            //    File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
-            //}
-            //GameObject.Destroy(tex);
+            Directory.CreateDirectory("cubeExport");
+            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
+            for (int i = 0; i < 6; i++)
+            {
+                tex.SetPixels(envMap.GetPixels((CubemapFace)i));
+                byte[] bytes = tex.EncodeToPNG();
+                File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
+            }
+            GameObject.Destroy(tex);
         }
 
         private void exportCubemap(RenderTexture envMap, string name)
         {
-            //Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
-            //for (int i = 0; i < 6; i++)
-            //{
-            //    Graphics.SetRenderTarget(envMap, 0, (CubemapFace)i);
-            //    tex.ReadPixels(new Rect(0, 0, envMap.width, envMap.height), 0, 0);
-            //    tex.Apply();
-            //    byte[] bytes = tex.EncodeToPNG();
-            //    File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
-            //}
-            //GameObject.Destroy(tex);
+            Directory.CreateDirectory("cubeExport");
+            Texture2D tex = new Texture2D(envMap.width, envMap.height, TextureFormat.ARGB32, false);
+            for (int i = 0; i < 6; i++)
+            {
+                Graphics.SetRenderTarget(envMap, 0, (CubemapFace)i);
+                tex.ReadPixels(new Rect(0, 0, envMap.width, envMap.height), 0, 0);
+                tex.Apply();
+                byte[] bytes = tex.EncodeToPNG();
+                File.WriteAllBytes("cubeExport/" + name + "-" + i + ".png", bytes);
+            }
+            GameObject.Destroy(tex);
         }
 
         #endregion DEBUG RENDERING
 
         #region CONTAINER CLASSES
+
+        public enum ReflectionPass
+        {
+            GALAXY,
+            SCALED,
+            SCENERY,
+            ATMOSPHERE,
+        }
 
         public class VesselReflectionData
         {

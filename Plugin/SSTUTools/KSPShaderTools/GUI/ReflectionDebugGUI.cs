@@ -35,27 +35,52 @@ namespace KSPShaderTools
             bool scaled = manager.renderScaled;
             bool scenery = manager.renderScenery;
             GUILayout.BeginVertical();
-            manager.reflectionsEnabled = addButtonRow("Reflections Enabled", manager.reflectionsEnabled);
-            manager.renderGalaxy = addButtonRow("Render Galaxy", galaxy);
-            manager.renderAtmo = addButtonRow("Render Atmo", atmo);
-            manager.renderScaled = addButtonRow("Render Scaled", scaled);
-            manager.renderScenery = addButtonRow("Render Scenery", scenery);
-            manager.eveInstalled = addButtonRow("Eve Fix", manager.eveInstalled);
-            if (GUILayout.Button("Force Refl update"))
+            manager.reflectionsEnabled = addButtonRowToggle("Reflections Enabled", manager.reflectionsEnabled);
+            manager.renderGalaxy = addButtonRowToggle("Render Galaxy", galaxy);
+            manager.renderAtmo = addButtonRowToggle("Render Atmo", atmo);
+            manager.renderScaled = addButtonRowToggle("Render Scaled", scaled);
+            manager.renderScenery = addButtonRowToggle("Render Scenery", scenery);
+            manager.eveInstalled = addButtonRowToggle("Eve Fix", manager.eveInstalled);
+
+            int len = manager.renderStack.Count;
+            ReflectionManager.ReflectionPass pass;
+            int incIndex = -1;
+            int decIndex = -1;
+            for (int i = 0; i < len; i++)
+            {
+                pass = manager.renderStack[i];
+                bool minus = addButtonRow(pass.ToString(), "-");
+                if (minus) { decIndex = i; }
+                bool plus = addButtonRow(pass.ToString(), "+");
+                if (plus) { incIndex = i; }
+            }
+            if (incIndex > 0)
+            {
+                pass = manager.renderStack[incIndex];
+                manager.renderStack.RemoveAt(incIndex);
+                manager.renderStack.Insert(incIndex - 1, pass);
+            }
+            if (decIndex >= 0 && decIndex < len-1)
+            {
+                pass = manager.renderStack[decIndex];
+                manager.renderStack.RemoveAt(decIndex);
+                manager.renderStack.Insert(decIndex + 1, pass);
+            }
+
+            if (GUILayout.Button("Force Reflection Probe Update"))
             {
                 manager.updateReflections(true);
             }
-            if (GUILayout.Button("Render Debug Cubes"))
+            if (GUILayout.Button("Export Debug Cube Maps"))
             {
                 manager.renderDebugCubes();
             }
             GUILayout.EndVertical();
         }
 
-        private bool addButtonRow(string text, bool value)
+        private bool addButtonRowToggle(string text, bool value)
         {
-            GUILayout.BeginHorizontal();
-            
+            GUILayout.BeginHorizontal();            
             GUILayoutOption width = GUILayout.Width(100);
             GUILayout.Label(text, width);
             GUILayout.Label(value.ToString(), width);
@@ -70,10 +95,19 @@ namespace KSPShaderTools
         private bool addButtonRow(string text)
         {
             GUILayout.BeginHorizontal();
-
             GUILayoutOption width = GUILayout.Width(100);
             GUILayout.Label(text, width);
             bool value = GUILayout.Button("Toggle", width);
+            GUILayout.EndHorizontal();
+            return value;
+        }
+
+        private bool addButtonRow(string labelText, string buttonText)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayoutOption width = GUILayout.Width(100);
+            GUILayout.Label(labelText, width);
+            bool value = GUILayout.Button(buttonText, width);
             GUILayout.EndHorizontal();
             return value;
         }
