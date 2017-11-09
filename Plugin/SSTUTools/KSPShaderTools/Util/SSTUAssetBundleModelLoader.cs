@@ -23,7 +23,7 @@ namespace SSTUTools
 
             if (!string.IsNullOrEmpty(www.error))
             {
-                MonoBehaviour.print("Error while loading AssetBundle model: " + www.error);
+                MonoBehaviour.print("Error while loading AssetBundle model: " + www.error+" for url: "+urlFile.url+" :: "+urlFile.fullPath);
                 yield break;
             }
             else if (www.assetBundle == null)
@@ -83,6 +83,7 @@ namespace SSTUTools
                 replaceShader(m, m.shader.name);
                 replaceTexture(m, "_MainTex", false);
                 replaceTexture(m, "_SpecMap", false);
+                replaceTexture(m, "_MetallicGlossMap", false);
                 replaceTexture(m, "_BumpMap", true);
                 replaceTexture(m, "_Emissive", false);
                 replaceTexture(m, "_AOMap", false);

@@ -116,7 +116,6 @@
     <Compile Include="Util\AnimationController.cs" />
     <Compile Include="Util\SSTUEngineLayout.cs" />
     <Compile Include="Util\VolumeContainer.cs" />
-    <Compile Include="WIPModule\SSTUAssetBundleModelLoader.cs" />
     <Compile Include="WIPModule\SSTUCollisionDebug.cs" />
     <Compile Include="Module\SSTUModularEngineCluster.cs" />
     <Compile Include="Module\SSTUFlagDecal.cs" />

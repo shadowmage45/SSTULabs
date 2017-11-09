@@ -78,6 +78,7 @@
     <Compile Include="GUI\ReflectionDebugGUI.cs" />
     <Compile Include="Addon\ReflectionManager.cs" />
     <Compile Include="Module\SSTURecolorGUI.cs" />
+    <Compile Include="Util\SSTUAssetBundleModelLoader.cs" />
     <Compile Include="Util\TextureSet.cs" />
     <Compile Include="Util\Utils.cs" />
   </ItemGroup>
