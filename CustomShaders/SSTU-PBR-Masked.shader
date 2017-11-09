@@ -1,4 +1,4 @@
-Shader "SSTU/StandardMasked"
+Shader "SSTU/PBR/Masked"
 {
 	Properties 
 	{

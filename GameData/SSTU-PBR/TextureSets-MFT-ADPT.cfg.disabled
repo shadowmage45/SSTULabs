@@ -4,7 +4,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC
 		}
 	}
@@ -12,7 +12,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC
 		}
 	}
@@ -20,7 +20,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC
 		}
 	}
@@ -28,7 +28,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC-ORANGE
 		}
 	}
@@ -36,7 +36,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC-GOLD
 		}
 	}
@@ -44,7 +44,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC-CLOTH
 		}
 	}
@@ -52,7 +52,7 @@
 	{
 		@TEXTURE,0
 		{
-			@shader = SSTU/StandardMasked
+			@shader = SSTU/PBR/Masked
 			@texture,3 = _SpecMap, SSTU-PBR/Assets/SC-ADPT1-SPEC-SILVER
 		}
 	}
