@@ -504,6 +504,33 @@ namespace KSPShaderTools
             exportCubes(map, pos);
         }
 
+        public void renderDebugLayers()
+        {
+            int size = envMapSize * 4;
+            Cubemap map = new Cubemap(size, TextureFormat.ARGB32, false);
+            Texture2D exportTex = new Texture2D(size, size, TextureFormat.ARGB32, false);
+            Vector3 pos = HighLogic.LoadedSceneIsEditor ? new Vector3(0, 10, 0) : FlightIntegrator.ActiveVesselFI.Vessel.transform.position;
+
+            reflectionCamera.enabled = true;
+            float nearClip = reflectionCamera.nearClipPlane;
+            float farClip = 3.0e7f;
+
+            reflectionCamera.clearFlags = CameraClearFlags.SolidColor;
+            Color bg = reflectionCamera.backgroundColor;
+            reflectionCamera.backgroundColor = Color.clear;
+
+            int len = 32;
+            int mask = 0;
+            for (int i = 0; i < len; i++)
+            {
+                mask = 1 << i;
+                renderCube(map, pos, mask, nearClip, farClip);
+                exportCubemap(map, "layer"+i);
+            }
+            reflectionCamera.clearFlags = CameraClearFlags.Depth;
+            reflectionCamera.enabled = false;
+        }
+
         private void exportCubes(Cubemap debugCube, Vector3 pos)
         {
             reflectionCamera.enabled = true;

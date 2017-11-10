@@ -75,6 +75,10 @@ namespace KSPShaderTools
             {
                 manager.renderDebugCubes();
             }
+            if (GUILayout.Button("Export Debug Cube Layer"))
+            {
+                manager.renderDebugLayers();
+            }
             GUILayout.EndVertical();
         }
 
