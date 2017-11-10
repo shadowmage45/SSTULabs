@@ -143,6 +143,7 @@ namespace KSPShaderTools
                 return;
             }
             ConfigNode node = nodes[0];
+            MonoBehaviour.print("SSTUReflectionManager - Loading reflection configuration: \n" + node.ToString());
             reflectionsEnabled = node.GetBoolValue("enabled", false);
             envMapSize = node.GetIntValue("resolution", envMapSize);
             mapUpdateSpacing = node.GetIntValue("interval", mapUpdateSpacing);
@@ -164,7 +165,7 @@ namespace KSPShaderTools
                 tex = GameDatabase.Instance.GetTexture("Squad/PartList/SimpleIcons/RDIcon_fuelSystems-highPerformance", false);
                 debugAppButton = ApplicationLauncher.Instance.AddModApplication(debugGuiEnable, debugGuiDisable, null, null, null, null, ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.SPH | ApplicationLauncher.AppScenes.VAB, tex);
             }
-            else
+            else if(debugAppButton != null)
             {
                 //reseat callback refs to the ones from THIS instance of the KSPAddon (old refs were stale, pointing to methods for a deleted class instance)
                 debugAppButton.onTrue = debugGuiEnable;
@@ -255,6 +256,10 @@ namespace KSPShaderTools
             if (skyboxShader == null)
             {
                 skyboxShader = KSPShaderTools.KSPShaderLoader.getShader("SSTU/Skybox/Cubemap");
+                if (skyboxShader == null)
+                {
+                    MonoBehaviour.print("ERROR: SSTUReflectionManager - Could not find skybox shader.");
+                }
             }
             if (HighLogic.LoadedSceneIsEditor)
             {

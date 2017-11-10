@@ -156,6 +156,7 @@ namespace KSPShaderTools
                 node = shaderNodes[i];
                 sName = node.GetStringValue("shader", "KSP/Diffuse");
                 iName = node.GetStringValue("iconShader", "KSP/ScreenSpaceMask");
+                MonoBehaviour.print("Attempting to load shader data for: " + sName + " :: " + iName);
                 Shader shader = dict[sName];
                 Shader iconShader = dict[iName];
                 ShaderData data = new ShaderData(shader, iconShader);
