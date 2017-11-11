@@ -157,9 +157,9 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\KSPShaderTools\KSPShaderTools.csproj">
+    <ProjectReference Include="..\..\..\..\TexturesUnlimited\Plugin\SSTUTools\KSPShaderTools\TexturesUnlimited.csproj">
       <Project>{90c22d61-2261-4b94-844c-59536357b09d}</Project>
-      <Name>KSPShaderTools</Name>
+      <Name>TexturesUnlimited</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

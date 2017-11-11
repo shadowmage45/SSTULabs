@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUTools", "SSTUTools\SSTUTools.csproj", "{0BCB8074-A14F-42BA-BDCF-8A28765479B6}"
 EndProject
@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUPartTools", "SSTUPartTo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUBuildTools", "SSTUBuildTools\SSTUBuildTools.csproj", "{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KSPShaderTools", "KSPShaderTools\KSPShaderTools.csproj", "{90C22D61-2261-4B94-844C-59536357B09D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TexturesUnlimited", "..\..\..\TexturesUnlimited\Plugin\SSTUTools\KSPShaderTools\TexturesUnlimited.csproj", "{90C22D61-2261-4B94-844C-59536357B09D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
