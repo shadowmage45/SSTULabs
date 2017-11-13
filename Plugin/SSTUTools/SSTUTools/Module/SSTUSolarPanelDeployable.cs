@@ -221,9 +221,12 @@ namespace SSTUTools
         public override void OnSave(ConfigNode node)
         {
             base.OnSave(node);
-            savedAnimationState = panelState.ToString();
-            node.SetValue("savedAnimationState", savedAnimationState, true);
-            node.SetValue(nameof(persistentData), getPivotSaveData());
+            if (pivotData != null)
+            {
+                savedAnimationState = panelState.ToString();
+                node.SetValue("savedAnimationState", savedAnimationState, true);
+                node.SetValue(nameof(persistentData), getPivotSaveData());
+            }
         }
 
         private string getPivotSaveData()
@@ -234,7 +237,14 @@ namespace SSTUTools
             Quaternion rot;
             for (int i = 0; i < len; i++)
             {
-                rot = pivotData[i].pivotTransform.localRotation;
+                if (pivotData[i].pivotTransform == null)
+                {
+                    return persistentData;
+                }
+                else
+                {
+                    rot = pivotData[i].pivotTransform.localRotation;
+                }
                 output = output + rot.x + "," + rot.y + "," + rot.z + "," + rot.w;
                 if (i < len-1)
                 {

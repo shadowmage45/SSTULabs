@@ -350,7 +350,7 @@ namespace SSTUTools
             model.outsideUV = uvs.getArea("outside");
             model.insideUV = uvs.getArea("inside");
             model.topUV = uvs.getArea("top");
-            model.bottomUV = uvs.getArea("top");
+            model.bottomUV = uvs.getArea("bottom");
             setModelParameters();
             model.setMaterial(fairingMaterial);
             model.createModel();

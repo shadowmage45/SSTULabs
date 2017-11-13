@@ -175,7 +175,7 @@ namespace SSTUTools
             }
             string[] options = SSTUUtils.getNames(shieldTypeData, m => m.baseType.name);
             this.updateUIChooseOptionControl(nameof(currentShieldType), options, options, true, currentShieldType);
-            this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.5f, true, currentDiameter);
+            this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
             this.Fields[nameof(currentShieldType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m => 
