@@ -5,6 +5,19 @@ namespace SSTUTools
 {
     public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor
     {
+        /// <summary>
+        /// If populated, the model-switch added mesh will be parented, in model-local space, to the transform specified in this field.
+        /// </summary>
+        [KSPField]
+        public string parentTransformName = string.Empty;
+
+        /// <summary>
+        /// Added either to root model transform, or to the 'parent' transform specified above.
+        /// This transform serves as a container for the ModelSwitch added models, 
+        /// and allows for clean management of meshes added through the ModelSwitch module.
+        /// </summary>
+        [KSPField]
+        public string rootTransformName = "ModelSwitchRoot";
 
         /// <summary>
         /// Index of the container in VolumeContainer that this model will control the volume of
@@ -29,6 +42,13 @@ namespace SSTUTools
         /// </summary>
         [KSPField]
         public bool subtractMass = false;
+
+        /// <summary>
+        /// CSV of what attach-nodes this model-switch is responsible for.  These nodes will be assigned to the node-position values specified in the MODEL_DATA, relative to the
+        /// position of the model in the hierarchy.
+        /// </summary>
+        [KSPField]
+        public string managedNodeNames = string.Empty;
 
         /// <summary>
         /// The currently selected variant name.  Also used for the UI control.
