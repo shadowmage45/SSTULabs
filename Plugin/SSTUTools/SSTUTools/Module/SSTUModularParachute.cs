@@ -806,12 +806,12 @@ namespace SSTUTools
             }
         }
 
-        private bool isMainChuteDeployed()
+        public bool isMainChuteDeployed()
         {
             return chuteState == ChuteState.MAIN_DEPLOYING_FULL || chuteState == ChuteState.MAIN_DEPLOYING_SEMI || chuteState == ChuteState.MAIN_FULL_DEPLOYED || chuteState == ChuteState.MAIN_SEMI_DEPLOYED;
         }
 
-        private bool isDrogueChuteDeployed()
+        public bool isDrogueChuteDeployed()
         {
             return chuteState == ChuteState.DROGUE_DEPLOYING_FULL || chuteState == ChuteState.DROGUE_DEPLOYING_SEMI || chuteState == ChuteState.DROGUE_FULL_DEPLOYED || chuteState == ChuteState.DROGUE_SEMI_DEPLOYED;
         }
