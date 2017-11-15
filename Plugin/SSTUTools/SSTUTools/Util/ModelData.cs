@@ -577,6 +577,7 @@ namespace SSTUTools
         /// <param name="orientation"></param>
         public void updateAttachNodes(Part part, String[] nodeNames, bool userInput, ModelOrientation orientation)
         {
+            if (nodeNames == null || nodeNames.Length < 1) { return; }
             if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0] == "none")) { return; }
             float currentVerticalPosition = this.currentVerticalPosition;
             float offset = getVerticalOffset();

@@ -48,7 +48,7 @@ namespace SSTUTools
         /// position of the model in the hierarchy.
         /// </summary>
         [KSPField]
-        public string managedNodeNames = string.Empty;
+        public string managedNodeNames = "none";
 
         [KSPField]
         public string uiLabel = "Variant";
@@ -59,6 +59,10 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentModel = string.Empty;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+        public float scale = 1.0f;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -94,13 +98,12 @@ namespace SSTUTools
                 models.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
+                    m.models.model.updateScale(scale);
                     m.models.updateModel();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
                 });
             };
-
-            //Fields[nameof(currentTexture)]
         }
 
         public override string GetInfo()
@@ -158,6 +161,7 @@ namespace SSTUTools
             models.getSymmetryModule = m => m.models;
             models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
             models.setupModel();
+            models.model.updateScale(scale);
             models.updateModel();
             updateMassAndCost();
             updateAttachNodes(false);
@@ -173,7 +177,8 @@ namespace SSTUTools
 
         private void updateAttachNodes(bool userInput)
         {
-            //TODO
+            string[] nodeNames = managedNodeNames.Split(',');
+            models.model.updateAttachNodes(part, nodeNames, userInput, ModelOrientation.TOP);
         }
     }
 }
