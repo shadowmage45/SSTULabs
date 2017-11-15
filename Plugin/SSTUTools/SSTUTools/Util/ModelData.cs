@@ -981,9 +981,6 @@ namespace SSTUTools
             if (model != null)
             {
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0) + position;
-            }
-            if (model != null)
-            {
                 if (modelDefinition.compoundModelData != null)
                 {
                     modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale * scale.x, currentHeightScale * baseScale * scale.y, modelDefinition.orientation);
@@ -996,6 +993,22 @@ namespace SSTUTools
                 model.transform.localRotation = Quaternion.Euler(rotation);
             }
         }
+        
+        public override float getModuleVolume()
+        {
+            return volume * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
+        }
+
+        public override float getModuleMass()
+        {
+            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
+        }
+
+        public override float getModuleCost()
+        {
+            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
+        }
+
     }
 
     /// <summary>

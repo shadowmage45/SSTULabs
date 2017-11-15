@@ -50,6 +50,9 @@ namespace SSTUTools
         [KSPField]
         public string managedNodeNames = string.Empty;
 
+        [KSPField]
+        public string uiLabel = "Variant";
+
         /// <summary>
         /// The currently selected variant name.  Also used for the UI control.
         /// </summary>
@@ -83,7 +86,21 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            initialize();            
+            initialize();
+
+            Fields[nameof(currentModel)].guiName = uiLabel;
+            Fields[nameof(currentModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                models.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.models.updateModel();
+                    m.updateMassAndCost();
+                    m.updateAttachNodes(true);
+                });
+            };
+
+            //Fields[nameof(currentTexture)]
         }
 
         public override string GetInfo()
@@ -136,11 +153,14 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, part.transform.FindRecursive("model"), ModelOrientation.TOP, nameof(modelPersistentData), nameof(currentModel), nameof(currentTexture));
+            Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
+            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(modelPersistentData), nameof(currentModel), nameof(currentTexture));
             models.getSymmetryModule = m => m.models;
             models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
             models.setupModel();
+            models.updateModel();
             updateMassAndCost();
+            updateAttachNodes(false);
         }
 
         private void updateMassAndCost()
@@ -148,6 +168,12 @@ namespace SSTUTools
             if (models == null) { return; }
             modifiedMass = models.model.getModuleMass();
             modifiedCost = models.model.getModuleCost();
+            modifiedVolume = models.model.getModuleVolume();
+        }
+
+        private void updateAttachNodes(bool userInput)
+        {
+            //TODO
         }
     }
 }
