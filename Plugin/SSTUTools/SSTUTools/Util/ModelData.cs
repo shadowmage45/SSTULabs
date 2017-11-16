@@ -407,7 +407,7 @@ namespace SSTUTools
             updateScale(newScale, newScale);
         }
 
-        public void updateScale(float newHorizontalScale, float newVerticalScale)
+        public virtual void updateScale(float newHorizontalScale, float newVerticalScale)
         {
             currentDiameterScale = newHorizontalScale;
             currentHeightScale = newVerticalScale;
@@ -999,7 +999,15 @@ namespace SSTUTools
                 model.transform.localRotation = Quaternion.Euler(rotation);
             }
         }
-        
+
+        public override void updateScale(float newHorizontalScale, float newVerticalScale)
+        {
+            currentDiameterScale = newHorizontalScale * scale.x;
+            currentHeightScale = newVerticalScale * scale.y;
+            currentHeight = currentHeightScale * modelDefinition.height;
+            currentDiameter = currentDiameterScale * modelDefinition.diameter;
+        }
+
         public override float getModuleVolume()
         {
             return volume * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;

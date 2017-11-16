@@ -61,7 +61,7 @@ namespace SSTUTools
         public string currentModel = string.Empty;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
-         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.1f, maxValue = 1f, incrementLarge = 0.45f, incrementSmall = 0.225f, incrementSlide = 0.045f)]
         public float scale = 1.0f;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant Texture"),
@@ -97,6 +97,17 @@ namespace SSTUTools
             {
                 models.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
+                {
+                    m.models.model.updateScale(scale);
+                    m.models.updateModel();
+                    m.updateMassAndCost();
+                    m.updateAttachNodes(true);
+                });
+            };
+
+            Fields[nameof(scale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m => 
                 {
                     m.models.model.updateScale(scale);
                     m.models.updateModel();
