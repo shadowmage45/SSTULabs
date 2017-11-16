@@ -66,8 +66,19 @@ namespace SSTUTools
 
         public float moduleHeight { get { return model.currentHeight; } }
 
+        /// <summary>
+        /// Sets the position of the model so that the origin of the model is at the input Y coordinate, for the input model orientation.<para/>
+        /// TOP = Y == bottom<para/>
+        /// CENTRAL = Y == center<para/>
+        /// BOTTOM = Y == top<para/>
+        /// </summary>
+        /// <param name="yPos"></param>
+        /// <param name="orientation"></param>
         public void setPosition(float yPos, ModelOrientation orientation = ModelOrientation.TOP) { model.setPosition(yPos, orientation); }
 
+        /// <summary>
+        /// Updates the model for the currently specified position and scale
+        /// </summary>
         public void updateModel() { model.updateModel(); }
 
         public TextureSet currentTextureSet

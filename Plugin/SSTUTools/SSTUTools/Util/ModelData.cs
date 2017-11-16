@@ -504,6 +504,11 @@ namespace SSTUTools
             currentVerticalPosition = positionOfBottomOfModel + offset;
         }
 
+        /// <summary>
+        /// Returns the Y-coordinate of the bottom of the model for the given model orientation.
+        /// </summary>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
         public virtual float getPosition(ModelOrientation orientation = ModelOrientation.TOP)
         {
             float offset = getVerticalOffset();
