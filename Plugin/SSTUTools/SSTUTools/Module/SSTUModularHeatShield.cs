@@ -36,9 +36,6 @@ namespace SSTUTools
 
         [KSPField]
         public bool areaAdjusted = false;
-        
-        [KSPField]
-        public bool autoDebug = false;
 
         [KSPField]
         public FloatCurve heatCurve;
@@ -49,12 +46,6 @@ namespace SSTUTools
         #endregion
 
         #region REGION - ModularHeatShield resizing data
-
-        [KSPField]
-        public String modelName = String.Empty;
-
-        [KSPField]
-        public String transformsToRemove = String.Empty;
 
         [KSPField]
         public float diameterIncrement = 0.625f;
@@ -95,8 +86,19 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter = 1.25f;
 
+        [KSPField(isPersistant = true, guiName = "Shield Model", guiActiveEditor = true, guiActive = false),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentShieldModel = string.Empty;
+
+        [KSPField(isPersistant = true, guiName = "Shield Texture", guiActiveEditor = true, guiActive = false),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentShieldTexture = string.Empty;
+
         [KSPField(isPersistant = true)]
         public bool initializedResources = false;
+
+        [KSPField(isPersistant = true)]
+        public string modelPersistentData = string.Empty;
 
         [Persistent]
         public string configNodeData = string.Empty;
@@ -113,24 +115,6 @@ namespace SSTUTools
         public double guiShieldTemp = 0;
         [KSPField(guiActive = true, guiName = "HS Eff")]
         public double guiShieldEff = 0;
-        //[KSPField(guiActive = true, guiName = "HC In")]
-        //public double guiDebugHCInput = 0;
-        //[KSPField(guiActive = true, guiName = "HC Out")]
-        //public double guiDebugHCOutput = 0;
-        //[KSPField(guiActive = true, guiName = "Abl Eff")]
-        //public double guiDebugEfficiency = 0;
-        //[KSPField(guiActive = true, guiName = "Abl Mult")]
-        //public double guiDebugAblMult = 0;
-        //[KSPField(guiActive = true, guiName = "Peak Heat")]
-        //public double guiDebugPeakHeat = 0;
-        //[KSPField(guiActive = true, guiName = "Peak Flux")]
-        //public double guiDebugPeakFlux = 0;
-        //[KSPField(guiActive = true, guiName = "Peak G")]
-        //public double guiDebugPeakG = 0;
-        //[KSPField(guiActive = true, guiName = "Flux/m")]
-        //public double guiDebugFluxPerSqMeter = 0;
-        //[KSPField(guiActive = true, guiName = "Mass/m")]
-        //public double guiDebugMassPerSqMeter = 0;
 
         #endregion
 
@@ -158,8 +142,9 @@ namespace SSTUTools
         private float modifiedMass;
 
         //resizable heat-shield fields
-        private SingleModelData mainModelData;
-        private float prevDiameter;
+        private ModelModule<SingleModelData, SSTUModularHeatShield> model;
+
+        private bool initialized = false;
 
         #endregion
 
@@ -169,10 +154,6 @@ namespace SSTUTools
         {
             base.OnStart(state);
             initialize();
-            if (autoDebug)
-            {
-                PhysicsGlobals.ThermalDataDisplay = true;
-            }
             string[] options = SSTUUtils.getNames(shieldTypeData, m => m.baseType.name);
             this.updateUIChooseOptionControl(nameof(currentShieldType), options, options, true, currentShieldType);
             this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
@@ -192,8 +173,10 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     if (m != this) { m.currentDiameter = currentDiameter; }
+                    m.model.model.updateScaleForDiameter(currentDiameter);
+                    m.model.model.setPosition(0, ModelOrientation.CENTRAL);
+                    m.model.updateModel();
                     m.updateFairing(true);
-                    m.setModelDiameter(currentDiameter);
                     m.updateModuleStats();
                     m.updatePartResources();
                     m.updatePartCost();
@@ -202,12 +185,15 @@ namespace SSTUTools
                 });
             };
             this.Fields[nameof(currentDiameter)].guiActiveEditor = standAlonePart;
+            this.Fields[nameof(currentShieldModel)].guiActiveEditor = false;
+            this.Fields[nameof(currentShieldTexture)].guiActiveEditor = standAlonePart && model.model.modelDefinition.textureSets.Length > 1;
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
+            initialize();
         }
 
         public void Start()
@@ -229,6 +215,8 @@ namespace SSTUTools
 
         private void initialize()
         {
+            if (initialized) { return; }
+            initialized = true;
             double hsp = 1;
             double dens = 1;
             if (heatSoak)
@@ -254,30 +242,23 @@ namespace SSTUTools
             fluxPerResourceUnit = hsp * ablationEfficiency * dens;
             baseSkinIntMult = part.skinInternalConductionMult;
             baseCondMult = part.heatConductivity;
-            
+
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+
             //stand-alone modular heat-shield setup
             if (standAlonePart)
             {
-                if (string.IsNullOrEmpty(modelName))
-                {
-                    MonoBehaviour.print("SEVERE ERROR: SSTUModularHeatShield has no model specified for part: " + part.name);
-                }
-
-                if (!String.IsNullOrEmpty(transformsToRemove))
-                {
-                    SSTUUtils.removeTransforms(part, SSTUUtils.parseCSV(transformsToRemove));
-                }
-
-                ConfigNode modelNode = new ConfigNode("MODEL");
-                modelNode.AddValue("name", modelName);
-                mainModelData = new SingleModelData(modelNode);
-                mainModelData.setupModel(part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, true);
-                setModelDiameter(currentDiameter);
+                ConfigNode[] modelNodes = node.GetNodes("MODEL");
+                model = new ModelModule<SingleModelData, SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(modelPersistentData), nameof(currentShieldModel), nameof(currentShieldTexture));                
+                model.setupModelList(SingleModelData.parseModels(modelNodes));
+                model.setupModel();
+                model.model.updateScaleForDiameter(currentDiameter);
+                model.setPosition(0, ModelOrientation.CENTRAL);
+                model.model.updateModel();
                 updateAttachNodes(false);
                 updateDragCube();
             }
 
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
             shieldTypeData = HeatShieldTypeData.load(typeNodes);
             currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
@@ -289,13 +270,6 @@ namespace SSTUTools
                 updatePartResources();
                 initializedResources = true;
             }
-            //MonoBehaviour.print(SSTUUtils.printFloatCurve(heatCurve));
-            //for (int i = 0; i < 1000; i++)
-            //{
-            //    float input = (float)i / 1000f;
-            //    float output = heatCurve.Evaluate(input);
-            //    MonoBehaviour.print("in: " + input + " :: " + output);
-            //}
         }
 
         #endregion
@@ -434,7 +408,7 @@ namespace SSTUTools
             if (fairing == null) { return; }
             fairing.canDisableInEditor = true;
             FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(mainModelData.currentHeight * 0.5f);
+            data.setTopY(model.model.currentHeight * 0.5f + model.model.getFairingOffset());
             data.setTopRadius(currentDiameter * 0.5f);
             if (userInput)
             {
@@ -446,7 +420,7 @@ namespace SSTUTools
 
         private void updateModuleStats()
         {
-            float scale = mainModelData==null ? 1.0f : mainModelData.currentDiameterScale;
+            float scale = getScale();
             float ablatMult = Mathf.Pow(scale, ablationScalePower) * currentShieldTypeData.ablationMult;
             ablationMult = ablatMult;
             ablationStartTemp = currentShieldTypeData.ablationStart;
@@ -456,7 +430,7 @@ namespace SSTUTools
 
         private void updatePartCost()
         {
-            float scale = standAlonePart? Mathf.Pow(mainModelData.currentDiameterScale, massScalePower) : 1;
+            float scale = Mathf.Pow(getScale(), massScalePower);
             if (heatSoak)
             {
                 modifiedCost = 0;
@@ -473,7 +447,7 @@ namespace SSTUTools
         private void updatePartResources()
         {
             if (heatSoak) { return; }//dont touch resources on heat-soak type setups
-            float scale = standAlonePart? Mathf.Pow(mainModelData.currentDiameterScale, resourceScalePower) : 1;
+            float scale = Mathf.Pow(getScale(), resourceScalePower);
             float amount = baseResourceQuantity * scale * currentShieldTypeData.resourceMult;
             PartResource res = part.Resources[resourceName];
             if (res == null)
@@ -490,7 +464,7 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             if (!standAlonePart) { return; }
-            float height = mainModelData.currentHeight;
+            float height = model.model.currentHeight;
             AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
@@ -505,17 +479,15 @@ namespace SSTUTools
             }
         }
 
-        private void setModelDiameter(float diameter)
-        {
-            mainModelData.updateScaleForDiameter(diameter);
-            mainModelData.currentVerticalPosition = mainModelData.currentHeight * 0.5f + mainModelData.modelDefinition.verticalOffset * mainModelData.currentHeightScale;
-            mainModelData.updateModel();
-        }
-
         private void updateDragCube()
         {
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
+        }
+
+        private float getScale()
+        {
+            return model == null ? 1.0f : model.model.currentDiameterScale;
         }
 
         #endregion
