@@ -227,9 +227,14 @@ namespace SSTUTools
         // cached thrust values, to remove the need to query the part config for the engine module config node
         // are initialized the first time the engines stats are updated (during Start())
         // this should allow it to catch any 'upgraded' stats for the engines.
-        private float[] minThrustBase;
-        private float[] maxThrustBase;
-        private float[][] trsMults;
+        /// <summary>
+        /// Used to track if the cached engine thrust values can be trusted, or need to be rebuilt (as Unity serialization does not support null)
+        /// </summary>
+        public bool engineInitialized = false;
+        public float[] minThrustBase;
+        public float[] maxThrustBase;
+        public float[] trsMults;
+        public int[] trsMultInd;
 
         #endregion ENDREGION - Private working variables
 
@@ -814,8 +819,9 @@ namespace SSTUTools
 
             //update the engine module(s), forcing them to to reload their thrust, transforms, and effects.
             ModuleEngines[] engines = part.GetComponents<ModuleEngines>();
-            if (minThrustBase == null)
+            if (!engineInitialized)
             {
+                engineInitialized = true;
                 setupThrustCache(engines);
                 setupSplitThrustCache(engines);
             }
@@ -829,9 +835,10 @@ namespace SSTUTools
                 maxThrust = maxThrustBase[i] * (float)positions;
                 engineNode.SetValue("minThrust", minThrust.ToString(), true);
                 engineNode.SetValue("maxThrust", maxThrust.ToString(), true);
-                if (trsMults[i].Length > 0)
+                float[] trsMults = getSplitThrustCache(i);
+                if (trsMults.Length > 0)
                 {
-                    engineNode.AddNode(getSplitThrustNode(trsMults[i], positions));
+                    engineNode.AddNode(getSplitThrustNode(trsMults, positions));
                 }
                 engines[i].OnLoad(engineNode);//update min/max thrust, ISP/mass-flow, thrust-transform shares
                 engines[i].OnStart(state);//re-initialize the effects
@@ -867,23 +874,38 @@ namespace SSTUTools
         {
             int len = engines.Length;
             int tLen;
-            trsMults = new float[len][];
+            trsMultInd = new int[len];
             List<float> mults;
+            List<float> output = new List<float>();
             for (int i = 0; i < len; i++)
             {
                 mults = engines[i].thrustTransformMultipliers;
                 if (mults == null || mults.Count==0)
                 {
-                    trsMults[i] = new float[0];
+                    trsMultInd[i] = 0;
                     continue;
                 }
                 tLen = mults.Count;
-                trsMults[i] = new float[tLen];
-                for (int k = 0; k < tLen; k++)
-                {
-                    trsMults[i][k] = mults[k];
-                }
+                trsMultInd[i] = tLen;
+                output.AddRange(mults);
             }
+            trsMults = output.ToArray();
+        }
+
+        private float[] getSplitThrustCache(int engineIndex)
+        {
+            int start = 0;
+            for (int i = 0; i < engineIndex; i++)
+            {
+                start += trsMultInd[i];
+            }
+            int length = trsMultInd[engineIndex];
+            float[] cache = new float[length];
+            for (int i = 0, k = start; i < length; i++, k++)
+            {
+                cache[i] = trsMults[k];
+            }
+            return cache;
         }
 
         /// <summary>
