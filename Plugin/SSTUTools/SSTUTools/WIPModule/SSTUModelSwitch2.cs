@@ -31,6 +31,24 @@ namespace SSTUTools
         [KSPField]
         public int moduleID = 0;
 
+        [KSPField]
+        public bool canAdjustScale = false;
+
+        [KSPField]
+        public float minScale = 1;
+
+        [KSPField]
+        public float maxScale = 1;
+
+        [KSPField]
+        public float incScaleLarge = 0.25f;
+
+        [KSPField]
+        public float incScaleSmall = 0.05f;
+
+        [KSPField]
+        public float incScaleSlide = 0.005f;
+
         /// <summary>
         /// Should this module zero out the config cost of the part, relying on the variant definition for cost, or should it add variant definition cost to the config cost?
         /// </summary>
@@ -61,8 +79,8 @@ namespace SSTUTools
         public string currentModel = string.Empty;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
-         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.1f, maxValue = 1f, incrementLarge = 0.45f, incrementSmall = 0.225f, incrementSlide = 0.045f)]
-        public float scale = 1.0f;
+         UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.25f, maxValue = 1f, incrementLarge = 0.25f, incrementSmall = 0.125f, incrementSlide = 0.025f)]
+        public float currentScale = 1.0f;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Variant Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -98,18 +116,28 @@ namespace SSTUTools
                 models.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.models.model.updateScale(scale);
+                    m.models.model.updateScale(currentScale);
                     m.models.updateModel();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
                 });
             };
 
-            Fields[nameof(scale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            Fields[nameof(currentScale)].guiActiveEditor = canAdjustScale;
+            UI_FloatEdit fe = (UI_FloatEdit)Fields[nameof(currentScale)].uiControlEditor;
+            if (fe != null)
+            {
+                fe.minValue = minScale;
+                fe.maxValue = maxScale;
+                fe.incrementLarge = incScaleLarge;
+                fe.incrementSmall = incScaleSmall;
+                fe.incrementSlide = incScaleSlide;
+            }
+            Fields[nameof(currentScale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m => 
                 {
-                    m.models.model.updateScale(scale);
+                    m.models.model.updateScale(currentScale);
                     m.models.updateModel();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
@@ -172,7 +200,7 @@ namespace SSTUTools
             models.getSymmetryModule = m => m.models;
             models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
             models.setupModel();
-            models.model.updateScale(scale);
+            models.model.updateScale(currentScale);
             models.updateModel();
             updateMassAndCost();
             updateAttachNodes(false);

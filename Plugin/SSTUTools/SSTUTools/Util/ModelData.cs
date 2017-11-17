@@ -327,7 +327,7 @@ namespace SSTUTools
         public ModelDefinition modelDefinition;
         public readonly String name;
         public readonly string modelName;
-        public readonly float baseScale = 1f;
+        public readonly Vector3 baseScale = Vector3.one;
 
         public float volume;
         public float mass;
@@ -356,7 +356,7 @@ namespace SSTUTools
             cost = node.GetFloatValue("cost", modelDefinition.cost);
             minVerticalScale = node.GetFloatValue("minVerticalScale", 1f);
             maxVerticalScale = node.GetFloatValue("maxVerticalScale", 1f);
-            baseScale = node.GetFloatValue("scale",  baseScale);
+            baseScale = node.GetVector3("scale",  Vector3.one);
         }
 
         public ModelData(String name)
@@ -472,22 +472,22 @@ namespace SSTUTools
 
         public virtual float getModuleVolume()
         {            
-            return currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * volume;
+            return currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z * volume;
         }
 
         public virtual float getModuleMass()
         {
-            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale;
+            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z;
         }
 
         public virtual float getModuleCost()
         {
-            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale;
+            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z;
         }
 
         public float getVerticalOffset()
         {
-            return currentHeightScale * baseScale * modelDefinition.verticalOffset;
+            return currentHeightScale * baseScale.y * modelDefinition.verticalOffset;
         }
 
         /// <summary>
@@ -787,11 +787,11 @@ namespace SSTUTools
             {
                 if (modelDefinition.compoundModelData != null)
                 {
-                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale, currentHeightScale * baseScale, modelDefinition.orientation);
+                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale.x, currentHeightScale * baseScale.y, modelDefinition.orientation);
                 }
                 else
                 {
-                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
+                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale.x, currentHeightScale * baseScale.y, currentDiameterScale * baseScale.z);
                 }
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
             }
@@ -963,20 +963,17 @@ namespace SSTUTools
 
         public Vector3 position;
         public Vector3 rotation;
-        public Vector3 scale;
 
         public PositionedModelData(ConfigNode node) : base(node)
         {
             position = node.GetVector3("position", Vector3.zero);
             rotation = node.GetVector3("rotation", Vector3.zero);
-            scale = node.GetVector3("scale", Vector3.one);
         }
 
         public PositionedModelData(String name) : base(name)
         {
             position = Vector3.zero;
             rotation = Vector3.zero;
-            scale = Vector3.one;
         }
         
         /// <summary>
@@ -984,43 +981,12 @@ namespace SSTUTools
         /// </summary>
         public override void updateModel()
         {
+            base.updateModel();
             if (model != null)
             {
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0) + position;
-                if (modelDefinition.compoundModelData != null)
-                {
-                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale * scale.x, currentHeightScale * baseScale * scale.y, modelDefinition.orientation);
-                }
-                else
-                {
-                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale, currentHeightScale * baseScale, currentDiameterScale * baseScale);
-                }
-                model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
                 model.transform.localRotation = Quaternion.Euler(rotation);
             }
-        }
-
-        public override void updateScale(float newHorizontalScale, float newVerticalScale)
-        {
-            currentDiameterScale = newHorizontalScale * scale.x;
-            currentHeightScale = newVerticalScale * scale.y;
-            currentHeight = currentHeightScale * modelDefinition.height;
-            currentDiameter = currentDiameterScale * modelDefinition.diameter;
-        }
-
-        public override float getModuleVolume()
-        {
-            return volume * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
-        }
-
-        public override float getModuleMass()
-        {
-            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
-        }
-
-        public override float getModuleCost()
-        {
-            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale * scale.x * scale.z * scale.y;
         }
 
     }
