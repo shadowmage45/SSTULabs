@@ -1,9 +1,10 @@
 ﻿using UnityEngine;
 using System;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor
+    public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor, IRecolorable
     {
         /// <summary>
         /// If populated, the model-switch added mesh will be parented, in model-local space, to the transform specified in this field.
@@ -218,6 +219,26 @@ namespace SSTUTools
         {
             string[] nodeNames = managedNodeNames.Split(',');
             models.model.updateAttachNodes(part, nodeNames, userInput, ModelOrientation.TOP);
+        }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { uiLabel };
+        }
+
+        public RecoloringData[] getSectionColors(string name)
+        {
+            return models.customColors;
+        }
+
+        public TextureSet getSectionTexture(string name)
+        {
+            return models.currentTextureSet;
+        }
+
+        public void setSectionColors(string name, RecoloringData[] colors)
+        {
+            models.setSectionColors(colors);
         }
     }
 }

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModularHeatShield : PartModule, IPartMassModifier, IPartCostModifier
+    public class SSTUModularHeatShield : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
     {
         #region REGION - Base Heat Shield Parameters
         [KSPField]
@@ -208,6 +209,26 @@ namespace SSTUTools
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit){return standAlonePart ? -defaultCost + modifiedCost : modifiedCost;}
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
+
+        public string[] getSectionNames()
+        {
+            return new string[] { "HeatShield" };
+        }
+
+        public RecoloringData[] getSectionColors(string name)
+        {
+            return model==null ? null : model.customColors;
+        }
+
+        public TextureSet getSectionTexture(string name)
+        {
+            return model==null? null : model.currentTextureSet;
+        }
+
+        public void setSectionColors(string name, RecoloringData[] colors)
+        {
+            if (model != null) { model.setSectionColors(colors)};
+        }
 
         #endregion
 
