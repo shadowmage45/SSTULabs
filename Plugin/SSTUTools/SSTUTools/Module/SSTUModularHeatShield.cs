@@ -187,6 +187,10 @@ namespace SSTUTools
             };
             this.Fields[nameof(currentDiameter)].guiActiveEditor = standAlonePart;
             this.Fields[nameof(currentShieldModel)].guiActiveEditor = false;
+            Fields[nameof(currentShieldTexture)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                model.textureSetSelected(a, b);
+            };
             this.Fields[nameof(currentShieldTexture)].guiActiveEditor = standAlonePart && model.model.modelDefinition.textureSets.Length > 1;
         }
 
@@ -227,7 +231,7 @@ namespace SSTUTools
 
         public void setSectionColors(string name, RecoloringData[] colors)
         {
-            if (model != null) { model.setSectionColors(colors)};
+            if (model != null) { model.setSectionColors(colors); }
         }
 
         #endregion

@@ -121,7 +121,9 @@ namespace SSTUTools
                     m.models.updateModel();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
+                SSTUStockInterop.fireEditorUpdate();
             };
 
             Fields[nameof(currentScale)].guiActiveEditor = canAdjustScale;
@@ -142,7 +144,9 @@ namespace SSTUTools
                     m.models.updateModel();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
+                SSTUStockInterop.fireEditorUpdate();
             };
         }
 
