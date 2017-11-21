@@ -203,44 +203,6 @@ namespace SSTUTools
             });
         }
 
-        public void onHeightUpdated(BaseField field, object obj)
-        {
-        }
-
-        public void onStraightUpdated(BaseField field, object obj)
-        {
-            dimensionsWereUpdated();
-            this.forEachSymmetryCounterpart(module =>
-            {
-                module.currentTaperHeight = this.currentTaperHeight;
-                module.dimensionsWereUpdated();
-            });
-        }
-
-        public void onEngineScaleUpdated(BaseField field, object obj)
-        {
-            dimensionsWereUpdatedWithEngineRecalc();
-            this.forEachSymmetryCounterpart(module =>
-            {
-                module.currentEngineScale = this.currentEngineScale;
-                module.dimensionsWereUpdatedWithEngineRecalc();
-            });
-        }
-
-        public void onTransparencyUpdated(BaseField field, object obj)
-        {
-            fairingBase.setOpacity(editorTransparency ? 0.25f : 1);
-        }
-
-        public void onCollidersUpdated(BaseField field, object obj)
-        {
-            if (fairingBase.generateColliders != this.generateColliders)
-            {
-                fairingBase.generateColliders = this.generateColliders;
-                buildFairing();
-            }
-        }
-
         private void dimensionsWereUpdated()
         {
             updateEditorFields();
@@ -290,6 +252,16 @@ namespace SSTUTools
             this.updateUIFloatEditControl(nameof(currentBottomDiameter), minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
             this.updateUIFloatEditControl(nameof(currentHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
             this.updateUIFloatEditControl(nameof(currentTaperHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
+
+            Fields[nameof(currentEngineModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                engineModels.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.updateEnginePositionAndScale();
+                    m.dimensionsWereUpdatedWithEngineRecalc();
+                });
+            };
             Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m => 
@@ -314,24 +286,45 @@ namespace SSTUTools
                     m.dimensionsWereUpdated();
                 });
             };
-            Fields[nameof(currentTaperHeight)].uiControlEditor.onFieldChanged = onStraightUpdated;
-            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = onTransparencyUpdated;
-            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = onCollidersUpdated;
-            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
-            Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = onEngineScaleUpdated;
-
-            Fields[nameof(currentEngineModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            Fields[nameof(currentTaperHeight)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
-                engineModels.modelSelected(a, b);
-                this.actionWithSymmetry(m => 
+                this.actionWithSymmetry(m =>
                 {
-                    m.updateEnginePositionAndScale();
-                    m.updateEngineThrust();
+                    if (m != this) { m.currentTaperHeight = this.currentTaperHeight; }
+                    m.dimensionsWereUpdated();
+                });
+            };
+            Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.editorTransparency = this.editorTransparency; }
+                    m.fairingBase.setOpacity(m.editorTransparency ? 0.25f : 1);
+                });
+            };
+            Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.generateColliders = this.generateColliders; }
+                    if (m.fairingBase.generateColliders != m.generateColliders)
+                    {
+                        m.fairingBase.generateColliders = m.generateColliders;
+                        m.buildFairing();
+                    }
+                });
+            };
+            Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentEngineScale = this.currentEngineScale; }
+                    m.dimensionsWereUpdatedWithEngineRecalc();
                 });
             };
 
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
             Fields[nameof(currentEngineTextureSet)].guiActiveEditor = engineModels.model.modelDefinition.textureSets.Length > 1;
-
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
