@@ -341,7 +341,7 @@ namespace SSTUTools
                 if (int.TryParse(textRatio, out parsedTextVal))
                 {
                     prevRatio = parsedTextVal;
-                    container.module.setResourceRatio(container, resourceName, parsedTextVal);
+                    container.module.setResourceRatio(container, resourceName, parsedTextVal, true);
                     update = true;
                 }
             }
