@@ -2,12 +2,13 @@
 using UnityEngine;
 using KSPShaderTools;
 
-namespace SSTUTools.Module
+namespace SSTUTools
 {
     class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier, IRecolorable
     {
+
         [KSPField]
-        public String modelName = "SSTU/Assets/SC-ENG-ULLAGE-A";
+        public String engineModuleThrustTransform = "SSTU/Assets/SC-ENG-ULLAGE-A";
 
         [KSPField]
         public float defaultModelScale = 5f;
@@ -47,21 +48,6 @@ namespace SSTUTools.Module
 
         [KSPField]
         public float wallThickness = 0.05f;
-
-        [KSPField]
-        public int numberOfEngines = 4;
-
-        [KSPField]
-        public float engineRotationOffset = 90f;
-
-        [KSPField]
-        public float engineHeight = 0.8f;
-
-        [KSPField]
-        public float engineVerticalOffset = 0.4f;
-
-        [KSPField]
-        public float enginePlacementAngleOffset = 45f;
 
         [KSPField]
         public int engineModuleIndex = 1;
@@ -105,6 +91,10 @@ namespace SSTUTools.Module
         [KSPField(guiName = "Colliders", guiActiveEditor = true, isPersistant = true), UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool generateColliders = false;
 
+        [KSPField(isPersistant = true, guiName = "Engine Model", guiActiveEditor = false),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentEngineModel = String.Empty;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Height"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentHeight = 1.0f;
@@ -147,8 +137,15 @@ namespace SSTUTools.Module
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentTextureSet = String.Empty;
 
+        [KSPField(isPersistant = true, guiName = "Engine Texture Set", guiActiveEditor = true),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public String currentEngineTextureSet = String.Empty;
+
         [KSPField(isPersistant = true)]
         public String customColorData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public String customEngineColorData = string.Empty;
 
         [KSPField(isPersistant = true)]
         public bool initializedColors = false;
@@ -164,7 +161,7 @@ namespace SSTUTools.Module
         private float modifiedCost;
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
-        private InterstageDecouplerEngine[] engineModels;
+        private ModelModule<ISDCModelData, SSTUInterstageDecoupler> engineModels;
 
         private RecoloringHandler recolorHandler;
 
@@ -205,35 +202,9 @@ namespace SSTUTools.Module
                 m.updateTextureSet(!SSTUGameSettings.persistRecolor());
             });
         }
-        
-        public void onTopDiameterUpdated(BaseField field, object obj)
-        {
-            dimensionsWereUpdated();
-            this.forEachSymmetryCounterpart(module =>
-            {
-                module.currentTopDiameter = this.currentTopDiameter;
-                module.dimensionsWereUpdated();
-            });
-        }
-
-        public void onBottomDiameterUpdated(BaseField field, object obj)
-        {
-            dimensionsWereUpdatedWithEngineRecalc();
-            this.forEachSymmetryCounterpart(module =>
-            {
-                module.currentBottomDiameter = this.currentBottomDiameter;
-                module.dimensionsWereUpdatedWithEngineRecalc();
-            });
-        }
 
         public void onHeightUpdated(BaseField field, object obj)
         {
-            dimensionsWereUpdated();
-            this.forEachSymmetryCounterpart(module =>
-            {
-                module.currentHeight = this.currentHeight;
-                module.dimensionsWereUpdated();
-            });
         }
 
         public void onStraightUpdated(BaseField field, object obj)
@@ -319,14 +290,49 @@ namespace SSTUTools.Module
             this.updateUIFloatEditControl(nameof(currentBottomDiameter), minDiameter, maxDiameter, diameterIncrement*2, diameterIncrement, diameterIncrement * 0.05f, true, currentBottomDiameter);
             this.updateUIFloatEditControl(nameof(currentHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement*0.05f, true, currentHeight);
             this.updateUIFloatEditControl(nameof(currentTaperHeight), minHeight, maxHeight, heightIncrement*2, heightIncrement, heightIncrement * 0.05f, true, currentTaperHeight);
-            Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = onTopDiameterUpdated;
-            Fields[nameof(currentBottomDiameter)].uiControlEditor.onFieldChanged = onBottomDiameterUpdated;
-            Fields[nameof(currentHeight)].uiControlEditor.onFieldChanged = onHeightUpdated;
+            Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    if (m != this) { m.currentTopDiameter = this.currentTopDiameter; }
+                    m.dimensionsWereUpdated();
+                });
+            };
+            Fields[nameof(currentBottomDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentBottomDiameter = this.currentBottomDiameter; }
+                    m.dimensionsWereUpdatedWithEngineRecalc();
+                });
+            };
+            Fields[nameof(currentHeight)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentHeight = this.currentHeight; }
+                    m.dimensionsWereUpdated();
+                });
+            };
             Fields[nameof(currentTaperHeight)].uiControlEditor.onFieldChanged = onStraightUpdated;
             Fields[nameof(editorTransparency)].uiControlEditor.onFieldChanged = onTransparencyUpdated;
             Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = onCollidersUpdated;
             Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
             Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = onEngineScaleUpdated;
+
+            Fields[nameof(currentEngineModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                engineModels.modelSelected(a, b);
+                this.actionWithSymmetry(m => 
+                {
+                    m.updateEnginePositionAndScale();
+                    m.updateEngineThrust();
+                });
+            };
+
+            Fields[nameof(currentEngineTextureSet)].guiActiveEditor = engineModels.model.modelDefinition.textureSets.Length > 1;
+
+
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -403,26 +409,52 @@ namespace SSTUTools.Module
         //IRecolorable override
         public string[] getSectionNames()
         {
-            return new string[] { "Decoupler" };
+            return new string[] { "Decoupler" , "Engines"};
         }
 
         //IRecolorable override
         public RecoloringData[] getSectionColors(string name)
         {
-            return recolorHandler.getColorData();
+            switch (name)
+            {
+                case "Decoupler":
+                    return recolorHandler.getColorData();
+                case "Engines":
+                    return engineModels.customColors;
+                default:
+                    return recolorHandler.getColorData();
+            }
         }
 
         //IRecolorable override
         public void setSectionColors(string name, RecoloringData[] colors)
         {
-            recolorHandler.setColorData(colors);
-            updateTextureSet(false);
+            switch (name)
+            {
+                case "Decoupler":
+                    recolorHandler.setColorData(colors);
+                    updateTextureSet(false);
+                    break;
+                case "Engines":
+                    engineModels.setSectionColors(colors);
+                    break;
+                default:
+                    break;
+            }
         }
 
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentTextureSet);
+            switch (name)
+            {
+                case "Decoupler":
+                    return KSPShaderLoader.getTextureSet(currentTextureSet);
+                case "Engines":
+                    return engineModels.currentTextureSet;
+                default:
+                    return KSPShaderLoader.getTextureSet(currentTextureSet);
+            }
         }
 
         private void initialize()
@@ -454,8 +486,8 @@ namespace SSTUTools.Module
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 
             Transform modelBase = part.transform.FindRecursive("model");
-            setupEngineModels(modelBase);
-            minHeight = engineHeight * getEngineScale();
+            setupEngineModels(modelBase, node);
+            minHeight = engineModels.model.modelDefinition.height * getEngineScale();
             Transform root = modelBase.FindOrCreate(baseTransformName);
             Transform collider = modelBase.FindOrCreate("InterstageFairingBaseCollider");
             fairingBase = new InterstageDecouplerModel(root.gameObject, collider.gameObject, 0.25f, cylinderSides, numberOfPanels, wallThickness);
@@ -474,7 +506,7 @@ namespace SSTUTools.Module
 
         private void updateEditorFields()
         {
-            minHeight = engineHeight * getEngineScale();
+            minHeight = engineModels.model.modelDefinition.height * getEngineScale();
             if (currentTaperHeight < minHeight)
             {
                 currentTaperHeight = minHeight;
@@ -491,28 +523,16 @@ namespace SSTUTools.Module
             this.updateUIFloatEditControl("currentHeight", minHeight, maxHeight, heightIncrement * 2, heightIncrement, heightIncrement * 0.05f, true, currentHeight);
         }
 
-        private void setupEngineModels(Transform modelBase)
+        private void setupEngineModels(Transform modelBase, ConfigNode baseNode)
         {
-            engineModels = new InterstageDecouplerEngine[numberOfEngines];
-            float anglePerEngine = 360f / (float)numberOfEngines;
-            float startAngle = enginePlacementAngleOffset;
-            Transform modelTransform;
-            String fullName;
-            float placementAngle;
-            for (int i = 0; i < numberOfEngines; i++)
-            {
-                placementAngle = startAngle + ((float)i * anglePerEngine);
-                fullName = modelName + "-" + i;
-                modelTransform = modelBase.FindRecursive(fullName);
-                if (modelTransform == null)
-                {
-                    modelTransform = SSTUUtils.cloneModel(modelName).transform;
-                    modelTransform.name = fullName;
-                    modelTransform.gameObject.name = fullName;
-                }
-                modelTransform.parent = modelBase;
-                engineModels[i] = new InterstageDecouplerEngine(modelTransform, placementAngle, engineRotationOffset);
-            }
+            ConfigNode[] modelNodes = baseNode.GetNodes("MODEL");
+            Transform engineRoot = modelBase.FindOrCreate("SSTU-ISDC-EngineRoot");
+
+            engineModels = new ModelModule<ISDCModelData, SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(customEngineColorData), nameof(currentEngineModel), nameof(currentEngineTextureSet));
+            engineModels.getSymmetryModule = m => m.engineModels;
+            engineModels.setupModelList(ModelData.parseModels<ISDCModelData>(modelNodes, m => new ISDCModelData(m)));
+            engineModels.setupModel();
+            updateEnginePositionAndScale();
         }
 
         private void buildFairing()
@@ -547,18 +567,18 @@ namespace SSTUTools.Module
 
         private void updateEnginePositionAndScale()
         {
-            float newScale = getEngineScale();
-            float yPos = -(currentHeight * 0.5f) + (newScale * engineVerticalOffset);
-            foreach(InterstageDecouplerEngine engine in engineModels)
-            {
-                engine.reposition(newScale, currentBottomDiameter * 0.5f, yPos, invertEngines);
-            }
+            engineModels.model.updateScaleForDiameter(currentBottomDiameter);
+            engineModels.model.engineScale = this.currentEngineScale;
+            engineModels.model.invertEngines = this.invertEngines;
+            engineModels.model.moduleThrustTransformName = engineModuleThrustTransform;
+            engineModels.setPosition(-currentHeight*0.5f, ModelOrientation.TOP);
+            engineModels.updateModel();
         }
 
         private void updateResources()
         {
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
-            float volume = resourceVolume * scale * numberOfEngines;
+            float volume = resourceVolume * scale * engineModels.model.numberOfEngines;
             if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
             {
                 SSTUResourceList resources = new SSTUResourceList();
@@ -576,7 +596,7 @@ namespace SSTUTools.Module
             scale = Mathf.Pow(scale, 3);
 
             float escale = Mathf.Pow(getEngineScale(), thrustScalePower);
-            float volume = resourceVolume * escale * numberOfEngines;
+            float volume = resourceVolume * escale * engineModels.model.numberOfEngines;
 
             float engineScaledMass = engineMass * scale;
             float panelMass = massPerPanelArea * panelArea;
@@ -598,7 +618,7 @@ namespace SSTUTools.Module
                 float scale = getEngineScale();
                 float thrustScalar = Mathf.Pow(scale, thrustScalePower);
                 float thrustPerEngine = engineThrust * thrustScalar;
-                float totalThrust = thrustPerEngine * numberOfEngines;
+                float totalThrust = thrustPerEngine * engineModels.model.numberOfEngines;
                 guiEngineThrust = totalThrust;
                 SSTUStockInterop.updateEngineThrust(engine, engine.minThrust, totalThrust);
             }
@@ -648,32 +668,59 @@ namespace SSTUTools.Module
             SSTUModInterop.onPartTextureUpdated(part);
         }
 
-        private class InterstageDecouplerEngine
+        private class ISDCModelData : SingleModelData
         {
-            Transform model;
-            float angle;
-            float offsetAngle;
 
-            public InterstageDecouplerEngine(Transform model, float placementAngle, float rotationOffset)
+            public readonly int numberOfEngines = 4;
+            public readonly float[] engineRotations;
+            public readonly string engineThrustTransformName = string.Empty;
+            public readonly string engineTransformName = "SSTU/Assets/SC-ENG-ULLAGE-A";
+
+            public string moduleThrustTransformName;
+            public float engineScale = 1f;//this is relative to the scale set by the diamter/etc
+            public bool invertEngines = false;
+
+            public ISDCModelData(ConfigNode node) : base(node)
             {
-                this.model = model;
-                this.angle = placementAngle;
-                this.offsetAngle = rotationOffset;
+                numberOfEngines = modelDefinition.configNode.GetIntValue("numberOfEngines");
+                engineRotations = modelDefinition.configNode.GetFloatValuesCSV("engineRotations");
+                engineThrustTransformName = modelDefinition.configNode.GetStringValue("engineThrustTransformName");
+                engineTransformName = modelDefinition.configNode.GetStringValue("engineTransformName");
             }
-            
-            public void reposition(float scale, float radius, float yPos, bool invert)
+
+            public override void updateModel()
             {
-                model.transform.rotation = model.transform.parent.rotation;
-                float x = Mathf.Sin(angle * Mathf.Deg2Rad) * radius;
-                float z = Mathf.Cos(angle * Mathf.Deg2Rad) * radius;
-                model.transform.localPosition = new Vector3(x, yPos, z);
-                model.Rotate(Vector3.up, angle + offsetAngle, Space.Self);
-                if (invert)
+                //update the 'base scale' for the fairing diameter in updateModel()
+                base.updateModel();
+
+                //loop through the existing thrust transforms, and set them to the name expected by the ModuleEngines
+                Transform[] thrustTransforms = this.model.transform.FindChildren(engineThrustTransformName);
+                foreach (Transform tr in thrustTransforms)
                 {
-                    model.Rotate(Vector3.left, 180f, Space.Self);//x-axis is default for rcs blocks -- TODO add config to use other axis
+                    tr.gameObject.name = moduleThrustTransformName;
                 }
-                model.transform.localScale = new Vector3(scale, scale, scale);
-            }            
+
+                //now go through the actual engine models (each defined as sub-models), and set their rotations, positions, and local scales appropriately.
+                Transform[] modelTransforms = this.model.transform.FindChildren(engineTransformName);
+                int len = modelTransforms.Length;
+                float rotOffset;
+                if (len != numberOfEngines || len != engineRotations.Length)
+                {
+                    MonoBehaviour.print("ERROR: ISDC Model def -- mismatch between number of engines specified, engine rotations, and actual models found.");
+                }
+                Vector3 pos;
+                float yPos = engineScale * modelDefinition.height * 0.5f;
+                for (int i = 0; i < len; i++)
+                {
+                    rotOffset = engineRotations[i] + (invertEngines ? 180f : 0f);
+                    modelTransforms[i].localScale = Vector3.one * engineScale;
+                    modelTransforms[i].rotation = Quaternion.Euler(0, rotOffset, invertEngines ? 180 : 0);
+                    pos = modelTransforms[i].localPosition;
+                    pos.y = yPos;
+                    modelTransforms[i].localPosition = pos;
+                }
+            }
+
         }
 
         private class InterstageDecouplerModel : FairingContainer
