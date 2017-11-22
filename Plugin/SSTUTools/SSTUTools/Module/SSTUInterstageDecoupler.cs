@@ -322,6 +322,10 @@ namespace SSTUTools
                     m.dimensionsWereUpdatedWithEngineRecalc();
                 });
             };
+            Fields[nameof(currentEngineTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                engineModels.textureSetSelected(a, b);
+            };
 
             Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
             Fields[nameof(currentEngineTextureSet)].guiActiveEditor = engineModels.model.modelDefinition.textureSets.Length > 1;
@@ -564,7 +568,7 @@ namespace SSTUTools
             engineModels.model.engineScale = this.currentEngineScale;
             engineModels.model.invertEngines = this.invertEngines;
             engineModels.model.moduleThrustTransformName = engineModuleThrustTransform;
-            engineModels.setPosition(-currentHeight*0.5f, ModelOrientation.TOP);
+            engineModels.setPosition(-currentHeight * 0.5f, ModelOrientation.TOP);
             engineModels.updateModel();
         }
 
