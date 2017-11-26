@@ -148,6 +148,12 @@ namespace SSTUTools
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
+            Fields[nameof(currentTexture)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                models.textureSetSelected(a, b);
+            };
+            Fields[nameof(currentTexture)].guiActiveEditor = models.model.modelDefinition.textureSets.Length > 1;
+            SSTUStockInterop.fireEditorUpdate();
         }
 
         public override string GetInfo()
