@@ -144,6 +144,8 @@ namespace SSTUTools
         
         public void generatePanelCollider(Vector3 center, float startAngle, float endAngle, float startY, float height, float bottomRadius, float topRadius, float thickness)
         {
+            startAngle -= 90f;
+            endAngle -= 90f;
             float bottomInnerRadius = bottomRadius - thickness;
             float topInnerRadius = topRadius - thickness;
             float startRads = Mathf.Deg2Rad * startAngle;

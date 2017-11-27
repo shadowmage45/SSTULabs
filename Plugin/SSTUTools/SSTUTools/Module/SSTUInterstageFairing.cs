@@ -70,14 +70,19 @@ namespace SSTUTools
         public float minHeight = 1.0f;
 
         [KSPField]
-        public float minDiameter = 0.625f;
+        public float minDiameter = 0f;
 
         [KSPField]
         public float maxDiameter = 10f;
 
         //how far should the panels be rotated for the 'deployed' animation
-        [KSPField]
+        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Deploy Limit", isPersistant = true),
+         UI_FloatEdit(suppressEditorShipModified = true, minValue = 0, maxValue = 120, incrementLarge = 30, incrementSmall = 5, incrementSlide = 0.1f, sigFigs = 1, unit = "deg")]
         public float deployedRotation = 60f;
+
+        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Deployed Panels", isPersistant = true),
+         UI_ChooseOption(suppressEditorShipModified =true)]
+        public string deployedPanels = "All";
 
         //how many degrees per second should the fairings rotate while deploy animation is playing?
         [KSPField]
@@ -139,6 +144,10 @@ namespace SSTUTools
          UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool jettisonPanels = false;
 
+        [KSPField(guiName = "Decouple Upper On Deploy", isPersistant = true, guiActive = true, guiActiveEditor = true),
+         UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
+        public bool autoDecoupleUpper = false;
+
         [KSPField(guiName = "Toggle Deployment", guiActiveEditor = true, isPersistant = true),
          UI_Toggle(enabledText = "Open", disabledText = "Closed", suppressEditorShipModified = true)]
         public bool editorDeployed = false;
@@ -176,6 +185,9 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public bool animating = false;
+
+        [KSPField(isPersistant = true)]
+        public bool animatingClosed = false;
 
         [KSPField(isPersistant = true)]
         public string customColorData = string.Empty;
@@ -217,6 +229,15 @@ namespace SSTUTools
             });
         }
 
+        [KSPEvent(name = "retractEvent", guiName = "Retract Panels", guiActive = true)]
+        public void retractEvent()
+        {
+            this.actionWithSymmetry(m =>
+            {
+                m.onRetractEvent();
+            });
+        }
+
         [KSPEvent(name = "decoupleEvent", guiName = "Decouple Inner Node", guiActive = true)]
         public void decoupleEvent()
         {
@@ -230,6 +251,12 @@ namespace SSTUTools
         public void deployAction(KSPActionParam param)
         {
             onDeployEvent();
+        }
+
+        [KSPAction("Retract Panels")]
+        public void retractAction(KSPActionParam param)
+        {
+            onRetractEvent();
         }
 
         [KSPAction("Decouple Inner Node")]
@@ -251,7 +278,7 @@ namespace SSTUTools
         {
             this.actionWithSymmetry(m => 
             {
-                m.setPanelRotations(m.currentRotation);
+                m.setPanelRotations(m.editorDeployed? deployedRotation : 0);
             });
         }
 
@@ -266,6 +293,7 @@ namespace SSTUTools
                     m.rebuildFairing(true);
                 }
             });
+            GameEvents.OnCollisionIgnoreUpdate.Fire();
         }
 
         public void onTransparencyUpdated(BaseField field, object obj)
@@ -356,6 +384,20 @@ namespace SSTUTools
             Fields[nameof(generateColliders)].uiControlEditor.onFieldChanged = onCollidersUpdated;
             Fields[nameof(editorDeployed)].uiControlEditor.onFieldChanged = onEditorDeployUpdated;
             Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
+
+            Fields[nameof(deployedRotation)].uiControlEditor.onFieldChanged = Fields[nameof(deployedRotation)].uiControlFlight.onFieldChanged = delegate (BaseField a, System.Object b) 
+            {
+                this.actionWithSymmetry(m => 
+                {
+                    if (!m.panelsJettisoned && (m.deployed || m.editorDeployed))
+                    {
+                        m.currentRotation = m.deployedRotation;
+                        m.recreateDragCubes();
+                        m.setPanelRotations(m.currentRotation);
+                    }
+                });
+            };
+            GameEvents.OnCollisionIgnoreUpdate.Fire();
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
         }
 
@@ -376,7 +418,7 @@ namespace SSTUTools
         public override void OnActive()
         {
             base.OnActive();
-            if (!deployed)
+            if (currentRotation <= 0)
             {
                 onDeployEvent();
             }
@@ -393,9 +435,12 @@ namespace SSTUTools
         
         public void FixedUpdate()
         {
-            if (HighLogic.LoadedSceneIsFlight && animating)
+            if (HighLogic.LoadedSceneIsFlight)
             {
-                updateAnimation();
+                if (animating || animatingClosed)
+                {
+                    updateAnimation();
+                }
             }
         }
 
@@ -473,12 +518,27 @@ namespace SSTUTools
 
         private void onDeployEvent()
         {
-            if (!deployed)
+            if(animatingClosed || (!deployed && !animating))
             {
                 animating = true;
-                deployed = true;
-                decoupleByModule(topDecouplerModuleIndex);
+                animatingClosed = false;
+                deployed = false;
+                if (autoDecoupleUpper)
+                {
+                    decoupleByModule(topDecouplerModuleIndex);
+                }                
                 updateShieldStatus();
+                updateGuiState();
+            }
+        }
+
+        private void onRetractEvent()
+        {
+            if (deployed || animating)
+            {
+                animatingClosed = true;
+                animating = false;
+                deployed = false;
                 updateGuiState();
             }
         }
@@ -514,7 +574,6 @@ namespace SSTUTools
         {
             if (fairingBase != null && !panelsJettisoned)
             {
-                rotation = HighLogic.LoadedSceneIsEditor && editorDeployed ? deployedRotation : rotation;
                 fairingBase.setPanelRotations(rotation);
             }
         }
@@ -526,19 +585,31 @@ namespace SSTUTools
 
         private void updateAnimation()
         {
-            float delta = TimeWarp.fixedDeltaTime * animationSpeed;
-            float previousAngle = currentRotation;
+            float dir = animating ? 1 : -1;
+            float delta = TimeWarp.fixedDeltaTime * animationSpeed * dir;
             currentRotation += delta;
             if (currentRotation >= deployedRotation)
             {
                 currentRotation = deployedRotation;
                 setPanelRotations(currentRotation);
                 animating = false;
-                updateShieldStatus();
+                animatingClosed = false;
+                deployed = true;
                 if (jettisonPanels)
                 {
                     jettisonFairingPanels();
                 }
+                updateGuiState();
+            }
+            else if (currentRotation <= 0)
+            {
+                currentRotation = 0;
+                setPanelRotations(currentRotation);
+                animating = false;
+                animatingClosed = false;
+                deployed = false;
+                updateShieldStatus();
+                updateGuiState();
             }
             else
             {
@@ -737,10 +808,14 @@ namespace SSTUTools
 
         private void updateGuiState()
         {
-            Events[nameof(deployEvent)].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
+            bool showOpenActions = !deployed && !animating;
+            bool showCloseActions = deployed || animating;
+            Events[nameof(deployEvent)].active = showOpenActions;//only available if not previously deployed or decoupled
             Events[nameof(decoupleEvent)].active = deployed && !decoupled;//only available if deployed but not decoupled
-            Actions[nameof(deployAction)].active = !deployed && !decoupled;//only available if not previously deployed or decoupled
-            Actions[nameof(decoupleAction)].active = deployed && !decoupled;//only available if deployed but not decoupled			
+            Actions[nameof(deployAction)].active = showOpenActions;//only available if not previously deployed or decoupled
+            Actions[nameof(decoupleAction)].active = deployed && !decoupled;//only available if deployed but not decoupled
+
+            Events[nameof(retractEvent)].active = showCloseActions;
         }
         
         private void updateShieldStatus()
@@ -749,7 +824,7 @@ namespace SSTUTools
             if (shield != null)
             {
                 string name = "InterstageFairingShield" + "" + part.Modules.IndexOf(this);
-                if (!deployed)
+                if (currentRotation<=0 && !animating)
                 {
                     float top = currentHeight; ;
                     float bottom = 0f;
