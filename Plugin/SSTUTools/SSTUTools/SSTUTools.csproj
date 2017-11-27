@@ -91,6 +91,7 @@
     <Compile Include="MeshGenerator\ProceduralCylinderModel.cs" />
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
+    <Compile Include="Module\SSTUModularServiceModule.cs" />
     <Compile Include="Module\SSTUModularUpperStage.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />

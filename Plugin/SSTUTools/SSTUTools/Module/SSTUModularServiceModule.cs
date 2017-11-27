@@ -6,7 +6,7 @@ using KSPShaderTools;
 namespace SSTUTools
 {
 
-    public class SSTUModularStationCore : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
+    public class SSTUModularServiceModule : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
     {
 
         #region REGION - Standard Part Config Fields
@@ -101,12 +101,17 @@ namespace SSTUTools
         private string[] topNodeNames;
         private string[] bottomNodeNames;
         
-        ModelModule<SingleModelData, SSTUModularStationCore> topModule;
-        ModelModule<SingleModelData, SSTUModularStationCore> coreModule;
-        ModelModule<SingleModelData, SSTUModularStationCore> bottomModule;
-        ModelModule<SolarData, SSTUModularStationCore> solarModule;
+        ModelModule<SingleModelData, SSTUModularServiceModule> topModule;
+        ModelModule<SingleModelData, SSTUModularServiceModule> coreModule;
+        ModelModule<SingleModelData, SSTUModularServiceModule> bottomModule;
+        ModelModule<SolarData, SSTUModularServiceModule> solarModule;
+        ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule> rcsModule;
 
-        private SSTUAnimateControlled animationControl;
+        //animate controlled reference for solar panel animation module
+        private SSTUAnimateControlled solarAnimationControl;
+
+        //animate controlled reference for service bay animation module
+        private SSTUAnimateControlled bayAnimationControl;
 
         #endregion ENDREGION - Private working vars
 
@@ -124,7 +129,7 @@ namespace SSTUTools
             base.OnStart(state);
             initialize(true);
 
-            Action<SSTUModularStationCore> modelChangedAction = delegate (SSTUModularStationCore m)
+            Action<SSTUModularServiceModule> modelChangedAction = delegate (SSTUModularServiceModule m)
             {
                 m.updateModulePositions();
                 m.updateMassAndCost();
@@ -282,19 +287,19 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            coreModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(coreModulePersistentData), nameof(currentCore), nameof(currentCoreTexture));
+            coreModule = new ModelModule<SingleModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(coreModulePersistentData), nameof(currentCore), nameof(currentCoreTexture));
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.setupModelList(SingleModelData.parseModels(node.GetNodes("CORE")));
 
-            topModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, nameof(topModulePersistentData), nameof(currentTop), nameof(currentTopTexture));
+            topModule = new ModelModule<SingleModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, nameof(topModulePersistentData), nameof(currentTop), nameof(currentTopTexture));
             topModule.getSymmetryModule = m => m.topModule;
             topModule.getValidSelections = m => topModule.models.FindAll(s => s.canSwitchTo(part, topNodeNames));
 
-            bottomModule = new ModelModule<SingleModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-BOTTOM", true), ModelOrientation.BOTTOM, nameof(bottomModulePersistentData), nameof(currentBottom), nameof(currentBottomTexture));
+            bottomModule = new ModelModule<SingleModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-BOTTOM", true), ModelOrientation.BOTTOM, nameof(bottomModulePersistentData), nameof(currentBottom), nameof(currentBottomTexture));
             bottomModule.getSymmetryModule = m => m.bottomModule;
             bottomModule.getValidSelections = m => bottomModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            solarModule = new ModelModule<SolarData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
+            solarModule = new ModelModule<SolarData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
             solarModule.getValidSelections = m => solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
@@ -388,13 +393,14 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         private void updateSolarModules()
         {
             if (!updateSolar)
             {
                 return;
             }
-            if (animationControl == null && !string.Equals("none", solarAnimationID))
+            if (solarAnimationControl == null && !string.Equals("none", solarAnimationID))
             {
                 SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
                 int len = controls.Length;
@@ -402,11 +408,11 @@ namespace SSTUTools
                 {
                     if (controls[i].animationID == solarAnimationID)
                     {
-                        animationControl = controls[i];
+                        solarAnimationControl = controls[i];
                         break;
                     }
                 }
-                if (animationControl == null)
+                if (solarAnimationControl == null)
                 {
                     MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
                     return;
@@ -430,11 +436,11 @@ namespace SSTUTools
                 animSpeed = 1f;
             }
 
-            if (animationControl != null)
+            if (solarAnimationControl != null)
             {
-                animationControl.animationName = animName;
-                animationControl.animationSpeed = animSpeed;
-                animationControl.reInitialize();
+                solarAnimationControl.animationName = animName;
+                solarAnimationControl.animationSpeed = animSpeed;
+                solarAnimationControl.reInitialize();
             }
 
             SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
@@ -494,102 +500,187 @@ namespace SSTUTools
 
     }
 
-    public class SolarData : SingleModelData
+    public class ServiceModuleCoreModel : SingleModelData
     {
-        
-        public readonly string pivotNames;
-        public readonly string secPivotNames;
-        public readonly string sunNames;
-        public readonly float energy;
-        public readonly string sunAxis;
-        public readonly bool panelsEnabled = true;
 
-        private GameObject[] models;
+        //list of available solar panel model definitions
+        //each one will have a list of 'positions' relative to the unscaled core model
+        //each one will list a minimum 'core scale', below which it is unavailable.
+        public ServiceModuleSolarPanelConfiguration[] solarConfigs;
+        public ServiceModularRCSPositionConfiguration[] rcsConfigs;
 
-        public SolarPosition[] positions;
-        
-        public SolarData(ConfigNode node) : base(node)
+        public ServiceModuleCoreModel(ConfigNode node) : base(node)
         {
-            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
-            if (solarNode == null)
-            {
-                panelsEnabled = false;
-            }
-            if (panelsEnabled)
-            {
-                pivotNames = solarNode.GetStringValue("pivotNames");
-                secPivotNames = solarNode.GetStringValue("secPivotNames");
-                sunNames = solarNode.GetStringValue("sunNames");
-                panelsEnabled = solarNode.GetBoolValue("enabled");
-                sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
-                energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
-                ConfigNode[] posNodes = node.GetNodes("POSITION");
-                int len = posNodes.Length;
-                positions = new SolarPosition[len];
-                for (int i = 0; i < len; i++)
-                {
-                    positions[i] = new SolarPosition(posNodes[i]);
-                }
-            }
+
+        }
+
+        /// <summary>
+        /// Return the list of solar panel variants that are currently available to this body model
+        /// </summary>
+        /// <param name="scale"></param>
+        /// <returns></returns>
+        public string[] getAvailableSolarVariants(float scale)
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Returns if the input solar panel variant is a valid option at the input scale
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="scale"></param>
+        /// <returns></returns>
+        public bool isValidSolarOption(string name, float scale)
+        {
+            return false;
+        }
+
+    }
+
+    /// <summary>
+    /// Wrapper for RCS
+    /// </summary>
+    public class ServiceModuleRCSModelData : SingleModelData
+    {
+        public GameObject[] models;
+        public string thrustTransformName;
+        public bool dummyModel = false;
+        public float currentHorizontalPosition;
+        public float modelRotation = 0;
+        public float modelHorizontalZOffset = 0;
+        public float modelHorizontalXOffset = 0;
+        public float modelVerticalOffset = 0;
+
+        public float mountVerticalRotation = 0;
+        public float mountHorizontalRotation = 0;
+
+        public ServiceModuleRCSModelData(ConfigNode node) : base(node)
+        {
+            dummyModel = node.GetBoolValue("dummyModel");
+            modelRotation = node.GetFloatValue("modelRotation");
+            modelHorizontalZOffset = node.GetFloatValue("modelHorizontalZOffset");
+            modelHorizontalXOffset = node.GetFloatValue("modelHorizontalXOffset");
+            modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
+            thrustTransformName = modelDefinition.configNode.GetStringValue("thrustTransformName");
         }
 
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
-            model = new GameObject("MSCSolarRoot");
+            model = new GameObject(modelDefinition.name);
             model.transform.NestToParent(parent);
-            int len = positions==null? 0 : positions.Length;
-            models = new GameObject[len];
-            for (int i = 0; i < len; i++)
+            if (models != null) { destroyCurrentModel(); }
+            models = new GameObject[4];
+            for (int i = 0; i < 4; i++)
             {
-                models[i] = new GameObject("MSCSolar");
-                models[i].transform.NestToParent(model.transform);
-                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
-                models[i].transform.Rotate(positions[i].rotation, Space.Self);
-                models[i].transform.localPosition = positions[i].position;
-                models[i].transform.localScale = positions[i].scale;
+                models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
+            }
+            foreach (GameObject go in models)
+            {
+                go.transform.NestToParent(parent);
+            }
+        }
+
+        public override void updateModel()
+        {
+            if (models != null)
+            {
+                float rotation = 0;
+                float posX = 0, posZ = 0, posY = 0;
+                float scale = 1;
+                float length = 0;
+                for (int i = 0; i < 4; i++)
+                {
+                    rotation = (float)(i * 90) + mountVerticalRotation;
+                    scale = currentDiameterScale;
+                    length = currentHorizontalPosition + (scale * modelHorizontalZOffset);
+                    posX = (float)Math.Sin(SSTUUtils.toRadians(rotation)) * length;
+                    posZ = (float)Math.Cos(SSTUUtils.toRadians(rotation)) * length;
+                    posY = currentVerticalPosition + (scale * modelVerticalOffset);
+                    models[i].transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
+                    models[i].transform.localPosition = new Vector3(posX, posY, posZ);
+                    models[i].transform.localRotation = Quaternion.AngleAxis(rotation + 90f, new Vector3(0, 1, 0));
+                    models[i].transform.Rotate(new Vector3(0, 0, 1), mountHorizontalRotation, Space.Self);
+                }
             }
         }
 
         public override void destroyCurrentModel()
         {
-            if (model != null)
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
             {
-                model.transform.parent = null;
-                GameObject.Destroy(model);//will destroy children as well
+                if (models[i] == null) { continue; }
+                models[i].transform.parent = null;
+                GameObject.Destroy(models[i]);
+                models[i] = null;
             }
-            //de-reference them all, just in case
-            model = null;
             models = null;
         }
 
-        public override float getModuleCost()
+        public GameObject[] createThrustTransforms(string name, Transform parent)
         {
-            return positions == null ? modelDefinition.cost : modelDefinition.cost * positions.Length;
+            MonoBehaviour.print("Creating new thrust transforms");
+            if (dummyModel)
+            {
+                GameObject[] dumArr = new GameObject[1];
+                dumArr[0] = new GameObject(name);
+                dumArr[0].transform.NestToParent(parent);
+                return dumArr;
+            }
+            int len = 4, len2;
+            List<GameObject> goList = new List<GameObject>();
+            Transform[] trs;
+            GameObject go;
+            for (int i = 0; i < len; i++)
+            {
+                trs = models[i].transform.FindChildren(thrustTransformName);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    go = new GameObject(name);
+                    go.transform.NestToParent(parent);
+                    goList.Add(go);
+                }
+            }
+            return goList.ToArray();
         }
 
-        public override float getModuleMass()
+        public void updateThrustTransformPositions(GameObject[] gos)
         {
-            return positions == null ? modelDefinition.mass : modelDefinition.mass * positions.Length;
-        }
-
-        public override float getModuleVolume()
-        {
-            return positions == null ? modelDefinition.volume : modelDefinition.volume * positions.Length;
+            MonoBehaviour.print("Updating transform positions");
+            if (dummyModel) { return; }
+            Transform[] trs;
+            int len;
+            GameObject go;
+            int index = 0;
+            int goLen = gos.Length;
+            for (int i = 0; i < 4; i++)
+            {
+                trs = models[i].transform.FindChildren(thrustTransformName);
+                len = trs.Length;
+                for (int k = 0; k < len && index < goLen; k++, index++)
+                {
+                    go = gos[index];
+                    go.transform.position = trs[k].position;
+                    go.transform.rotation = trs[k].rotation;
+                }
+            }
         }
 
     }
 
-    public class SolarPosition
+    //AKA I fucking hate the bullshit that other people request of me, they really need to bow down and learn to suck it....
+    // or maybe just learn to FUCKING DOIT THEIR GODDAMN LAZY ASS SELVES
+    public class ServiceModuleSolarPanelConfiguration
     {
-        public Vector3 position;
-        public Vector3 rotation;
-        public Vector3 scale;
-        public SolarPosition(ConfigNode node)
-        {
-            position = node.GetVector3("position", Vector3.zero);
-            rotation = node.GetVector3("rotation", Vector3.zero);
-            scale = node.GetVector3("scale", Vector3.one);
-        }
+
+    }
+
+    //AKA THISISDUMB2TOO
+    public class ServiceModularRCSPositionConfiguration
+    {
+
     }
 
 }
