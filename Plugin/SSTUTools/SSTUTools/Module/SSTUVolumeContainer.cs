@@ -147,11 +147,6 @@ namespace SSTUTools
             }
         }
 
-        public void Start()
-        {
-            updateKISVolume();
-        }
-
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             if (modifiedMass < 0) { return 0; }
@@ -300,13 +295,6 @@ namespace SSTUTools
 
         private ContainerDefinition getBaseContainer() { return containers[baseContainerIndex]; }
 
-        private void updateKISVolume()
-        {
-            PartResource kisResource = part.Resources["SSTUKISStorage"];
-            float volume = kisResource == null ? 0 : (float) kisResource.maxAmount;
-            SSTUModInterop.onPartKISInventoryVolumeChanged(part, volume);
-        }
-
         /// <summary>
         /// Update part impact tolerance and max temp stats based on first containers modifier values and part prefab values
         /// </summary>
@@ -356,7 +344,6 @@ namespace SSTUTools
             }
             list.setResourcesToPart(part);
             updateMassAndCost();
-            updateKISVolume();
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onContainerUpdated(this);
         }
