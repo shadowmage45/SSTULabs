@@ -387,9 +387,12 @@ namespace SSTUTools
                 {
                     if (!m.panelsJettisoned && (m.deployed || m.editorDeployed))
                     {
-                        m.currentRotation = m.deployedRotation;
+                        if (m.deployed)
+                        {
+                            m.currentRotation = m.deployedRotation;
+                        }
                         m.recreateDragCubes();
-                        m.setPanelRotations(m.currentRotation);
+                        m.setPanelRotations(m.deployedRotation);
                     }
                 });
             };
@@ -650,7 +653,7 @@ namespace SSTUTools
             updateNodePositions(userInput);
             updateShieldStatus();
             enableEditorColliders(HighLogic.LoadedSceneIsEditor);
-            setPanelRotations(currentRotation);
+            setPanelRotations(HighLogic.LoadedSceneIsEditor && editorDeployed? deployedRotation : currentRotation);
             SSTUModInterop.onPartGeometryUpdate(part, false);
             recreateDragCubes();
         }

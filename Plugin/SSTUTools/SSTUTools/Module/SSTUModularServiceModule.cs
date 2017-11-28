@@ -11,15 +11,20 @@ namespace SSTUTools
 
         #region REGION - Standard Part Config Fields
 
-        //for RO rescale use
         [KSPField]
-        public float coreDiameter = 2.5f;
+        public float diameterIncrement = 0.625f;
 
         [KSPField]
-        public float topDiameter = 1.875f;
+        public float minDiameter = 0.625f;
 
         [KSPField]
-        public float bottomDiameter = 2.5f;
+        public float maxDiameter = 10f;
+
+        [KSPField]
+        public float topRatio = 1.0f;
+
+        [KSPField]
+        public float bottomRatio = 1.0f;
 
         [KSPField]
         public bool useAdapterVolume = false;
@@ -37,13 +42,20 @@ namespace SSTUTools
         public string solarAnimationID = "solarDeploy";
 
         [KSPField]
-        public string topManagedNodes = "top1, top2, top3, top4, top5";
+        public string bayAnimationID = "bayDeploy";
 
         [KSPField]
-        public string bottomManagedNodes = "bottom1, bottom2, bottom3, bottom4, bottom5";
+        public string topManagedNodes = "top1, top2";
+
+        [KSPField]
+        public string bottomManagedNodes = "bottom1, bottom2";
 
         //persistent config fields for module selections
         //also GUI controls for module selection
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
+        public float currentDiameter = 2.5f;
 
         [KSPField(isPersistant = true, guiName = "Top"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -60,6 +72,14 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName = "Solar"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolar = "Solar-None";
+
+        [KSPField(isPersistant = true, guiName = "RCS"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentRCS = "RCS-None";
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float currentRCSOffset = 0f;
 
         //persistent config fields for module texture sets
         //also GUI controls for texture selection
@@ -102,7 +122,7 @@ namespace SSTUTools
         private string[] bottomNodeNames;
         
         ModelModule<SingleModelData, SSTUModularServiceModule> topModule;
-        ModelModule<SingleModelData, SSTUModularServiceModule> coreModule;
+        ModelModule<ServiceModuleCoreModel, SSTUModularServiceModule> coreModule;
         ModelModule<SingleModelData, SSTUModularServiceModule> bottomModule;
         ModelModule<SolarData, SSTUModularServiceModule> solarModule;
         ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule> rcsModule;
@@ -113,10 +133,16 @@ namespace SSTUTools
         //animate controlled reference for service bay animation module
         private SSTUAnimateControlled bayAnimationControl;
 
+        /// <summary>
+        /// ref to the ModularRCS module that updates fuel type and thrust for RCS
+        /// </summary>
+        private SSTUModularRCS modularRCSControl;
+
         #endregion ENDREGION - Private working vars
 
         #region REGION - Standard KSP Overrides
 
+        //standard KSP lifecyle override
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
@@ -124,6 +150,7 @@ namespace SSTUTools
             initialize(false);
         }
 
+        //standard KSP lifecyle override
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
@@ -139,6 +166,16 @@ namespace SSTUTools
                 m.updateGUI();
             };
 
+            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
             Fields[nameof(currentTop)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 topModule.modelSelected(currentTop);
@@ -147,8 +184,22 @@ namespace SSTUTools
 
             Fields[nameof(currentCore)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
-                coreModule.modelSelected(currentCore);
+                coreModule.modelSelected(currentCore);                
                 this.actionWithSymmetry(modelChangedAction);
+                if (!coreModule.model.isValidSolarOption(currentSolar, coreModule.model.currentDiameterScale))
+                {
+                    this.actionWithSymmetry(m => 
+                    {
+                        m.currentSolar = m.coreModule.model.getAvailableSolarVariants(coreModule.model.currentDiameterScale)[0];
+                        m.solarModule.modelSelected(m.currentSolar);
+                        modelChangedAction(m);
+                        m.updateSolarModules();
+                    });
+                }
+                this.actionWithSymmetry(m => 
+                {
+                    m.updateBayAnimation();
+                });
             };
 
             Fields[nameof(currentBottom)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
@@ -167,6 +218,15 @@ namespace SSTUTools
                 });
             };
 
+            if (maxDiameter == minDiameter)
+            {
+                Fields[nameof(currentDiameter)].guiActiveEditor = false;
+            }
+            else
+            {
+                this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
+            }
+
             Fields[nameof(currentTopTexture)].uiControlEditor.onFieldChanged = topModule.textureSetSelected;
             Fields[nameof(currentCoreTexture)].uiControlEditor.onFieldChanged = coreModule.textureSetSelected;
             Fields[nameof(currentBottomTexture)].uiControlEditor.onFieldChanged = bottomModule.textureSetSelected;
@@ -178,6 +238,7 @@ namespace SSTUTools
             updateDragCubes();
         }
 
+        //standard Unity lifecyle override
         public void Start()
         {
             if (!initializedDefaults)
@@ -186,8 +247,11 @@ namespace SSTUTools
             }
             initializedDefaults = true;
             updateSolarModules();
+            updateBayAnimation();
+            updateRCSModule();
         }
         
+        //standard Unity lifecyle override
         public void OnDestroy()
         {
             if (HighLogic.LoadedSceneIsEditor)
@@ -196,32 +260,39 @@ namespace SSTUTools
             }
         }
 
+        //KSP editor modified event callback
+        private void onEditorVesselModified(ShipConstruct ship)
+        {
+            updateGUI();
+        }
+
+        //IPartMass/CostModifier override
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
+        //IPartMass/CostModifier override
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
+        //IPartMass/CostModifier override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             if (modifiedMass == 0) { return 0; }
             return -defaultMass + modifiedMass;
         }
 
+        //IPartMass/CostModifier override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             if (modifiedCost == 0) { return 0; }
             return -defaultCost + modifiedCost;
         }
 
-        private void onEditorVesselModified(ShipConstruct ship)
-        {
-            updateGUI();
-        }
-
+        //IRecolorable override
         public string[] getSectionNames()
         {
             return new string[] { "Top", "Body", "Bottom" };
         }
 
+        //IRecolorable override
         public RecoloringData[] getSectionColors(string section)
         {
             if (section == "Top")
@@ -239,6 +310,7 @@ namespace SSTUTools
             return coreModule.customColors;
         }
 
+        //IRecolorable override
         public void setSectionColors(string section, RecoloringData[] colors)
         {
             if (section == "Top")
@@ -287,9 +359,9 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            coreModule = new ModelModule<SingleModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(coreModulePersistentData), nameof(currentCore), nameof(currentCoreTexture));
+            coreModule = new ModelModule<ServiceModuleCoreModel, SSTUModularServiceModule>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(coreModulePersistentData), nameof(currentCore), nameof(currentCoreTexture));
             coreModule.getSymmetryModule = m => m.coreModule;
-            coreModule.setupModelList(SingleModelData.parseModels(node.GetNodes("CORE")));
+            coreModule.setupModelList(ModelData.parseModels(node.GetNodes("CORE"), m => new ServiceModuleCoreModel(m)));
 
             topModule = new ModelModule<SingleModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, nameof(topModulePersistentData), nameof(currentTop), nameof(currentTopTexture));
             topModule.getSymmetryModule = m => m.topModule;
@@ -302,7 +374,15 @@ namespace SSTUTools
             solarModule = new ModelModule<SolarData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
-            solarModule.getValidSelections = m => solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
+            solarModule.getValidSelections = delegate (IEnumerable<SolarData> all) 
+            {
+                float scale = coreModule.model.currentDiameterScale;
+                //find all solar panels that are unlocked via upgrades/tech-tree
+                List<SolarData> unlocked = solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
+                //filter those to find only the ones available for the current
+                List<SolarData> availableByScale = unlocked.FindAll(s => coreModule.model.isValidSolarOption(s.name, scale));
+                return availableByScale;
+            };
 
             List<ConfigNode> tops = new List<ConfigNode>();
             List<ConfigNode> bottoms = new List<ConfigNode>();
@@ -334,10 +414,11 @@ namespace SSTUTools
         private void updateModulePositions()
         {
             //update for model scale
-            topModule.model.updateScaleForDiameter(topDiameter);
-            coreModule.model.updateScaleForDiameter(coreDiameter);
-            bottomModule.model.updateScaleForDiameter(bottomDiameter);
+            topModule.model.updateScaleForDiameter(currentDiameter * topRatio);
+            coreModule.model.updateScaleForDiameter(currentDiameter);
+            bottomModule.model.updateScaleForDiameter(currentDiameter * bottomRatio);            
             solarModule.model.updateScale(1);
+            rcsModule.model.updateScale(currentDiameter);
 
             //calc positions
             float yPos = topModule.moduleHeight + (coreModule.moduleHeight * 0.5f);
@@ -355,12 +436,15 @@ namespace SSTUTools
             coreModule.setPosition(coreY);
             solarModule.setPosition(coreY);
             bottomModule.setPosition(bottomY, ModelOrientation.BOTTOM);
+            rcsModule.setPosition(coreY + (coreModule.model.currentDiameterScale * currentRCSOffset * coreModule.model.rcsOffsetRange));
 
             //update actual model positions and scales
             topModule.updateModel();
             coreModule.updateModel();
             bottomModule.updateModel();
+            solarModule.model.positions = coreModule.model.getPanelConfiguration(solarModule.model.name).getPositions();
             solarModule.updateModel();
+            rcsModule.updateModel();
         }
         
         private void updateResourceVolume()
@@ -393,7 +477,45 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        private void updateBayAnimation()
+        {
+            if (bayAnimationControl == null && !string.Equals("none", bayAnimationID))
+            {
+                SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
+                int len = controls.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (controls[i].animationID == bayAnimationID)
+                    {
+                        bayAnimationControl = controls[i];
+                        break;
+                    }
+                }
+                if (bayAnimationControl == null)
+                {
+                    MonoBehaviour.print("ERROR: Animation controller was null for ID: " + bayAnimationID);
+                    return;
+                }
+            }
+
+            string animName = string.Empty;
+            float animSpeed = 1f;
+
+            if (coreModule.model.hasAnimation())
+            {
+                ModelAnimationData mad = coreModule.model.modelDefinition.animationData[0];
+                animName = mad.animationName;
+                animSpeed = mad.speed;
+            }
+
+            if (solarAnimationControl != null)
+            {
+                bayAnimationControl.animationName = animName;
+                bayAnimationControl.animationSpeed = animSpeed;
+                bayAnimationControl.reInitialize();
+            }
+        }
+        
         private void updateSolarModules()
         {
             if (!updateSolar)
@@ -463,16 +585,62 @@ namespace SSTUTools
             }
         }
 
+        private void updateRCSModule()
+        {
+            modularRCSControl = part.GetComponent<SSTUModularRCS>();
+            if (modularRCSControl != null)
+            {
+                modularRCSControl.Start();
+            }
+            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
+            if (rcs != null)
+            {
+                rcs.moduleIsEnabled = !rcsModule.model.dummyModel;
+            }
+        }
+
         private void updateAttachNodes(bool userInput)
         {
             topModule.model.updateAttachNodes(part, topNodeNames, userInput, ModelOrientation.TOP);
             bottomModule.model.updateAttachNodes(part, bottomNodeNames, userInput, ModelOrientation.BOTTOM);
+        }
+
+        private void updateFairing(bool userInput)
+        {
+            SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
+            if (modules == null || modules.Length < 2)
+            {
+                return;
+            }
+            SSTUNodeFairing topFairing = modules[topFairingIndex];
+            if (topFairing != null)
+            {
+                float partTopY = topModule.moduleHeight + (coreModule.moduleHeight * 0.5f);
+                float topFairingBottomY = partTopY + topModule.model.getFairingOffset();
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopY(partTopY);
+                data.setBottomY(topFairingBottomY);
+                data.setBottomRadius(currentDiameter * 0.5f);
+                if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
+                topFairing.updateExternal(data);
+            }
+            SSTUNodeFairing bottomFairing = modules[lowerFairingIndex];
+            if (bottomFairing != null)
+            {
+                float bottomFairingTopY = bottomModule.model.getPosition() + bottomModule.model.getFairingOffset();
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopRadius(currentDiameter * 0.5f);
+                data.setTopY(bottomFairingTopY);
+                if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
+                bottomFairing.updateExternal(data);
+            }
         }
         
         private void updateGUI()
         {
             topModule.updateSelections();
             bottomModule.updateSelections();
+            solarModule.updateSelections();
         }
 
         private void updateDragCubes()
@@ -502,16 +670,24 @@ namespace SSTUTools
 
     public class ServiceModuleCoreModel : SingleModelData
     {
-
         //list of available solar panel model definitions
         //each one will have a list of 'positions' relative to the unscaled core model
         //each one will list a minimum 'core scale', below which it is unavailable.
         public ServiceModuleSolarPanelConfiguration[] solarConfigs;
-        public ServiceModularRCSPositionConfiguration[] rcsConfigs;
+        public float rcsOffsetRange = 0f;
+        public float rcsPosition = 0f;
 
         public ServiceModuleCoreModel(ConfigNode node) : base(node)
         {
-
+            rcsOffsetRange = node.GetFloatValue("rcsOffsetRange", 0f);
+            rcsPosition = node.GetFloatValue("rcsPosition", 0f);
+            ConfigNode[] solarNodes = node.GetNodes("SOLAR");            
+            int len = solarNodes.Length;
+            solarConfigs = new ServiceModuleSolarPanelConfiguration[len];
+            for (int i = 0; i < len; i++)
+            {
+                solarConfigs[i] = new ServiceModuleSolarPanelConfiguration(solarNodes[i]);
+            }
         }
 
         /// <summary>
@@ -521,7 +697,13 @@ namespace SSTUTools
         /// <returns></returns>
         public string[] getAvailableSolarVariants(float scale)
         {
-            return null;
+            List<string> vars = new List<string>();
+            int len = solarConfigs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (solarConfigs[i].minScale <= scale) { vars.Add(solarConfigs[i].name); }
+            }
+            return vars.ToArray();
         }
 
         /// <summary>
@@ -532,7 +714,18 @@ namespace SSTUTools
         /// <returns></returns>
         public bool isValidSolarOption(string name, float scale)
         {
-            return false;
+            ServiceModuleSolarPanelConfiguration config = getPanelConfiguration(name);
+            return scale>=config.minScale;
+        }
+
+        /// <summary>
+        /// Get the solar panel configuration for the input solar panel type name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public ServiceModuleSolarPanelConfiguration getPanelConfiguration(string name)
+        {
+            return Array.Find(solarConfigs, m => m.name == name);
         }
 
     }
@@ -670,17 +863,29 @@ namespace SSTUTools
 
     }
 
-    //AKA I fucking hate the bullshit that other people request of me, they really need to bow down and learn to suck it....
-    // or maybe just learn to FUCKING DOIT THEIR GODDAMN LAZY ASS SELVES
     public class ServiceModuleSolarPanelConfiguration
     {
+        public readonly string name;
+        public readonly SolarPosition[] positions;
+        public readonly float minScale;
+        public ServiceModuleSolarPanelConfiguration(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            minScale = node.GetFloatValue("minScale", 1.0f);
+            ConfigNode[] posNodes = node.GetNodes("POSITION");
+            ConfigNode posNode;
+            int len = posNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                posNode = posNodes[i];
+                positions[i] = new SolarPosition(posNode);
+            }
+        }
 
-    }
-
-    //AKA THISISDUMB2TOO
-    public class ServiceModularRCSPositionConfiguration
-    {
-
+        public SolarPosition[] getPositions()
+        {
+            return positions;
+        }
     }
 
 }

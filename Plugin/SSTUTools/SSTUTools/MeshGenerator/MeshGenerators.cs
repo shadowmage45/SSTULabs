@@ -250,6 +250,11 @@ namespace SSTUTools
 
         public Arc(float radius, float height, float start, float end, int faces)
         {
+            //this enforces a zero-based-origin clamp -- prevent vertices from pushing negative through the center.
+            if (radius < 0)
+            {
+                radius = 0;
+            }
             this.radius = radius;
             this.height = height;
             this.startAngle = start;

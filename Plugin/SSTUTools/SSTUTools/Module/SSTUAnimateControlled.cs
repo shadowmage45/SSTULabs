@@ -137,7 +137,7 @@ namespace SSTUTools
         {
             base.OnAwake();
             evt1 = new EventData<float>("SSTUAnimateControlledEvt1");
-            evt2 = new EventData<float, float>("SSTUAnimateControlledEvt1");
+            evt2 = new EventData<float, float>("SSTUAnimateControlledEvt2");
         }
 
         public override void OnStart(StartState state)

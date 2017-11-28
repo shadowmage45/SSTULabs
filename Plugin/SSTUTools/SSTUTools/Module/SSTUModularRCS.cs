@@ -40,6 +40,9 @@ namespace SSTUTools
         [KSPField]
         public bool updateFuel = true;
 
+        [KSPField]
+        public bool scaleGUIActive = true;
+
         [KSPField(isPersistant = true)]
         public string structurePersistentData;
 
@@ -105,6 +108,8 @@ namespace SSTUTools
             Fields[nameof(currentFuelType)].guiActiveEditor = updateFuel && fuelTypes.Length > 1;
             string[] names = SSTUUtils.getNames(fuelTypes, m => m.name);
             this.updateUIChooseOptionControl(nameof(currentFuelType), names, names, true, currentFuelType);
+
+            Fields[nameof(currentScale)].guiActiveEditor = scaleGUIActive;
         }
 
         public void Start()
