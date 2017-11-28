@@ -80,10 +80,6 @@ namespace SSTUTools
          UI_FloatEdit(suppressEditorShipModified = true, minValue = 0, maxValue = 120, incrementLarge = 30, incrementSmall = 5, incrementSlide = 0.1f, sigFigs = 1, unit = "deg")]
         public float deployedRotation = 60f;
 
-        [KSPField(guiActiveEditor = true, guiActive = true, guiName = "Deployed Panels", isPersistant = true),
-         UI_ChooseOption(suppressEditorShipModified =true)]
-        public string deployedPanels = "All";
-
         //how many degrees per second should the fairings rotate while deploy animation is playing?
         [KSPField]
         public float animationSpeed = 5f;

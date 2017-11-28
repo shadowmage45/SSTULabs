@@ -325,7 +325,7 @@ namespace SSTUTools
             float anglePerFace = 360f / (float)faces;
             int localFaces = (int)Math.Round(totalAngle / anglePerFace);
             localFaces /= facesPerCollider;
-            GameObject[] colliders = new GameObject[localFaces];
+            GameObject[] colliders = new GameObject[localFaces * (innerArcs.Count-1)];
             float localStart, localEnd, startY, height, topRadius, bottomRadius, thickness;
             Mesh colliderMesh;
             MeshFilter mf;
@@ -333,11 +333,12 @@ namespace SSTUTools
             MeshCollider mc;
             thickness = outerArcs[0].radius - innerArcs[0].radius;
             MeshBuilder builder = new MeshBuilder();
+            int colliderIndex = 0;
             for (int i = 0; i < localFaces; i++)
             {
                 localStart = startAngle + (float)i * anglePerFace;
                 localEnd = localStart + (anglePerFace * facesPerCollider);
-                for (int k = 0; k < innerArcs.Count - 1; k++)
+                for (int k = 0; k < innerArcs.Count - 1; k++, colliderIndex++)
                 {
                     startY = innerArcs[k].height;
                     height = innerArcs[k+1].height - startY;
@@ -346,10 +347,10 @@ namespace SSTUTools
                     builder.generatePanelCollider(center, localStart, localEnd, startY, height, bottomRadius, topRadius, thickness);
                     colliderMesh = builder.buildMesh();
                     builder.clear();
-                    colliders[i] = new GameObject("PanelCollider"+i+"-"+k);
-                    mf = colliders[i].AddComponent<MeshFilter>();
+                    colliders[colliderIndex] = new GameObject("PanelCollider"+i+"-"+k);
+                    mf = colliders[colliderIndex].AddComponent<MeshFilter>();
                     //mr = colliders[i].AddComponent<MeshRenderer>();
-                    mc = colliders[i].AddComponent<MeshCollider>();
+                    mc = colliders[colliderIndex].AddComponent<MeshCollider>();
                     mf.mesh = colliderMesh;
                     //mr.enabled = true;
                     mc.sharedMesh = colliderMesh;
