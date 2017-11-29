@@ -128,6 +128,7 @@ namespace SSTUTools
         #region REGION - Private working vars
 
         private bool initialized = false;
+        private float rcsThrust = -1;
         private float modifiedMass = 0;
         private float modifiedCost = 0;
         private string[] topNodeNames;
@@ -282,12 +283,12 @@ namespace SSTUTools
             if (!initializedDefaults)
             {
                 updateResourceVolume();
+                updateFairing(false);
             }
             initializedDefaults = true;
             updateSolarModules();
             updateBayAnimation();
             updateRCSModule();
-            updateFairing(false);
         }
         
         //standard Unity lifecyle override
@@ -643,11 +644,18 @@ namespace SSTUTools
             {
                 modularRCSControl.Start();
             }
-            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
-            if (rcs != null)
+            if (rcsThrust < 0)
             {
-                rcs.moduleIsEnabled = !rcsModule.model.dummyModel;
-               // rcs.OnStart(HighLogic.LoadedSceneIsEditor ? StartState.Editor : StartState.Flying);
+                ModuleRCS rcs = part.GetComponent<ModuleRCS>();
+                if (rcs != null)
+                {
+                    rcsThrust = rcs.thrusterPower;
+                }
+            }
+            if (rcsThrust >= 0)
+            {
+                float thrust = rcsThrust * Mathf.Pow(coreModule.model.currentDiameterScale, 2);
+                SSTUModularRCS.updateRCSModules(part, !rcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
             }
         }
 
