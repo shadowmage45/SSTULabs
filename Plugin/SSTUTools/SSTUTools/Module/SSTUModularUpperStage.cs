@@ -889,25 +889,9 @@ namespace SSTUTools
             rcsThrustTransforms = rcsModule.model.createThrustTransforms(rcsThrustTransformName, part.transform.FindRecursive("model"));
             if (updateRCSModule)
             {
-                ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
-                int len = modules.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    part.fxGroups.RemoveAll(m => modules[i].thrusterFX.Contains(m));
-                    part.fxGroups.ForEach(m => MonoBehaviour.print(m.name));
-                    modules[i].thrusterFX.ForEach(m => m.fxEmitters.ForEach(s => GameObject.Destroy(s.gameObject)));
-                    modules[i].thrusterFX.Clear();
-                    modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
-                    modules[i].OnStart(StartState.Editor);//force update of fx/etc
-                    modules[i].DeactivateFX();//doesn't appear to work
-                    //TODO -- clean up this mess of linked stuff
-                    modules[i].thrusterFX.ForEach(m => 
-                    {
-                        m.setActive(false);
-                        m.SetPower(0);
-                        m.fxEmitters.ForEach(s => s.enabled = false);
-                    });
-                }
+                float scale = currentTankDiameter / upperModule.model.modelDefinition.diameter;
+                float thrust = rcsThrust * scale * scale;
+                SSTUModularRCS.updateRCSModules(part, !rcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
             }
         }
 

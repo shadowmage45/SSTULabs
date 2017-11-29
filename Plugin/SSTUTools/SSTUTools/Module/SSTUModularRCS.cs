@@ -238,5 +238,48 @@ namespace SSTUTools
             modifiedMass = standoffModule.moduleMass;
             modifiedCost = standoffModule.moduleCost;
         }
+
+        public static void updateRCSModules(Part part, bool enabled, float rcsPower, bool pitch, bool yaw, bool roll, bool x, bool y, bool z)
+        {
+            ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+            int len = modules.Length;
+            for (int i = 0; i < len; i++)
+            {
+                modules[i].moduleIsEnabled = enabled;
+                modules[i].thrusterPower = rcsPower;
+                modules[i].enablePitch = pitch;
+                modules[i].enableYaw = yaw;
+                modules[i].enableRoll = roll;
+                modules[i].enableX = x;
+                modules[i].enableY = y;
+                modules[i].enableZ = z;
+                modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
+                modules[i].OnStart(StartState.Editor);//force update of fx/etc
+            }
+
+            //this mess was used to update the thruster effects in ModularUpperStage
+            //but appears that 90% of it is uneccessary?
+            //or perhaps it just requires that ModularRCSFX be used for proper effects setup?
+
+            //ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+            //int len = modules.Length;
+            //for (int i = 0; i < len; i++)
+            //{
+            //    part.fxGroups.RemoveAll(m => modules[i].thrusterFX.Contains(m));
+            //    part.fxGroups.ForEach(m => MonoBehaviour.print(m.name));
+            //    modules[i].thrusterFX.ForEach(m => m.fxEmitters.ForEach(s => GameObject.Destroy(s.gameObject)));
+            //    modules[i].thrusterFX.Clear();
+            //    modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
+            //    modules[i].OnStart(StartState.Editor);//force update of fx/etc
+            //    modules[i].DeactivateFX();//doesn't appear to work
+            //                              //TODO -- clean up this mess of linked stuff
+            //    modules[i].thrusterFX.ForEach(m =>
+            //    {
+            //        m.setActive(false);
+            //        m.SetPower(0);
+            //        m.fxEmitters.ForEach(s => s.enabled = false);
+            //    });
+            //}
+        }
     }
 }

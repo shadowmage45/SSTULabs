@@ -911,20 +911,15 @@ namespace SSTUTools
 
         private void reInitRCSModule()
         {
+            bool pitch, yaw, roll, x, y, z;
+            pitch = mountModule.model.enableRCSPitch;
+            yaw = mountModule.model.enableRCSYaw;
+            roll = mountModule.model.enableRCSRoll;
+            x = mountModule.model.enableRCSX;
+            y = mountModule.model.enableRCSY;
+            z = mountModule.model.enableRCSZ;
+            SSTUModularRCS.updateRCSModules(part, mountModule.model.rcsPower>0, mountModule.model.rcsPower, pitch, yaw, roll, x, y, z);
             ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
-            int len = modules.Length;
-            for (int i = 0; i < len; i++)
-            {
-                modules[i].moduleIsEnabled = mountModule.model.rcsPower > 0;
-                modules[i].enablePitch = mountModule.model.enableRCSPitch;
-                modules[i].enableYaw = mountModule.model.enableRCSYaw;
-                modules[i].enableRoll = mountModule.model.enableRCSRoll;
-                modules[i].enableX = mountModule.model.enableRCSX;
-                modules[i].enableY = mountModule.model.enableRCSY;
-                modules[i].enableZ = mountModule.model.enableRCSZ;
-                modules[i].thrusterTransforms.Clear();//clear, in case it is holding refs to the old ones that were just unparented/destroyed
-                modules[i].OnStart(StartState.Editor);//force update of fx/etc
-            }
             if (modules.Length > 0)
             {
                 part.stackIcon.SetIcon(DefaultIcons.SOLID_BOOSTER);
