@@ -498,7 +498,6 @@ namespace SSTUTools
     {
         
         public readonly string pivotNames;
-        public readonly string secPivotNames;
         public readonly string sunNames;
         public readonly float energy;
         public readonly string sunAxis;
@@ -518,7 +517,6 @@ namespace SSTUTools
             if (panelsEnabled)
             {
                 pivotNames = solarNode.GetStringValue("pivotNames");
-                secPivotNames = solarNode.GetStringValue("secPivotNames");
                 sunNames = solarNode.GetStringValue("sunNames");
                 panelsEnabled = solarNode.GetBoolValue("enabled");
                 sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
@@ -537,6 +535,7 @@ namespace SSTUTools
         {
             model = new GameObject("MSCSolarRoot");
             model.transform.NestToParent(parent);
+            if (string.IsNullOrEmpty(modelDefinition.modelName)) { return; }
             int len = positions==null? 0 : positions.Length;
             models = new GameObject[len];
             for (int i = 0; i < len; i++)
@@ -545,6 +544,18 @@ namespace SSTUTools
                 models[i].transform.NestToParent(model.transform);
                 SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
                 models[i].transform.Rotate(positions[i].rotation, Space.Self);
+                models[i].transform.localPosition = positions[i].position;
+                models[i].transform.localScale = positions[i].scale;
+            }
+        }
+
+        public override void updateModel()
+        {
+            base.updateModel();
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
                 models[i].transform.localPosition = positions[i].position;
                 models[i].transform.localScale = positions[i].scale;
             }
@@ -589,6 +600,12 @@ namespace SSTUTools
             position = node.GetVector3("position", Vector3.zero);
             rotation = node.GetVector3("rotation", Vector3.zero);
             scale = node.GetVector3("scale", Vector3.one);
+        }
+        public SolarPosition(SolarPosition pos, float scale)
+        {
+            this.position = pos.position * scale;
+            this.rotation = pos.rotation;
+            this.scale = pos.scale;
         }
     }
 
