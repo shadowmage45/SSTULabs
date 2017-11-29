@@ -16,6 +16,8 @@ namespace SSTUTools
 
         public delegate String[] DisplayNames(IEnumerable<T> validSelections);
 
+        public delegate void PreModelSetup(T model);
+
         public readonly Part part;
         public readonly PartModule partModule;
         public readonly Transform root;
@@ -28,6 +30,10 @@ namespace SSTUTools
         public DisplayNames getDisplayNames = delegate (IEnumerable<T> validSelections) 
         {
             return SSTUUtils.getNames(validSelections, m => m.modelDefinition.title);
+        };
+        public PreModelSetup preModelSetup = delegate (T model) 
+        {
+            //noop
         };
 
         public List<T> models = new List<T>();
@@ -79,7 +85,11 @@ namespace SSTUTools
         /// <summary>
         /// Updates the model for the currently specified position and scale
         /// </summary>
-        public void updateModel() { model.updateModel(); }
+        public void updateModel()
+        {
+            preModelSetup(model);
+            model.updateModel();
+        }
 
         public TextureSet currentTextureSet
         {
@@ -128,6 +138,7 @@ namespace SSTUTools
                 modelName = model.name;
                 MonoBehaviour.print("Using first available model: "+ model.name);
             }
+            preModelSetup(model);
             model.setupModel(root, orientation);
             bool useDefaultTextureColors = false;
             if (!model.isValidTextureSet(textureSet) && !string.Equals("default", textureSet))
