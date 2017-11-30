@@ -39,7 +39,23 @@ namespace SSTUTools
         public string solarAnimationID = "solarDeploy";
 
         [KSPField]
-        public string bayAnimationID = "bayDeploy";
+        public int solarAnimationLayer = 1;
+
+        [KSPField]
+        public string noseAnimationID = string.Empty;
+
+        [KSPField]
+        public int noseAnimationLayer = 3;
+
+        [KSPField]
+        public string coreAnimationID = string.Empty;
+
+        public int coreAnimationLayer = 5;
+
+        [KSPField]
+        public string mountAnimationID = string.Empty;
+
+        public int mountAnimationLayer = 7;
 
         [KSPField]
         public string rcsThrustTransformName = "RCSThrustTransform";
@@ -194,6 +210,7 @@ namespace SSTUTools
             {
                 topModule.modelSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
+                this.actionWithSymmetry(m => { m.updateAnimationControl(noseAnimationID, topModule.model, noseAnimationLayer); });
                 SSTUStockInterop.fireEditorUpdate();
             };
 
@@ -213,7 +230,7 @@ namespace SSTUTools
                 }
                 this.actionWithSymmetry(m => 
                 {
-                    m.updateBayAnimation();
+                    m.updateAnimationControl(coreAnimationID, coreModule.model, coreAnimationLayer);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -222,6 +239,7 @@ namespace SSTUTools
             {
                 bottomModule.modelSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
+                this.actionWithSymmetry(m => { m.updateAnimationControl(mountAnimationID, bottomModule.model, mountAnimationLayer); });
                 SSTUStockInterop.fireEditorUpdate();
             };
 
@@ -287,7 +305,9 @@ namespace SSTUTools
             }
             initializedDefaults = true;
             updateSolarModules();
-            updateBayAnimation();
+            updateAnimationControl(noseAnimationID, topModule.model, noseAnimationLayer);
+            updateAnimationControl(coreAnimationID, coreModule.model, coreAnimationLayer);
+            updateAnimationControl(mountAnimationID, bottomModule.model, mountAnimationLayer);
             updateRCSModule();
         }
         
@@ -528,45 +548,6 @@ namespace SSTUTools
                 modifiedCost += bottomModule.moduleCost;
             }
         }
-
-        private void updateBayAnimation()
-        {
-            if (bayAnimationControl == null && !string.Equals("none", bayAnimationID))
-            {
-                SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
-                int len = controls.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    if (controls[i].animationID == bayAnimationID)
-                    {
-                        bayAnimationControl = controls[i];
-                        break;
-                    }
-                }
-                if (bayAnimationControl == null)
-                {
-                    MonoBehaviour.print("ERROR: Animation controller was null for ID: " + bayAnimationID);
-                    return;
-                }
-            }
-
-            string animName = string.Empty;
-            float animSpeed = 1f;
-
-            if (coreModule.model.hasAnimation())
-            {
-                ModelAnimationData mad = coreModule.model.modelDefinition.animationData[0];
-                animName = mad.animationName;
-                animSpeed = mad.speed;
-            }
-
-            if (solarAnimationControl != null)
-            {
-                bayAnimationControl.animationName = animName;
-                bayAnimationControl.animationSpeed = animSpeed;
-                bayAnimationControl.reInitialize();
-            }
-        }
         
         private void updateSolarModules()
         {
@@ -758,6 +739,16 @@ namespace SSTUTools
             }
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
+        }
+
+        private void updateAnimationControl(string id, SingleModelData model, int layer)
+        {
+            if (string.IsNullOrEmpty(id)) { return; }
+            SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
+            if (module != null)
+            {
+                module.initializeExternal(model.getAnimationData(model.model.transform, layer));
+            }
         }
 
         #endregion ENDREGION - Custom Update Methods
