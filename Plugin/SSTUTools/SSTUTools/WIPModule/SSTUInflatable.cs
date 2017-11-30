@@ -40,8 +40,11 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedDefualts = false;
 
-        [KSPField(guiName = "RocketParts reqd", guiActive = true, guiActiveEditor =true, guiUnits = " tons")]
-        public float requiredMass = 0f;
+        [KSPField(guiName = "Infl. Resource Req'd", guiActiveEditor = true, guiActive = true)]
+        public string requiredResourceDisplay = string.Empty;
+
+        [KSPField(guiName = "Required Amount", guiActiveEditor = true, guiActive = true)]
+        public string requiredResourceAmount = string.Empty;
 
         private bool initialized = false;
         private SSTUAnimateControlled animation;
@@ -248,10 +251,27 @@ namespace SSTUTools
 
         private void updateRequiredMass()
         {
-            requiredMass = inflationMass - appliedMass;
-            BaseField fld = Fields["requiredMass"];
-            fld.guiActive = fld.guiActiveEditor = requiredMass > 0;
-            fld.guiName = resourceName + " reqd";
+            float requiredMass = inflationMass - appliedMass;
+            bool active = requiredMass > 0;
+
+            string resourceName = this.resourceName;
+
+            string resourceAmount = requiredMass.ToString();
+
+            if (resourceDef != null)
+            {
+                resourceName = resourceDef.displayName;
+                float units = requiredMass / resourceDef.density;
+                resourceAmount = units + "u / " + requiredMass + "t";
+            }
+
+            BaseField fld = Fields[nameof(requiredResourceDisplay)];
+            fld.guiActive = fld.guiActiveEditor = active;
+            requiredResourceDisplay = resourceName;
+
+            fld = Fields[nameof(requiredResourceAmount)];
+            fld.guiActive = fld.guiActiveEditor = active;
+            requiredResourceAmount = resourceAmount;
         }
 
     }
