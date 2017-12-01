@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAnimateUsable : PartModule, IScalarModule
+    public class SSTUAnimateUsable : PartModule, IScalarModule, ISSTUAnimatedModule
     {
 
         [KSPField]
@@ -181,7 +181,7 @@ namespace SSTUTools
         public override void OnStart(PartModule.StartState state)
         {
             base.OnStart(state);
-            animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
+            animationControl = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
             initializeGuiFields();
             updateGuiDataFromState(animationControl.getAnimationState());
             BaseAction deploy = Actions[nameof(deployAction)];
@@ -198,6 +198,7 @@ namespace SSTUTools
         
         private void updateGuiDataFromState(AnimState state)
         {
+            bool animationDisabled = animationControl == null ? true : !animationControl.moduleIsEnabled;
             BaseEvent deployEvent = Events["deployEvent"];
             BaseEvent retractEvent = Events["retractEvent"];
             bool sceneEnabled = (HighLogic.LoadedSceneIsFlight && usableInFlight) || (HighLogic.LoadedSceneIsEditor && usableInEditor);
@@ -206,7 +207,7 @@ namespace SSTUTools
             {
                 case AnimState.PLAYING_BACKWARD:
                     {
-                        deployEvent.active = sceneEnabled && singleUseEnabled;
+                        deployEvent.active = sceneEnabled && singleUseEnabled && !animationDisabled;
                         retractEvent.active = false;
                         displayState = retractingStateName;
                         break;
@@ -214,30 +215,25 @@ namespace SSTUTools
                 case AnimState.PLAYING_FORWARD:
                     {
                         deployEvent.active = false;
-                        retractEvent.active = sceneEnabled && singleUseEnabled;
+                        retractEvent.active = sceneEnabled && singleUseEnabled && !animationDisabled;
                         displayState = deployingStateName;
                         break;
                     }
                 case AnimState.STOPPED_END:
                     {
                         deployEvent.active = false;
-                        retractEvent.active = sceneEnabled && singleUseEnabled;
+                        retractEvent.active = sceneEnabled && singleUseEnabled && !animationDisabled;
                         displayState = deployedStateName;
                         break;
                     }
                 case AnimState.STOPPED_START:
                     {
-                        deployEvent.active = sceneEnabled && singleUseEnabled;
+                        deployEvent.active = sceneEnabled && singleUseEnabled && !animationDisabled;
                         retractEvent.active = false;
                         displayState = retractedStateName;
                         break;
                     }
             }
-        }
-        
-        public void onAnimationStatusChanged(AnimState state)
-        {
-            updateGuiDataFromState(state);
         }
         
         private void setAnimationState(AnimState state)
@@ -266,6 +262,16 @@ namespace SSTUTools
             retractEvent.guiActiveUncommand = usableUncommanded;
             retractEvent.guiActiveUnfocused = usableUnfocused;
             retractEvent.unfocusedRange = unfocusedRange;
+        }
+
+        public void onAnimationStateChange(AnimState newState)
+        {
+            updateGuiDataFromState(newState);
+        }
+
+        public void onModuleEnableChange(bool moduleEnabled)
+        {
+            updateGuiDataFromState(animationControl.getAnimationState());
         }
     }
 }

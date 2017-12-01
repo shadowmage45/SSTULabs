@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAnimateRotation : PartModule
+    public class SSTUAnimateRotation : PartModule, ISSTUAnimatedModule
     {
 
         [KSPField]
@@ -93,7 +94,7 @@ namespace SSTUTools
             AnimState state = AnimState.STOPPED_END;
             if (!string.IsNullOrEmpty(animationID))
             {
-                animController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChange);
+                animController = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
                 state = animController.getAnimationState();
             }
             bool uiEnabled = state == AnimState.STOPPED_END && !autoRotate;
@@ -150,7 +151,7 @@ namespace SSTUTools
             }
         }
 
-        private void onAnimStateChange(AnimState newState)
+        public void onAnimationStateChange(AnimState newState)
         {
             if (autoRotate)
             {
@@ -159,7 +160,12 @@ namespace SSTUTools
             bool uiEnabled = newState == AnimState.STOPPED_END && !autoRotate;
             updateUIControlState(uiEnabled);
         }
-        
+
+        public void onModuleEnableChange(bool moduleEnabled)
+        {
+            //noop
+        }
+
         private void updateUIControlState(bool enable)
         {
             BaseEvent evt = Events["toggleRotationEvent"];

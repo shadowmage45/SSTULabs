@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUWeldingDockingPort : PartModule, IPartMassModifier, IPartCostModifier
+    public class SSTUWeldingDockingPort : PartModule, IPartMassModifier, IPartCostModifier, ISSTUAnimatedModule
     {        
         [KSPField]
         public String weldNodeName = "bottom";
@@ -153,7 +153,7 @@ namespace SSTUTools
         {
             if (!string.IsNullOrEmpty(animationID))
             {
-                animation = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChanged);
+                animation = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
             }
             updateGUI();
             ModuleDockingNode mdn = part.GetComponent<ModuleDockingNode>();
@@ -295,9 +295,14 @@ namespace SSTUTools
             part.explode();
         }
 
-        private void onAnimStateChanged(AnimState newState)
+        public void onAnimationStateChange(AnimState newState)
         {
             updateGUI();
+        }
+
+        public void onModuleEnableChange(bool moduleEnabled)
+        {
+            //noop
         }
 
         private void updateGUI()

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUDeployableEngine : PartModule
+    public class SSTUDeployableEngine : PartModule, ISSTUAnimatedModule
     {
 
         [KSPField]
@@ -64,7 +64,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            animationControl = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
+            animationControl = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
             engineModule = null;
             ModuleEnginesFX[] engines = part.GetComponents<ModuleEnginesFX>();
             int len = engines.Length;
@@ -84,12 +84,17 @@ namespace SSTUTools
             setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }
 
-        public void onAnimationStatusChanged(AnimState state)
+        public void onAnimationStateChange(AnimState newState)
         {
-            if (state == AnimState.STOPPED_END && HighLogic.LoadedSceneIsFlight)
+            if (newState == AnimState.STOPPED_END && HighLogic.LoadedSceneIsFlight)
             {
                 engineModule.Activate();
             }
+        }
+
+        public void onModuleEnableChange(bool moduleEnabled)
+        {
+            //noop
         }
 
         //check for control enabled and deployment status (if animated)

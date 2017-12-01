@@ -142,7 +142,7 @@ namespace SSTUTools
         {
             if (!string.IsNullOrEmpty(animationID))
             {
-                animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, OnAnimationStatusCallback);
+                animationController = SSTUAnimateControlled.locateAnimationController(part, animationID);
             }
             updateAnimationControllerState();
         }
@@ -193,11 +193,6 @@ namespace SSTUTools
 
             shaderEmissiveID = Shader.PropertyToID("_EmissiveColor");
             matProps = new MaterialPropertyBlock();
-        }
-
-        public void OnAnimationStatusCallback(AnimState newState)
-        {
-            //NOOP for this module, light state is controlled independently from animation state
         }
 
         public void FixedUpdate()

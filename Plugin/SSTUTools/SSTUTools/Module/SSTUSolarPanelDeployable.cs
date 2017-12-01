@@ -9,7 +9,7 @@ namespace SSTUTools
     //Solar panel code based from Near-Future code originally, but has been vastly changed since the original implementation
     //solar pivots rotate around localY, to make localZ face the sun
     //e.g. y+ should point towards origin, z+ should point towards the panel solar input direction
-    public class SSTUSolarPanelDeployable : PartModule, IContractObjectiveModule
+    public class SSTUSolarPanelDeployable : PartModule, IContractObjectiveModule, ISSTUAnimatedModule
     {
         //panel state enum, each represents a discrete state
         public enum SSTUPanelState
@@ -330,16 +330,21 @@ namespace SSTUTools
             sunAxis = axis.ToString();
         }
 
-        public void onAnimationStatusChanged(AnimState state)
+        public void onAnimationStateChange(AnimState newState)
         {
-            if (state == AnimState.STOPPED_END)
+            if (newState == AnimState.STOPPED_END)
             {
-                setPanelState(SSTUPanelState.EXTENDED);                
+                setPanelState(SSTUPanelState.EXTENDED);
             }
-            else if (state == AnimState.STOPPED_START)
+            else if (newState == AnimState.STOPPED_START)
             {
                 setPanelState(SSTUPanelState.RETRACTED);
             }
+        }
+
+        public void onModuleEnableChange(bool moduleEnabled)
+        {
+            //noop
         }
 
         public void disableModule()
@@ -356,7 +361,10 @@ namespace SSTUTools
             windBreakTransform = null;
             pivotData = null;
             suncatcherData = null;
-            if (animationController != null) { animationController.removeCallback(onAnimationStatusChanged); }
+            if (animationController != null)
+            {
+                animationController.removeCallback(this);
+            }
             animationController = null;
         }
 
@@ -376,7 +384,7 @@ namespace SSTUTools
             if (initialized || !moduleIsEnabled) { return; }
             initialized = true;
             findTransforms();
-            animationController = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimationStatusChanged);
+            animationController = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
             setupDefaultRotations();
             setPanelState(panelState);
             loadPivotSaveData(persistentData);

@@ -159,7 +159,7 @@ namespace SSTUTools
             {
                 updateCrewCapacity(inflated ? inflatedCrew : deflatedCrew);
             }
-            animation = SSTUAnimateControlled.locateAnimationController(part, animationID, onAnimStateChange);
+            animation = SSTUAnimateControlled.locateAnimationController(part, animationID);
             if (animation != null)
             {
                 AnimState state = inflated ? AnimState.STOPPED_END : AnimState.STOPPED_START;
@@ -179,11 +179,6 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: Could not locate resource for name: " + resourceName + " for " + this.name);
             }
             updateRequiredMass();
-        }
-
-        private void onAnimStateChange(AnimState newState)
-        {
-            //NOOP
         }
 
         private void onContainerUpdated(SSTUVolumeContainer vc)

@@ -44,10 +44,20 @@ namespace SSTUTools
 
         private EventData<float, float> evt2;
 
-        private List<Action<AnimState>> callbacks = new List<Action<AnimState>>();
+        private List<ISSTUAnimatedModule> callbacks = new List<ISSTUAnimatedModule>();
         
         //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
-        public static SSTUAnimateControlled locateAnimationController(Part part, string id, Action<AnimState> callback = null)
+        public static SSTUAnimateControlled setupAnimationController(Part part, string id, ISSTUAnimatedModule module)
+        {
+            SSTUAnimateControlled controller = locateAnimationController(part, id);
+            if (controller != null && module != null)
+            {
+                controller.callbacks.AddUnique(module);
+            }
+            return controller;
+        }
+
+        public static SSTUAnimateControlled locateAnimationController(Part part, string id)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -58,10 +68,6 @@ namespace SSTUTools
             {
                 if (ac.animationID == id)
                 {
-                    if (callback != null)
-                    {
-                        ac.addCallback(callback);
-                    }
                     return ac;
                 }
             }
@@ -181,6 +187,12 @@ namespace SSTUTools
             controller.addAnimationData(animData);
             controller.restorePreviousAnimationState(prevState, animationMaxDeploy);
             controller.setStateChangeCallback(onAnimationStateChange);
+            bool enabled = moduleIsEnabled;
+            moduleIsEnabled = animData != null && animData.Length > 0;
+            if (moduleIsEnabled != enabled)
+            {
+                setModuleEnabledState(enabled);
+            }
         }
 
         private void initialize()
@@ -235,14 +247,24 @@ namespace SSTUTools
 
         public bool initialized() { return controller != null; }
 
-        public void addCallback(Action<AnimState> cb)
+        public void addCallback(ISSTUAnimatedModule module)
         {
-            callbacks.AddUnique(cb);
+            callbacks.AddUnique(module);
         }
 
-        public void removeCallback(Action<AnimState> cb)
+        public void removeCallback(ISSTUAnimatedModule module)
         {
-            callbacks.Remove(cb);
+            callbacks.Remove(module);
+        }
+
+        public void setModuleEnabledState(bool enabled)
+        {
+            this.moduleIsEnabled = enabled;
+            int len = this.callbacks.Count;
+            for (int i = 0; i < len; i++)
+            {
+                callbacks[i].onModuleEnableChange(enabled);
+            }
         }
 
         //External method to set the state; does not callback on this state change, as this is supposed to originate -from- the callback;
@@ -280,7 +302,7 @@ namespace SSTUTools
             int len = callbacks.Count;
             for (int i = 0; i < len; i++)
             {
-                callbacks[i].Invoke(newState);
+                callbacks[i].onAnimationStateChange(newState);
             }
             persistentState = newState.ToString();
             fireEvents(newState);
@@ -306,7 +328,12 @@ namespace SSTUTools
                     break;
             }
         }
+    }
 
+    public interface ISSTUAnimatedModule
+    {
+        void onAnimationStateChange(AnimState newState);
+        void onModuleEnableChange(bool moduleEnabled);
     }
 }
 
