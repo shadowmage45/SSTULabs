@@ -195,6 +195,7 @@ namespace SSTUTools
 
         private void updateRCSThrust()
         {
+            if (modelTransform == null) { return; }//don't adjust thrust when not responsible for model scaling
             ModuleRCS rcsModule = part.GetComponent<ModuleRCS>();
             if (rcsModule != null)
             {
@@ -206,17 +207,12 @@ namespace SSTUTools
         private void updateRCSFuelType()
         {
             if (!updateFuel) { return; }
-            ModuleRCS rcsModule = part.GetComponent<ModuleRCS>();
-            if (rcsModule != null)
-            {
-                rcsModule.propellants.Clear();
-                ConfigNode pNode = fuelType.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
-                rcsModule.OnLoad(pNode);
-            }
+            updateRCSFuelType(fuelType, part);
         }
 
         private void updateAttachNodes(bool userInput)
         {
+            if (modelTransform == null) { return; }
             AttachNode srf = part.srfAttachNode;
             if (srf != null)
             {
@@ -237,6 +233,29 @@ namespace SSTUTools
         {
             modifiedMass = standoffModule.moduleMass;
             modifiedCost = standoffModule.moduleCost;
+        }
+
+        public static void updateRCSFuelType(string fuelType, Part part)
+        {
+            ContainerFuelPreset fuelTypeData = VolumeContainerLoader.getPreset(fuelType);
+            if (fuelTypeData != null)
+            {
+                updateRCSFuelType(fuelTypeData, part);
+            }
+        }
+
+        public static void updateRCSFuelType(ContainerFuelPreset fuelType, Part part)
+        {
+            ModuleRCS[] modules = part.GetComponents<ModuleRCS>();
+            int len = modules.Length;
+            ModuleRCS rcsModule;
+            for (int i = 0; i < len; i++)
+            {
+                rcsModule = modules[i];
+                rcsModule.propellants.Clear();
+                ConfigNode pNode = fuelType.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
+                rcsModule.OnLoad(pNode);
+            }
         }
 
         public static void updateRCSModules(Part part, bool enabled, float rcsPower, bool pitch, bool yaw, bool roll, bool x, bool y, bool z)
