@@ -50,11 +50,13 @@ namespace SSTUTools
         [KSPField]
         public string coreAnimationID = string.Empty;
 
+        [KSPField]
         public int coreAnimationLayer = 5;
 
         [KSPField]
         public string mountAnimationID = string.Empty;
 
+        [KSPField]
         public int mountAnimationLayer = 7;
 
         [KSPField]
@@ -155,12 +157,6 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularServiceModule> bottomModule;
         ModelModule<SolarData, SSTUModularServiceModule> solarModule;
         ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule> rcsModule;
-
-        //animate controlled reference for solar panel animation module
-        private SSTUAnimateControlled solarAnimationControl;
-
-        //animate controlled reference for service bay animation module
-        private SSTUAnimateControlled bayAnimationControl;
 
         /// <summary>
         /// ref to the ModularRCS module that updates fuel type and thrust for RCS
@@ -555,48 +551,9 @@ namespace SSTUTools
             {
                 return;
             }
-            if (solarAnimationControl == null && !string.Equals("none", solarAnimationID))
-            {
-                SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
-                int len = controls.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    if (controls[i].animationID == solarAnimationID)
-                    {
-                        solarAnimationControl = controls[i];
-                        break;
-                    }
-                }
-                if (solarAnimationControl == null)
-                {
-                    MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
-                    return;
-                }
-            }
 
-            bool animEnabled = solarModule.model.hasAnimation();
+            updateAnimationControl(solarAnimationID, solarModule.model, solarAnimationLayer);
             bool solarEnabled = solarModule.model.panelsEnabled;
-            string animName = string.Empty;
-            float animSpeed = 1f;
-
-            if (animEnabled)
-            {
-                ModelAnimationData mad = solarModule.model.modelDefinition.animationData[0];
-                animName = mad.animationName;
-                animSpeed = mad.speed;
-            }
-            else
-            {
-                animName = string.Empty;
-                animSpeed = 1f;
-            }
-
-            if (solarAnimationControl != null)
-            {
-                solarAnimationControl.animationName = animName;
-                solarAnimationControl.animationSpeed = animSpeed;
-                solarAnimationControl.reInitialize();
-            }
 
             SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
             if (solar != null)
