@@ -702,9 +702,18 @@ namespace SSTUTools
         {
             if (string.IsNullOrEmpty(id)) { return; }
             SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
-            if (module != null)
+            if (module == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate controller for name: " + id);
+                return;
+            }
+            else if (module != null && model.model != null)
             {
                 module.initializeExternal(model.getAnimationData(model.model.transform, layer));
+            }
+            else if(module != null)
+            {
+                module.initializeExternal(new SSTUAnimData[0]);
             }
         }
 

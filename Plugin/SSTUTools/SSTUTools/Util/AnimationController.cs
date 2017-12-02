@@ -223,7 +223,7 @@ namespace SSTUTools
     public class SSTUAnimData
     {
         private Animation[] animations;
-        private String animationName;
+        public readonly String animationName;
         private float animationSpeed = 1;
         private int animationLayer = 1;
         public float maxDeployTime = 1f;

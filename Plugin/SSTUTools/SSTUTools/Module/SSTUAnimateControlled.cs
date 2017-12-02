@@ -188,10 +188,10 @@ namespace SSTUTools
             controller.restorePreviousAnimationState(prevState, animationMaxDeploy);
             controller.setStateChangeCallback(onAnimationStateChange);
             bool enabled = moduleIsEnabled;
-            moduleIsEnabled = animData != null && animData.Length > 0;
+            moduleIsEnabled = animData.Length > 0;
             if (moduleIsEnabled != enabled)
             {
-                setModuleEnabledState(enabled);
+                setModuleEnabledState(moduleIsEnabled);
             }
         }
 

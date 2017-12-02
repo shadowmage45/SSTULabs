@@ -161,6 +161,10 @@ namespace SSTUTools
             {
                 animationData = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
             }
+            else
+            {
+                animationData = new ModelAnimationData[0];
+            }
 
             if (node.HasNode("CONSTRAINT"))
             {
