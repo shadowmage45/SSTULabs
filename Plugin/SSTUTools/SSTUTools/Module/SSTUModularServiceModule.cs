@@ -472,6 +472,7 @@ namespace SSTUTools
             bottomModule.setupModel();
             solarModule.setupModel();
             rcsModule.setupModel();
+            rcsModule.model.renameThrustTransforms(rcsThrustTransformName);
 
             updateModulePositions();
             updateMassAndCost();

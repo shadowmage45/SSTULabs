@@ -66,7 +66,7 @@ namespace SSTUTools
         /// This name -must- match the name in the ModuleRCS, as this data is needed prior to the ModuleRCS loading its config data (??unconfirmed)
         /// </summary>
         [KSPField]
-        public String rcsThrustTransformName = "thrustTransform";
+        public String rcsThrustTransformName = "rcsThrustTransform";
         
         /// <summary>
         /// RealFuels compatibility config field, set to false when RF is in use to let RF handle mass/cost updates -- TODO not sure if it needs to be true or false
@@ -243,8 +243,6 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
-        public GameObject[] rcsThrustTransforms = null;
-
         #endregion
 
         #region ----------------- REGION - Private working value fields ----------------- 
@@ -259,7 +257,8 @@ namespace SSTUTools
         private float totalTankVolume = 0;
         private float moduleMass = 0;
         private float moduleCost = 0;
-        private float rcsThrust = -1;
+        //rcs-modules default thrust value; public so that it will serialize across from prefab -> live parts properly
+        public float rcsThrust = -1;
 
         private ModelModule<SingleModelData, SSTUModularUpperStage> noseModule;
         private ModelModule<SingleModelData, SSTUModularUpperStage> upperModule;
@@ -301,7 +300,7 @@ namespace SSTUTools
                 m.updateModules(true);
                 m.updateModels();
                 m.updateTankStats();
-                m.updateRCSThrust();
+                m.updateRCSModule();
                 m.updateContainerVolume();
                 m.updateGuiState();
             };
@@ -365,7 +364,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     MonoBehaviour.print("RCS model updated!");
-                    m.rebuildRCSThrustTransforms(true);
+                    m.updateRCSModule();
                     modelChangeAction(m);
                 });
             };
@@ -439,7 +438,7 @@ namespace SSTUTools
                 updateContainerVolume();
             }
             updateNodePositions(false);
-            updateRCSThrust();
+            updateRCSModule();
             updateGuiState();
         }
 
@@ -593,7 +592,7 @@ namespace SSTUTools
             rcsModule.getSymmetryModule = m => m.rcsModule; 
             rcsModule.setupModelList(SingleModelData.parseModels(node.GetNodes("RCS"), m=> new SSTUModularUpperStageRCS(m)));
             rcsModule.setupModel();
-            rebuildRCSThrustTransforms(false);
+            updateRCSModule();
 
             if (!splitTank)
             {
@@ -780,7 +779,7 @@ namespace SSTUTools
             }
             mountModule.model.updateModel();
             rcsModule.model.updateModel();
-            rcsModule.model.updateThrustTransformPositions(rcsThrustTransforms);
+            rcsModule.model.renameThrustTransforms(rcsThrustTransformName);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
@@ -850,45 +849,19 @@ namespace SSTUTools
             moduleCost += rcsModule.model.getModuleCost();
         }
 
-        /// <summary>
-        /// update external RCS-module with thrust value;
-        /// </summary>
-        private void updateRCSThrust()
+        private void updateRCSModule()
         {
-            ModuleRCS[] rcsMod = part.GetComponents<ModuleRCS>();
-            int len = rcsMod.Length;
-            float scale = currentTankDiameter / upperModule.model.modelDefinition.diameter;
-            if (rcsThrust < 0 && len>0)
+            if (rcsThrust < 0)
             {
-                rcsThrust = rcsMod[0].thrusterPower;
-            }
-            float thrust = rcsThrust * scale * scale;
-            if (rcsModule.model.dummyModel) { thrust = 0; }
-            for (int i = 0; i < len; i++)
-            {
-                rcsMod[i].thrusterPower = thrust;
-                rcsMod[i].moduleIsEnabled = thrust > 0;
-            }
-            guiRcsThrust = thrust;
-        }
-
-        private void rebuildRCSThrustTransforms(bool updateRCSModule)
-        {
-            if (rcsThrustTransforms != null)
-            {
-                //destroy immediate on existing, or optionally attempt to copy and re-use some of them?
-                int l = rcsThrustTransforms.Length;
-                for (int i = 0; i < l; i++)
+                ModuleRCS mod = part.GetComponent<ModuleRCS>();
+                if (mod != null)
                 {
-                    rcsThrustTransforms[i].transform.parent = null;//so that it doesn't get found by the rcs module, free-floating transform for one frame until destroyed
-                    GameObject.Destroy(rcsThrustTransforms[i]);//destroy
-                    rcsThrustTransforms[i] = null;//dereference
+                    rcsThrust = mod.thrusterPower;
                 }
-                rcsThrustTransforms = null;//dump the whole array
             }
-            rcsThrustTransforms = rcsModule.model.createThrustTransforms(rcsThrustTransformName, part.transform.FindRecursive("model"));
-            if (updateRCSModule)
+            if (rcsThrust > 0)
             {
+                rcsModule.model.renameThrustTransforms(rcsThrustTransformName);
                 float scale = currentTankDiameter / upperModule.model.modelDefinition.diameter;
                 float thrust = rcsThrust * scale * scale;
                 SSTUModularRCS.updateRCSModules(part, !rcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
@@ -967,12 +940,12 @@ namespace SSTUTools
             modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");            
             thrustTransformName = modelDefinition.configNode.GetStringValue("thrustTransformName");
         }
-        
+
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
+            if (model != null || models != null) { destroyCurrentModel(); }
             model = new GameObject(modelDefinition.name);
             model.transform.NestToParent(parent);
-            if (models != null) { destroyCurrentModel(); }
             models = new GameObject[4];
             for (int i = 0; i < 4; i++)
             {
@@ -980,8 +953,8 @@ namespace SSTUTools
             }
             foreach (GameObject go in models)
             {
-                go.transform.NestToParent(parent);
-            }            
+                go.transform.NestToParent(model.transform);
+            }
         }
 
         public override void updateModel()
@@ -996,9 +969,9 @@ namespace SSTUTools
                 {
                     rotation = (float)(i * 90) + mountVerticalRotation;
                     scale = currentDiameterScale;
-                    length = currentHorizontalPosition + (scale * modelHorizontalZOffset);                    
+                    length = currentHorizontalPosition + (scale * modelHorizontalZOffset);
                     posX = (float)Math.Sin(SSTUUtils.toRadians(rotation)) * length;
-                    posZ = (float)Math.Cos(SSTUUtils.toRadians(rotation)) * length;                    
+                    posZ = (float)Math.Cos(SSTUUtils.toRadians(rotation)) * length;
                     posY = currentVerticalPosition + (scale * modelVerticalOffset);
                     models[i].transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
                     models[i].transform.localPosition = new Vector3(posX, posY, posZ);
@@ -1010,6 +983,7 @@ namespace SSTUTools
 
         public override void destroyCurrentModel()
         {
+            GameObject.Destroy(model);
             if (models == null) { return; }
             int len = models.Length;
             for (int i = 0; i < len; i++)
@@ -1022,53 +996,13 @@ namespace SSTUTools
             models = null;
         }
 
-        public GameObject[] createThrustTransforms(string name, Transform parent)
+        public void renameThrustTransforms(string moduleThrustTransformName)
         {
-            MonoBehaviour.print("Creating new thrust transforms");
-            if (dummyModel)
-            {
-                GameObject[] dumArr = new GameObject[1];
-                dumArr[0] = new GameObject(name);
-                dumArr[0].transform.NestToParent(parent);
-                return dumArr;
-            }
-            int len = 4, len2;
-            List<GameObject> goList = new List<GameObject>();
-            Transform[] trs;
-            GameObject go;
+            Transform[] trs = model.transform.FindChildren(thrustTransformName);
+            int len = trs.Length;
             for (int i = 0; i < len; i++)
             {
-                trs = models[i].transform.FindChildren(thrustTransformName);
-                len2 = trs.Length;
-                for (int k = 0; k < len2; k++)
-                {
-                    go = new GameObject(name);
-                    go.transform.NestToParent(parent);
-                    goList.Add(go);
-                }
-            }
-            return goList.ToArray();
-        }
-
-        public void updateThrustTransformPositions(GameObject[] gos)
-        {
-            MonoBehaviour.print("Updating transform positions");
-            if (dummyModel) { return; }
-            Transform[] trs;
-            int len;
-            GameObject go;
-            int index = 0;
-            int goLen = gos.Length;
-            for (int i = 0; i < 4; i++)
-            {
-                trs = models[i].transform.FindChildren(thrustTransformName);
-                len = trs.Length;
-                for (int k = 0; k < len && index < goLen; k++, index++)
-                {
-                    go = gos[index];
-                    go.transform.position = trs[k].position;
-                    go.transform.rotation = trs[k].rotation;
-                }
+                trs[i].name = trs[i].gameObject.name = moduleThrustTransformName;
             }
         }
 
