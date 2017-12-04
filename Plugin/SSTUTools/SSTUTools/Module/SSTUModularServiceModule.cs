@@ -33,28 +33,13 @@ namespace SSTUTools
         public bool useAdapterCost = false;
 
         [KSPField]
-        public bool updateSolar = true;
-
-        [KSPField]
-        public string solarAnimationID = "solarDeploy";
-
-        [KSPField]
         public int solarAnimationLayer = 1;
-
-        [KSPField]
-        public string noseAnimationID = string.Empty;
 
         [KSPField]
         public int noseAnimationLayer = 3;
 
         [KSPField]
-        public string coreAnimationID = string.Empty;
-
-        [KSPField]
         public int coreAnimationLayer = 5;
-
-        [KSPField]
-        public string mountAnimationID = string.Empty;
 
         [KSPField]
         public int mountAnimationLayer = 7;
@@ -125,6 +110,18 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentBottomTexture = "default";
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float topAnimationDeployLimit = 1f;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Core Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float coreAnimationDeployLimit = 1f;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Bottom Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float bottomAnimationDeployLimit = 1f;
+
         //persistent data for modules; stores colors and other per-module data
         [KSPField(isPersistant = true)]
         public string topModulePersistentData;
@@ -132,6 +129,20 @@ namespace SSTUTools
         public string coreModulePersistentData;
         [KSPField(isPersistant = true)]
         public string bottomModulePersistentData;
+
+        //persistence data for animation modules
+        [KSPField(isPersistant = true)]
+        public string topAnimationPersistentData;
+        [KSPField(isPersistant = true)]
+        public string coreAnimationPersistentData;
+        [KSPField(isPersistant = true)]
+        public string bottomAnimationPersistentData;
+
+        //persistence data for solar module
+        [KSPField(isPersistant = true)]
+        public string solarAnimationPersistentData;
+        [KSPField(isPersistant = true)]
+        public string solarRotationPersistentData;
 
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
@@ -158,12 +169,82 @@ namespace SSTUTools
         ModelModule<SolarData, SSTUModularServiceModule> solarModule;
         ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule> rcsModule;
 
+        AnimationModule<SSTUModularServiceModule> topAnimationModule;
+        AnimationModule<SSTUModularServiceModule> coreAnimationModule;
+        AnimationModule<SSTUModularServiceModule> bottomAnimationModule;
+
+        SolarModule<SSTUModularServiceModule> solarPanelModule;
+
         /// <summary>
         /// ref to the ModularRCS module that updates fuel type and thrust for RCS
         /// </summary>
         private SSTUModularRCS modularRCSControl;
 
         #endregion ENDREGION - Private working vars
+
+        #region REGION - UI Controls
+
+        [KSPEvent]
+        public void topDeployEvent() { topAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void coreDeployEvent() { coreAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void bottomDeployEvent() { bottomAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void topRetractEvent() { topAnimationModule.onRetractEvent(); }
+
+        [KSPEvent]
+        public void coreRetractEvent() { coreAnimationModule.onRetractEvent(); }
+
+        [KSPEvent]
+        public void bottomRetractEvent() { bottomAnimationModule.onRetractEvent(); }
+
+        [KSPAction]
+        public void topDeployAction(KSPActionParam param) { topAnimationModule.onDeployAction(param); }
+
+        [KSPAction]
+        public void topRetractAction(KSPActionParam param) { topAnimationModule.onRetractAction(param); }
+
+        [KSPAction]
+        public void topToggleAction(KSPActionParam param) { topAnimationModule.onToggleAction(param); }
+
+        [KSPAction]
+        public void coreDeployAction(KSPActionParam param) { coreAnimationModule.onDeployAction(param); }
+
+        [KSPAction]
+        public void coreRetractAction(KSPActionParam param) { coreAnimationModule.onRetractAction(param); }
+
+        [KSPAction]
+        public void coreToggleAction(KSPActionParam param) { coreAnimationModule.onToggleAction(param); }
+
+        [KSPAction]
+        public void bottomDeployAction(KSPActionParam param) { bottomAnimationModule.onDeployAction(param); }
+
+        [KSPAction]
+        public void bottomRetractAction(KSPActionParam param) { bottomAnimationModule.onRetractAction(param); }
+
+        [KSPAction]
+        public void bottomToggleAction(KSPActionParam param) { bottomAnimationModule.onToggleAction(param); }
+        
+        [KSPEvent]
+        public void solarDeployEvent() { solarPanelModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void solarRetractEvent() { solarPanelModule.onDeployEvent(); }
+
+        [KSPAction]
+        public void solarDeployAction(KSPActionParam param) { solarPanelModule.onDeployAction(param); }
+
+        [KSPAction]
+        public void solarRetractAction(KSPActionParam param) { solarPanelModule.onRetractAction(param); }
+
+        [KSPAction]
+        public void solarToggleAction(KSPActionParam param) { solarPanelModule.onToggleAction(param); }
+
+        #endregion ENDREGION - UI Controls
 
         #region REGION - Standard KSP Overrides
 
@@ -206,7 +287,10 @@ namespace SSTUTools
             {
                 topModule.modelSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
-                this.actionWithSymmetry(m => { m.updateAnimationControl(noseAnimationID, topModule.model, noseAnimationLayer); });
+                this.actionWithSymmetry(m => 
+                {
+                    m.topAnimationModule.setupAnimations(m.topModule.model.getAnimationData(m.topModule.root, m.noseAnimationLayer));
+                });
                 SSTUStockInterop.fireEditorUpdate();
             };
 
@@ -224,9 +308,9 @@ namespace SSTUTools
                         m.updateSolarModules();
                     });
                 }
-                this.actionWithSymmetry(m => 
+                this.actionWithSymmetry(m =>
                 {
-                    m.updateAnimationControl(coreAnimationID, coreModule.model, coreAnimationLayer);
+                    m.coreAnimationModule.setupAnimations(m.coreModule.model.getAnimationData(m.coreModule.root, m.coreAnimationLayer));
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -235,7 +319,10 @@ namespace SSTUTools
             {
                 bottomModule.modelSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
-                this.actionWithSymmetry(m => { m.updateAnimationControl(mountAnimationID, bottomModule.model, mountAnimationLayer); });
+                this.actionWithSymmetry(m =>
+                {
+                    m.bottomAnimationModule.setupAnimations(m.bottomModule.model.getAnimationData(m.bottomModule.root, m.mountAnimationLayer));
+                });
                 SSTUStockInterop.fireEditorUpdate();
             };
 
@@ -300,10 +387,6 @@ namespace SSTUTools
                 updateFairing(false);
             }
             initializedDefaults = true;
-            updateSolarModules();
-            updateAnimationControl(noseAnimationID, topModule.model, noseAnimationLayer);
-            updateAnimationControl(coreAnimationID, coreModule.model, coreAnimationLayer);
-            updateAnimationControl(mountAnimationID, bottomModule.model, mountAnimationLayer);
             updateRCSModule();
         }
         
@@ -314,6 +397,21 @@ namespace SSTUTools
             {
                 GameEvents.onEditorShipModified.Remove(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
+        }
+
+        //standard Unity lifecyle override
+        public void Update()
+        {
+            topAnimationModule.updateAnimations();
+            coreAnimationModule.updateAnimations();
+            bottomAnimationModule.updateAnimations();
+            solarPanelModule.updateAnimations();
+        }
+
+        //standard Unity lifecyle override
+        public void FixedUpdate()
+        {
+            solarPanelModule.solarFixedUpdate();
         }
 
         //KSP editor modified event callback
@@ -409,7 +507,8 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-
+            
+            //model-module setup/initialization
             topNodeNames = SSTUUtils.parseCSV(topManagedNodes);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodes);
 
@@ -463,9 +562,10 @@ namespace SSTUTools
             }
             topModule.setupModelList(SingleModelData.parseModels(tops.ToArray()));
             bottomModule.setupModelList(SingleModelData.parseModels(bottoms.ToArray()));
-
             tops.Clear();
             bottoms.Clear();
+
+            //model-module model-creation
             topModule.setupModel();
             coreModule.setupModel();
             coreModule.model.updateScaleForDiameter(currentDiameter);
@@ -473,6 +573,21 @@ namespace SSTUTools
             solarModule.setupModel();
             rcsModule.setupModel();
             rcsModule.model.renameThrustTransforms(rcsThrustTransformName);
+
+            //animation-module setup/initialization
+            topAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(topAnimationPersistentData)], Fields[nameof(topAnimationDeployLimit)], Events[nameof(topDeployEvent)], Events[nameof(topRetractEvent)]);
+            topAnimationModule.setupAnimations(topModule.model.getAnimationData(topModule.root, noseAnimationLayer));
+
+            coreAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(coreAnimationPersistentData)], Fields[nameof(coreAnimationDeployLimit)], Events[nameof(coreDeployEvent)], Events[nameof(coreRetractEvent)]);
+            coreAnimationModule.setupAnimations(coreModule.model.getAnimationData(coreModule.root, coreAnimationLayer));
+
+            bottomAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(bottomAnimationPersistentData)], Fields[nameof(bottomAnimationDeployLimit)], Events[nameof(bottomDeployEvent)], Events[nameof(bottomRetractEvent)]);
+            bottomAnimationModule.setupAnimations(bottomModule.model.getAnimationData(bottomModule.root, mountAnimationLayer));
+
+            //solar panel animation and solar data controls
+            solarPanelModule = new SolarModule<SSTUModularServiceModule>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
+            solarPanelModule.setupAnimations(solarModule.model.getAnimationData(solarModule.root, solarAnimationLayer));
+            solarPanelModule.setupSolarPanelData(solarModule.model.modelDefinition.solarData);
 
             updateModulePositions();
             updateMassAndCost();
@@ -545,35 +660,11 @@ namespace SSTUTools
                 modifiedCost += bottomModule.moduleCost;
             }
         }
-        
+
         private void updateSolarModules()
         {
-            if (!updateSolar)
-            {
-                return;
-            }
-
-            updateAnimationControl(solarAnimationID, solarModule.model, solarAnimationLayer);
-            bool solarEnabled = solarModule.model.panelsEnabled;
-
-            SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
-            if (solar != null)
-            {
-                if (solarEnabled)
-                {
-                    solar.resourceAmount = solarModule.model.energy;
-                    solar.pivotTransforms = solarModule.model.pivotNames;
-                    solar.rayTransforms = solarModule.model.sunNames;
-
-                    SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
-                    solar.setSuncatcherAxis(axis);
-                    solar.enableModule();
-                }
-                else
-                {
-                    solar.disableModule();
-                }
-            }
+            //TODO
+            throw new NotImplementedException();
         }
 
         private void updateRCSModule()
@@ -697,25 +788,6 @@ namespace SSTUTools
             }
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
-        }
-
-        private void updateAnimationControl(string id, SingleModelData model, int layer)
-        {
-            if (string.IsNullOrEmpty(id)) { return; }
-            SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
-            if (module == null)
-            {
-                MonoBehaviour.print("ERROR: Could not locate controller for name: " + id);
-                return;
-            }
-            else if (module != null && model.model != null)
-            {
-                module.initializeExternal(model.getAnimationData(model.model.transform, layer));
-            }
-            else if(module != null)
-            {
-                module.initializeExternal(new SSTUAnimData[0]);
-            }
         }
 
         #endregion ENDREGION - Custom Update Methods
