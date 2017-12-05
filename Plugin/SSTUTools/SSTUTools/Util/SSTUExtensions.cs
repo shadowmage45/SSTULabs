@@ -270,6 +270,13 @@ namespace SSTUTools
             return color;
         }
 
+        public static Axis getAxis(this ConfigNode node, string name, Axis def = Axis.ZPlus)
+        {
+            string val = node.GetStringValue("name", def.ToString());
+            Axis axis = (Axis)Enum.Parse(typeof(Axis), val);
+            return axis;
+        }
+
         #endregion
 
         #region Transform extensionMethods
@@ -417,6 +424,48 @@ namespace SSTUTools
                 }
             }
             return false;
+        }
+
+        public static Vector3 getTransformAxis(this Transform transform, Axis axis)
+        {
+            switch (axis)
+            {
+                case Axis.XPlus:
+                    return transform.right;
+                case Axis.XNeg:
+                    return -transform.right;
+                case Axis.YPlus:
+                    return transform.up;
+                case Axis.YNeg:
+                    return -transform.up;
+                case Axis.ZPlus:
+                    return transform.forward;
+                case Axis.ZNeg:
+                    return -transform.forward;
+                default:
+                    return transform.forward;
+            }
+        }
+
+        public static Vector3 getLocalAxis(this Transform transform, Axis axis)
+        {
+            switch (axis)
+            {
+                case Axis.XPlus:
+                    return Vector3.right;
+                case Axis.XNeg:
+                    return Vector3.left;
+                case Axis.YPlus:
+                    return Vector3.up;
+                case Axis.YNeg:
+                    return Vector3.down;
+                case Axis.ZPlus:
+                    return Vector3.forward;
+                case Axis.ZNeg:
+                    return Vector3.back;
+                default:
+                    return Vector3.forward;
+            }
         }
 
         #endregion

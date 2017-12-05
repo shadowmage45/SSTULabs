@@ -25,6 +25,11 @@ namespace SSTUTools
         /// </summary>
         private PanelData[] panelData;
 
+        /// <summary>
+        /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation
+        /// </summary>
+        private bool closingLerp;
+
         private string panelStatus
         {
             get { return panelStatusField.GetValue<string>(panelStatusField); }
@@ -61,7 +66,38 @@ namespace SSTUTools
         /// </summary>
         public void solarUpdate()
         {
-            throw new NotImplementedException();
+            //only update if animation is set to deployed
+            //TODO -- support solar panels that lack animations (static panels)
+            //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
+            if (animState != AnimState.STOPPED_END)
+            {
+                return;
+            }
+            int len = panelData.Length;
+            if (closingLerp)
+            {
+                bool finished = true;
+                for (int i = 0; i < len; i++)
+                {
+                    if (!panelData[i].panelUpdateRetract())
+                    {
+                        finished = false;
+                    }
+                }
+                if (finished)
+                {
+                    closingLerp = false;
+                    setAnimState(AnimState.PLAYING_BACKWARD);
+                }
+            }
+            else
+            {
+                Vector3 sunPos = FlightGlobals.Bodies[0].transform.position;
+                for (int i = 0; i < len; i++)
+                {
+                    panelData[i].panelUpdate(sunPos);
+                }
+            }
         }
 
         /// <summary>
@@ -92,10 +128,10 @@ namespace SSTUTools
             int len = panelData.Length;
             for (int i = 0; i < len; i++)
             {
-                panelOutput = panelData[i].updatePanel(solarTarget);
+                panelOutput = panelData[i].panelFixedUpdate(solarTarget);
                 if (panelOutput == 0)
                 {
-                    occluder = panelData[i].occluder;
+                    occluder = panelData[i].occluderName;
                 }
             }
 
@@ -115,9 +151,12 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Should be called from owning part-module when solar panels are to be repaired.
+        /// </summary>
         public void onPanelRepairEvent()
         {
-
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -144,36 +183,132 @@ namespace SSTUTools
     /// </summary>
     public class PanelData
     {
+        /// <summary>
+        /// Dynamic-pressure needed to break the panel if deployed while moving through an atmosphere.
+        /// </summary>
+        public readonly float breakPressure;
+
+        /// <summary>
+        /// G-force required to break the panel if it is deployed while the force is experienced.
+        /// The exact g-force experienced by the panel is the input G multiplied
+        /// by the dot product of the G vector and the panels break transform axis.
+        /// </summary>
+        public readonly float breakGs;
+
+        /// <summary>
+        /// Persistent tracking for if this individual panel is broken or not
+        /// </summary>
         public bool isBroken = false;
+
+        /// <summary>
+        /// Main pivot container
+        /// </summary>
         public SolarPivotData mainPivot;
+
+        /// <summary>
+        /// Secondary pivot container
+        /// </summary>
         public SolarPivotData secondPivot;
+
+        /// <summary>
+        /// Suncatcher containers
+        /// </summary>
         public SuncatcherData[] suncatchers;
 
-        public string occluder = string.Empty;
+        /// <summary>
+        /// Name of the occluder, if any.  Updated during panel power update processing.
+        /// </summary>
+        public string occluderName = string.Empty;
 
         public PanelData(ConfigNode node, Transform root)
         {
+            string mainName = node.GetStringValue("mainPivot", string.Empty);
+            if (!string.IsNullOrEmpty(mainName))
+            {
+                int mainIndex = node.GetIntValue("mainPivotIndex", 0);
+                Axis mainSunAxis = node.getAxis("mainSunAxis", Axis.ZPlus);
+                Axis mainRotAxis = node.getAxis("mainRotAxis", Axis.XPlus);
+                float speed = node.GetFloatValue("trackingSpeed", 10f);
+                Transform[] trs = root.FindChildren(mainName);
+                mainPivot = new SolarPivotData(trs[mainIndex], speed, mainSunAxis, mainRotAxis);
 
-        }
-
-        public void restoreRotation()
-        {
-
-        }
-
-        public float updatePanel(Vector3 solarSource)
-        {
-            if (isBroken) { return 0; }
-            //TODO update pivots
-
-            int len = suncatchers.Length;
-            float powerOutput = 0f;
+                string secondName = node.GetStringValue("secondPivot", string.Empty);
+                if (!string.IsNullOrEmpty(secondName))
+                {
+                    int secondIndex = node.GetIntValue("secondPivotIndex", 0);
+                    Axis secSunAxis = node.getAxis("secondSunAxis", Axis.ZPlus);
+                    Axis secRotAxis = node.getAxis("secondRotAxis", Axis.XPlus);
+                    trs = root.FindChildren(secondName);
+                    secondPivot = new SolarPivotData(trs[secondIndex], speed, secSunAxis, secRotAxis);
+                }
+            }
+            ConfigNode[] suncatcherNodes = node.GetNodes("SUNCATCHER");
+            int len = suncatcherNodes.Length;
+            suncatchers = new SuncatcherData[len];
             for (int i = 0; i < len; i++)
             {
-                powerOutput += suncatchers[i].calcRawOutput(solarSource);
+                suncatchers[i] = new SuncatcherData(suncatcherNodes[i], root);
             }
-            //TODO -- adjust power output for distance and temps
-            return powerOutput;
+        }
+
+        /// <summary>
+        /// Updates the panels sun-tracking pivots in 'retracting' mode
+        /// </summary>
+        public bool panelUpdateRetract()
+        {
+            bool mainDone = true;
+            bool secondDone = true;
+            if (mainPivot != null)
+            {
+                mainDone = mainPivot.rotateTowardsDefault();
+                if (secondPivot != null)
+                {
+                    secondDone = secondPivot.rotateTowardsDefault();
+                }
+            }
+            return mainDone && secondDone;
+        }
+
+        /// <summary>
+        /// Updates the panels sun-tracking pivots, using the config-value for tracking speed.
+        /// </summary>
+        /// <param name="solarSource"></param>
+        public void panelUpdate(Vector3 solarSource)
+        {
+            if (isBroken) { return; }
+            if (!string.IsNullOrEmpty(occluderName)) { return; }
+            if (mainPivot != null)
+            {
+                mainPivot.rotateTowards(solarSource);
+                if (secondPivot != null)
+                {
+                    secondPivot.rotateTowards(solarSource);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates the panels suncatchers -- checking for occlusion and calcuating EC output if not occluded
+        /// </summary>
+        /// <param name="solarSource"></param>
+        /// <returns></returns>
+        public float panelFixedUpdate(Vector3 solarSource)
+        {
+            occluderName = string.Empty;
+            if (isBroken) { return 0; }
+            int len = suncatchers.Length;
+            float panelOutput = 0f;
+            float totalOutput = 0f;
+            for (int i = 0; i < len; i++)
+            {
+                panelOutput = suncatchers[i].calcRawOutput(solarSource);
+                if (panelOutput <= 0)//was occluded
+                {
+                    occluderName = suncatchers[i].occluderName;
+                }
+                totalOutput += panelOutput;
+            }
+            return totalOutput;
         }
 
     }
@@ -188,11 +323,14 @@ namespace SSTUTools
 
         private RaycastHit hitData;
 
-        public SuncatcherData(Transform suncatcher, Axis axis, float rate)
+        public SuncatcherData(ConfigNode node, Transform root)
         {
-            this.suncatcher = suncatcher;
-            this.suncatcherAxis = axis;
-            this.resourceRate = rate;
+            string sunName = node.GetStringValue("suncatcher");
+            suncatcherAxis = node.getAxis("suncatcherAxis", Axis.ZPlus);
+            int index = node.GetIntValue("suncatcherIndex", 0);
+            Transform[] trs = root.FindChildren(sunName);
+            suncatcher = trs[index];
+            resourceRate = node.GetFloatValue("rate");
         }
 
         /// <summary>
@@ -201,17 +339,23 @@ namespace SSTUTools
         /// <param name="target"></param>
         public float calcRawOutput(Vector3 targetPos)
         {
-            Vector3 panelFacing = getTransformAxis(suncatcherAxis, suncatcher);
+            Vector3 panelFacing = suncatcher.getTransformAxis(suncatcherAxis);
             Vector3 directionToSun = (targetPos - suncatcher.position).normalized;
             float sunDot = Mathf.Clamp(Vector3.Dot(panelFacing, directionToSun), 0f, 1f);
             if (sunDot > 0 && checkPartOcclusion(directionToSun))
             {
-                //occluded by part, zero out the resource output
+                //occluded by part, zero out the resource output, this causes outer-loop power calc to examine the occluder name
                 sunDot = 0;
             }
             return sunDot * resourceRate;
         }
 
+        /// <summary>
+        /// Do a short raycast on the suncatcher to determine if it is occluded.
+        /// TODO -- only do raycast occlusion check every X ticks, and/or only raycast-occlusion-check from a single suncatcher per-panel (rather than every suncatcher)
+        /// </summary>
+        /// <param name="directionToSun"></param>
+        /// <returns></returns>
         public bool checkPartOcclusion(Vector3 directionToSun)
         {
             if (Physics.Raycast(suncatcher.position, directionToSun, out hitData, 300f))
@@ -222,51 +366,165 @@ namespace SSTUTools
             return false;
         }
 
-        private Vector3 getTransformAxis(Axis axis, Transform transform)
-        {
-            switch (axis)
-            {
-                case Axis.XPlus:
-                    return transform.right;
-                case Axis.XNeg:
-                    return -transform.right;
-                case Axis.YPlus:
-                    return transform.up;
-                case Axis.YNeg:
-                    return -transform.up;
-                case Axis.ZPlus:
-                    return transform.forward;
-                case Axis.ZNeg:
-                    return -transform.forward;
-                default:
-                    return transform.forward;
-            }
-        }
-
     }
 
     public class SolarPivotData
     {
         public readonly Transform pivot;
         public readonly Quaternion defaultOrientation;
-        public readonly Axis pivotAxis;
+        public readonly Axis pivotSunAxis;
+        public readonly Axis pivotRotationAxis;
+        public readonly float rotationOffset = 0f;
+        public readonly float trackingSpeed = 10f;//degrees per second
 
-        public SolarPivotData(Transform pivot, Axis pivotAxis)
+        public SolarPivotData(Transform pivot, float trackingSpeed, Axis pivotSunAxis, Axis pivotRotationAxis)
         {
             this.pivot = pivot;
-            this.pivotAxis = pivotAxis;
+            this.trackingSpeed = trackingSpeed;
+            this.pivotSunAxis = pivotSunAxis;
+            this.pivotRotationAxis = pivotRotationAxis;
             this.defaultOrientation = pivot.localRotation;
+
+            //pre-calculate a rotation offset that is used during updating of the pivot rotation
+            //this offset is used to speed up constraint calculation
+            if (pivotRotationAxis==Axis.XPlus || pivotRotationAxis==Axis.XNeg)
+            {
+                if (pivotSunAxis == Axis.YPlus)
+                {
+                    rotationOffset = 90;
+                }
+                else if (pivotSunAxis == Axis.YNeg)
+                {
+                    rotationOffset = -90;
+                }
+                else if (pivotSunAxis == Axis.ZNeg)
+                {
+                    rotationOffset = 180f;
+                }
+                //implicit else ZPlus = 0f
+            }
+            else if (pivotRotationAxis == Axis.YPlus || pivotRotationAxis == Axis.YNeg)
+            {
+                if (pivotSunAxis == Axis.XPlus)
+                {
+                    rotationOffset = -90f;
+                }
+                else if (pivotSunAxis == Axis.XNeg)
+                {
+                    rotationOffset = 90f;
+                }
+                else if (pivotSunAxis == Axis.ZNeg)
+                {
+                    rotationOffset = 180f;
+                }
+                //implicit else ZPlus = 0f
+            }
+            else if (pivotRotationAxis == Axis.ZPlus || pivotRotationAxis == Axis.ZNeg)
+            {
+                if (pivotSunAxis == Axis.XPlus)
+                {
+                    rotationOffset = 90f;
+                }
+                else if (pivotSunAxis == Axis.XNeg)
+                {
+                    rotationOffset = -90f;
+                }
+                else if (pivotSunAxis == Axis.YNeg)
+                {
+                    rotationOffset = 180f;
+                }
+                //implicit else YPlus = 0f
+            }
         }
 
-        public void rotateTowards(Vector3 targetPos, float rate)
+        /// <summary>
+        /// Sets the pivot transform to a specific local rotation
+        /// </summary>
+        /// <param name="localOrientation"></param>
+        public void setRotation(Quaternion localOrientation)
         {
-
+            pivot.localRotation = localOrientation;
         }
 
-        public void rotateTowardsDefault(float rate)
+        /// <summary>
+        /// Rotate the pivot towards the input target position.
+        /// </summary>
+        /// <param name="targetPos"></param>
+        /// <returns></returns>
+        public bool rotateTowards(Vector3 targetPos)
         {
+            //this is the total angle needed to rotate (could be + or -)
+            float rawAngle = getRotationAmount(targetPos);
+            float absAngle = Mathf.Abs(rawAngle);
+            float frameSpeed = trackingSpeed * Time.deltaTime;
+            float frameAngle = 0f;
 
+            bool finished = false;
+            if (absAngle > frameSpeed)//too much for a single frame
+            {
+                finished = false;
+                frameAngle = frameSpeed * Mathf.Sign(rawAngle);
+            }
+            else//implicit if (absAngle <= frameSpeed)//can be completed this frame
+            {
+                finished = true;
+                frameAngle = rawAngle;
+            }
+            pivot.Rotate(pivot.getLocalAxis(pivotRotationAxis), frameAngle, Space.Self);
+            return finished;
         }
+
+        /// <summary>
+        /// Rotate the panel pivot towards its default orientation, using the currently configured rotation speed
+        /// </summary>
+        /// <returns></returns>
+        public bool rotateTowardsDefault()
+        {
+            //cache current orientation
+            Quaternion currentOrientation = pivot.localRotation;
+            
+            //update to the default orientation
+            pivot.localRotation = defaultOrientation;
+            
+            //get a position vector that represents the world-space target from the default orientation
+            Vector3 defaultRotTargetPos = pivot.transform.position + pivot.getTransformAxis(pivotSunAxis);
+
+            //restore the actual current rotation
+            pivot.localRotation = currentOrientation;
+
+            //finally, update the actual rotation
+            return rotateTowards(defaultRotTargetPos);
+        }
+
+        /// <summary>
+        /// Return the number of degrees the panel needs to rotate around its rotation axis in order to point the
+        /// sun-axis as close to the target-pos as is possible given the constrained rotation
+        /// </summary>
+        /// <param name="targetPos"></param>
+        /// <returns></returns>
+        public float getRotationAmount(Vector3 targetPos)
+        {
+            //local-space position of the target
+            Vector3 localDiff = pivot.InverseTransformPoint(targetPos);
+            float rotation = 0f;
+            if (pivotRotationAxis == Axis.XPlus || pivotRotationAxis == Axis.XNeg)
+            {
+                //use y and z
+                rotation = -Mathf.Atan2(localDiff.y, localDiff.z) * Mathf.Rad2Deg + rotationOffset;
+            }
+            else if (pivotRotationAxis == Axis.YPlus || pivotRotationAxis == Axis.YNeg)
+            {
+                //use x and z
+                rotation = Mathf.Atan2(localDiff.x, localDiff.z) * Mathf.Rad2Deg + rotationOffset;
+            }
+            else if (pivotRotationAxis == Axis.ZPlus || pivotRotationAxis == Axis.ZNeg)
+            {
+                //use x and y
+                rotation = -Mathf.Atan2(localDiff.x, localDiff.y) * Mathf.Rad2Deg + rotationOffset;
+            }
+            return rotation;
+        }
+
     }
 
 }
