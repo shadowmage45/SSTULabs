@@ -26,7 +26,7 @@ namespace SSTUTools
         private PanelData[] panelData;
 
         /// <summary>
-        /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation
+        /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation.  Not tracked persistently -- if part is saved out while close-lerp is in action, it will actually save out as if it were deployed
         /// </summary>
         private bool closingLerp;
 
@@ -42,11 +42,6 @@ namespace SSTUTools
             this.panelStatusField = panelStatusField;
         }
 
-        public override void onDeployEvent()
-        {
-            base.onDeployEvent();
-        }
-
         public override void onRetractEvent()
         {
             if (animState == AnimState.STOPPED_END)
@@ -57,11 +52,6 @@ namespace SSTUTools
             {
                 base.onRetractEvent();
             }            
-        }
-
-        public override void updateAnimations()
-        {
-            base.updateAnimations();  
         }
 
         /// <summary>
@@ -92,13 +82,12 @@ namespace SSTUTools
             //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
             //TODO -- how useful is the locking feature, really?
             //only update if animation is set to deployed
-            MonoBehaviour.print("Solar update, anim state: " + animState);
             if (animState != AnimState.STOPPED_END)
             {
                 return;
             }
             int len = panelData.Length;
-            if (closingLerp)
+            if (closingLerp)//active in both editor and flight
             {
                 bool finished = true;
                 for (int i = 0; i < len; i++)
@@ -111,7 +100,7 @@ namespace SSTUTools
                     setAnimState(AnimState.PLAYING_BACKWARD);
                 }
             }
-            else if(HighLogic.LoadedSceneIsFlight)
+            else if(HighLogic.LoadedSceneIsFlight)//sun tracking only active in flight
             {
                 Vector3 sunPos = FlightGlobals.Bodies[0].transform.position;
                 for (int i = 0; i < len; i++)
@@ -215,9 +204,9 @@ namespace SSTUTools
             setAnimTime(time, true);
         }
 
-        //TODO -- call this from somewhere...
         public void updateSolarPersistence()
         {
+            // Data format = mainDefRot-mainCurRot:secDefRot-secCurRot:brokenStatus;(repeat after semicolon for next panel)
             string data = string.Empty;
             int len = panelData.Length;
             for (int i = 0; i < len; i++)
@@ -377,9 +366,10 @@ namespace SSTUTools
 
         public void initializeRotations(string persistentData)
         {
-            string mainPivotPersistence = string.Empty;
-            string secondPivotPersistence = string.Empty;
-            string brokenPersistence = string.Empty;
+            string[] splitData = string.IsNullOrEmpty(persistentData) ? new string[] { "","","false"} : persistentData.Split(':');
+            string mainPivotPersistence = splitData[0];
+            string secondPivotPersistence = splitData[1];
+            string brokenPersistence = splitData[2];
             if (mainPivot != null)
             {
                 mainPivot.initializeRotation(mainPivotPersistence);
@@ -391,10 +381,14 @@ namespace SSTUTools
             isBroken = brokenPersistence == "true";
         }
 
+        /// <summary>
+        /// Return the updated string representation of the persistent data for the current panel configuration for this SolarModule.<para/>
+        /// </summary>
+        /// <returns></returns>
         public string getPersistentData()
         {
-            string main = string.Empty;
-            string second = string.Empty;
+            string main = mainPivot == null ? "" : mainPivot.getPersistentData();
+            string second = secondPivot==null ? "" : secondPivot.getPersistentData();
             string broken = isBroken ? "true" : "false";
             return main + ":" + second + ":" + broken;
         }
@@ -562,6 +556,11 @@ namespace SSTUTools
             return finished;
         }
 
+        public bool rotateTowardsAngle(float angle)
+        {
+            return true;
+        }
+
         /// <summary>
         /// Rotate the panel pivot towards its default orientation, using the currently configured rotation speed
         /// </summary>
@@ -615,12 +614,25 @@ namespace SSTUTools
 
         public void initializeRotation(string persistentData)
         {
-            defaultOrientation = pivot.localRotation;
+            if (!string.IsNullOrEmpty(persistentData))
+            {
+                string[] splitData = persistentData.Split('-');
+                float[] def = SSTUUtils.parseFloatArray(splitData[0]);
+                float[] cur = SSTUUtils.parseFloatArray(splitData[1]);
+                defaultOrientation = new Quaternion(def[0], def[1], def[2], def[3]);
+                pivot.localRotation = new Quaternion(cur[0], cur[1], cur[2], cur[3]);
+            }
+            else
+            {
+                defaultOrientation = pivot.localRotation;
+            }
         }
 
         public string getPersistentData()
         {
-            return "TODO";
+            Quaternion def = defaultOrientation;
+            Quaternion cur = pivot.localRotation;
+            return def.x+","+def.y+","+def.z+","+def.w+"-"+cur.x+","+cur.y+","+cur.z+","+cur.w;
         }
 
     }
