@@ -204,6 +204,9 @@ namespace SSTUTools
             setAnimTime(time, true);
         }
 
+        /// <summary>
+        /// Update the persistent data field with the live data from the current panel configuration.
+        /// </summary>
         public void updateSolarPersistence()
         {
             // Data format = mainDefRot-mainCurRot:secDefRot-secCurRot:brokenStatus;(repeat after semicolon for next panel)
@@ -234,6 +237,7 @@ namespace SSTUTools
     /// </summary>
     public class PanelData
     {
+
         /// <summary>
         /// Dynamic-pressure needed to break the panel if deployed while moving through an atmosphere.
         /// </summary>
@@ -364,6 +368,12 @@ namespace SSTUTools
             return totalOutput;
         }
 
+        /// <summary>
+        /// Initialize the rotations of the pivots in this panel.<para/>
+        /// The input persistent data string should be of the format: mainPivotData:secondPivotData:brokenStatus.<para/>
+        /// E.g.  x,y,z,w-x,y,z,w:x,y,z,w-x,y,z,w:false
+        /// </summary>
+        /// <param name="persistentData"></param>
         public void initializeRotations(string persistentData)
         {
             string[] splitData = string.IsNullOrEmpty(persistentData) ? new string[] { "","","false"} : persistentData.Split(':');
@@ -383,6 +393,7 @@ namespace SSTUTools
 
         /// <summary>
         /// Return the updated string representation of the persistent data for the current panel configuration for this SolarModule.<para/>
+        /// E.g. x,y,z,w-x,y,z,w:x,y,z,w-x,y,z,w:false
         /// </summary>
         /// <returns></returns>
         public string getPersistentData()
@@ -395,14 +406,37 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Container class for a single solar-panel 'suncatcher' transform.<para/>
+    /// Includes methods to check for part-based occlusion through raycasting, and to calculate the raw (angle-only) energy output based on an input 'sun' position.
+    /// </summary>
     public class SuncatcherData
     {
+
+        /// <summary>
+        /// The suncatcher transform
+        /// </summary>
         public readonly Transform suncatcher;
+
+        /// <summary>
+        /// This axis of the suncatcher transform will be used to check for sun-angle
+        /// </summary>
         public readonly Axis suncatcherAxis;
+
+        /// <summary>
+        /// Resource generation rate, in units per second.
+        /// </summary>
         public readonly float resourceRate;
 
+        /// <summary>
+        /// Cached value of the last known 'occluder' -- updated whenever a suncatcher is occluded by a part.<para/>
+        /// Examined in the outer solar-panel updating loop if the suncatcher returns 0 output energy.
+        /// </summary>
         public string occluderName = string.Empty;
 
+        /// <summary>
+        /// Internal cache of hit-data... really don't think Unity raycast re-uses these references properly though, so probably not really useful.
+        /// </summary>
         private RaycastHit hitData;
 
         public SuncatcherData(ConfigNode node, Transform root)
@@ -450,14 +484,42 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Container class for a single sun-tracking pivot.<para/>
+    /// Contains methods to update rotations to point towards a target, a specific angle, or rotate back towards default orientation.
+    /// </summary>
     public class SolarPivotData
     {
+
+        /// <summary>
+        /// The pivot transform.
+        /// </summary>
         public readonly Transform pivot;
+
+        /// <summary>
+        /// Pivot transform will point this axis towards the sun
+        /// </summary>
         public readonly Axis pivotSunAxis;
+
+        /// <summary>
+        /// Pivot transform will rotate around this axis
+        /// </summary>
         public readonly Axis pivotRotationAxis;
-        public readonly float rotationOffset = 0f;
-        public readonly float trackingSpeed = 10f;//degrees per second
-        public Quaternion defaultOrientation;
+
+        /// <summary>
+        /// Pivot transform will rotate at this speed, in degrees-per-second
+        /// </summary>
+        public readonly float trackingSpeed = 10f;
+
+        /// <summary>
+        /// Pre-calculated rotation offset used during constraint updates.
+        /// </summary>
+        private readonly float rotationOffset = 0f;
+
+        /// <summary>
+        /// Cached default orientation of the pivot.  Used to properly rotate back to default rotation prior to solar panel retract animation.
+        /// </summary>
+        private Quaternion defaultOrientation;
 
         public SolarPivotData(Transform pivot, float trackingSpeed, Axis pivotSunAxis, Axis pivotRotationAxis)
         {
@@ -556,9 +618,25 @@ namespace SSTUTools
             return finished;
         }
 
+        /// <summary>
+        /// Should be used when a user-specified rotation position is desired.  The input angle is in 'degrees relative to default orientation', and can be positive or negative.
+        /// Rotation direction will depend on the rotation axis specified, and whether the axis itself is positive or negative (XPlus vs XNeg)
+        /// </summary>
+        /// <param name="angle"></param>
+        /// <returns></returns>
         public bool rotateTowardsAngle(float angle)
         {
-            return true;
+            Vector3 localAxis = pivot.getLocalAxis(pivotRotationAxis);            
+            Vector3 currentEuler = Vector3.Scale(pivot.localRotation.eulerAngles, localAxis);//this is the current local rotation, expressed in euler-angle-degrees (I hope it is degrees...)
+            Vector3 destEuler = localAxis * angle;//this is the desired destination rotation, in euler-angle-degrees
+            Vector3 rotation = currentEuler - destEuler;//this is the difference between the current and desired, in euler-angle-degrees
+            float sqMag = rotation.sqrMagnitude;//sq-magnitude used to check for clamping
+            float frameSpeed = trackingSpeed * Time.deltaTime;//maximum that can rotate this frame
+            rotation.x = Mathf.Clamp(rotation.x, -frameSpeed, frameSpeed);
+            rotation.y = Mathf.Clamp(rotation.y, -frameSpeed, frameSpeed);
+            rotation.z = Mathf.Clamp(rotation.z, -frameSpeed, frameSpeed);
+            pivot.Rotate(rotation, Space.Self);
+            return sqMag == rotation.sqrMagnitude;//was unchanged during clamp, so rotation was below the frame speed, and thus is finished
         }
 
         /// <summary>
@@ -612,6 +690,13 @@ namespace SSTUTools
             return rotation;
         }
 
+        /// <summary>
+        /// Input should be the persistent data for this single pivot.<para/>
+        /// Should consist of two quaternions, using comma between members, and dash for separation between quats -- e.g. x,y,z,w-x,y,z,w<para/>
+        /// If persitent data string is empty/null, default orientation is initialized to the current local rotation of the pivot.  This new default
+        /// will be captured and saved to persistence the next time the part is saved.
+        /// </summary>
+        /// <param name="persistentData"></param>
         public void initializeRotation(string persistentData)
         {
             if (!string.IsNullOrEmpty(persistentData))
@@ -628,6 +713,11 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Return the persistent data for this pivot.  Will be of the format x,y,z,w-x,y,z,w - the first xyzw set is 'default' local rotation, the second is 'current' local rotation.<para/>
+        /// The default value is specifically saved out, as when KSP clones parts in the editor it skips past much of the standard part initialization routines, and does not serialize complex mod-added data classes properly.
+        /// </summary>
+        /// <returns></returns>
         public string getPersistentData()
         {
             Quaternion def = defaultOrientation;

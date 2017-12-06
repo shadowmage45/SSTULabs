@@ -13,22 +13,66 @@ namespace SSTUTools
     /// </summary>
     public class AnimationModule<T> where T : PartModule
     {
-
+        /// <summary>
+        /// The part that this container class belongs to
+        /// </summary>
         public readonly Part part;
+
+        /// <summary>
+        /// The direct owning part-module for this container class
+        /// </summary>
         public readonly T module;
 
+        /// <summary>
+        /// Reference to the persistent data field for this animation.
+        /// </summary>
         public readonly BaseField persistentDataField;
+
+        /// <summary>
+        /// Reference to the deploy-limit field for this animation.  May be null if deploy limit is not supported by the owning PartModule.
+        /// </summary>
         public readonly BaseField deployLimitField;
+
+        /// <summary>
+        /// Reference to the deploy event from the PartModule, used to update GUI status depending on current animation status and availability (no anim = UI disabled)
+        /// </summary>
         public readonly BaseEvent deployEvent;
+
+        /// <summary>
+        /// Reference to the retract event from the PartModule, used to update GUI status depending on current animation status and availability (no anim = UI disabled)
+        /// </summary>
         public readonly BaseEvent retractEvent;
         
+        /// <summary>
+        /// Internal cache of the current animation state as an Enum
+        /// </summary>
         private AnimState animationState = AnimState.STOPPED_START;
+
+        /// <summary>
+        /// Internal cache of the current list of animation data blocks.
+        /// </summary>
         private List<SSTUAnimData> animationData = new List<SSTUAnimData>();
+
+        /// <summary>
+        /// Internal cache of the current animation position.
+        /// </summary>
         private float animationPosition = 0f;
 
+        /// <summary>
+        /// Internal cache of if retract/deploy should be usable while the vessel is not the currently focused vessel.
+        /// </summary>
         private bool usableUnfocused;
-        private bool usableEVA;
+
+        /// <summary>
+        /// Internal cache of if retract/deploy should be usable while the vessel is not currently controllable/commanded (no comm-net connection, or no probe core)
+        /// </summary>
         private bool usableUncommanded;
+
+        /// <summary>
+        /// Internal chache of 'eva-only' flag for animation.  If set to true, the animation will -only- be available to EVA kerbals when vessel is not the currently focused vessel.
+        /// TODO -- verify the above information is actually how this flag works
+        /// </summary>
+        private bool usableEVA;
 
         public float deployLimit
         {
@@ -55,11 +99,8 @@ namespace SSTUTools
         {
             this.part = part;
             this.module = module;
-            MonoBehaviour.print("persistence: " + persistence);
             this.persistentDataField = persistence;
-            MonoBehaviour.print("deploy: " + deployLimit);
             this.deployLimitField = deployLimit;
-            loadAnimationState(persistentData);
             if (deployLimitField != null)
             {
                 deployLimitField.uiControlEditor.onFieldChanged = onDeployLimitUpdated;
@@ -67,8 +108,15 @@ namespace SSTUTools
             }
             this.deployEvent = deploy;
             this.retractEvent = retract;
+            loadAnimationState(persistentData);
         }
 
+        /// <summary>
+        /// Can be called at any point, but if called late in lifecycle, the UI update method should be called to update the UI field visibility immediately.
+        /// </summary>
+        /// <param name="unfocused"></param>
+        /// <param name="eva"></param>
+        /// <param name="uncommanded"></param>
         public void setUsableFlags(bool unfocused, bool eva, bool uncommanded)
         {
             usableUnfocused = unfocused;
@@ -76,6 +124,10 @@ namespace SSTUTools
             usableUncommanded = uncommanded;
         }
 
+        /// <summary>
+        /// Internal method to load animation persistent data from the persistent data string.
+        /// </summary>
+        /// <param name="persistence"></param>
         private void loadAnimationState(string persistence)
         {
             if (!string.IsNullOrEmpty(persistence))
@@ -102,6 +154,9 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Update the backing persistent data field with the string representation of the current animation state.
+        /// </summary>
         private void updatePersistentData()
         {
             persistentData = animationState.ToString();
@@ -109,16 +164,19 @@ namespace SSTUTools
 
         #region REGION - UI INTERACTION
 
+        /// <summary>
+        /// Internal method that is called whenever the UI slider for the deploy limit is changed.<para/>
+        /// Updates the animations' current cached deploy limits, and will stop the animation if it is currently playing and the limit is adjusted to a point prior to the current time.
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
         private void onDeployLimitUpdated(BaseField a, System.Object b)
         {
             int len = animationData.Count;
             bool shouldStop = false;
             for (int i = 0; i < len; i++)
             {
-                if (animationData[i].setMaxTime(deployLimit, animationState))
-                {
-                    shouldStop = true;
-                }
+                shouldStop = shouldStop || animationData[i].setMaxTime(deployLimit, animationState);
             }
             if (shouldStop)
             {
@@ -127,6 +185,9 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Should be called directly from the PartModule when the KSPEvent for deploy is called.
+        /// </summary>
         public virtual void onDeployEvent()
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
@@ -136,6 +197,9 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Should be called directly from the PartModule when the KSPEvent for retract is called.
+        /// </summary>
         public virtual void onRetractEvent()
         {
             if (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD)
@@ -145,16 +209,25 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Should be called directly from the PartModule when the KSPAction for deploy is activated.
+        /// </summary>
         public void onDeployAction(KSPActionParam param)
         {
             onDeployEvent();
         }
 
+        /// <summary>
+        /// Should be called directly from the PartModule when the KSPAction for retract is activated.
+        /// </summary>
         public void onRetractAction(KSPActionParam paran)
         {
             onRetractEvent();
         }
 
+        /// <summary>
+        /// Should be called directly from the PartModule when the KSPAction for toggle is activated.
+        /// </summary>
         public void onToggleAction(KSPActionParam param)
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
@@ -299,6 +372,9 @@ namespace SSTUTools
             persistentData = newState.ToString();
         }
 
+        /// <summary>
+        /// Internal method to activate the animation.  Sets internal AnimationClip to 'playing' state.
+        /// </summary>
         protected void playAnimation()
         {
             int len = animationData.Count;
@@ -308,6 +384,9 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Internal method to deactivate the animation.  Sets internal AnimationClip to 'stopped' state.
+        /// </summary>
         protected void stopAnimation()
         {
             int len = animationData.Count;
@@ -317,6 +396,12 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Updates the animations internal 'time' value.<para/>
+        /// Optionally updates the transforms to the current time value if 'sample'==true
+        /// </summary>
+        /// <param name="time"></param>
+        /// <param name="sample"></param>
         protected void setAnimTime(float time, bool sample = false)
         {
             int len = animationData.Count;
@@ -326,6 +411,11 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// Sets the animations internal 'speed' value.<para/>
+        /// This is a multiplier that is applied to whatever duration the animation was compiled for.
+        /// </summary>
+        /// <param name="speed"></param>
         protected void setAnimSpeed(float speed)
         {
             int len = animationData.Count;
