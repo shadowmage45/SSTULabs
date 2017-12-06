@@ -125,27 +125,30 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float bottomAnimationDeployLimit = 1f;
 
+        [KSPField(guiActive = true, guiActiveEditor = false)]
+        public string solarPanelStatus = string.Empty;
+
         //persistent data for modules; stores colors and other per-module data
         [KSPField(isPersistant = true)]
-        public string topModulePersistentData;
+        public string topModulePersistentData = string.Empty;
         [KSPField(isPersistant = true)]
-        public string coreModulePersistentData;
+        public string coreModulePersistentData = string.Empty;
         [KSPField(isPersistant = true)]
-        public string bottomModulePersistentData;
+        public string bottomModulePersistentData = string.Empty;
 
         //persistence data for animation modules, stores animation state
         [KSPField(isPersistant = true)]
-        public string topAnimationPersistentData;
+        public string topAnimationPersistentData = string.Empty;
         [KSPField(isPersistant = true)]
-        public string coreAnimationPersistentData;
+        public string coreAnimationPersistentData = string.Empty;
         [KSPField(isPersistant = true)]
-        public string bottomAnimationPersistentData;
+        public string bottomAnimationPersistentData = string.Empty;
 
         //persistence data for solar module, stores animation state and rotation cache
         [KSPField(isPersistant = true)]
-        public string solarAnimationPersistentData;
+        public string solarAnimationPersistentData = string.Empty;
         [KSPField(isPersistant = true)]
-        public string solarRotationPersistentData;
+        public string solarRotationPersistentData = string.Empty;
 
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts' first Start() call
         [KSPField(isPersistant = true)]
@@ -169,7 +172,7 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularServiceModule> topModule;
         ModelModule<ServiceModuleCoreModel, SSTUModularServiceModule> coreModule;
         ModelModule<SingleModelData, SSTUModularServiceModule> bottomModule;
-        ModelModule<SolarData, SSTUModularServiceModule> solarModule;
+        ModelModule<SolarModelData, SSTUModularServiceModule> solarModule;
         ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule> rcsModule;
 
         AnimationModule<SSTUModularServiceModule> topAnimationModule;
@@ -232,11 +235,11 @@ namespace SSTUTools
         [KSPAction]
         public void bottomToggleAction(KSPActionParam param) { bottomAnimationModule.onToggleAction(param); }
         
-        [KSPEvent]
+        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Deploy Solar Panels")]
         public void solarDeployEvent() { solarPanelModule.onDeployEvent(); }
 
-        [KSPEvent]
-        public void solarRetractEvent() { solarPanelModule.onDeployEvent(); }
+        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Retract Solar Panels")]
+        public void solarRetractEvent() { solarPanelModule.onRetractEvent(); }
 
         [KSPAction]
         public void solarDeployAction(KSPActionParam param) { solarPanelModule.onDeployAction(param); }
@@ -308,7 +311,8 @@ namespace SSTUTools
                         m.currentSolar = m.coreModule.model.getAvailableSolarVariants(coreModule.model.currentDiameterScale)[0];
                         m.solarModule.modelSelected(m.currentSolar);
                         modelChangedAction(m);
-                        m.updateSolarModules();
+                        m.solarPanelModule.setupAnimations(m.solarModule.model.getAnimationData(m.solarModule.root, solarAnimationLayer));
+                        m.solarPanelModule.setupSolarPanelData(m.solarModule.model.getSolarData(), m.solarModule.root);
                     });
                 }
                 this.actionWithSymmetry(m =>
@@ -335,7 +339,8 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     modelChangedAction(m);
-                    m.updateSolarModules();
+                    m.solarPanelModule.setupAnimations(m.solarModule.model.getAnimationData(m.solarModule.root, solarAnimationLayer));
+                    m.solarPanelModule.setupSolarPanelData(m.solarModule.model.getSolarData(), m.solarModule.root);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -381,6 +386,19 @@ namespace SSTUTools
             updateDragCubes();
         }
 
+        //standard KSP lifecycle override
+        public override void OnSave(ConfigNode node)
+        {
+            base.OnSave(node);
+            //animation persistence is updated on state change
+            //but rotations are updated every frame, so it is not feasible to update string-based persistence data (without excessive garbage generation)
+            if (solarPanelModule != null)
+            {
+                solarPanelModule.updateSolarPersistence();
+                node.SetValue(nameof(solarRotationPersistentData), solarRotationPersistentData, true);
+            }
+        }
+
         //standard Unity lifecyle override
         public void Start()
         {
@@ -409,6 +427,7 @@ namespace SSTUTools
             coreAnimationModule.updateAnimations();
             bottomAnimationModule.updateAnimations();
             solarPanelModule.updateAnimations();
+            solarPanelModule.solarUpdate();
         }
 
         //standard Unity lifecyle override
@@ -529,22 +548,22 @@ namespace SSTUTools
             bottomModule.getSymmetryModule = m => m.bottomModule;
             bottomModule.getValidSelections = m => bottomModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            solarModule = new ModelModule<SolarData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
+            solarModule = new ModelModule<SolarModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
             solarModule.getSymmetryModule = m => m.solarModule;
-            solarModule.setupModelList(ModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
-            solarModule.getValidSelections = delegate (IEnumerable<SolarData> all) 
+            solarModule.setupModelList(ModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarModelData(m)));
+            solarModule.getValidSelections = delegate (IEnumerable<SolarModelData> all) 
             {
                 //System.Linq.Enumerable.Where(all, s => s.isAvailable(upgradesApplied));
                 float scale = coreModule.model.currentDiameterScale;
                 //find all solar panels that are unlocked via upgrades/tech-tree
-                List<SolarData> unlocked = solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
+                List<SolarModelData> unlocked = solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
                 //filter those to find only the ones available for the current
-                List<SolarData> availableByScale = unlocked.FindAll(s => coreModule.model.isValidSolarOption(s.name, scale));
+                List<SolarModelData> availableByScale = unlocked.FindAll(s => coreModule.model.isValidSolarOption(s.name, scale));
                 return availableByScale;
             };
-            solarModule.preModelSetup = delegate (SolarData d) 
+            solarModule.preModelSetup = delegate (SolarModelData d) 
             {
-                d.positions = coreModule.model.getPanelConfiguration(d.name).getScaledPositions(coreModule.model.currentDiameterScale);
+                d.positions = coreModule.model.getPanelConfiguration(d.name).positions;
             };
 
             rcsModule = new ModelModule<ServiceModuleRCSModelData, SSTUModularServiceModule>(part, this, getRootTransform("MSC-Rcs", true), ModelOrientation.CENTRAL, null, nameof(currentRCS), null);
@@ -587,10 +606,10 @@ namespace SSTUTools
             bottomAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(bottomAnimationPersistentData)], Fields[nameof(bottomAnimationDeployLimit)], Events[nameof(bottomDeployEvent)], Events[nameof(bottomRetractEvent)]);
             bottomAnimationModule.setupAnimations(bottomModule.model.getAnimationData(bottomModule.root, mountAnimationLayer));
 
-            //solar panel animation and solar data controls
-            solarPanelModule = new SolarModule<SSTUModularServiceModule>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
+            //solar panel animation and solar panel UI controls
+            solarPanelModule = new SolarModule<SSTUModularServiceModule>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
             solarPanelModule.setupAnimations(solarModule.model.getAnimationData(solarModule.root, solarAnimationLayer));
-            solarPanelModule.setupSolarPanelData(solarModule.model.modelDefinition.solarData);
+            solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
 
             updateModulePositions();
             updateMassAndCost();
@@ -604,8 +623,8 @@ namespace SSTUTools
             topModule.model.updateScaleForDiameter(currentDiameter * coreModule.model.topRatio);
             coreModule.model.updateScaleForDiameter(currentDiameter);
             bottomModule.model.updateScaleForDiameter(currentDiameter * coreModule.model.bottomRatio);
-            solarModule.model.updateScale(1);
             float coreScale = coreModule.model.currentDiameterScale;
+            solarModule.model.updateScale(coreScale);
             rcsModule.model.updateScale(coreScale);
 
             //calc positions
@@ -664,12 +683,6 @@ namespace SSTUTools
                 modifiedCost += topModule.moduleCost;
                 modifiedCost += bottomModule.moduleCost;
             }
-        }
-
-        private void updateSolarModules()
-        {
-            //TODO
-            throw new NotImplementedException();
         }
 
         private void updateRCSModule()

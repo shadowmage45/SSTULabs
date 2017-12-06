@@ -104,7 +104,7 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularStationCore> topModule;
         ModelModule<SingleModelData, SSTUModularStationCore> coreModule;
         ModelModule<SingleModelData, SSTUModularStationCore> bottomModule;
-        ModelModule<SolarData, SSTUModularStationCore> solarModule;
+        ModelModule<SolarModelData, SSTUModularStationCore> solarModule;
 
         private SSTUAnimateControlled animationControl;
 
@@ -294,9 +294,9 @@ namespace SSTUTools
             bottomModule.getSymmetryModule = m => m.bottomModule;
             bottomModule.getValidSelections = m => bottomModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            solarModule = new ModelModule<SolarData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
+            solarModule = new ModelModule<SolarModelData, SSTUModularStationCore>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, null, nameof(currentSolar), null);
             solarModule.getSymmetryModule = m => m.solarModule;
-            solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarData(m)));
+            solarModule.setupModelList(SingleModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarModelData(m)));
             solarModule.getValidSelections = m => solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
             List<ConfigNode> tops = new List<ConfigNode>();
@@ -494,7 +494,7 @@ namespace SSTUTools
 
     }
 
-    public class SolarData : SingleModelData
+    public class SolarModelData : SingleModelData
     {
         
         public readonly string pivotNames;
@@ -507,7 +507,7 @@ namespace SSTUTools
 
         public SolarPosition[] positions;
         
-        public SolarData(ConfigNode node) : base(node)
+        public SolarModelData(ConfigNode node) : base(node)
         {
             ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
             if (solarNode == null)
@@ -588,6 +588,56 @@ namespace SSTUTools
             return positions == null ? modelDefinition.volume : modelDefinition.volume * positions.Length;
         }
 
+        public ConfigNode getSolarData()
+        {
+            ConfigNode mergedNode = new ConfigNode("SOLAR");            
+            ConfigNode[] prevPanelNodes = modelDefinition.solarData.GetNodes("PANEL");
+            int len2 = prevPanelNodes.Length;
+            for (int i = 0; i < len2; i++)
+            {
+                mergedNode.AddNode(prevPanelNodes[i]);
+            }
+            ConfigNode[] panelNodes;
+            int len = positions.Length;
+            for (int i = 1; i < len; i++)
+            {
+                panelNodes = new ConfigNode[len2];
+                for (int k = 0; k < len2; k++)
+                {
+                    panelNodes[k] = prevPanelNodes[k].CreateCopy();
+                    incrementPanelNode(panelNodes[k]);
+                    mergedNode.AddNode(panelNodes[k]);
+                }
+                prevPanelNodes = panelNodes;
+            }
+            return mergedNode;
+        }
+
+        private void incrementPanelNode(ConfigNode input)
+        {
+            int idx = input.GetIntValue("mainPivotIndex");
+            int str = input.GetIntValue("mainPivotStride");
+            idx += str;
+            input.RemoveValue("mainPivotIndex");
+            input.SetValue("mainPivotIndex", idx, true);
+
+            idx = input.GetIntValue("secondPivotIndex");
+            str = input.GetIntValue("secondPivotStride");
+            idx += str;
+            input.RemoveValue("secondPivotIndex");
+            input.SetValue("secondPivotIndex", idx, true);
+
+            ConfigNode[] suncatcherNodes = input.GetNodes("SUNCATCHER");
+            int len = suncatcherNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                idx = suncatcherNodes[i].GetIntValue("suncatcherIndex");
+                str = suncatcherNodes[i].GetIntValue("suncatcherStride");
+                idx += str;
+                suncatcherNodes[i].RemoveValue("suncatcherIndex");
+                suncatcherNodes[i].SetValue("suncatcherIndex", idx, true);
+            }
+        }
     }
 
     public class SolarPosition

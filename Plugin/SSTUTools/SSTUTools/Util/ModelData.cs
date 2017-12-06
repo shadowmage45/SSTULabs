@@ -167,9 +167,9 @@ namespace SSTUTools
                 animationData = new ModelAnimationData[0];
             }
 
-            if (node.HasNode("SOLAR"))
+            if (node.HasNode("SOLARDATA"))
             {
-                solarData = node.GetNode("SOLAR");
+                solarData = node.GetNode("SOLARDATA");
             }
 
             if (node.HasNode("CONSTRAINT"))

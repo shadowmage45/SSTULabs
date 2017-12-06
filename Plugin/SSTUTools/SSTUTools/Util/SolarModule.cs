@@ -42,6 +42,28 @@ namespace SSTUTools
             this.panelStatusField = panelStatusField;
         }
 
+        public override void onDeployEvent()
+        {
+            base.onDeployEvent();
+        }
+
+        public override void onRetractEvent()
+        {
+            if (animState == AnimState.STOPPED_END)
+            {
+                closingLerp = true;
+            }
+            else
+            {
+                base.onRetractEvent();
+            }            
+        }
+
+        public override void updateAnimations()
+        {
+            base.updateAnimations();  
+        }
+
         /// <summary>
         /// Must be called after the animations have been setup, so that they may be used
         /// to sample and properly setup default rotations for the pivot transforms
@@ -66,9 +88,11 @@ namespace SSTUTools
         /// </summary>
         public void solarUpdate()
         {
-            //only update if animation is set to deployed
             //TODO -- support solar panels that lack animations (static panels)
             //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
+            //TODO -- how useful is the locking feature, really?
+            //only update if animation is set to deployed
+            MonoBehaviour.print("Solar update, anim state: " + animState);
             if (animState != AnimState.STOPPED_END)
             {
                 return;
@@ -79,10 +103,7 @@ namespace SSTUTools
                 bool finished = true;
                 for (int i = 0; i < len; i++)
                 {
-                    if (!panelData[i].panelUpdateRetract())
-                    {
-                        finished = false;
-                    }
+                    finished = finished && panelData[i].panelUpdateRetract();
                 }
                 if (finished)
                 {
@@ -90,7 +111,7 @@ namespace SSTUTools
                     setAnimState(AnimState.PLAYING_BACKWARD);
                 }
             }
-            else
+            else if(HighLogic.LoadedSceneIsFlight)
             {
                 Vector3 sunPos = FlightGlobals.Bodies[0].transform.position;
                 for (int i = 0; i < len; i++)
@@ -98,6 +119,7 @@ namespace SSTUTools
                     panelData[i].panelUpdate(sunPos);
                 }
             }
+            //noop in editor if not lerping closed
         }
 
         /// <summary>
@@ -106,6 +128,10 @@ namespace SSTUTools
         /// </summary>
         public void solarFixedUpdate()
         {
+            if (!HighLogic.LoadedSceneIsFlight || part.vessel == null)
+            {
+                return;
+            }
             float distMult = (float)(part.vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
             if (distMult == 0)//occluded, zero solar flux input on vessel
             {
@@ -143,6 +169,7 @@ namespace SSTUTools
                 panelStatus = totalOutput + " EC/s";
 
                 totalOutput *= TimeWarp.fixedDeltaTime;
+                MonoBehaviour.print("TODO -- update part resources for EC generation");
                 //TODO update part resources
             }
             else
@@ -151,6 +178,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         /// <summary>
         /// Should be called from owning part-module when solar panels are to be repaired.
         /// </summary>
@@ -164,8 +192,42 @@ namespace SSTUTools
         /// </summary>
         private void initializeRotations()
         {
-            throw new NotImplementedException();
+            float time = animTime;
+            //sample to deployed state
+            setAnimTime(1, true);
+            string[] persistentDataSplits = persistentData.Split(';');
+            string data;
+            int len = panelData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (i < persistentDataSplits.Length)
+                {
+                    data = persistentDataSplits[i];
+                }
+                else
+                {
+                    data = string.Empty;
+                }
+                //load persistence and restore previous rotations, if applicable
+                panelData[i].initializeRotations(data);
+            }
+            //return animation state to previous state
+            setAnimTime(time, true);
         }
+
+        //TODO -- call this from somewhere...
+        public void updateSolarPersistence()
+        {
+            string data = string.Empty;
+            int len = panelData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0) { data = data + ";"; }
+                data = data + panelData[i].getPersistentData();
+            }
+            persistentData = data;
+        }
+
     }
 
     public enum Axis
@@ -228,13 +290,14 @@ namespace SSTUTools
                 int mainIndex = node.GetIntValue("mainPivotIndex", 0);
                 Axis mainSunAxis = node.getAxis("mainSunAxis", Axis.ZPlus);
                 Axis mainRotAxis = node.getAxis("mainRotAxis", Axis.XPlus);
-                float speed = node.GetFloatValue("trackingSpeed", 10f);
+                float speed = node.GetFloatValue("mainPivotSpeed", 10f);
                 Transform[] trs = root.FindChildren(mainName);
                 mainPivot = new SolarPivotData(trs[mainIndex], speed, mainSunAxis, mainRotAxis);
 
                 string secondName = node.GetStringValue("secondPivot", string.Empty);
                 if (!string.IsNullOrEmpty(secondName))
                 {
+                    speed = node.GetFloatValue("secondPivotSpeed", 10f);
                     int secondIndex = node.GetIntValue("secondPivotIndex", 0);
                     Axis secSunAxis = node.getAxis("secondSunAxis", Axis.ZPlus);
                     Axis secRotAxis = node.getAxis("secondRotAxis", Axis.XPlus);
@@ -252,7 +315,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Updates the panels sun-tracking pivots in 'retracting' mode
+        /// Updates the panels sun-tracking pivots in 'retracting' mode.<para/>
+        /// Returns true when finished and ready for retract animation
         /// </summary>
         public bool panelUpdateRetract()
         {
@@ -309,6 +373,30 @@ namespace SSTUTools
                 totalOutput += panelOutput;
             }
             return totalOutput;
+        }
+
+        public void initializeRotations(string persistentData)
+        {
+            string mainPivotPersistence = string.Empty;
+            string secondPivotPersistence = string.Empty;
+            string brokenPersistence = string.Empty;
+            if (mainPivot != null)
+            {
+                mainPivot.initializeRotation(mainPivotPersistence);
+            }
+            if (secondPivot != null)
+            {
+                secondPivot.initializeRotation(secondPivotPersistence);
+            }
+            isBroken = brokenPersistence == "true";
+        }
+
+        public string getPersistentData()
+        {
+            string main = string.Empty;
+            string second = string.Empty;
+            string broken = isBroken ? "true" : "false";
+            return main + ":" + second + ":" + broken;
         }
 
     }
@@ -371,11 +459,11 @@ namespace SSTUTools
     public class SolarPivotData
     {
         public readonly Transform pivot;
-        public readonly Quaternion defaultOrientation;
         public readonly Axis pivotSunAxis;
         public readonly Axis pivotRotationAxis;
         public readonly float rotationOffset = 0f;
         public readonly float trackingSpeed = 10f;//degrees per second
+        public Quaternion defaultOrientation;
 
         public SolarPivotData(Transform pivot, float trackingSpeed, Axis pivotSunAxis, Axis pivotRotationAxis)
         {
@@ -383,7 +471,6 @@ namespace SSTUTools
             this.trackingSpeed = trackingSpeed;
             this.pivotSunAxis = pivotSunAxis;
             this.pivotRotationAxis = pivotRotationAxis;
-            this.defaultOrientation = pivot.localRotation;
 
             //pre-calculate a rotation offset that is used during updating of the pivot rotation
             //this offset is used to speed up constraint calculation
@@ -459,7 +546,7 @@ namespace SSTUTools
             float frameSpeed = trackingSpeed * Time.deltaTime;
             float frameAngle = 0f;
 
-            bool finished = false;
+            bool finished = true;
             if (absAngle > frameSpeed)//too much for a single frame
             {
                 finished = false;
@@ -471,6 +558,7 @@ namespace SSTUTools
                 frameAngle = rawAngle;
             }
             pivot.Rotate(pivot.getLocalAxis(pivotRotationAxis), frameAngle, Space.Self);
+            MonoBehaviour.print("Updating rotation, finished: " + finished);
             return finished;
         }
 
@@ -523,6 +611,16 @@ namespace SSTUTools
                 rotation = -Mathf.Atan2(localDiff.x, localDiff.y) * Mathf.Rad2Deg + rotationOffset;
             }
             return rotation;
+        }
+
+        public void initializeRotation(string persistentData)
+        {
+            defaultOrientation = pivot.localRotation;
+        }
+
+        public string getPersistentData()
+        {
+            return "TODO";
         }
 
     }

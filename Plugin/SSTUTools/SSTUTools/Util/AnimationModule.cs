@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
 
 namespace SSTUTools
 {
@@ -31,7 +32,7 @@ namespace SSTUTools
 
         public float deployLimit
         {
-            get { return deployLimitField == null ? 1.0f : deployLimitField.GetValue<float>(deployLimitField); }
+            get { return deployLimitField == null ? 1.0f : deployLimitField.GetValue<float>(module); }
         }
 
         public float animTime
@@ -46,22 +47,26 @@ namespace SSTUTools
 
         public string persistentData
         {
-            get { return persistentDataField.GetValue<string>(persistentDataField); }
-            set { persistentDataField.SetValue(value, persistentDataField); }
+            get { return persistentDataField.GetValue<string>(module); }
+            set { persistentDataField.SetValue(value, module); }
         }
         
         public AnimationModule(Part part, T module, BaseField persistence, BaseField deployLimit, BaseEvent deploy, BaseEvent retract)
         {
             this.part = part;
             this.module = module;
+            MonoBehaviour.print("persistence: " + persistence);
             this.persistentDataField = persistence;
+            MonoBehaviour.print("deploy: " + deployLimit);
             this.deployLimitField = deployLimit;
             loadAnimationState(persistentData);
             if (deployLimitField != null)
             {
                 deployLimitField.uiControlEditor.onFieldChanged = onDeployLimitUpdated;
                 deployLimitField.uiControlFlight.onFieldChanged = onDeployLimitUpdated;
-            }            
+            }
+            this.deployEvent = deploy;
+            this.retractEvent = retract;
         }
 
         public void setUsableFlags(bool unfocused, bool eva, bool uncommanded)
@@ -122,19 +127,21 @@ namespace SSTUTools
             }
         }
 
-        public void onDeployEvent()
+        public virtual void onDeployEvent()
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
             {
                 setAnimState(AnimState.PLAYING_FORWARD);
+                updateUIState();
             }
         }
 
-        public void onRetractEvent()
+        public virtual void onRetractEvent()
         {
             if (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD)
             {
                 setAnimState(AnimState.PLAYING_FORWARD);
+                updateUIState();
             }
         }
 
@@ -182,7 +189,7 @@ namespace SSTUTools
         /// Should be called from the owning modules' Update() method, and should be called/updated per-frame.
         /// (TODO -- investigate if this can be moved to FixedUpdate, or other?)
         /// </summary>
-        public void updateAnimations()
+        public virtual void updateAnimations()
         {
             if (animationState == AnimState.PLAYING_BACKWARD || animationState == AnimState.PLAYING_FORWARD)
             {
@@ -287,6 +294,7 @@ namespace SSTUTools
         /// <param name="newState"></param>
         protected virtual void onAnimationStateChange(AnimState newState)
         {
+            MonoBehaviour.print("Anim state changed to: " + newState);
             animationState = newState;
             persistentData = newState.ToString();
         }
