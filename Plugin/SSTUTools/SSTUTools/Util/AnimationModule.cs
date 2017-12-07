@@ -13,6 +13,8 @@ namespace SSTUTools
     /// </summary>
     public class AnimationModule<T> where T : PartModule
     {
+        public delegate AnimationModule<T> SymmetryModule(T m);
+
         /// <summary>
         /// The part that this container class belongs to
         /// </summary>
@@ -42,11 +44,23 @@ namespace SSTUTools
         /// Reference to the retract event from the PartModule, used to update GUI status depending on current animation status and availability (no anim = UI disabled)
         /// </summary>
         public readonly BaseEvent retractEvent;
-        
+
+        /// <summary>
+        /// Delegate for retrieval of the symmetry counterpart module(s) from an input PartModule
+        /// </summary>
+        public SymmetryModule getSymmetryModule;
+
+        public Action<AnimState> onAnimStateChangeCallback;
+
         /// <summary>
         /// Internal cache of the current animation state as an Enum
         /// </summary>
         private AnimState animationState = AnimState.STOPPED_START;
+
+        /// <summary>
+        /// Reference to the animation data container from the ModelDefinition.  Stores info on UI labels and field availability.
+        /// </summary>
+        private AnimationData modelAnimationdata;
 
         /// <summary>
         /// Internal cache of the current list of animation data blocks.
@@ -57,22 +71,6 @@ namespace SSTUTools
         /// Internal cache of the current animation position.
         /// </summary>
         private float animationPosition = 0f;
-
-        /// <summary>
-        /// Internal cache of if retract/deploy should be usable while the vessel is not the currently focused vessel.
-        /// </summary>
-        private bool usableUnfocused;
-
-        /// <summary>
-        /// Internal cache of if retract/deploy should be usable while the vessel is not currently controllable/commanded (no comm-net connection, or no probe core)
-        /// </summary>
-        private bool usableUncommanded;
-
-        /// <summary>
-        /// Internal chache of 'eva-only' flag for animation.  If set to true, the animation will -only- be available to EVA kerbals when vessel is not the currently focused vessel.
-        /// TODO -- verify the above information is actually how this flag works
-        /// </summary>
-        private bool usableEVA;
 
         public float deployLimit
         {
@@ -110,20 +108,7 @@ namespace SSTUTools
             this.retractEvent = retract;
             loadAnimationState(persistentData);
         }
-
-        /// <summary>
-        /// Can be called at any point, but if called late in lifecycle, the UI update method should be called to update the UI field visibility immediately.
-        /// </summary>
-        /// <param name="unfocused"></param>
-        /// <param name="eva"></param>
-        /// <param name="uncommanded"></param>
-        public void setUsableFlags(bool unfocused, bool eva, bool uncommanded)
-        {
-            usableUnfocused = unfocused;
-            usableEVA = eva;
-            usableUncommanded = uncommanded;
-        }
-
+        
         /// <summary>
         /// Internal method to load animation persistent data from the persistent data string.
         /// </summary>
@@ -172,17 +157,20 @@ namespace SSTUTools
         /// <param name="b"></param>
         private void onDeployLimitUpdated(BaseField a, System.Object b)
         {
-            int len = animationData.Count;
-            bool shouldStop = false;
-            for (int i = 0; i < len; i++)
+            this.actionWithSymmetry(m =>
             {
-                shouldStop = shouldStop || animationData[i].setMaxTime(deployLimit, animationState);
-            }
-            if (shouldStop)
-            {
-                stopAnimation();
-                animationState = AnimState.STOPPED_END;
-            }
+                int len = m.animationData.Count;
+                bool shouldStop = false;
+                for (int i = 0; i < len; i++)
+                {
+                    shouldStop = shouldStop || m.animationData[i].setMaxTime(deployLimit, animationState);
+                }
+                if (shouldStop)
+                {
+                    m.stopAnimation();
+                    m.setAnimState(AnimState.STOPPED_END);
+                }
+            });
         }
 
         /// <summary>
@@ -192,8 +180,11 @@ namespace SSTUTools
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
             {
-                setAnimState(AnimState.PLAYING_FORWARD);
-                updateUIState();
+                this.actionWithSymmetry(m =>
+                {
+                    m.setAnimState(AnimState.PLAYING_FORWARD);
+                    m.updateUIState();
+                });
             }
         }
 
@@ -204,25 +195,12 @@ namespace SSTUTools
         {
             if (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD)
             {
-                setAnimState(AnimState.PLAYING_FORWARD);
-                updateUIState();
+                this.actionWithSymmetry(m =>
+                {
+                    m.setAnimState(AnimState.PLAYING_BACKWARD);
+                    m.updateUIState();
+                });
             }
-        }
-
-        /// <summary>
-        /// Should be called directly from the PartModule when the KSPAction for deploy is activated.
-        /// </summary>
-        public void onDeployAction(KSPActionParam param)
-        {
-            onDeployEvent();
-        }
-
-        /// <summary>
-        /// Should be called directly from the PartModule when the KSPAction for retract is activated.
-        /// </summary>
-        public void onRetractAction(KSPActionParam paran)
-        {
-            onRetractEvent();
         }
 
         /// <summary>
@@ -232,11 +210,13 @@ namespace SSTUTools
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
             {
-                onDeployEvent();
+                setAnimState(AnimState.PLAYING_FORWARD);
+                updateUIState();
             }
             else
             {
-                onRetractEvent();
+                setAnimState(AnimState.PLAYING_BACKWARD);
+                updateUIState();
             }
         }
 
@@ -249,11 +229,14 @@ namespace SSTUTools
         /// Should also be called anytime the animation data needs changed/updated from parent module/models.
         /// </summary>
         /// <param name="anims"></param>
-        public void setupAnimations(SSTUAnimData[] anims)
+        public void setupAnimations(AnimationData anims, Transform root, int startLayer)
         {
             animationData.Clear();
-            animationData.AddUniqueRange(anims);
-            setAnimState(animationState);
+            if (anims != null)
+            {
+                animationData.AddUniqueRange(anims.getAnimationData(root, startLayer));
+            }            
+            setAnimState(animationData.Count <= 0 ? AnimState.STOPPED_END : animationState);
             setAnimTime(animationPosition);
             updateUIState();
         }
@@ -296,7 +279,7 @@ namespace SSTUTools
         /// Updates the internal and visual animation states to the input state.
         /// </summary>
         /// <param name="newState"></param>
-        public void setAnimState(AnimState newState)
+        public void setAnimState(AnimState newState, bool updateCallback = false)
         {
             switch (newState)
             {
@@ -345,31 +328,47 @@ namespace SSTUTools
             bool moduleEnabled = animationData.Count > 0;
             bool deployEnabled = moduleEnabled && (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD);
             bool retractEnabled = moduleEnabled && (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD);
-            bool deployLimitEnabled = moduleEnabled;//TODO -- add in control for if deploy limit is available for specific animations/etc
-            deployEvent.guiActive = deployEvent.guiActiveEditor = deployEnabled;
-            retractEvent.guiActive = retractEvent.guiActiveEditor = retractEnabled;
+            bool deployLimitEnabled = moduleEnabled && modelAnimationdata.deployLimitActive;
+
+            if (deployEvent != null)
+            {
+                deployEvent.guiActive = deployEnabled && modelAnimationdata.activeFlight;
+                deployEvent.guiActiveEditor = deployEnabled && modelAnimationdata.activeEditor;
+                deployEvent.guiActiveUncommand = modelAnimationdata.activeUncommanded;
+                deployEvent.guiActiveUnfocused = modelAnimationdata.activeUnfocused;
+                deployEvent.externalToEVAOnly = modelAnimationdata.activeEVAOnly;
+                deployEvent.guiName = modelAnimationdata.deployLabel;
+            }
+
+            if (retractEvent != null)
+            {
+                retractEvent.guiActive = retractEnabled && modelAnimationdata.activeFlight;
+                retractEvent.guiActiveEditor = retractEnabled && modelAnimationdata.activeEditor;
+                retractEvent.guiActiveUncommand = modelAnimationdata.activeUncommanded;
+                retractEvent.guiActiveUnfocused = modelAnimationdata.activeUnfocused;
+                retractEvent.externalToEVAOnly = modelAnimationdata.activeEVAOnly;
+                retractEvent.guiName = modelAnimationdata.retractLabel;
+            }
+            
             if (deployLimitField != null)
             {
                 deployLimitField.guiActive = deployLimitEnabled;
                 deployLimitField.guiActiveEditor = deployLimitEnabled;
             }
-            deployEvent.guiActiveUncommand = usableUncommanded;
-            deployEvent.guiActiveUnfocused = usableUnfocused;
-            deployEvent.externalToEVAOnly = usableEVA;
-            retractEvent.guiActiveUncommand = usableUncommanded;
-            retractEvent.guiActiveUnfocused = usableUnfocused;
-            retractEvent.externalToEVAOnly = usableEVA;
         }
 
         /// <summary>
         /// Internal method to update the persistent data state(s) from the current animation state.  May be overriden for additional functionality.
         /// </summary>
         /// <param name="newState"></param>
-        protected virtual void onAnimationStateChange(AnimState newState)
+        protected virtual void onAnimationStateChange(AnimState newState, bool updateExternal = false)
         {
-            MonoBehaviour.print("Anim state changed to: " + newState);
             animationState = newState;
             persistentData = newState.ToString();
+            if (updateExternal && onAnimStateChangeCallback!=null)
+            {
+                onAnimStateChangeCallback(newState);
+            }
         }
 
         /// <summary>
@@ -423,6 +422,299 @@ namespace SSTUTools
             {
                 animationData[i].setAnimSpeed(speed);
             }
+        }
+        
+        /// <summary>
+        /// Internal method to update AnimationModules for symmetry Part-PartModules
+        /// </summary>
+        /// <param name="action"></param>
+        private void actionWithSymmetry(Action<AnimationModule<T>> action)
+        {
+            action(this);
+            int index = part.Modules.IndexOf(module);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                action(getSymmetryModule((T)p.Modules[index]));
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// Container class for managing all of the AnimationData corresponding to a single ModelDefinition.<para/>
+    /// Includes UI label, deploy limit, and flight/editor/unfocused/uncommanded/eva active control specifications.
+    /// </summary>
+    public class AnimationData
+    {
+        public readonly string deployLabel;
+        public readonly string retractLabel;
+        public readonly string toggleLabel;
+        public readonly bool deployLimitActive;
+        public readonly bool activeEditor;
+        public readonly bool activeFlight;
+        public readonly bool activeUnfocused;
+        public readonly bool activeUncommanded;
+        public readonly bool activeEVAOnly;
+
+        private ModelAnimationData[] mads;
+
+        public AnimationData(ConfigNode node)
+        {
+            deployLabel = node.GetStringValue("deployLabel", "Deploy");
+            retractLabel = node.GetStringValue("retractLabel", "Retract");
+            toggleLabel = node.GetStringValue("toggleLabel", "Toggle");
+            deployLimitActive = node.GetBoolValue("deployLimitActive", false);
+            activeEditor = node.GetBoolValue("activeEditor", true);
+            activeFlight = node.GetBoolValue("activeFlight", true);
+            activeUnfocused = node.GetBoolValue("activeUnfocused", false);
+            activeUncommanded = node.GetBoolValue("activeUncommanded", false);
+            activeEVAOnly = node.GetBoolValue("activeEVAOnly", false);
+
+            //the actual animation data for the model
+            ConfigNode[] animNodes = node.GetNodes("ANIMATION");
+            mads = ModelAnimationData.parseAnimationData(animNodes);
+        }
+
+        /// <summary>
+        /// Return a blank AnimationData instance, with no internal animation references.  Should be used when 'no' animation is setup for a model.
+        /// </summary>
+        public AnimationData()
+        {
+            deployLabel = "Deploy";
+            retractLabel = "Retract";
+            toggleLabel = "Toggle";
+            deployLimitActive = false;
+            activeEditor = false;
+            activeFlight = false;
+            activeUnfocused = false;
+            activeUncommanded = false;
+            activeEVAOnly = false;
+            mads = new ModelAnimationData[0];
+        }
+
+        public SSTUAnimData[] getAnimationData(Transform transform, int startLayer)
+        {
+            int len = mads.Length;
+            SSTUAnimData[] data = new SSTUAnimData[len];
+            for (int i = 0; i < len; i++, startLayer++)
+            {
+                data[i] = new SSTUAnimData(mads[i].animationName, mads[i].speed, startLayer, transform, mads[i].isLoop);
+            }
+            return data;
+        }
+
+    }
+
+    /// <summary>
+    /// Wrapper class for the data to manage a single animation, including animation speed and layers, and min/max time handling (default to 0-1 normalized time)
+    /// </summary>
+    public class SSTUAnimData
+    {
+        private Animation[] animations;
+        public readonly String animationName;
+        private float animationSpeed = 1;
+        private int animationLayer = 1;
+        public float maxDeployTime = 1f;
+        public bool isLoop;//TODO -- support looping animation
+
+        public SSTUAnimData(ConfigNode node, Transform transform)
+        {
+            animationName = node.GetStringValue("name");
+            animationSpeed = node.GetFloatValue("speed", animationSpeed);
+            animationLayer = node.GetIntValue("layer", animationLayer);
+            maxDeployTime = node.GetFloatValue("max", maxDeployTime);
+            setupController(animationName, animationSpeed, animationLayer, transform);
+        }
+
+        public SSTUAnimData(String name, float speed, int layer, Transform transform, bool loop)
+        {
+            animationName = name;
+            animationSpeed = speed;
+            animationLayer = layer;
+            isLoop = loop;
+            setupController(name, speed, layer, transform);
+        }
+
+        private void setupController(String name, float speed, int layer, Transform transform)
+        {
+            Animation[] allAnimations = transform.gameObject.GetComponentsInChildren<Animation>(true);
+            List<Animation> animList = new List<Animation>();
+            Animation anim;
+            int len = allAnimations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                anim = allAnimations[i];
+                AnimationClip c = anim.GetClip(animationName);
+                if (c != null)
+                {
+                    animList.Add(anim);
+                }
+            }
+            animations = animList.ToArray();
+            if (animations == null || animations.Length == 0)
+            {
+                MonoBehaviour.print("ERROR: No animations found for animation name: " + animationName);
+                return;
+            }
+            len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                anim = animations[i];
+                anim[animationName].layer = animationLayer;
+                anim[animationName].wrapMode = WrapMode.Once;
+                anim.wrapMode = WrapMode.Once;
+            }
+        }
+
+        public bool updateAnimation(out float time)
+        {
+            time = 0f;
+            bool playing = false;
+            bool earlyStop = false;
+            int len = animations.Length;
+            Animation anim;
+            AnimationState clip;
+            for (int i = 0; i < len; i++)
+            {
+                anim = animations[i];
+                clip = anim[animationName];
+                if (clip.enabled)
+                {
+                    if (clip.normalizedTime > maxDeployTime)
+                    {
+                        earlyStop = true;
+                        clip.normalizedTime = maxDeployTime;
+                        clip.speed = 0;
+                        clip.enabled = false;//force-stop, sample will not disturb this
+                    }
+                    else
+                    {
+                        playing = true;
+                    }
+                }
+                time = clip.normalizedTime;
+            }
+            if (earlyStop && !playing)
+            {
+                sample(maxDeployTime);//force update to position
+            }
+            return playing;
+        }
+
+        public void playAnimation()
+        {
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                animations[i][animationName].enabled = true;
+                animations[i].Play(animationName);
+            }
+        }
+
+        public void stopAnimation()
+        {
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                animations[i][animationName].speed = 0f;
+                animations[i].Stop(animationName);
+            }
+        }
+
+        public void setAnimTime(float time, bool sample = false)
+        {
+            if (time > maxDeployTime)
+            {
+                time = maxDeployTime;
+            }
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                animations[i][animationName].normalizedTime = time;
+            }
+            if (sample) { this.sample(time); }
+        }
+
+        public void setAnimSpeed(float speed)
+        {
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                animations[i][animationName].speed = speed * animationSpeed;
+            }
+        }
+
+        public void setAnimLayer(int layer)
+        {
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                animations[i][animationName].layer = layer;
+            }
+        }
+
+        public void sample(float time)
+        {
+            int len = animations.Length;
+            for (int i = 0; i < len; i++)
+            {
+                sample(animations[i], animations[i][animationName], time);
+            }
+        }
+
+        private void sample(Animation anim, AnimationState clip, float time)
+        {
+            bool en = clip.enabled;
+            clip.enabled = true;
+            clip.normalizedTime = time;
+            clip.weight = 1;
+            anim.Sample();
+            clip.enabled = en;//restore previous enabled state...
+        }
+
+        public bool setMaxTime(float max, AnimState state)
+        {
+            maxDeployTime = Mathf.Clamp01(max);
+            int len = animations.Length;
+            bool shouldStop = false;
+            for (int i = 0; i < len; i++)
+            {
+                if (state == AnimState.STOPPED_END)
+                {
+                    sample(animations[i], animations[i][animationName], maxDeployTime);
+                    //no change in state
+                }
+                else if (state == AnimState.PLAYING_FORWARD)
+                {
+                    float nt = animations[i][animationName].normalizedTime;
+                    if (nt >= maxDeployTime)
+                    {
+                        animations[i][animationName].normalizedTime = maxDeployTime;
+                        animations[i][animationName].speed = 0f;
+                        shouldStop = true;
+                    }
+                }
+                else if (state == AnimState.PLAYING_BACKWARD)
+                {
+                    float nt = animations[i][animationName].normalizedTime;
+                    if (nt > maxDeployTime)
+                    {
+                        animations[i][animationName].normalizedTime = maxDeployTime;
+                    }
+                    //no change in state
+                }
+                else if (state == AnimState.STOPPED_START)
+                {
+                    //NOOP
+                }
+            }
+            if (shouldStop) { sample(maxDeployTime); }
+            return shouldStop;
+        }
+
+        public override string ToString()
+        {
+            return "AnimData: " + animationName + " : " + animationLayer + " : " + animationSpeed + " : " + maxDeployTime;
         }
 
     }

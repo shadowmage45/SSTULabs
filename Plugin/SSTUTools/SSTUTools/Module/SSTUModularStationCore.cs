@@ -31,9 +31,6 @@ namespace SSTUTools
         public bool useAdapterCost = false;
 
         [KSPField]
-        public bool updateSolar = true;
-
-        [KSPField]
         public string solarAnimationID = "solarDeploy";
 
         [KSPField]
@@ -41,6 +38,9 @@ namespace SSTUTools
 
         [KSPField]
         public string bottomManagedNodes = "bottom1, bottom2, bottom3, bottom4, bottom5";
+
+        [KSPField]
+        public int solarAnimationLayer = 1;
 
         //persistent config fields for module selections
         //also GUI controls for module selection
@@ -75,6 +75,9 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentBottomTexture = "default";
 
+        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Solar:")]
+        public string solarPanelStatus = string.Empty;
+
         //persistent data for modules; stores colors and other per-module data
         [KSPField(isPersistant = true)]
         public string topModulePersistentData;
@@ -82,6 +85,12 @@ namespace SSTUTools
         public string coreModulePersistentData;
         [KSPField(isPersistant = true)]
         public string bottomModulePersistentData;
+
+        //persistence data for solar module, stores animation state and rotation cache
+        [KSPField(isPersistant = true)]
+        public string solarAnimationPersistentData = string.Empty;
+        [KSPField(isPersistant = true)]
+        public string solarRotationPersistentData = string.Empty;
 
         //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
@@ -106,9 +115,22 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularStationCore> bottomModule;
         ModelModule<SolarModelData, SSTUModularStationCore> solarModule;
 
-        private SSTUAnimateControlled animationControl;
+        SolarModule<SSTUModularStationCore> solarPanelModule;
 
         #endregion ENDREGION - Private working vars
+
+        #region REGION - GUI methods
+
+        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Deploy Solar Panels")]
+        public void solarDeployEvent() { solarPanelModule.onDeployEvent(); }
+
+        [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Retract Solar Panels")]
+        public void solarRetractEvent() { solarPanelModule.onRetractEvent(); }
+
+        [KSPAction(guiName = "Toggle Solar Panels")]
+        public void solarToggleAction(KSPActionParam param) { solarPanelModule.onToggleAction(param); }
+
+        #endregion ENDREGION - GUI methods
 
         #region REGION - Standard KSP Overrides
 
@@ -191,6 +213,19 @@ namespace SSTUTools
             }
         }
 
+        //standard Unity lifecyle override
+        public void Update()
+        {
+            solarPanelModule.updateAnimations();
+            solarPanelModule.solarUpdate();
+        }
+
+        //standard Unity lifecyle override
+        public void FixedUpdate()
+        {
+            solarPanelModule.solarFixedUpdate();
+        }
+
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
@@ -212,11 +247,13 @@ namespace SSTUTools
             updateGUI();
         }
 
+        //IRecolorable override
         public string[] getSectionNames()
         {
             return new string[] { "Top", "Body", "Bottom" };
         }
 
+        //IRecolorable override
         public RecoloringData[] getSectionColors(string section)
         {
             if (section == "Top")
@@ -234,6 +271,7 @@ namespace SSTUTools
             return coreModule.customColors;
         }
 
+        //IRecolorable override
         public void setSectionColors(string section, RecoloringData[] colors)
         {
             if (section == "Top")
@@ -316,9 +354,15 @@ namespace SSTUTools
             tops.Clear();
             bottoms.Clear();
             topModule.setupModel();
-            coreModule.setupModel();//TODO -- only setup core module if not the prefab part -- else need to add transform updating/fx-updating for RCS and engine modules, as they lack proper handling for transform swapping at runtime
+            coreModule.setupModel();
             bottomModule.setupModel();
             solarModule.setupModel();
+
+            //solar panel animation and solar panel UI controls
+            solarPanelModule = new SolarModule<SSTUModularStationCore>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
+            solarPanelModule.getSymmetryModule = m => m.solarPanelModule;
+            solarPanelModule.setupAnimations(solarModule.animationData, solarModule.root, solarAnimationLayer);
+            solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
 
             updateModulePositions();
             updateMassAndCost();
@@ -390,71 +434,8 @@ namespace SSTUTools
 
         private void updateSolarModules()
         {
-            if (!updateSolar)
-            {
-                return;
-            }
-            if (animationControl == null && !string.Equals("none", solarAnimationID))
-            {
-                SSTUAnimateControlled[] controls = part.GetComponents<SSTUAnimateControlled>();
-                int len = controls.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    if (controls[i].animationID == solarAnimationID)
-                    {
-                        animationControl = controls[i];
-                        break;
-                    }
-                }
-                if (animationControl == null)
-                {
-                    MonoBehaviour.print("ERROR: Animation controller was null for ID: " + solarAnimationID);
-                    return;
-                }
-            }
-
-            bool animEnabled = solarModule.model.hasAnimation();
-            bool solarEnabled = solarModule.model.panelsEnabled;
-            string animName = string.Empty;
-            float animSpeed = 1f;
-
-            if (animEnabled)
-            {
-                ModelAnimationData mad = solarModule.model.modelDefinition.animationData[0];
-                animName = mad.animationName;
-                animSpeed = mad.speed;
-            }
-            else
-            {
-                animName = string.Empty;
-                animSpeed = 1f;
-            }
-
-            if (animationControl != null)
-            {
-                animationControl.animationName = animName;
-                animationControl.animationSpeed = animSpeed;
-                animationControl.reInitialize();
-            }
-
-            SSTUSolarPanelDeployable solar = part.GetComponent<SSTUSolarPanelDeployable>();
-            if (solar != null)
-            {
-                if (solarEnabled)
-                {
-                    solar.resourceAmount = solarModule.model.energy;
-                    solar.pivotTransforms = solarModule.model.pivotNames;
-                    solar.rayTransforms = solarModule.model.sunNames;
-
-                    SSTUSolarPanelDeployable.Axis axis = (SSTUSolarPanelDeployable.Axis)Enum.Parse(typeof(SSTUSolarPanelDeployable.Axis), solarModule.model.sunAxis);
-                    solar.setSuncatcherAxis(axis);
-                    solar.enableModule();
-                }
-                else
-                {
-                    solar.disableModule();
-                }
-            }
+            solarPanelModule.setupAnimations(solarModule.animationData, solarModule.root, solarAnimationLayer);
+            solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
         }
 
         private void updateAttachNodes(bool userInput)
@@ -492,171 +473,6 @@ namespace SSTUTools
 
         #endregion ENDREGION - Custom Update Methods
 
-    }
-
-    public class SolarModelData : SingleModelData
-    {
-        
-        public readonly string pivotNames;
-        public readonly string sunNames;
-        public readonly float energy;
-        public readonly string sunAxis;
-        public readonly bool panelsEnabled = true;
-
-        private GameObject[] models;
-
-        public SolarPosition[] positions;
-        
-        public SolarModelData(ConfigNode node) : base(node)
-        {
-            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
-            if (solarNode == null)
-            {
-                panelsEnabled = false;
-            }
-            if (panelsEnabled)
-            {
-                pivotNames = solarNode.GetStringValue("pivotNames");
-                sunNames = solarNode.GetStringValue("sunNames");
-                panelsEnabled = solarNode.GetBoolValue("enabled");
-                sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
-                energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
-                ConfigNode[] posNodes = node.GetNodes("POSITION");
-                int len = posNodes.Length;
-                positions = new SolarPosition[len];
-                for (int i = 0; i < len; i++)
-                {
-                    positions[i] = new SolarPosition(posNodes[i]);
-                }
-            }
-        }
-
-        public override void setupModel(Transform parent, ModelOrientation orientation)
-        {
-            model = new GameObject("MSCSolarRoot");
-            model.transform.NestToParent(parent);
-            if (string.IsNullOrEmpty(modelDefinition.modelName)) { return; }
-            int len = positions==null? 0 : positions.Length;
-            models = new GameObject[len];
-            for (int i = 0; i < len; i++)
-            {
-                models[i] = new GameObject("MSCSolar");
-                models[i].transform.NestToParent(model.transform);
-                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
-                models[i].transform.Rotate(positions[i].rotation, Space.Self);
-                models[i].transform.localPosition = positions[i].position;
-                models[i].transform.localScale = positions[i].scale;
-            }
-        }
-
-        public override void updateModel()
-        {
-            base.updateModel();
-            if (models == null) { return; }
-            int len = models.Length;
-            for (int i = 0; i < len; i++)
-            {
-                models[i].transform.localPosition = positions[i].position;
-                models[i].transform.localScale = positions[i].scale;
-            }
-        }
-
-        public override void destroyCurrentModel()
-        {
-            if (model != null)
-            {
-                model.transform.parent = null;
-                GameObject.Destroy(model);//will destroy children as well
-            }
-            //de-reference them all, just in case
-            model = null;
-            models = null;
-        }
-
-        public override float getModuleCost()
-        {
-            return positions == null ? modelDefinition.cost : modelDefinition.cost * positions.Length;
-        }
-
-        public override float getModuleMass()
-        {
-            return positions == null ? modelDefinition.mass : modelDefinition.mass * positions.Length;
-        }
-
-        public override float getModuleVolume()
-        {
-            return positions == null ? modelDefinition.volume : modelDefinition.volume * positions.Length;
-        }
-
-        public ConfigNode getSolarData()
-        {
-            ConfigNode mergedNode = new ConfigNode("SOLAR");            
-            ConfigNode[] prevPanelNodes = modelDefinition.solarData.GetNodes("PANEL");
-            int len2 = prevPanelNodes.Length;
-            for (int i = 0; i < len2; i++)
-            {
-                mergedNode.AddNode(prevPanelNodes[i]);
-            }
-            ConfigNode[] panelNodes;
-            int len = positions.Length;
-            for (int i = 1; i < len; i++)
-            {
-                panelNodes = new ConfigNode[len2];
-                for (int k = 0; k < len2; k++)
-                {
-                    panelNodes[k] = prevPanelNodes[k].CreateCopy();
-                    incrementPanelNode(panelNodes[k]);
-                    mergedNode.AddNode(panelNodes[k]);
-                }
-                prevPanelNodes = panelNodes;
-            }
-            return mergedNode;
-        }
-
-        private void incrementPanelNode(ConfigNode input)
-        {
-            int idx = input.GetIntValue("mainPivotIndex",0);
-            int str = input.GetIntValue("mainPivotStride", 1);
-            idx += str;
-            input.RemoveValue("mainPivotIndex");
-            input.SetValue("mainPivotIndex", idx, true);
-
-            idx = input.GetIntValue("secondPivotIndex",0);
-            str = input.GetIntValue("secondPivotStride",1);
-            idx += str;
-            input.RemoveValue("secondPivotIndex");
-            input.SetValue("secondPivotIndex", idx, true);
-
-            ConfigNode[] suncatcherNodes = input.GetNodes("SUNCATCHER");
-            int len = suncatcherNodes.Length;
-            for (int i = 0; i < len; i++)
-            {
-                idx = suncatcherNodes[i].GetIntValue("suncatcherIndex",0);
-                str = suncatcherNodes[i].GetIntValue("suncatcherStride",1);
-                idx += str;
-                suncatcherNodes[i].RemoveValue("suncatcherIndex");
-                suncatcherNodes[i].SetValue("suncatcherIndex", idx, true);
-            }
-        }
-    }
-
-    public class SolarPosition
-    {
-        public Vector3 position;
-        public Vector3 rotation;
-        public Vector3 scale;
-        public SolarPosition(ConfigNode node)
-        {
-            position = node.GetVector3("position", Vector3.zero);
-            rotation = node.GetVector3("rotation", Vector3.zero);
-            scale = node.GetVector3("scale", Vector3.one);
-        }
-        public SolarPosition(SolarPosition pos, float scale)
-        {
-            this.position = pos.position * scale;
-            this.rotation = pos.rotation;
-            this.scale = pos.scale;
-        }
     }
 
 }

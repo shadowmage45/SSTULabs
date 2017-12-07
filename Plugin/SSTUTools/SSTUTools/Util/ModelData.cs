@@ -83,7 +83,7 @@ namespace SSTUTools
         public readonly String defaultTextureSet;
         public readonly TextureSet[] textureSets;
         public readonly CompoundModelData compoundModelData;
-        public readonly ModelAnimationData[] animationData;
+        public readonly AnimationData animationData;
         public readonly ConfigNode solarData;
         public readonly ConfigNode constraintData;
 
@@ -158,13 +158,9 @@ namespace SSTUTools
                 compoundModelData = new CompoundModelData(node.GetNode("COMPOUNDMODEL"));
             }
 
-            if (node.HasNode("ANIMATION"))
+            if (node.HasNode("ANIMATIONDATA"))
             {
-                animationData = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
-            }
-            else
-            {
-                animationData = new ModelAnimationData[0];
+                animationData = new AnimationData(node.GetNode("ANIMATIONDATA"));
             }
 
             if (node.HasNode("SOLARDATA"))
@@ -214,12 +210,14 @@ namespace SSTUTools
         public readonly string animationName;
         public readonly string transformName;
         public readonly float speed;
+        public readonly bool isLoop;
 
         public ModelAnimationData(ConfigNode node)
         {
             animationName = node.GetStringValue("name");
             transformName = node.GetStringValue("transform", string.Empty);
             speed = node.GetFloatValue("speed", 1f);
+            isLoop = node.GetBoolValue("loop", false);
         }
 
         public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
@@ -427,14 +425,16 @@ namespace SSTUTools
 
         public SSTUAnimData[] getAnimationData(Transform transform, int startLayer)
         {
-            ModelAnimationData[] mData = modelDefinition.animationData;
-            int len = mData.Length;
-            SSTUAnimData[] data = new SSTUAnimData[len];
-            for (int i = 0; i < len; i++, startLayer++)
+            if (modelDefinition.animationData == null)
             {
-                data[0] = new SSTUAnimData(mData[i].animationName, mData[i].speed, startLayer, transform);
+                return new SSTUAnimData[0];
             }
-            return data;
+            return modelDefinition.animationData.getAnimationData(transform, startLayer);
+        }
+
+        public AnimationData getAnimationData()
+        {
+            return modelDefinition.animationData;
         }
 
         public bool hasAnimation()
@@ -968,6 +968,9 @@ namespace SSTUTools
         }
     }
 
+    /// <summary>
+    /// Wrapper for a SingleModelData that optionally contains position offsets that are defined in the PartModule config.
+    /// </summary>
     public class PositionedModelData : SingleModelData
     {
 
@@ -999,6 +1002,178 @@ namespace SSTUTools
             }
         }
 
+    }
+
+    /// <summary>
+    /// Solar panel model data.  Includes capability to use multiple positions, but models may only come from a single ModelDefinition
+    /// </summary>
+    public class SolarModelData : SingleModelData
+    {
+
+        public readonly string pivotNames;
+        public readonly string sunNames;
+        public readonly float energy;
+        public readonly string sunAxis;
+        public readonly bool panelsEnabled = true;
+
+        private GameObject[] models;
+
+        public SolarPosition[] positions;
+
+        public SolarModelData(ConfigNode node) : base(node)
+        {
+            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
+            if (solarNode == null)
+            {
+                panelsEnabled = false;
+            }
+            if (panelsEnabled)
+            {
+                pivotNames = solarNode.GetStringValue("pivotNames");
+                sunNames = solarNode.GetStringValue("sunNames");
+                panelsEnabled = solarNode.GetBoolValue("enabled");
+                sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
+                energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
+                ConfigNode[] posNodes = node.GetNodes("POSITION");
+                int len = posNodes.Length;
+                positions = new SolarPosition[len];
+                for (int i = 0; i < len; i++)
+                {
+                    positions[i] = new SolarPosition(posNodes[i]);
+                }
+            }
+        }
+
+        public override void setupModel(Transform parent, ModelOrientation orientation)
+        {
+            model = new GameObject("MSCSolarRoot");
+            model.transform.NestToParent(parent);
+            if (string.IsNullOrEmpty(modelDefinition.modelName)) { return; }
+            int len = positions == null ? 0 : positions.Length;
+            models = new GameObject[len];
+            for (int i = 0; i < len; i++)
+            {
+                models[i] = new GameObject("MSCSolar");
+                models[i].transform.NestToParent(model.transform);
+                SSTUUtils.cloneModel(modelDefinition.modelName).transform.NestToParent(models[i].transform);
+                models[i].transform.Rotate(positions[i].rotation, Space.Self);
+                models[i].transform.localPosition = positions[i].position;
+                models[i].transform.localScale = positions[i].scale;
+            }
+        }
+
+        public override void updateModel()
+        {
+            base.updateModel();
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                models[i].transform.localPosition = positions[i].position;
+                models[i].transform.localScale = positions[i].scale;
+            }
+        }
+
+        public override void destroyCurrentModel()
+        {
+            if (model != null)
+            {
+                model.transform.parent = null;
+                GameObject.Destroy(model);//will destroy children as well
+            }
+            //de-reference them all, just in case
+            model = null;
+            models = null;
+        }
+
+        public override float getModuleCost()
+        {
+            return positions == null ? modelDefinition.cost : modelDefinition.cost * positions.Length;
+        }
+
+        public override float getModuleMass()
+        {
+            return positions == null ? modelDefinition.mass : modelDefinition.mass * positions.Length;
+        }
+
+        public override float getModuleVolume()
+        {
+            return positions == null ? modelDefinition.volume : modelDefinition.volume * positions.Length;
+        }
+
+        public ConfigNode getSolarData()
+        {
+            ConfigNode mergedNode = new ConfigNode("SOLAR");
+            ConfigNode[] prevPanelNodes = modelDefinition.solarData.GetNodes("PANEL");
+            int len2 = prevPanelNodes.Length;
+            for (int i = 0; i < len2; i++)
+            {
+                mergedNode.AddNode(prevPanelNodes[i]);
+            }
+            ConfigNode[] panelNodes;
+            int len = positions.Length;
+            for (int i = 1; i < len; i++)
+            {
+                panelNodes = new ConfigNode[len2];
+                for (int k = 0; k < len2; k++)
+                {
+                    panelNodes[k] = prevPanelNodes[k].CreateCopy();
+                    incrementPanelNode(panelNodes[k]);
+                    mergedNode.AddNode(panelNodes[k]);
+                }
+                prevPanelNodes = panelNodes;
+            }
+            return mergedNode;
+        }
+
+        private void incrementPanelNode(ConfigNode input)
+        {
+            int idx = input.GetIntValue("mainPivotIndex", 0);
+            int str = input.GetIntValue("mainPivotStride", 1);
+            idx += str;
+            input.RemoveValue("mainPivotIndex");
+            input.SetValue("mainPivotIndex", idx, true);
+
+            idx = input.GetIntValue("secondPivotIndex", 0);
+            str = input.GetIntValue("secondPivotStride", 1);
+            idx += str;
+            input.RemoveValue("secondPivotIndex");
+            input.SetValue("secondPivotIndex", idx, true);
+
+            ConfigNode[] suncatcherNodes = input.GetNodes("SUNCATCHER");
+            int len = suncatcherNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                idx = suncatcherNodes[i].GetIntValue("suncatcherIndex", 0);
+                str = suncatcherNodes[i].GetIntValue("suncatcherStride", 1);
+                idx += str;
+                suncatcherNodes[i].RemoveValue("suncatcherIndex");
+                suncatcherNodes[i].SetValue("suncatcherIndex", idx, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Wrapper class for a single solar-panel position, as used in the SolarModelData class.
+    /// Denotes position, rotation, and scale for a solar-panel model, with position relative to the part origin.
+    /// </summary>
+    public class SolarPosition
+    {
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale;
+        public SolarPosition(ConfigNode node)
+        {
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
+        }
+        public SolarPosition(SolarPosition pos, float scale)
+        {
+            this.position = pos.position * scale;
+            this.rotation = pos.rotation;
+            this.scale = pos.scale;
+        }
     }
 
     /// <summary>

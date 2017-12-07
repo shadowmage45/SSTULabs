@@ -72,6 +72,8 @@ namespace SSTUTools
 
         public float moduleHeight { get { return model.currentHeight; } }
 
+        public AnimationData animationData { get { return model.getAnimationData(); } }
+
         /// <summary>
         /// Sets the position of the model so that the origin of the model is at the input Y coordinate, for the input model orientation.<para/>
         /// TOP = Y == bottom<para/>

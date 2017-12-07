@@ -125,7 +125,7 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float bottomAnimationDeployLimit = 1f;
 
-        [KSPField(guiActive = true, guiActiveEditor = false)]
+        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Solar:")]
         public string solarPanelStatus = string.Empty;
 
         //persistent data for modules; stores colors and other per-module data
@@ -209,28 +209,10 @@ namespace SSTUTools
         public void bottomRetractEvent() { bottomAnimationModule.onRetractEvent(); }
 
         [KSPAction]
-        public void topDeployAction(KSPActionParam param) { topAnimationModule.onDeployAction(param); }
-
-        [KSPAction]
-        public void topRetractAction(KSPActionParam param) { topAnimationModule.onRetractAction(param); }
-
-        [KSPAction]
         public void topToggleAction(KSPActionParam param) { topAnimationModule.onToggleAction(param); }
 
         [KSPAction]
-        public void coreDeployAction(KSPActionParam param) { coreAnimationModule.onDeployAction(param); }
-
-        [KSPAction]
-        public void coreRetractAction(KSPActionParam param) { coreAnimationModule.onRetractAction(param); }
-
-        [KSPAction]
         public void coreToggleAction(KSPActionParam param) { coreAnimationModule.onToggleAction(param); }
-
-        [KSPAction]
-        public void bottomDeployAction(KSPActionParam param) { bottomAnimationModule.onDeployAction(param); }
-
-        [KSPAction]
-        public void bottomRetractAction(KSPActionParam param) { bottomAnimationModule.onRetractAction(param); }
 
         [KSPAction]
         public void bottomToggleAction(KSPActionParam param) { bottomAnimationModule.onToggleAction(param); }
@@ -240,12 +222,6 @@ namespace SSTUTools
 
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Retract Solar Panels")]
         public void solarRetractEvent() { solarPanelModule.onRetractEvent(); }
-
-        [KSPAction]
-        public void solarDeployAction(KSPActionParam param) { solarPanelModule.onDeployAction(param); }
-
-        [KSPAction]
-        public void solarRetractAction(KSPActionParam param) { solarPanelModule.onRetractAction(param); }
 
         [KSPAction]
         public void solarToggleAction(KSPActionParam param) { solarPanelModule.onToggleAction(param); }
@@ -295,7 +271,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(modelChangedAction);
                 this.actionWithSymmetry(m => 
                 {
-                    m.topAnimationModule.setupAnimations(m.topModule.model.getAnimationData(m.topModule.root, m.noseAnimationLayer));
+                m.topAnimationModule.setupAnimations(m.topModule.animationData, m.topModule.root, noseAnimationLayer);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -311,13 +287,13 @@ namespace SSTUTools
                         m.currentSolar = m.coreModule.model.getAvailableSolarVariants(coreModule.model.currentDiameterScale)[0];
                         m.solarModule.modelSelected(m.currentSolar);
                         modelChangedAction(m);
-                        m.solarPanelModule.setupAnimations(m.solarModule.model.getAnimationData(m.solarModule.root, solarAnimationLayer));
+                        m.solarPanelModule.setupAnimations(m.solarModule.animationData, m.solarModule.root, solarAnimationLayer);
                         m.solarPanelModule.setupSolarPanelData(m.solarModule.model.getSolarData(), m.solarModule.root);
                     });
                 }
                 this.actionWithSymmetry(m =>
                 {
-                    m.coreAnimationModule.setupAnimations(m.coreModule.model.getAnimationData(m.coreModule.root, m.coreAnimationLayer));
+                    m.coreAnimationModule.setupAnimations(m.coreModule.animationData, m.coreModule.root, m.coreAnimationLayer);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -328,7 +304,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(modelChangedAction);
                 this.actionWithSymmetry(m =>
                 {
-                    m.bottomAnimationModule.setupAnimations(m.bottomModule.model.getAnimationData(m.bottomModule.root, m.mountAnimationLayer));
+                    m.bottomAnimationModule.setupAnimations(m.bottomModule.animationData, m.bottomModule.root, m.mountAnimationLayer);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -339,7 +315,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     modelChangedAction(m);
-                    m.solarPanelModule.setupAnimations(m.solarModule.model.getAnimationData(m.solarModule.root, solarAnimationLayer));
+                    m.solarPanelModule.setupAnimations(m.solarModule.animationData, m.solarModule.root, solarAnimationLayer);
                     m.solarPanelModule.setupSolarPanelData(m.solarModule.model.getSolarData(), m.solarModule.root);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -598,17 +574,21 @@ namespace SSTUTools
 
             //animation-module setup/initialization
             topAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(topAnimationPersistentData)], Fields[nameof(topAnimationDeployLimit)], Events[nameof(topDeployEvent)], Events[nameof(topRetractEvent)]);
-            topAnimationModule.setupAnimations(topModule.model.getAnimationData(topModule.root, noseAnimationLayer));
+            topAnimationModule.getSymmetryModule = m => m.topAnimationModule;
+            topAnimationModule.setupAnimations(topModule.animationData, topModule.root, noseAnimationLayer);
 
             coreAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(coreAnimationPersistentData)], Fields[nameof(coreAnimationDeployLimit)], Events[nameof(coreDeployEvent)], Events[nameof(coreRetractEvent)]);
-            coreAnimationModule.setupAnimations(coreModule.model.getAnimationData(coreModule.root, coreAnimationLayer));
+            coreAnimationModule.getSymmetryModule = m => m.coreAnimationModule;
+            coreAnimationModule.setupAnimations(coreModule.animationData, coreModule.root, coreAnimationLayer);
 
             bottomAnimationModule = new AnimationModule<SSTUModularServiceModule>(part, this, Fields[nameof(bottomAnimationPersistentData)], Fields[nameof(bottomAnimationDeployLimit)], Events[nameof(bottomDeployEvent)], Events[nameof(bottomRetractEvent)]);
-            bottomAnimationModule.setupAnimations(bottomModule.model.getAnimationData(bottomModule.root, mountAnimationLayer));
+            bottomAnimationModule.getSymmetryModule = m => m.bottomAnimationModule;
+            bottomAnimationModule.setupAnimations(bottomModule.animationData, bottomModule.root, mountAnimationLayer);
 
             //solar panel animation and solar panel UI controls
             solarPanelModule = new SolarModule<SSTUModularServiceModule>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
-            solarPanelModule.setupAnimations(solarModule.model.getAnimationData(solarModule.root, solarAnimationLayer));
+            solarPanelModule.getSymmetryModule = m => m.solarPanelModule;
+            solarPanelModule.setupAnimations(solarModule.animationData, solarModule.root, solarAnimationLayer);
             solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
 
             updateModulePositions();
