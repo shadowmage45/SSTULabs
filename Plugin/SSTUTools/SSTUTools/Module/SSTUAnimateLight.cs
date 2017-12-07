@@ -86,6 +86,14 @@ namespace SSTUTools
             animationController.updateAnimations();
         }
 
+        public void FixedUpdate()
+        {
+            if (resourceUse > 0 && animationController.animState != AnimState.STOPPED_START)
+            {
+
+            }
+        }
+
         #endregion ENDREGION - KSP Overrides
 
         private void initialize()
@@ -97,8 +105,9 @@ namespace SSTUTools
 
         private void loadConfigData(ConfigNode node)
         {
-            //should only run the first time the part-module is initialized, which had better be on the prefab part (or bad things will happen)
-            //only tracked so as to not add duplicate animations/clips
+            //should only run the first time the part-module is initialized, 
+            // which had better be on the prefab part (or bad things will happen)
+            // only tracked so as to not add duplicate animations/clips
             if (!prefabSetup)
             {
                 prefabSetup = true;
@@ -165,7 +174,10 @@ namespace SSTUTools
         
         public static FloatCurve createDefaultCurve()
         {
-            throw new NotImplementedException();
+            FloatCurve fc = new FloatCurve();
+            fc.Add(0, 0);
+            fc.Add(1, 1);
+            return fc;
         }
 
     }
@@ -242,6 +254,7 @@ namespace SSTUTools
                     light = transform.gameObject.AddComponent<Light>();//add it if it does not exist                
                 }
 
+                //set light params to the config specified parameters
                 light.intensity = intensity;
                 light.range = range;
                 light.spotAngle = angle;
