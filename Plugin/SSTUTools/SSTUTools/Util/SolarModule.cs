@@ -32,8 +32,14 @@ namespace SSTUTools
 
         private string panelStatus
         {
-            get { return panelStatusField.GetValue<string>(panelStatusField); }
-            set { panelStatusField.SetValue(value, panelStatusField); }
+            get { return panelStatusField.GetValue<string>(module); }
+            set { panelStatusField.SetValue(value, module); }
+        }
+
+        private string rotationPersistentData
+        {
+            get { return rotationPersistenceField.GetValue<string>(module); }
+            set { rotationPersistenceField.SetValue(value, module); }
         }
 
         public SolarModule(Part part, T module, BaseField animationPersistence, BaseField rotationPersistence, BaseField panelStatusField, BaseEvent deploy, BaseEvent retract) : base(part, module, animationPersistence, null, deploy, retract)
@@ -121,6 +127,11 @@ namespace SSTUTools
             {
                 return;
             }
+            if (animState != AnimState.STOPPED_END)
+            {
+                panelStatus = "Inactive";
+                return;
+            }
             float distMult = (float)(part.vessel.solarFlux / PhysicsGlobals.SolarLuminosityAtHome);
             if (distMult == 0)//occluded, zero solar flux input on vessel
             {
@@ -133,7 +144,7 @@ namespace SSTUTools
                 {
                     panelStatus = "Occluded: Unknown";
                 }
-                //TODO loop through panels and set them to 'occluded' status so that they do not update
+                //TODO loop through panels and set them to 'occluded' status so that they do not update sun tracking rotation
                 return;
             }
             Vector3 solarTarget = FlightGlobals.Bodies[0].transform.position;
@@ -148,6 +159,7 @@ namespace SSTUTools
                 {
                     occluder = panelData[i].occluderName;
                 }
+                totalOutput += panelOutput;
             }
 
             float temperatureMultiplier = 1.0f;//TODO -- add temp curve/multiplier
@@ -184,7 +196,7 @@ namespace SSTUTools
             float time = animTime;
             //sample to deployed state
             setAnimTime(1, true);
-            string[] persistentDataSplits = persistentData.Split(';');
+            string[] persistentDataSplits = rotationPersistentData.Split(';');
             string data;
             int len = panelData.Length;
             for (int i = 0; i < len; i++)
@@ -217,7 +229,7 @@ namespace SSTUTools
                 if (i > 0) { data = data + ";"; }
                 data = data + panelData[i].getPersistentData();
             }
-            persistentData = data;
+            rotationPersistentData = data;
         }
 
     }
@@ -282,7 +294,7 @@ namespace SSTUTools
             {
                 int mainIndex = node.GetIntValue("mainPivotIndex", 0);
                 Axis mainSunAxis = node.getAxis("mainSunAxis", Axis.ZPlus);
-                Axis mainRotAxis = node.getAxis("mainRotAxis", Axis.XPlus);
+                Axis mainRotAxis = node.getAxis("mainRotAxis", Axis.YPlus);
                 float speed = node.GetFloatValue("mainPivotSpeed", 10f);
                 Transform[] trs = root.FindChildren(mainName);
                 mainPivot = new SolarPivotData(trs[mainIndex], speed, mainSunAxis, mainRotAxis);
@@ -293,7 +305,7 @@ namespace SSTUTools
                     speed = node.GetFloatValue("secondPivotSpeed", 10f);
                     int secondIndex = node.GetIntValue("secondPivotIndex", 0);
                     Axis secSunAxis = node.getAxis("secondSunAxis", Axis.ZPlus);
-                    Axis secRotAxis = node.getAxis("secondRotAxis", Axis.XPlus);
+                    Axis secRotAxis = node.getAxis("secondRotAxis", Axis.YPlus);
                     trs = root.FindChildren(secondName);
                     secondPivot = new SolarPivotData(trs[secondIndex], speed, secSunAxis, secRotAxis);
                 }
@@ -446,7 +458,7 @@ namespace SSTUTools
             int index = node.GetIntValue("suncatcherIndex", 0);
             Transform[] trs = root.FindChildren(sunName);
             suncatcher = trs[index];
-            resourceRate = node.GetFloatValue("rate");
+            resourceRate = node.GetFloatValue("chargeRate");
         }
 
         /// <summary>
@@ -455,6 +467,7 @@ namespace SSTUTools
         /// <param name="target"></param>
         public float calcRawOutput(Vector3 targetPos)
         {
+            occluderName = string.Empty;
             Vector3 panelFacing = suncatcher.getTransformAxis(suncatcherAxis);
             Vector3 directionToSun = (targetPos - suncatcher.position).normalized;
             float sunDot = Mathf.Clamp(Vector3.Dot(panelFacing, directionToSun), 0f, 1f);
@@ -474,7 +487,7 @@ namespace SSTUTools
         /// <returns></returns>
         public bool checkPartOcclusion(Vector3 directionToSun)
         {
-            if (Physics.Raycast(suncatcher.position, directionToSun, out hitData, 300f))
+            if (Physics.Raycast(suncatcher.position, directionToSun, out hitData, 300f, 1))
             {
                 occluderName = hitData.transform.gameObject.name;
                 return true;
@@ -614,7 +627,6 @@ namespace SSTUTools
                 frameAngle = rawAngle;
             }
             pivot.Rotate(pivot.getLocalAxis(pivotRotationAxis), frameAngle, Space.Self);
-            MonoBehaviour.print("Updating rotation, finished: " + finished);
             return finished;
         }
 
@@ -701,7 +713,7 @@ namespace SSTUTools
         {
             if (!string.IsNullOrEmpty(persistentData))
             {
-                string[] splitData = persistentData.Split('-');
+                string[] splitData = persistentData.Split('|');
                 float[] def = SSTUUtils.parseFloatArray(splitData[0]);
                 float[] cur = SSTUUtils.parseFloatArray(splitData[1]);
                 defaultOrientation = new Quaternion(def[0], def[1], def[2], def[3]);
@@ -722,7 +734,7 @@ namespace SSTUTools
         {
             Quaternion def = defaultOrientation;
             Quaternion cur = pivot.localRotation;
-            return def.x+","+def.y+","+def.z+","+def.w+"-"+cur.x+","+cur.y+","+cur.z+","+cur.w;
+            return def.x+","+def.y+","+def.z+","+def.w+"|"+cur.x+","+cur.y+","+cur.z+","+cur.w;
         }
 
     }

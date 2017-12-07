@@ -615,14 +615,14 @@ namespace SSTUTools
 
         private void incrementPanelNode(ConfigNode input)
         {
-            int idx = input.GetIntValue("mainPivotIndex");
-            int str = input.GetIntValue("mainPivotStride");
+            int idx = input.GetIntValue("mainPivotIndex",0);
+            int str = input.GetIntValue("mainPivotStride", 1);
             idx += str;
             input.RemoveValue("mainPivotIndex");
             input.SetValue("mainPivotIndex", idx, true);
 
-            idx = input.GetIntValue("secondPivotIndex");
-            str = input.GetIntValue("secondPivotStride");
+            idx = input.GetIntValue("secondPivotIndex",0);
+            str = input.GetIntValue("secondPivotStride",1);
             idx += str;
             input.RemoveValue("secondPivotIndex");
             input.SetValue("secondPivotIndex", idx, true);
@@ -631,8 +631,8 @@ namespace SSTUTools
             int len = suncatcherNodes.Length;
             for (int i = 0; i < len; i++)
             {
-                idx = suncatcherNodes[i].GetIntValue("suncatcherIndex");
-                str = suncatcherNodes[i].GetIntValue("suncatcherStride");
+                idx = suncatcherNodes[i].GetIntValue("suncatcherIndex",0);
+                str = suncatcherNodes[i].GetIntValue("suncatcherStride",1);
                 idx += str;
                 suncatcherNodes[i].RemoveValue("suncatcherIndex");
                 suncatcherNodes[i].SetValue("suncatcherIndex", idx, true);
