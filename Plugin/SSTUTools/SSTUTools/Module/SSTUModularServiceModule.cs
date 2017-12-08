@@ -72,7 +72,6 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentDiameter = 2.5f;
 
-        //persistence and UI controls for module/model selection (top, core, bottom, solar, RCS)
         [KSPField(isPersistant = true, guiName = "Top"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentTop = "Mount-None";
@@ -93,7 +92,6 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentRCS = "MUS-RCS1";
 
-        //vertical offset control for RCS models
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentRCSOffset = 0f;
@@ -112,7 +110,6 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentBottomTexture = "default";
 
-        //persistent config fields and UI controls for deploy limits for nose, core, and mount animation modules
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float topAnimationDeployLimit = 1f;
@@ -133,7 +130,7 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string bottomModulePersistentData;
 
-        //persistence data for animation modules, stores animation state
+        //persistence data for animation modules
         [KSPField(isPersistant = true)]
         public string topAnimationPersistentData;
         [KSPField(isPersistant = true)]
@@ -141,13 +138,13 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string bottomAnimationPersistentData;
 
-        //persistence data for solar module, stores animation state and rotation cache
+        //persistence data for solar module
         [KSPField(isPersistant = true)]
         public string solarAnimationPersistentData;
         [KSPField(isPersistant = true)]
         public string solarRotationPersistentData;
 
-        //tracks if default textures and resource volumes have been initialized; only occurs once during the parts' first Start() call
+        //tracks if default textures and resource volumes have been initialized; only occurs once during the parts first Start() call
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
 
@@ -649,7 +646,6 @@ namespace SSTUTools
         {
             modifiedMass = coreModule.moduleMass;
             modifiedMass += solarModule.moduleMass;
-            modifiedMass += rcsModule.moduleMass;
             if (useAdapterMass)
             {
                 modifiedMass += topModule.moduleMass;
@@ -658,7 +654,6 @@ namespace SSTUTools
 
             modifiedCost = coreModule.moduleCost;
             modifiedCost += solarModule.moduleCost;
-            modifiedCost += rcsModule.moduleCost;
             if (useAdapterCost)
             {
                 modifiedCost += topModule.moduleCost;

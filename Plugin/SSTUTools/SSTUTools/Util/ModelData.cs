@@ -84,7 +84,7 @@ namespace SSTUTools
         public readonly TextureSet[] textureSets;
         public readonly CompoundModelData compoundModelData;
         public readonly ModelAnimationData[] animationData;
-        public readonly ConfigNode solarData;
+        public readonly ModelSolarData[] solarData;
         public readonly ConfigNode constraintData;
 
         public ModelDefinition(ConfigNode node)
@@ -169,7 +169,11 @@ namespace SSTUTools
 
             if (node.HasNode("SOLAR"))
             {
-                solarData = node.GetNode("SOLAR");
+                solarData = ModelSolarData.parseSolarData(node.GetNodes("SOLAR"));
+            }
+            else
+            {
+                solarData = new ModelSolarData[0];
             }
 
             if (node.HasNode("CONSTRAINT"))
@@ -231,6 +235,29 @@ namespace SSTUTools
                 data[i] = new ModelAnimationData(nodes[i]);
             }
             return data;
+        }
+    }
+
+    public class ModelSolarData
+    {
+        public readonly string[] suncatcherNames;
+        public readonly string[] pivotNames;
+        public readonly float[] suncatcherRates;
+
+        public ModelSolarData(ConfigNode node)
+        {
+
+        }
+
+        public static ModelSolarData[] parseSolarData(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            ModelSolarData[] datas = new ModelSolarData[len];
+            for (int i = 0; i < len; i++)
+            {
+                datas[i] = new ModelSolarData(nodes[i]);
+            }
+            return datas;
         }
     }
 
