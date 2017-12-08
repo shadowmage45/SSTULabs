@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAnimateRotation : PartModule, ISSTUAnimatedModule
+    public class SSTUAnimateRotation : PartModule
     {
 
         [KSPField]
@@ -42,12 +42,6 @@ namespace SSTUTools
 
         [KSPField]
         public bool showGravityDisplay = true;
-
-        /// <summary>
-        /// If this is >=0, interaction buttons will only display when the dependent animation is in the deployed state
-        /// </summary>
-        [KSPField]
-        public string animationID = string.Empty;
         
         [KSPField(isPersistant = true)]
         public bool rotating = false;
@@ -56,7 +50,7 @@ namespace SSTUTools
         public float rotation = 0f;
 
         private bool initialized = false;
-        private SSTUAnimateControlled animController;
+        private ISSTUAnimatedModule inflatable;
         private Transform[] transforms;
         private Transform[] secondaryTransforms;
 
@@ -68,7 +62,7 @@ namespace SSTUTools
         [KSPEvent(guiName = "Start Rotation", guiActive = true, guiActiveEditor = true)]
         public void toggleRotationEvent()
         {
-            if (autoRotate) { return; }//controlled by parent animation state
+            if (autoRotate) { return; }//controlled by animation state
             rotating = !rotating;
             updateUIControlState(true);
         }
@@ -91,15 +85,11 @@ namespace SSTUTools
 
         public void Start()
         {
-            AnimState state = AnimState.STOPPED_END;
-            if (!string.IsNullOrEmpty(animationID))
+            inflatable = part.GetComponent<SSTUInflatable>();
+            if (inflatable != null)
             {
-                animController = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
-                state = animController.getAnimationState();
+                inflatable.setupRotationModule(this);
             }
-            bool uiEnabled = state == AnimState.STOPPED_END && !autoRotate;
-            if (state == AnimState.STOPPED_END && autoRotate) { rotating = true; }
-            updateUIControlState(uiEnabled);
         }
 
         public void Update()
@@ -141,14 +131,20 @@ namespace SSTUTools
             int len = transforms.Length;
             for (int i = 0; i < len; i++)
             {
-                transforms[i].Rotate(rotationAxis, rotation, Space.Self);
+                transforms[i].Rotate(rotationAxis, restoredRotation, Space.Self);
             }
             len = secondaryTransforms.Length;
             restoredRotation *= secondaryRotationMultiplier;
             for (int i = 0; i < len; i++)
             {
-                secondaryTransforms[i].Rotate(secondaryRotationAxis, rotation, Space.Self);
+                secondaryTransforms[i].Rotate(secondaryRotationAxis, restoredRotation, Space.Self);
             }
+        }
+
+        public void initializeRotationModule(AnimState loadedState)
+        {
+            rotating = loadedState == AnimState.STOPPED_END && (rotating || autoRotate);
+            updateUIControlState(loadedState == AnimState.STOPPED_END && !autoRotate);
         }
 
         public void onAnimationStateChange(AnimState newState)
@@ -161,14 +157,9 @@ namespace SSTUTools
             updateUIControlState(uiEnabled);
         }
 
-        public void onModuleEnableChange(bool moduleEnabled)
-        {
-            //noop
-        }
-
         private void updateUIControlState(bool enable)
         {
-            BaseEvent evt = Events["toggleRotationEvent"];
+            BaseEvent evt = Events[nameof(toggleRotationEvent)];
             evt.guiActive = evt.guiActiveEditor = enable;
             evt.guiName = rotating ? "Stop Rotation" : "Start Rotation";
         }

@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUAirstreamShield : PartModule, IAirstreamShield, ISSTUAnimatedModule
+    public class SSTUAirstreamShield : PartModule, IAirstreamShield
     {
         
         [KSPField]
@@ -109,27 +109,27 @@ namespace SSTUTools
             return vessel;
         }
 
-        public void onAnimationStateChange(AnimState newState)
-        {
-            if (newState == AnimState.STOPPED_START)
-            {
-                if (baseArea != null)
-                {
-                    shieldedAreas.AddUnique(baseArea);
-                }
-            }
-            else if (newState == AnimState.STOPPED_END)
-            {
-                shieldedAreas.Remove(baseArea);
-            }
-            needsUpdate = true;
-        }
+        //public void onAnimationStateChange(AnimState newState)
+        //{
+        //    if (newState == AnimState.STOPPED_START)
+        //    {
+        //        if (baseArea != null)
+        //        {
+        //            shieldedAreas.AddUnique(baseArea);
+        //        }
+        //    }
+        //    else if (newState == AnimState.STOPPED_END)
+        //    {
+        //        shieldedAreas.Remove(baseArea);
+        //    }
+        //    needsUpdate = true;
+        //}
 
-        public void onModuleEnableChange(bool moduleEnabled)
-        {
-            shieldedAreas.Remove(baseArea);
-            needsUpdate = true;
-        }
+        //public void onModuleEnableChange(bool moduleEnabled)
+        //{
+        //    shieldedAreas.Remove(baseArea);
+        //    needsUpdate = true;
+        //}
 
         public void addShieldArea(String name, float topRad, float bottomRad, float topY, float bottomY, bool topNode, bool bottomNode)
         {

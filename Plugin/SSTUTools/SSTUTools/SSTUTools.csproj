@@ -132,7 +132,6 @@
     <Compile Include="Util\SSTUModInterop.cs" />
     <Compile Include="Module\SSTUAnimateControlled.cs" />
     <Compile Include="Module\SSTUAnimateEngineHeat.cs" />
-    <Compile Include="Module\SSTUAnimateUsable.cs" />
     <Compile Include="Util\ModelData.cs" />
     <Compile Include="Module\SSTUInterstageFairing.cs" />
     <Compile Include="Module\SSTUModelConstraint.cs" />

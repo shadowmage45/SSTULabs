@@ -1,14 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
-using UnityEngine;
-
+﻿using UnityEngine;
 
 namespace SSTUTools
 {
     public class SSTUInflatable : PartModule, IPartMassModifier, IPartCostModifier
     {
-        [KSPField]
-        public string animationID = string.Empty;
 
         [KSPField]
         public float deflationMult = 0.1f;
@@ -46,8 +41,15 @@ namespace SSTUTools
         [KSPField(guiName = "Required Amount", guiActiveEditor = true, guiActive = true)]
         public string requiredResourceAmount = string.Empty;
 
+        [KSPField(isPersistant = true)]
+        public string persistentState = AnimState.STOPPED_START.ToString();
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private bool initialized = false;
-        private SSTUAnimateControlled animation;
+        private AnimationModule<SSTUInflatable> animationModule;
+        private SSTUAnimateRotation rotationModule;
         private PartResourceDefinition resourceDef;
         
         [KSPEvent(guiName = "Inflate", guiActive = true, guiActiveEditor = true)]
@@ -63,19 +65,12 @@ namespace SSTUTools
                 appliedMass = inflationMass;
             }
             updateRequiredMass();
-
             if (appliedMass >= inflationMass)
             {
-                updateResourceAmounts(1.0d / deflationMult);
-                if (animation != null) { animation.setToState(AnimState.PLAYING_FORWARD); }
+                animationModule.onDeployEvent();
+                updateResourceAmounts(1.0d / deflationMult);                
                 updateCrewCapacity(inflatedCrew);
                 inflated = true;
-
-                BaseEvent evt = Events["inflateEvent"];
-                evt.guiActive = evt.guiActiveEditor = !inflated;
-                evt = Events["deflateEvent"];
-                evt.guiActiveEditor = true;
-                evt.guiActive = canDeflate;
             }
         }
 
@@ -84,23 +79,17 @@ namespace SSTUTools
         {
             if (!inflated) { return; }
             updateResourceAmounts(deflationMult);
-            if (animation != null) { animation.setToState(AnimState.PLAYING_BACKWARD); }
+            animationModule.onRetractEvent();
             updateCrewCapacity(deflatedCrew);
             inflated = false;
-
             appliedMass = 0;
             updateRequiredMass();
-
-            BaseEvent evt = Events["inflateEvent"];
-            evt.guiActive = evt.guiActiveEditor = true;
-
-            evt = Events["deflateEvent"];
-            evt.guiActive = evt.guiActiveEditor = false;
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             init();
         }
 
@@ -121,6 +110,14 @@ namespace SSTUTools
             if (!inflated && !initializedDefualts)
             {
                 updateResourceAmounts(deflationMult);
+            }
+            if (rotationModule == null)
+            {
+                rotationModule = part.GetComponent<SSTUAnimateRotation>();
+                if (rotationModule != null)
+                {
+                    setupRotationModule(rotationModule);
+                }
             }
             initializedDefualts = true;
             SSTUModInterop.addContainerUpdatedCallback(onContainerUpdated);
@@ -159,19 +156,13 @@ namespace SSTUTools
             {
                 updateCrewCapacity(inflated ? inflatedCrew : deflatedCrew);
             }
-            animation = SSTUAnimateControlled.locateAnimationController(part, animationID);
-            if (animation != null)
-            {
-                AnimState state = inflated ? AnimState.STOPPED_END : AnimState.STOPPED_START;
-                animation.setToState(state);
-            }
 
-            BaseEvent evt = Events["inflateEvent"];
-            evt.guiActive = evt.guiActiveEditor = !inflated;
-            
-            evt = Events["deflateEvent"];
-            evt.guiActiveEditor = inflated;
-            evt.guiActive = inflated && (HighLogic.LoadedSceneIsEditor || canDeflate);
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+
+            animationModule = new AnimationModule<SSTUInflatable>(part, this, Fields[nameof(persistentState)], null, Events[nameof(inflateEvent)], Events[nameof(deflateEvent)]);
+            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
 
             resourceDef = PartResourceLibrary.Instance.GetDefinition(resourceName);
             if (resourceDef == null)
@@ -179,6 +170,26 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: Could not locate resource for name: " + resourceName + " for " + this.name);
             }
             updateRequiredMass();
+        }
+
+        /// <summary>
+        /// To be called from Start() method on either/both this module and from SSTUAnimateRotation.  Ensures synced status between the deploy animation, and the rotation.
+        /// </summary>
+        /// <param name="module"></param>
+        public void setupRotationModule(SSTUAnimateRotation module)
+        {
+            //this module was not yet initialized
+            if (animationModule == null) { return; }
+            rotationModule = module;
+            rotationModule.initializeRotationModule(animationModule.animState);
+        }
+
+        private void onAnimationStateChange(AnimState newState)
+        {
+            if (rotationModule != null)
+            {
+                rotationModule.onAnimationStateChange(newState);
+            }
         }
 
         private void onContainerUpdated(SSTUVolumeContainer vc)
@@ -211,37 +222,9 @@ namespace SSTUTools
             appliedMass += (float) unitsUsed * resourceDef.density;
         }
 
-        /// <summary>
-        /// most functioniality derived from TweakScale ScaleCrewCapacity method
-        /// https://github.com/pellinor0/TweakScale/blob/master/Scale.cs#L279
-        /// </summary>
-        /// <param name="capacity"></param>
         private void updateCrewCapacity(int capacity)
         {
-            MonoBehaviour.print("Setting crew capacity to: " + capacity + " from current: " + part.CrewCapacity);
             part.CrewCapacity = capacity;
-
-            //if (!HighLogic.LoadedSceneIsEditor) { return; }//only run the following block in the editor; it updates the crew-assignment GUI
-            //if (EditorLogic.fetch.editorScreen == EditorScreen.Crew)
-            //{
-            //    EditorLogic.fetch.SelectPanelParts();
-            //    //EditorLogic.fetch.SelectPanelCrew(); //TODO toggle back to crew select? -- NOPE, causes KSP to explode as it tries to render both GUIs simultaneously
-            //}
-
-            //VesselCrewManifest vcm = ShipConstruction.ShipManifest;
-            //if (vcm == null) { return; }
-            //PartCrewManifest pcm = vcm.GetPartCrewManifest(part.craftID);
-            //if (pcm == null) { return; }
-            //int len = pcm.partCrew.Length;
-            //for (int i = 0; i < len; i++)
-            //{
-            //    pcm.RemoveCrewFromSeat(i);
-            //}
-            //pcm.partCrew = new string[capacity];
-            //for (int i = 0; i < capacity; i++)
-            //{
-            //    pcm.partCrew[i] = "";
-            //}
         }
 
         private void updateRequiredMass()

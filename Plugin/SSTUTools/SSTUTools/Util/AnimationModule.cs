@@ -79,7 +79,15 @@ namespace SSTUTools
 
         public float animTime
         {
-            get { return animationPosition; }
+            get
+            {
+                return animationPosition;
+            }
+            set
+            {
+                animationPosition = value;
+                setAnimTime(value, true);
+            }
         }
 
         public AnimState animState
@@ -91,6 +99,11 @@ namespace SSTUTools
         {
             get { return persistentDataField.GetValue<string>(module); }
             set { persistentDataField.SetValue(value, module); }
+        }
+
+        public bool enabled
+        {
+            get { return animationData.Count > 0; }
         }
         
         public AnimationModule(Part part, T module, BaseField persistence, BaseField deployLimit, BaseEvent deploy, BaseEvent retract)
@@ -252,7 +265,7 @@ namespace SSTUTools
             {
                 bool playing = false;
                 int len = animationData.Count;
-                float time = animTime;
+                float time = animationPosition;
                 for (int i = 0; i < len; i++)
                 {
                     if (animationData[i].updateAnimation(out time))

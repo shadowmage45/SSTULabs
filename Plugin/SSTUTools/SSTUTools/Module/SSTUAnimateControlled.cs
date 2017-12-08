@@ -13,66 +13,48 @@ namespace SSTUTools
     /// </summary>
     public class SSTUAnimateControlled : PartModule, IScalarModule
     {
-        //lookup value for external modules to find the proper animation module when multiple anim modules are in use
+        /// <summary>
+        /// IScalarModule animationID -- used by some stock systems to locate an animated part/model/module
+        /// </summary>
         [KSPField]
         public string animationID = "animation";
-
-        [KSPField]
-        public float animationSpeed = 1;
-
-        [KSPField]
-        public int animationLayer = 1;
 
         [KSPField(isPersistant = true)]
         public float animationMaxDeploy = 1;
 
-        [KSPField]
-        public String animationName;
-
         [KSPField(isPersistant = true)]
         public String persistentState = AnimState.STOPPED_START.ToString();
 
-        [KSPField]
-        public bool externalInit = false;
-
         [Persistent]
         public string configNodeData = string.Empty;
-        
-        private AnimationController controller;
+
+        private AnimationModule<SSTUAnimateControlled> animationModule;
 
         private EventData<float> evt1;
 
         private EventData<float, float> evt2;
 
-        private List<ISSTUAnimatedModule> callbacks = new List<ISSTUAnimatedModule>();
-        
-        //Static method for use by other modules to locate a control module; reduces code duplication in animation controlling modules
-        public static SSTUAnimateControlled setupAnimationController(Part part, string id, ISSTUAnimatedModule module)
+        #region REGION - GUI Interaction Methods
+
+        [KSPAction("Toggle", KSPActionGroup.Light)]
+        public void toggleAnimationAction(KSPActionParam param)
         {
-            SSTUAnimateControlled controller = locateAnimationController(part, id);
-            if (controller != null && module != null)
-            {
-                controller.callbacks.AddUnique(module);
-            }
-            return controller;
+            animationModule.onToggleAction(param);
         }
 
-        public static SSTUAnimateControlled locateAnimationController(Part part, string id)
+        [KSPEvent(guiName = "Enable", guiActive = true, guiActiveEditor = true)]
+        public void enableAnimationEvent()
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return null;
-            }
-            SSTUAnimateControlled[] potentialAnimators = part.GetComponents<SSTUAnimateControlled>();
-            foreach (SSTUAnimateControlled ac in potentialAnimators)
-            {
-                if (ac.animationID == id)
-                {
-                    return ac;
-                }
-            }
-            return null;
+            animationModule.onDeployEvent();
         }
+
+        [KSPEvent(guiName = "Disable", guiActive = true, guiActiveEditor = true)]
+        public void disableAnimationEvent()
+        {
+            animationModule.onRetractEvent();
+        }
+
+        #endregion ENDREGION - GUI Interaction Methods
 
         #region REGION - IScalarModule fields/methods
 
@@ -88,7 +70,7 @@ namespace SSTUTools
         {            
             get
             {
-                return controller.getCurrentTime();
+                return animationModule.animTime;
             }
         }
 
@@ -96,7 +78,7 @@ namespace SSTUTools
         {
             get
             {
-                return true;
+                return animationModule.enabled;
             }
         }
 
@@ -118,23 +100,23 @@ namespace SSTUTools
 
         public void SetScalar(float t)
         {
-            controller.setCurrentTime(t);
+            animationModule.animTime = t;
         }
 
         public void SetUIRead(bool state)
         {
-            //NOOP
+            //TODO
         }
 
         public void SetUIWrite(bool state)
         {
-            //NOOP
+            //TODO
         }
 
         public bool IsMoving()
         {
-            AnimState state = controller.animationState;
-            return state == AnimState.STOPPED_END || state == AnimState.STOPPED_START;
+            AnimState state = animationModule.animState;
+            return state != AnimState.STOPPED_END && state != AnimState.STOPPED_START;
         }
 
         #endregion ENDREGION - IScalarModule fields/methods
@@ -149,162 +131,35 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            if (controller == null && !externalInit)
-            {
-                initialize();
-            }
+            initialize();
         }
-
-        public override void OnSave(ConfigNode node)
-        {
-            base.OnSave(node);
-            if (controller != null) { persistentState = controller.animationState.ToString(); }
-            node.SetValue("persistentState", persistentState, true);
-        }
-
-        //run in OnLoad for prefab parts
-        //TODO explicitly only init on load for prefabs; all others init during OnStart...
+                
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
-            if (!externalInit)
-            {
-                initialize();
-            }
-        }
-
-        public void initializeExternal(SSTUAnimData[] animData)
-        {
-            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
-            float time = prevState == AnimState.STOPPED_START || prevState == AnimState.PLAYING_BACKWARD ? 0 : 1;
-            if (controller != null)
-            {
-                controller.clearAnimationData();
-                controller = null;
-            }
-            controller = new AnimationController(time, animationMaxDeploy);
-            controller.addAnimationData(animData);
-            controller.restorePreviousAnimationState(prevState, animationMaxDeploy);
-            controller.setStateChangeCallback(onAnimationStateChange);
-            bool enabled = moduleIsEnabled;
-            moduleIsEnabled = animData.Length > 0;
-            if (moduleIsEnabled != enabled)
-            {
-                setModuleEnabledState(moduleIsEnabled);
-            }
+            initialize();
         }
 
         private void initialize()
         {
-            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] animNodes = node.GetNodes("ANIMATION");
-            int len = animNodes.Length;
-            ConfigNode[] allNodes = null;
-            if (!String.IsNullOrEmpty(animationName))
-            {
-                allNodes = new ConfigNode[len + 1];
-                for (int i = 0; i < len; i++) { allNodes[i] = animNodes[i]; }
-                ConfigNode legacyNode = new ConfigNode("ANIMATION");
-                legacyNode.AddValue("name", animationName);
-                legacyNode.AddValue("speed", animationSpeed);
-                legacyNode.AddValue("layer", animationLayer);
-                allNodes[len] = legacyNode;
-            }
-            else
-            {
-                allNodes = animNodes;
-            }
-            if (allNodes == null) { allNodes = new ConfigNode[0]; }//should be impossible, but ensures clean init with no animations defined, without throwing un-necessary errors
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);            
+            
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            AnimState prevState = (AnimState)Enum.Parse(typeof(AnimState), persistentState);
-            float time = prevState == AnimState.STOPPED_START || prevState == AnimState.PLAYING_BACKWARD ? 0 : 1;
-            controller = new AnimationController(time, animationMaxDeploy);
-            SSTUAnimData animationData;
-            len = allNodes.Length;
-            for (int i = 0; i < len; i++)
-            {
-                animationData = new SSTUAnimData(allNodes[i], part.gameObject.transform.FindRecursive("model"));
-                controller.addAnimationData(animationData);
-            }
-            controller.restorePreviousAnimationState(prevState, 1f);
-            controller.setStateChangeCallback(onAnimationStateChange);
-        }
-
-        public void reInitialize()
-        {
-            if (controller != null)
-            {
-                controller.clearAnimationData();
-                controller = null;
-                initialize();
-            }
-            else
-            {
-                MonoBehaviour.print("Not re-initializing SSTUAnimateControlled, as module has not yet been started.");
-            }
-        }
-
-        public bool initialized() { return controller != null; }
-
-        public void addCallback(ISSTUAnimatedModule module)
-        {
-            callbacks.AddUnique(module);
-        }
-
-        public void removeCallback(ISSTUAnimatedModule module)
-        {
-            callbacks.Remove(module);
-        }
-
-        public void setModuleEnabledState(bool enabled)
-        {
-            this.moduleIsEnabled = enabled;
-            int len = this.callbacks.Count;
-            for (int i = 0; i < len; i++)
-            {
-                callbacks[i].onModuleEnableChange(enabled);
-            }
-        }
-
-        //External method to set the state; does not callback on this state change, as this is supposed to originate -from- the callback;
-        //it should be aware of its own instigated state changes
-        // note - ERROR - this ignores cases of multiple registered callbacks, the module(s) not initiating the change will not be aware of it
-        public void setToState(AnimState newState)
-        {
-            persistentState = newState.ToString();
-            if (controller != null)
-            {
-                controller.setAnimState(newState, false);
-            }
-            fireEvents(newState);
-        }
-
-        public AnimState getAnimationState()
-        {
-            return controller==null? AnimState.STOPPED_START : controller.animationState;
+            animationModule = new AnimationModule<SSTUAnimateControlled>(part, this, Fields[nameof(persistentState)], Fields[nameof(animationMaxDeploy)], Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
+            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.onAnimStateChangeCallback = onAnimStateChange;
         }
 
         public void Update()
         {
-            if (controller != null)
-            {
-                controller.updateAnimationState();
-            }
+            animationModule.updateAnimations();
         }
-        
-        /// <summary>
-        /// Internal callback from the animation controller class.  Only called when animation changes state from playing.
-        /// </summary>
-        /// <param name="newState"></param>
-        private void onAnimationStateChange(AnimState newState)
+
+        private void onAnimStateChange(AnimState newState)
         {
-            int len = callbacks.Count;
-            for (int i = 0; i < len; i++)
-            {
-                callbacks[i].onAnimationStateChange(newState);
-            }
-            persistentState = newState.ToString();
             fireEvents(newState);
         }
 
@@ -328,12 +183,6 @@ namespace SSTUTools
                     break;
             }
         }
-    }
-
-    public interface ISSTUAnimatedModule
-    {
-        void onAnimationStateChange(AnimState newState);
-        void onModuleEnableChange(bool moduleEnabled);
     }
 }
 

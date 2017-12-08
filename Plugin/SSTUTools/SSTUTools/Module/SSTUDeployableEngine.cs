@@ -6,16 +6,24 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUDeployableEngine : PartModule, ISSTUAnimatedModule
+    public class SSTUDeployableEngine : PartModule
     {
-
-        [KSPField]
-        public string animationID = string.Empty;
-
+        /// <summary>
+        /// engine ID for the engine module that this deployable engine module is responsible for
+        /// </summary>
         [KSPField]
         public string engineID = "Engine";
 
-        private SSTUAnimateControlled animationControl;
+        [KSPField(isPersistant = true)]
+        public String persistentState = AnimState.STOPPED_START.ToString();
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
+        private bool initialized = false;
+                
+        private AnimationModule<SSTUDeployableEngine> animationModule;
+
         private ModuleEnginesFX engineModule;
         
         [KSPAction("Activate Engine")]
@@ -33,38 +41,17 @@ namespace SSTUTools
         [KSPEvent(name = "deployEngineEvent", guiName = "Activate Engine", guiActive = true, guiActiveEditor = false)]
         public void deployEngineEvent()
         {
-            AnimState state = animationControl.getAnimationState();
-            if (state != AnimState.STOPPED_END)
-            {
-                setAnimationState(AnimState.PLAYING_FORWARD);
-            }
-            else
-            {
-                engineModule.Activate();
-            }
-            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
+            animationModule.onDeployEvent();
         }
 
         [KSPEvent(name = "retractEngineEvent", guiName = "Shutdown Engine", guiActive = true, guiActiveEditor = false)]
         public void retractEngineEvent()
         {
-
-            AnimState state = animationControl.getAnimationState();
-            if (state != AnimState.STOPPED_START)
-            {
-                setAnimationState(AnimState.PLAYING_BACKWARD);
-                engineModule.Shutdown();
-            }
-            else
-            {
-                engineModule.Shutdown();
-            }
-            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
+            animationModule.onRetractEvent();
         }
 
         public void Start()
         {
-            animationControl = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
             engineModule = null;
             ModuleEnginesFX[] engines = part.GetComponents<ModuleEnginesFX>();
             int len = engines.Length;
@@ -77,11 +64,9 @@ namespace SSTUTools
             }
             if (engineModule == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate engine by ID: " + engineID + " for part: " + part + " for SSTUAnimateEngineHeat.  This will cause errors during gameplay.  Setting engine to first engine module (if present)");
-                if (engines.Length > 0) { engineModule = engines[0]; }
+                MonoBehaviour.print("ERROR: Could not locate engine by ID: " + engineID + " for part: " + part + " for SSTUDeployableEngine.  This will cause errors during gameplay.  Setting engine to first engine module (if present)");                
             }
             setupEngineModuleGui();
-            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
         }
 
         public void onAnimationStateChange(AnimState newState)
@@ -91,85 +76,66 @@ namespace SSTUTools
                 engineModule.Activate();
             }
         }
-
-        public void onModuleEnableChange(bool moduleEnabled)
-        {
-            //noop
-        }
-
-        //check for control enabled and deployment status (if animated)
+        
         public override void OnActive()
         {
-            if (animationControl.getAnimationState() == AnimState.STOPPED_END)
+            if (animationModule.animState == AnimState.STOPPED_END)
             {
                 engineModule.Activate();
             }
             else
             {
-                setAnimationState(AnimState.PLAYING_FORWARD);
+                deployEngineEvent();
                 if (engineModule.EngineIgnited)
                 {
                     engineModule.Shutdown();
                 }
             }
-            setupGuiFields(animationControl.getAnimationState(), engineModule.EngineIgnited);
+        }
+
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
+            initialize();
+        }
+
+        public override void OnStart(StartState state)
+        {
+            base.OnStart(state);
+            initialize();
+        }
+
+        private void initialize()
+        {
+            if (initialized) { return; }
+            initialized = true;
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+            animationModule = new AnimationModule<SSTUDeployableEngine>(part, this, Fields[nameof(persistentState)], null, Events[nameof(deployEngineEvent)], Events[nameof(retractEngineEvent)]);
+            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.onAnimStateChangeCallback = onAnimationStateChange;
         }
 
         private void setAnimationState(AnimState state)
         {
-            AnimState currentState = animationControl.getAnimationState();
-            //exceptions below fix issues of OnActive being called by moduleEngine during startup
-            if (currentState == AnimState.STOPPED_END && state == AnimState.PLAYING_FORWARD) { return; }//don't allow deploying from deployed
-            else if (currentState == AnimState.STOPPED_START && state == AnimState.PLAYING_BACKWARD) { return; }//don't allow retracting from retracted
-            animationControl.setToState(state);
+            AnimState currentState = animationModule.animState;
+            if (state == AnimState.STOPPED_END)
+            {
+                engineModule.OnActive();
+            }
         }
 
         private void setupEngineModuleGui()
         {
-            engineModule.Events["Activate"].active = false;
-            engineModule.Events["Shutdown"].active = false;
-            engineModule.Events["Activate"].guiActive = false;
-            engineModule.Events["Shutdown"].guiActive = false;
-            engineModule.Actions["ActivateAction"].active = false;
-            engineModule.Actions["ShutdownAction"].active = false;
-            engineModule.Actions["OnAction"].active = false;
-        }
-        
-        //TODO - stuff for non-restartable and non-stoppable engines
-        private void setupGuiFields(AnimState state, bool engineActive)
-        {
-            bool isEditor = HighLogic.LoadedSceneIsEditor;
-            switch (state)
-            {
-                case AnimState.PLAYING_BACKWARD://retracting
-                    {
-                        Events["deployEngineEvent"].active = true;
-                        Events["retractEngineEvent"].active = false;
-                        break;
-                    }
-
-                case AnimState.PLAYING_FORWARD://deploying
-                    {
-                        Events["deployEngineEvent"].active = false;
-                        Events["retractEngineEvent"].active = true;
-                        break;
-                    }
-
-                case AnimState.STOPPED_END://deployed or no anim
-                    {
-                        Events["deployEngineEvent"].active = false;
-                        Events["retractEngineEvent"].active = true;
-                        break;
-                    }
-
-                case AnimState.STOPPED_START://retracted
-                    {
-                        Events["deployEngineEvent"].active = true;
-                        Events["retractEngineEvent"].active = false;
-                        break;
-                    }
-
-            }
+            engineModule.Events[nameof(engineModule.Activate)].active = false;
+            engineModule.Events[nameof(engineModule.Shutdown)].active = false;
+            engineModule.Events[nameof(engineModule.Activate)].guiActive = false;
+            engineModule.Events[nameof(engineModule.Shutdown)].guiActive = false;
+            engineModule.Actions[nameof(engineModule.ActivateAction)].active = false;
+            engineModule.Actions[nameof(engineModule.ShutdownAction)].active = false;
+            engineModule.Actions[nameof(engineModule.OnAction)].active = false;
         }
 
     }
