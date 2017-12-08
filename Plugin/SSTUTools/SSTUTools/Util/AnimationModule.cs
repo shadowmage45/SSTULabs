@@ -60,7 +60,7 @@ namespace SSTUTools
         /// <summary>
         /// Reference to the animation data container from the ModelDefinition.  Stores info on UI labels and field availability.
         /// </summary>
-        private AnimationData modelAnimationdata;
+        private AnimationData modelAnimationData;
 
         /// <summary>
         /// Internal cache of the current list of animation data blocks.
@@ -231,6 +231,7 @@ namespace SSTUTools
         /// <param name="anims"></param>
         public void setupAnimations(AnimationData anims, Transform root, int startLayer)
         {
+            modelAnimationData = anims;
             animationData.Clear();
             if (anims != null)
             {
@@ -325,29 +326,33 @@ namespace SSTUTools
         /// </summary>
         private void updateUIState()
         {
+            MonoBehaviour.print("Updating animation UI state: " + modelAnimationData);
+            MonoBehaviour.print("Anim length: " + animationData.Count);
+            MonoBehaviour.print("deploy: " + deployEvent);
+            MonoBehaviour.print("retract: " + retractEvent);
             bool moduleEnabled = animationData.Count > 0;
             bool deployEnabled = moduleEnabled && (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD);
             bool retractEnabled = moduleEnabled && (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD);
-            bool deployLimitEnabled = moduleEnabled && modelAnimationdata.deployLimitActive;
+            bool deployLimitEnabled = moduleEnabled && modelAnimationData.deployLimitActive;
 
             if (deployEvent != null)
             {
-                deployEvent.guiActive = deployEnabled && modelAnimationdata.activeFlight;
-                deployEvent.guiActiveEditor = deployEnabled && modelAnimationdata.activeEditor;
-                deployEvent.guiActiveUncommand = modelAnimationdata.activeUncommanded;
-                deployEvent.guiActiveUnfocused = modelAnimationdata.activeUnfocused;
-                deployEvent.externalToEVAOnly = modelAnimationdata.activeEVAOnly;
-                deployEvent.guiName = modelAnimationdata.deployLabel;
+                deployEvent.guiActive = deployEnabled && modelAnimationData.activeFlight;
+                deployEvent.guiActiveEditor = deployEnabled && modelAnimationData.activeEditor;
+                deployEvent.guiActiveUncommand = modelAnimationData.activeUncommanded;
+                deployEvent.guiActiveUnfocused = modelAnimationData.activeUnfocused;
+                deployEvent.externalToEVAOnly = modelAnimationData.activeEVAOnly;
+                deployEvent.guiName = modelAnimationData.deployLabel;
             }
 
             if (retractEvent != null)
             {
-                retractEvent.guiActive = retractEnabled && modelAnimationdata.activeFlight;
-                retractEvent.guiActiveEditor = retractEnabled && modelAnimationdata.activeEditor;
-                retractEvent.guiActiveUncommand = modelAnimationdata.activeUncommanded;
-                retractEvent.guiActiveUnfocused = modelAnimationdata.activeUnfocused;
-                retractEvent.externalToEVAOnly = modelAnimationdata.activeEVAOnly;
-                retractEvent.guiName = modelAnimationdata.retractLabel;
+                retractEvent.guiActive = retractEnabled && modelAnimationData.activeFlight;
+                retractEvent.guiActiveEditor = retractEnabled && modelAnimationData.activeEditor;
+                retractEvent.guiActiveUncommand = modelAnimationData.activeUncommanded;
+                retractEvent.guiActiveUnfocused = modelAnimationData.activeUnfocused;
+                retractEvent.externalToEVAOnly = modelAnimationData.activeEVAOnly;
+                retractEvent.guiName = modelAnimationData.retractLabel;
             }
             
             if (deployLimitField != null)
@@ -471,8 +476,7 @@ namespace SSTUTools
             activeEVAOnly = node.GetBoolValue("activeEVAOnly", false);
 
             //the actual animation data for the model
-            ConfigNode[] animNodes = node.GetNodes("ANIMATION");
-            mads = ModelAnimationData.parseAnimationData(animNodes);
+            mads = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
         }
 
         /// <summary>

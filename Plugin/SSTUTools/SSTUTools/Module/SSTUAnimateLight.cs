@@ -145,16 +145,8 @@ namespace SSTUTools
 
         public static void createEmissiveAnimation(string clipName, Transform transform, FloatCurve r, FloatCurve g, FloatCurve b)
         {
-            createAnimation(clipName, transform, typeof(Material), "_EmissiveColor", r, g, b);
-        }
-
-        public static void createLightAnimation(string clipName, Transform transform, FloatCurve r, FloatCurve g, FloatCurve b)
-        {
-            createAnimation(clipName, transform, typeof(Light), "color", r, g, b);
-        }
-
-        public static void createAnimation(string clipName, Transform transform, Type type, string propName, FloatCurve r, FloatCurve g, FloatCurve b)
-        {
+            Type type = typeof(Material);
+            string propName = "_EmissiveColor";
             Animation animationComponent = transform.GetComponent<Animation>();
             if (animationComponent == null)
             {
@@ -165,10 +157,32 @@ namespace SSTUTools
             AnimationClip clip = new AnimationClip();
             clip.name = clipName;
             clip.legacy = true;
-            clip.SetCurve("", type, propName+".r", r.Curve);
-            clip.SetCurve("", type, propName+".g", g.Curve);
-            clip.SetCurve("", type, propName+".b", b.Curve);
+            clip.SetCurve("", type, propName + ".r", r.Curve);
+            clip.SetCurve("", type, propName + ".g", g.Curve);
+            clip.SetCurve("", type, propName + ".b", b.Curve);
+            clip.SetCurve("", type, propName + ".a", AnimationCurve.Linear(0, 1, 1, 1));
+            animationComponent.AddClip(clip, clip.name);
+        }
 
+        public static void createLightAnimation(string clipName, Transform transform, FloatCurve r, FloatCurve g, FloatCurve b)
+        {
+            Type type = typeof(Light);
+            string propName = "m_color";
+
+            Animation animationComponent = transform.GetComponent<Animation>();
+            if (animationComponent == null)
+            {
+                animationComponent = transform.gameObject.AddComponent<Animation>();
+                animationComponent.playAutomatically = false;
+            }
+
+            AnimationClip clip = new AnimationClip();
+            clip.name = clipName;
+            clip.legacy = true;
+            clip.SetCurve("", type, propName + ".r", r.Curve);
+            clip.SetCurve("", type, propName + ".g", g.Curve);
+            clip.SetCurve("", type, propName + ".b", b.Curve);
+            clip.SetCurve("", type, "m_Enabled", AnimationCurve.Linear(0, 0, 0.001f, 1));
             animationComponent.AddClip(clip, clip.name);
         }
         
@@ -186,7 +200,6 @@ namespace SSTUTools
     {
         public readonly string name;
         public readonly string transformName;
-        public readonly int layer = 0;
         public readonly FloatCurve redCurve;
         public readonly FloatCurve greenCurve;
         public readonly FloatCurve blueCurve;
@@ -195,8 +208,7 @@ namespace SSTUTools
         {
             this.name = node.GetStringValue("name", "emissiveAnimation");
             this.transformName = node.GetStringValue("transformName");
-            this.layer = node.GetIntValue("layer", 0);
-            greenCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
+            redCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
             greenCurve = node.HasNode("greenCurve") ? node.GetFloatCurve("greenCurve") : SSTUAnimateLight.createDefaultCurve();
             blueCurve = node.HasNode("blueCurve") ? node.GetFloatCurve("blueCurve") : SSTUAnimateLight.createDefaultCurve();
         }
@@ -233,7 +245,7 @@ namespace SSTUTools
             range = node.GetFloatValue("range");
             angle = node.GetFloatValue("angle");
             type = (LightType)Enum.Parse(typeof(LightType), node.GetStringValue("type", LightType.Point.ToString()));
-            greenCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
+            redCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
             greenCurve = node.HasNode("greenCurve") ? node.GetFloatCurve("greenCurve") : SSTUAnimateLight.createDefaultCurve();
             blueCurve = node.HasNode("blueCurve") ? node.GetFloatCurve("blueCurve") : SSTUAnimateLight.createDefaultCurve();
         }

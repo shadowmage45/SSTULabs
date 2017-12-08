@@ -208,14 +208,12 @@ namespace SSTUTools
     public class ModelAnimationData
     {
         public readonly string animationName;
-        public readonly string transformName;
         public readonly float speed;
         public readonly bool isLoop;
 
         public ModelAnimationData(ConfigNode node)
         {
             animationName = node.GetStringValue("name");
-            transformName = node.GetStringValue("transform", string.Empty);
             speed = node.GetFloatValue("speed", 1f);
             isLoop = node.GetBoolValue("loop", false);
         }
