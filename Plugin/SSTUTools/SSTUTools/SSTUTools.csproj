@@ -101,10 +101,8 @@
     <Compile Include="Module\SSTUModelFix.cs" />
     <Compile Include="Module\SSTUModelSwitch.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
-    <Compile Include="Util\AnimationModule.cs" />
     <Compile Include="Util\Interfaces.cs" />
     <Compile Include="Util\ModelModule.cs" />
-    <Compile Include="Util\SolarModule.cs" />
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
     <Compile Include="WIPModule\SSTULinearMultiDock.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
