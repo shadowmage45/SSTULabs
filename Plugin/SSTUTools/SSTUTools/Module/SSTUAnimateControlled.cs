@@ -36,7 +36,7 @@ namespace SSTUTools
 
         #region REGION - GUI Interaction Methods
 
-        [KSPAction("Toggle", KSPActionGroup.Light)]
+        [KSPAction("Toggle")]
         public void toggleAnimationAction(KSPActionParam param)
         {
             animationModule.onToggleAction(param);

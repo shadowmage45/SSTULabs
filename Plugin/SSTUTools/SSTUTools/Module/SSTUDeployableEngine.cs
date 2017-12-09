@@ -106,6 +106,13 @@ namespace SSTUTools
             initialize();
         }
 
+        public void reInitialize()
+        {
+            initialized = false;
+            animationModule = null;
+            initialize();
+        }
+
         private void initialize()
         {
             if (initialized) { return; }

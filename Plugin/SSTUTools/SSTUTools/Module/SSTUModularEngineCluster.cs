@@ -805,14 +805,14 @@ namespace SSTUTools
             }
 
             //animations need to be updated to find the new animations for the updated models
-            SSTUAnimateControlled[] anims = part.GetComponents<SSTUAnimateControlled>();
-            foreach (SSTUAnimateControlled controlled in anims)
+            SSTUDeployableEngine deployable = part.GetComponent<SSTUDeployableEngine>();
+            if (deployable != null)
             {
-                controlled.reInitialize();
+                deployable.reInitialize();
             }
 
-            SSTUAnimateEngineHeat[] heatAnims = part.GetComponents<SSTUAnimateEngineHeat>();
-            foreach (SSTUAnimateEngineHeat heatAnim in heatAnims)
+            SSTUAnimateEngineHeat heatAnim = part.GetComponent<SSTUAnimateEngineHeat>();
+            if (heatAnim != null)
             {
                 heatAnim.reInitialize();
             }

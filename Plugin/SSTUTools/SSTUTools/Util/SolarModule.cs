@@ -30,6 +30,16 @@ namespace SSTUTools
         /// </summary>
         private bool closingLerp;
 
+        /*
+        
+            this.temperatureEfficCurve = new FloatCurve();
+            this.temperatureEfficCurve.Add(4f, 1.2f, 0f, -0.0005725837f);
+            this.temperatureEfficCurve.Add(300f, 1f, -0.0008277721f, -0.0008277721f);
+            this.temperatureEfficCurve.Add(1200f, 0.1f, -0.0003626566f, -0.0003626566f);
+            this.temperatureEfficCurve.Add(2500f, 0.01f, 0f, 0f);
+            //uses part-temp as input
+            */
+
         private string panelStatus
         {
             get { return panelStatusField.GetValue<string>(module); }
