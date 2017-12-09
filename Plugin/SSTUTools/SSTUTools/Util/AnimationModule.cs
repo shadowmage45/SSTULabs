@@ -72,6 +72,11 @@ namespace SSTUTools
         /// </summary>
         private float animationPosition = 0f;
 
+        /// <summary>
+        /// Cache of info for display through GetInfo()
+        /// </summary>
+        private string moduleInfo = string.Empty;
+
         public float deployLimit
         {
             get { return deployLimitField == null ? 1.0f : deployLimitField.GetValue<float>(module); }
@@ -233,6 +238,11 @@ namespace SSTUTools
             }
         }
 
+        public virtual string getModuleInfo()
+        {
+            return moduleInfo;
+        }
+
         #endregion ENDREGION - UI INTERACTION
 
         #region REGION - Initialization and Updating
@@ -253,6 +263,7 @@ namespace SSTUTools
             setAnimState(animationData.Count <= 0 ? AnimState.STOPPED_END : animationState);
             setAnimTime(animationPosition);
             updateUIState();
+            updateModuleInfo();
         }
 
         /// <summary>
@@ -282,6 +293,23 @@ namespace SSTUTools
                 {
                     AnimState newState = animationState == AnimState.PLAYING_BACKWARD ? AnimState.STOPPED_START : AnimState.STOPPED_END;
                     onAnimationStateChange(newState);
+                }
+            }
+        }
+
+        public virtual void updateModuleInfo()
+        {
+            if (modelAnimationData != null)
+            {
+                moduleInfo = "Animation\n";
+                moduleInfo += modelAnimationData.deployLabel + "\n";
+                if (modelAnimationData.oneShot)
+                {
+                    moduleInfo += "Single Use Only";
+                }
+                if (modelAnimationData.looping)
+                {
+                    moduleInfo += "Looping";
                 }
             }
         }
@@ -473,6 +501,9 @@ namespace SSTUTools
         public readonly bool activeUnfocused;
         public readonly bool activeUncommanded;
         public readonly bool activeEVAOnly;
+        public readonly float unfocusedRange;
+        public readonly bool oneShot;
+        public readonly bool looping;
 
         private ModelAnimationData[] mads;
 
@@ -487,7 +518,9 @@ namespace SSTUTools
             activeUnfocused = node.GetBoolValue("activeUnfocused", false);
             activeUncommanded = node.GetBoolValue("activeUncommanded", false);
             activeEVAOnly = node.GetBoolValue("activeEVAOnly", false);
-
+            unfocusedRange = node.GetFloatValue("unfocusedRange", 4f);
+            oneShot = node.GetBoolValue("oneShot", false);
+            looping = node.GetBoolValue("looping", false);
             //the actual animation data for the model
             mads = ModelAnimationData.parseAnimationData(node.GetNodes("ANIMATION"));
         }
