@@ -1007,38 +1007,18 @@ namespace SSTUTools
     /// </summary>
     public class SolarModelData : SingleModelData
     {
-
-        public readonly string pivotNames;
-        public readonly string sunNames;
-        public readonly float energy;
-        public readonly string sunAxis;
-        public readonly bool panelsEnabled = true;
-
         private GameObject[] models;
 
         public SolarPosition[] positions;
 
         public SolarModelData(ConfigNode node) : base(node)
         {
-            ConfigNode solarNode = modelDefinition.configNode.GetNode("SOLARDATA");
-            if (solarNode == null)
+            ConfigNode[] posNodes = node.GetNodes("POSITION");
+            int len = posNodes.Length;
+            positions = new SolarPosition[len];
+            for (int i = 0; i < len; i++)
             {
-                panelsEnabled = false;
-            }
-            if (panelsEnabled)
-            {
-                pivotNames = solarNode.GetStringValue("pivotNames");
-                sunNames = solarNode.GetStringValue("sunNames");
-                panelsEnabled = solarNode.GetBoolValue("enabled");
-                sunAxis = solarNode.GetStringValue("sunAxis", SSTUSolarPanelDeployable.Axis.ZPlus.ToString());
-                energy = node.GetFloatValue("energy", solarNode.GetFloatValue("energy"));//allow local override of energy
-                ConfigNode[] posNodes = node.GetNodes("POSITION");
-                int len = posNodes.Length;
-                positions = new SolarPosition[len];
-                for (int i = 0; i < len; i++)
-                {
-                    positions[i] = new SolarPosition(posNodes[i]);
-                }
+                positions[i] = new SolarPosition(posNodes[i]);
             }
         }
 
@@ -1101,7 +1081,7 @@ namespace SSTUTools
 
         public ConfigNode getSolarData()
         {
-            ConfigNode mergedNode = new ConfigNode("SOLAR");
+            ConfigNode mergedNode = new ConfigNode("SOLARDATA");
             ConfigNode[] prevPanelNodes = modelDefinition.solarData.GetNodes("PANEL");
             int len2 = prevPanelNodes.Length;
             for (int i = 0; i < len2; i++)

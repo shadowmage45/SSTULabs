@@ -50,7 +50,7 @@ namespace SSTUTools
         public float rotation = 0f;
 
         private bool initialized = false;
-        private ISSTUAnimatedModule inflatable;
+        private SSTUInflatable inflatable;
         private Transform[] transforms;
         private Transform[] secondaryTransforms;
 
