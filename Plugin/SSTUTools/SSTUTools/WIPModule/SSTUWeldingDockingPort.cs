@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SSTUWeldingDockingPort : PartModule, IPartMassModifier, IPartCostModifier, ISSTUAnimatedModule
+    public class SSTUWeldingDockingPort : PartModule, IPartMassModifier, IPartCostModifier
     {        
         [KSPField]
         public String weldNodeName = "bottom";
@@ -41,10 +41,34 @@ namespace SSTUTools
          UI_Toggle(enabledText = "Enabled", disabledText = "Disabled", suppressEditorShipModified = true)]
         public bool enableSnap = false;
 
+        [KSPField(isPersistant = true)]
+        public String persistentState = AnimState.STOPPED_START.ToString();
+
+        [Persistent]
+        public string configNodeData = string.Empty;
+
         private float modifiedMass;
         private float modifiedCost;
         private bool initialized = false;
-        private SSTUAnimateControlled animation;
+        private AnimationModule<SSTUWeldingDockingPort> animationModule;
+
+        [KSPAction("Toggle")]
+        public void toggleAnimationAction(KSPActionParam param)
+        {
+            animationModule.onToggleAction(param);
+        }
+
+        [KSPEvent(guiName = "Enable", guiActive = true, guiActiveEditor = true)]
+        public void enableAnimationEvent()
+        {
+            animationModule.onDeployEvent();
+        }
+
+        [KSPEvent(guiName = "Disable", guiActive = true, guiActiveEditor = true)]
+        public void disableAnimationEvent()
+        {
+            animationModule.onRetractEvent();
+        }
 
         [KSPEvent(guiName = "Weld", guiActive = true)]
         public void weldEvent()
@@ -109,7 +133,6 @@ namespace SSTUTools
             ModuleDockingNode mdn = part.GetComponent<ModuleDockingNode>();
             mdn.snapOffset = snapAngle;
             mdn.snapRotation = enableSnap;
-            MonoBehaviour.print("Set docking node module to snap angle: " + snapAngle + " enabled: " + enableSnap);
         }
 
         private void onSnapChanged(BaseField field, System.Object obj)
@@ -117,12 +140,12 @@ namespace SSTUTools
             ModuleDockingNode mdn = part.GetComponent<ModuleDockingNode>();
             mdn.snapOffset = snapAngle;
             mdn.snapRotation = enableSnap;
-            MonoBehaviour.print("Set docking node module to snap angle: " + snapAngle + " enabled: " + enableSnap);
         }
 
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             initialize();
         }
 
@@ -151,15 +174,10 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (!string.IsNullOrEmpty(animationID))
-            {
-                animation = SSTUAnimateControlled.setupAnimationController(part, animationID, this);
-            }
             updateGUI();
             ModuleDockingNode mdn = part.GetComponent<ModuleDockingNode>();
             mdn.snapOffset = snapAngle;
             mdn.snapRotation = enableSnap;
-            MonoBehaviour.print("Set docking node module to snap angle: " + snapAngle + " enabled: " + enableSnap);
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
@@ -187,11 +205,26 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }            
-            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }    
+            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }
+
+            ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+
+            animationModule = new AnimationModule<SSTUWeldingDockingPort>(part, this, Fields[nameof(persistentState)], null, Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
+            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.onAnimStateChangeCallback = onAnimStateChange;
+
             updateModelScale();
             updateDragCubes();
             updatePartCost();
             updatePartMass();
+        }
+
+        private void onAnimStateChange(AnimState newState)
+        {
+            updateGUI();
         }
 
         private void updateDragCubes()
@@ -227,7 +260,6 @@ namespace SSTUTools
             Part p = getBasePart();
             if (p != null)
             {
-                MonoBehaviour.print("Decoupling from base part: " + p);
                 if (p == part.parent)//decouple this
                 {
                     part.decouple(0);
@@ -282,7 +314,6 @@ namespace SSTUTools
 
         private void setupPartAttachNodes(Part thisWeld, Part otherWeld, AttachNode thisNode, AttachNode otherNode)
         {
-            MonoBehaviour.print("weld parentage: " + thisWeld.parent + " :: " + otherWeld.parent);
             thisNode.attachedPart = otherWeld;
             otherNode.attachedPart = thisWeld;
 
@@ -295,28 +326,15 @@ namespace SSTUTools
             part.explode();
         }
 
-        public void onAnimationStateChange(AnimState newState)
-        {
-            updateGUI();
-        }
-
-        public void onModuleEnableChange(bool moduleEnabled)
-        {
-            //noop
-        }
-
         private void updateGUI()
         {
             bool enabled = true;
-            if (animation != null)
-            {
-                AnimState state = animation.getAnimationState();
-                enabled = state == AnimState.STOPPED_END && HighLogic.LoadedSceneIsFlight;
-            }
+            AnimState state = animationModule.animState;
+            enabled = state == AnimState.STOPPED_END && HighLogic.LoadedSceneIsFlight;
             ModuleDockingNode mdn = part.GetComponent<ModuleDockingNode>();
             if (mdn == null) { enabled = false; }
             else if(mdn.otherNode == null) { enabled = false; }
-            Events["weldEvent"].guiActive = enabled;
+            Events[nameof(weldEvent)].guiActive = enabled;
 
             //TODO update animateUsable GUI to disable the 'extend' buttons when docking node is docked
         }
