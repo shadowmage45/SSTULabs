@@ -580,7 +580,7 @@ namespace SSTUTools
             {
                 SSTUResourceList resources = new SSTUResourceList();
                 fuelType.addResources(resources, volume);
-                resources.setResourcesToPart(part);
+                resources.setResourcesToPart(part, 1, false);
             }
         }
 

@@ -68,7 +68,7 @@ namespace SSTUTools
             if (appliedMass >= inflationMass)
             {
                 animationModule.onDeployEvent();
-                updateResourceAmounts(1.0d / deflationMult);                
+                updateResourceAmounts(1.0f);
                 updateCrewCapacity(inflatedCrew);
                 inflated = true;
             }
@@ -107,9 +107,9 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (!inflated && !initializedDefualts)
+            if (!initializedDefualts)
             {
-                updateResourceAmounts(deflationMult);
+                updateResourceAmounts(inflated? 1.0f : deflationMult);
             }
             if (rotationModule == null)
             {
@@ -120,12 +120,6 @@ namespace SSTUTools
                 }
             }
             initializedDefualts = true;
-            SSTUModInterop.addContainerUpdatedCallback(onContainerUpdated);
-        }
-
-        public void OnDestroy()
-        {
-            SSTUModInterop.removeContainerUpdatedCallback(onContainerUpdated);
         }
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
@@ -192,22 +186,11 @@ namespace SSTUTools
             }
         }
 
-        private void onContainerUpdated(SSTUVolumeContainer vc)
+        private void updateResourceAmounts(float mult)
         {
-            if (vc.part == part && !inflated)
-            {
-                updateResourceAmounts(deflationMult);
-            }            
-        }
-
-        private void updateResourceAmounts(double mult)
-        {
-            int len = part.Resources.Count;
-            for (int i = 0; i < len; i++)
-            {
-                part.Resources[i].maxAmount *= mult;
-            }
-            SSTUModInterop.updatePartResourceDisplay(part);
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            vc.inflationMultiplier = mult;
+            vc.onVolumeUpdated(vc.volume);
         }
 
         private void consumeResources()
