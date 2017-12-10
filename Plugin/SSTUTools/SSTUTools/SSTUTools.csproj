@@ -116,7 +116,6 @@
     <Compile Include="Module\SSTUModularStationCore.cs" />
     <Compile Include="Module\SSTUResourceBoiloff.cs" />
     <Compile Include="Module\SSTUVolumeContainer.cs" />
-    <Compile Include="Util\AnimationController.cs" />
     <Compile Include="Util\SSTUEngineLayout.cs" />
     <Compile Include="Util\VolumeContainer.cs" />
     <Compile Include="WIPModule\SSTUCollisionDebug.cs" />
