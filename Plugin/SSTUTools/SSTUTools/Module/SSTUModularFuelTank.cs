@@ -36,6 +36,15 @@ namespace SSTUTools
         public float bottomAdapterRatio = 1f;
 
         [KSPField]
+        public int noseAnimationLayer = 3;
+
+        [KSPField]
+        public int coreAnimationLayer = 5;
+
+        [KSPField]
+        public int mountAnimationLayer = 7;
+
+        [KSPField]
         public String topManagedNodeNames = "top, top2, top3, top4";
 
         [KSPField]
@@ -49,15 +58,6 @@ namespace SSTUTools
 
         [KSPField]
         public bool subtractCost = false;
-
-        [KSPField]
-        public string noseAnimationID = string.Empty;
-
-        [KSPField]
-        public string bodyAnimationID = string.Empty;
-
-        [KSPField]
-        public string mountAnimationID = string.Empty;
 
         // The 'currentXXX' fields are used in the config to define the default values for initialization purposes; else if they are empty/null, they are set to the first available of the specified type
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Body Length"),
@@ -96,6 +96,19 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
+        //persistent config fields and UI controls for deploy limits for nose, core, and mount animation modules
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float topAnimationDeployLimit = 1f;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Core Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float coreAnimationDeployLimit = 1f;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Bottom Deploy Limit"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float bottomAnimationDeployLimit = 1f;
+
         /// <summary>
         /// Used solely to track if volumeContainer has been initialized with the volume for this MFT; 
         /// checked and updated during OnStart, and should generally only run in the editor the first
@@ -112,7 +125,15 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true)]
         public string mountModuleData = string.Empty;
-        
+
+        //persistence data for animation modules, stores animation state
+        [KSPField(isPersistant = true)]
+        public string topAnimationPersistentData = string.Empty;
+        [KSPField(isPersistant = true)]
+        public string coreAnimationPersistentData = string.Empty;
+        [KSPField(isPersistant = true)]
+        public string bottomAnimationPersistentData = string.Empty;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -136,6 +157,10 @@ namespace SSTUTools
         protected ModelModule<SingleModelData, SSTUModularFuelTank> noseModule;
         protected ModelModule<SingleModelData, SSTUModularFuelTank> mountModule;
 
+        AnimationModule<SSTUModularFuelTank> topAnimationModule;
+        AnimationModule<SSTUModularFuelTank> coreAnimationModule;
+        AnimationModule<SSTUModularFuelTank> bottomAnimationModule;
+
         protected String[] topNodeNames;
         protected String[] bottomNodeNames;
 
@@ -147,6 +172,33 @@ namespace SSTUTools
         #endregion
 
         #region REGION - GUI Events/Interaction methods
+
+        [KSPEvent]
+        public void topDeployEvent() { topAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void coreDeployEvent() { coreAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void bottomDeployEvent() { bottomAnimationModule.onDeployEvent(); }
+
+        [KSPEvent]
+        public void topRetractEvent() { topAnimationModule.onRetractEvent(); }
+
+        [KSPEvent]
+        public void coreRetractEvent() { coreAnimationModule.onRetractEvent(); }
+
+        [KSPEvent]
+        public void bottomRetractEvent() { bottomAnimationModule.onRetractEvent(); }
+
+        [KSPAction]
+        public void topToggleAction(KSPActionParam param) { topAnimationModule.onToggleAction(param); }
+
+        [KSPAction]
+        public void coreToggleAction(KSPActionParam param) { coreAnimationModule.onToggleAction(param); }
+
+        [KSPAction]
+        public void bottomToggleAction(KSPActionParam param) { bottomAnimationModule.onToggleAction(param); }
 
         private void updateAvailableVariants(bool useDefaultIfInvalid)
         {
@@ -258,7 +310,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.noseAnimationID, m.noseModule.model, 1);
+                    m.updateAnimationControl(m.topAnimationModule, m.noseModule, m.noseAnimationLayer);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -275,7 +327,7 @@ namespace SSTUTools
                     }
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
-                    m.updateAnimationControl(m.bodyAnimationID, m.tankModule.model, 3);
+                    m.updateAnimationControl(m.coreAnimationModule, m.tankModule, m.coreAnimationLayer);
                     m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -288,7 +340,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.mountAnimationID, m.mountModule.model, 5);
+                    m.updateAnimationControl(m.bottomAnimationModule, m.mountModule, m.mountAnimationLayer);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -318,10 +370,14 @@ namespace SSTUTools
                 initializedResources = true;
                 updateContainerVolume();
             }
-            updateAnimationControl(noseAnimationID, noseModule.model, 1);
-            updateAnimationControl(bodyAnimationID, tankModule.model, 3);
-            updateAnimationControl(mountAnimationID, mountModule.model, 5);
             SSTUModInterop.onPartGeometryUpdate(part, true);
+        }
+
+        public void Update()
+        {
+            topAnimationModule.updateAnimations();
+            coreAnimationModule.updateAnimations();
+            bottomAnimationModule.updateAnimations();
         }
         
         /// <summary>
@@ -330,30 +386,6 @@ namespace SSTUTools
         /// <returns></returns>
         public override string GetInfo()
         {
-            //Shader maskedIconShader = SSTUDatabase.getShader("SSTU/MaskedIcon");
-            //Transform modelMesh;
-            //Transform modelRoot;
-            //Renderer iconRenderer;
-            //Renderer modelRenderer;
-            //if (part.partInfo != null && part.partInfo.iconPrefab != null)
-            //{
-            //    modelRoot = part.transform.FindRecursive("model");
-            //    Renderer[] rs = part.partInfo.iconPrefab.GetComponentsInChildren<Renderer>();
-            //    int len = rs.Length;
-            //    for (int i = 0; i < len; i++)
-            //    {
-            //        iconRenderer = rs[i];
-            //        modelMesh = modelRoot.FindRecursive(iconRenderer.name);
-            //        if (modelMesh != null)
-            //        {
-            //            modelRenderer = modelMesh.GetComponent<Renderer>();
-            //            if (modelRenderer.sharedMaterial.shader.name.Equals("SSTU/Masked"))
-            //            {
-            //                iconRenderer.sharedMaterial.shader = maskedIconShader;
-            //            }
-            //        }                    
-            //    }
-            //}
             return "This fuel tank has configurable height, diameter, mount, and nosecone.";
         }
 
@@ -559,6 +591,19 @@ namespace SSTUTools
             };
             mountModule.setupModelList(mounts);
             mountModule.setupModel();
+
+            //animation-module setup/initialization
+            topAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(topAnimationPersistentData)], Fields[nameof(topAnimationDeployLimit)], Events[nameof(topDeployEvent)], Events[nameof(topRetractEvent)]);
+            topAnimationModule.getSymmetryModule = m => m.topAnimationModule;
+            topAnimationModule.setupAnimations(noseModule.animationData, noseModule.root, noseAnimationLayer);
+
+            coreAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(coreAnimationPersistentData)], Fields[nameof(coreAnimationDeployLimit)], Events[nameof(coreDeployEvent)], Events[nameof(coreRetractEvent)]);
+            coreAnimationModule.getSymmetryModule = m => m.coreAnimationModule;
+            coreAnimationModule.setupAnimations(tankModule.animationData, tankModule.root, coreAnimationLayer);
+
+            bottomAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(bottomAnimationPersistentData)], Fields[nameof(bottomAnimationDeployLimit)], Events[nameof(bottomDeployEvent)], Events[nameof(bottomRetractEvent)]);
+            bottomAnimationModule.getSymmetryModule = m => m.bottomAnimationModule;
+            bottomAnimationModule.setupAnimations(mountModule.animationData, mountModule.root, mountAnimationLayer);
         }
 
         /// <summary>
@@ -693,14 +738,9 @@ namespace SSTUTools
             return root;
         }
 
-        private void updateAnimationControl(string id, SingleModelData model, int layer)
+        private void updateAnimationControl<T>(AnimationModule<SSTUModularFuelTank> module, ModelModule<T, SSTUModularFuelTank> model, int layer) where T : SingleModelData
         {
-            if (string.IsNullOrEmpty(id)) { return; }
-            SSTUAnimateControlled module = SSTUAnimateControlled.locateAnimationController(part, id);
-            if (module != null)
-            {
-                module.initializeExternal(model.getAnimationData(model.model.transform, layer));
-            }
+            module.setupAnimations(model.model.getAnimationData(), model.root, layer);
         }
 
         #endregion ENDREGION - Updating methods
