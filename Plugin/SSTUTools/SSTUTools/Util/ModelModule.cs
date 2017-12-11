@@ -7,10 +7,10 @@ using KSPShaderTools;
 namespace SSTUTools
 {
 
-    public class ModelModule<T, U> where T : SingleModelData where U : PartModule
+    public class ModelModule<T, U, V> where T : SingleModelData where U : PartModule where V : AnimationModule
     {
         //apparently these are like a class declaration.... the delegate name becomes a new type that can be referenced
-        public delegate ModelModule<T, U> SymmetryModule(U m);
+        public delegate ModelModule<T, U, V> SymmetryModule(U m);
 
         public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
 
@@ -23,14 +23,17 @@ namespace SSTUTools
         public readonly Transform root;
         public readonly ModelOrientation orientation;
         public SymmetryModule getSymmetryModule;
+
         public ValidSelections getValidSelections = delegate (IEnumerable<T> allSelections)
         {
             return allSelections;
         };
+
         public DisplayNames getDisplayNames = delegate (IEnumerable<T> validSelections) 
         {
             return SSTUUtils.getNames(validSelections, m => m.modelDefinition.title);
         };
+
         public PreModelSetup preModelSetup = delegate (T model) 
         {
             //noop
@@ -43,6 +46,9 @@ namespace SSTUTools
         private BaseField dataField;
         private BaseField textureField;
         private BaseField modelField;
+
+        private V animationModule;
+        private int animationLayer = 0;
 
         private string textureSet
         {
@@ -100,15 +106,25 @@ namespace SSTUTools
 
         #region REGION - Constructors and Init Methods
 
-        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, string dataFieldName, string modelFieldName, string textureFieldName)
+        /// <summary>
+        /// Only a partial constructor.  Need to also call 'setupFields', 'setupModelList', and 'setupModel' before the module will actually be usable.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="partModule"></param>
+        /// <param name="root"></param>
+        /// <param name="orientation"></param>
+        /// <param name="dataFieldName"></param>
+        /// <param name="modelFieldName"></param>
+        /// <param name="textureFieldName"></param>
+        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, V animationModule, string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName)
         {
             this.part = part;
             this.partModule = partModule;
             this.root = root;
             this.orientation = orientation;
-            this.dataField = partModule.Fields[dataFieldName];
-            this.modelField = partModule.Fields[modelFieldName];
-            this.textureField = partModule.Fields[textureFieldName];
+            this.modelField = partModule.Fields[modelPersistenceFieldName];
+            this.textureField = partModule.Fields[texturePersistenceFieldName];
+            this.dataField = partModule.Fields[recolorPersistenceFieldName];
             loadPersistentData(persistentData);
         }
 
@@ -165,9 +181,24 @@ namespace SSTUTools
                 useDefaultTextureColors = true;
             }
             applyTextureSet(textureSet, useDefaultTextureColors);
+            animationModule.setupAnimations(animationData, root, animationLayer);
         }
 
         #endregion ENDREGION - Constructors and Init Methods
+
+        #region REGION - Update Methods
+
+        public void Update()
+        {
+            animationModule.Update();
+        }
+
+        public void FixedUpdate()
+        {
+            animationModule.FixedUpdate();
+        }
+
+        #endregion ENDREGION - Update Methods
 
         #region REGION - GUI Interaction Methods - With symmetry updating
 
@@ -281,7 +312,7 @@ namespace SSTUTools
             SSTUModInterop.onPartTextureUpdated(part);
         }
 
-        private void actionWithSymmetry(Action<ModelModule<T, U>> action)
+        private void actionWithSymmetry(Action<ModelModule<T, U, V>> action)
         {
             action(this);
             int index = part.Modules.IndexOf(partModule);

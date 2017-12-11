@@ -11,9 +11,9 @@ namespace SSTUTools
     /// Wrapper for animation handling and UI setup.  Should include all functions needed to support save, load, and UI interaction.
     /// Intended to wrap a single 'set' of animations that will respond to a single deploy/retract button/action-group.
     /// </summary>
-    public class AnimationModule<T> where T : PartModule
+    public class AnimationModule
     {
-        public delegate AnimationModule<T> SymmetryModule(T m);
+        public delegate AnimationModule SymmetryModule(PartModule module);
 
         /// <summary>
         /// The part that this container class belongs to
@@ -23,7 +23,7 @@ namespace SSTUTools
         /// <summary>
         /// The direct owning part-module for this container class
         /// </summary>
-        public readonly T module;
+        public readonly PartModule module;
 
         /// <summary>
         /// Reference to the persistent data field for this animation.
@@ -111,7 +111,7 @@ namespace SSTUTools
             get { return animationData.Count > 0; }
         }
         
-        public AnimationModule(Part part, T module, BaseField persistence, BaseField deployLimit, BaseEvent deploy, BaseEvent retract)
+        public AnimationModule(Part part, PartModule module, BaseField persistence, BaseField deployLimit, BaseEvent deploy, BaseEvent retract)
         {
             this.part = part;
             this.module = module;
@@ -270,7 +270,7 @@ namespace SSTUTools
         /// Should be called from the owning modules' Update() method, and should be called/updated per-frame.
         /// (TODO -- investigate if this can be moved to FixedUpdate, or other?)
         /// </summary>
-        public virtual void updateAnimations()
+        public virtual void Update()
         {
             if (animationState == AnimState.PLAYING_BACKWARD || animationState == AnimState.PLAYING_FORWARD)
             {
@@ -295,6 +295,11 @@ namespace SSTUTools
                     onAnimationStateChange(newState);
                 }
             }
+        }
+
+        public virtual void FixedUpdate()
+        {
+
         }
 
         public virtual void updateModuleInfo()
@@ -367,10 +372,6 @@ namespace SSTUTools
         /// </summary>
         private void updateUIState()
         {
-            MonoBehaviour.print("Updating animation UI state: " + modelAnimationData);
-            MonoBehaviour.print("Anim length: " + animationData.Count);
-            MonoBehaviour.print("deploy: " + deployEvent);
-            MonoBehaviour.print("retract: " + retractEvent);
             bool moduleEnabled = animationData.Count > 0;
             bool deployEnabled = moduleEnabled && (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD);
             bool retractEnabled = moduleEnabled && (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD);
@@ -474,13 +475,13 @@ namespace SSTUTools
         /// Internal method to update AnimationModules for symmetry Part-PartModules
         /// </summary>
         /// <param name="action"></param>
-        private void actionWithSymmetry(Action<AnimationModule<T>> action)
+        private void actionWithSymmetry<T>(Action<T> action) where T : AnimationModule
         {
-            action(this);
+            action((T)this);
             int index = part.Modules.IndexOf(module);
             foreach (Part p in part.symmetryCounterparts)
             {
-                action(getSymmetryModule((T)p.Modules[index]));
+                action((T)getSymmetryModule(p.Modules[index]));
             }
         }
 

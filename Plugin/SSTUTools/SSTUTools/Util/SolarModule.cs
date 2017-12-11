@@ -92,8 +92,9 @@ namespace SSTUTools
         /// This just rotates the panel pivots towards the solar target, does not check occlusion or ec-output
         /// but will be disabled if the panel is already occluded.
         /// </summary>
-        public void solarUpdate()
+        public override void Update()
         {
+            base.Update();
             //TODO -- support solar panels that lack animations (static panels)
             //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
             //TODO -- how useful is the locking feature, really?
@@ -131,8 +132,9 @@ namespace SSTUTools
         /// Should be called on fixed-update to calculate the EC output from solar panels.  Includes raycasts
         /// for occlusion checks, as well as
         /// </summary>
-        public void solarFixedUpdate()
+        public override void FixedUpdate()
         {
+            base.FixedUpdate();
             if (!HighLogic.LoadedSceneIsFlight || part.vessel == null)
             {
                 return;
