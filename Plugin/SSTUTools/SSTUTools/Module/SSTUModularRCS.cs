@@ -189,7 +189,7 @@ namespace SSTUTools
             }
             
             standoffModule.model.updateScaleForDiameter(currentScale * structureScale);
-            standoffModule.setPosition(structureOffset*currentScale - standoffModule.model.currentHeight, ModelOrientation.TOP);
+            standoffModule.setPosition(structureOffset * currentScale - standoffModule.model.currentHeight, ModelOrientation.TOP);
             standoffModule.updateModel();
         }
 
