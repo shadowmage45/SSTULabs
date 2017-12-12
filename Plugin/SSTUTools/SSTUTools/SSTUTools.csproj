@@ -90,6 +90,7 @@
     <Compile Include="MeshGenerator\MeshBuilder.cs" />
     <Compile Include="MeshGenerator\ProceduralCylinderModel.cs" />
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
+    <Compile Include="Module\SSTUDockingSnapAdjust.cs" />
     <Compile Include="Module\SSTURCSFuelSelection.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
     <Compile Include="Module\SSTUModularServiceModule.cs" />
