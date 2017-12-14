@@ -50,7 +50,7 @@ namespace SSTUTools
         private float modifiedMass;
         private float modifiedCost;
         private bool initialized = false;
-        private AnimationModule<SSTUWeldingDockingPort> animationModule;
+        private AnimationModule animationModule;
 
         [KSPAction("Toggle")]
         public void toggleAnimationAction(KSPActionParam param)
@@ -211,8 +211,8 @@ namespace SSTUTools
 
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule<SSTUWeldingDockingPort>(part, this, Fields[nameof(persistentState)], null, Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
-            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
+            animationModule.getSymmetryModule = m => ((SSTUWeldingDockingPort)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
             animationModule.onAnimStateChangeCallback = onAnimStateChange;
 

@@ -448,7 +448,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="time"></param>
         /// <param name="sample"></param>
-        protected void setAnimTime(float time, bool sample = false)
+        internal void setAnimTime(float time, bool sample = false)
         {
             int len = animationData.Count;
             for (int i = 0; i < len; i++)
@@ -475,13 +475,13 @@ namespace SSTUTools
         /// Internal method to update AnimationModules for symmetry Part-PartModules
         /// </summary>
         /// <param name="action"></param>
-        private void actionWithSymmetry<T>(Action<T> action) where T : AnimationModule
+        private void actionWithSymmetry(Action<AnimationModule> action)
         {
-            action((T)this);
+            action(this);
             int index = part.Modules.IndexOf(module);
             foreach (Part p in part.symmetryCounterparts)
             {
-                action((T)getSymmetryModule(p.Modules[index]));
+                action(getSymmetryModule(p.Modules[index]));
             }
         }
 

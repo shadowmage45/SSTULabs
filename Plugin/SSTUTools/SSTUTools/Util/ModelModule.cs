@@ -7,10 +7,10 @@ using KSPShaderTools;
 namespace SSTUTools
 {
 
-    public class ModelModule<T, U, V> where T : SingleModelData where U : PartModule where V : AnimationModule
+    public class ModelModule<T, U> where T : SingleModelData where U : PartModule
     {
         //apparently these are like a class declaration.... the delegate name becomes a new type that can be referenced
-        public delegate ModelModule<T, U, V> SymmetryModule(U m);
+        public delegate ModelModule<T, U> SymmetryModule(U m);
 
         public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
 
@@ -47,7 +47,7 @@ namespace SSTUTools
         private BaseField textureField;
         private BaseField modelField;
 
-        private V animationModule;
+        public AnimationModule animationModule;
         private int animationLayer = 0;
 
         private string textureSet
@@ -116,7 +116,7 @@ namespace SSTUTools
         /// <param name="dataFieldName"></param>
         /// <param name="modelFieldName"></param>
         /// <param name="textureFieldName"></param>
-        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, V animationModule, string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName)
+        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName, string foo1, string foo2, string foo3, string foo4)
         {
             this.part = part;
             this.partModule = partModule;
@@ -125,6 +125,7 @@ namespace SSTUTools
             this.modelField = partModule.Fields[modelPersistenceFieldName];
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
+            this.animationModule = new AnimationModule(part, partModule, foo1, foo2, foo3, foo4);
             loadPersistentData(persistentData);
         }
 
@@ -312,7 +313,7 @@ namespace SSTUTools
             SSTUModInterop.onPartTextureUpdated(part);
         }
 
-        private void actionWithSymmetry(Action<ModelModule<T, U, V>> action)
+        private void actionWithSymmetry(Action<ModelModule<T, U>> action)
         {
             action(this);
             int index = part.Modules.IndexOf(partModule);

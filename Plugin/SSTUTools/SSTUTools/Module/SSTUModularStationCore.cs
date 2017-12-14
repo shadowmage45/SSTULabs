@@ -115,20 +115,20 @@ namespace SSTUTools
         ModelModule<SingleModelData, SSTUModularStationCore> bottomModule;
         ModelModule<SolarModelData, SSTUModularStationCore> solarModule;
 
-        SolarModule<SSTUModularStationCore> solarPanelModule;
+        SolarModule solarPanelModule;
 
         #endregion ENDREGION - Private working vars
 
         #region REGION - GUI methods
 
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Deploy Solar Panels")]
-        public void solarDeployEvent() { solarPanelModule.onDeployEvent(); }
+        public void solarDeployEvent() { solarModule.animationModule.onDeployEvent(); }
 
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Retract Solar Panels")]
-        public void solarRetractEvent() { solarPanelModule.onRetractEvent(); }
+        public void solarRetractEvent() { solarModule.animationModule.onRetractEvent(); }
 
         [KSPAction(guiName = "Toggle Solar Panels")]
-        public void solarToggleAction(KSPActionParam param) { solarPanelModule.onToggleAction(param); }
+        public void solarToggleAction(KSPActionParam param) { solarModule.animationModule.onToggleAction(param); }
 
         #endregion ENDREGION - GUI methods
 
@@ -216,14 +216,14 @@ namespace SSTUTools
         //standard Unity lifecyle override
         public void Update()
         {
-            solarPanelModule.updateAnimations();
-            solarPanelModule.solarUpdate();
+            solarModule.Update();
+            solarPanelModule.Update();
         }
 
         //standard Unity lifecyle override
         public void FixedUpdate()
         {
-            solarPanelModule.solarFixedUpdate();
+            solarPanelModule.FixedUpdate();
         }
 
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
@@ -359,9 +359,8 @@ namespace SSTUTools
             solarModule.setupModel();
 
             //solar panel animation and solar panel UI controls
-            solarPanelModule = new SolarModule<SSTUModularStationCore>(part, this, Fields[nameof(solarAnimationPersistentData)], Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)], Events[nameof(solarDeployEvent)], Events[nameof(solarRetractEvent)]);
-            solarPanelModule.getSymmetryModule = m => m.solarPanelModule;
-            solarPanelModule.setupAnimations(solarModule.animationData, solarModule.root, solarAnimationLayer);
+            solarPanelModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);
+            solarPanelModule.getSymmetryModule = m => ((SSTUModularStationCore)m).solarPanelModule;
             solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
 
             updateModulePositions();

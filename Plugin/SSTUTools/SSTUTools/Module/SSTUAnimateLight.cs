@@ -41,7 +41,7 @@ namespace SSTUTools
 
         private bool initialized = false;
 
-        private AnimationModule<SSTUAnimateLight> animationController;
+        private AnimationModule animationController;
 
         #region REGION - UI interaction methods
 
@@ -83,7 +83,7 @@ namespace SSTUTools
         public void Update()
         {
             if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//only operate flight/editor scenes
-            animationController.updateAnimations();
+            animationController.Update();
         }
 
         public void FixedUpdate()
@@ -138,8 +138,8 @@ namespace SSTUTools
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
             //setup animation control module.  limit/deploy/retract events passed as null, as UI visibility/updating handled externally to ensure syncing to light animation state
-            animationController = new AnimationModule<SSTUAnimateLight>(part, this, Fields[nameof(animationPersistentData)], null, Events[nameof(enableLightsEvent)], Events[nameof(disableLightsEvent)]);
-            animationController.getSymmetryModule = m => m.animationController;
+            animationController = new AnimationModule(part, this, Fields[nameof(animationPersistentData)], null, Events[nameof(enableLightsEvent)], Events[nameof(disableLightsEvent)]);
+            animationController.getSymmetryModule = m => ((SSTUAnimateLight)m).animationController;
             animationController.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
         }
 

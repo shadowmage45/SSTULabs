@@ -28,7 +28,7 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
-        private AnimationModule<SSTUAnimateControlled> animationModule;
+        private AnimationModule animationModule;
 
         private EventData<float> evt1;
 
@@ -147,15 +147,15 @@ namespace SSTUTools
             
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule<SSTUAnimateControlled>(part, this, Fields[nameof(persistentState)], Fields[nameof(animationMaxDeploy)], Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
-            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], Fields[nameof(animationMaxDeploy)], Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
+            animationModule.getSymmetryModule = m => ((SSTUAnimateControlled)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
             animationModule.onAnimStateChangeCallback = onAnimStateChange;
         }
 
         public void Update()
         {
-            animationModule.updateAnimations();
+            animationModule.Update();
         }
 
         private void onAnimStateChange(AnimState newState)

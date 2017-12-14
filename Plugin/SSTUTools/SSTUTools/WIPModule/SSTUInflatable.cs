@@ -48,7 +48,7 @@ namespace SSTUTools
         public string configNodeData = string.Empty;
 
         private bool initialized = false;
-        private AnimationModule<SSTUInflatable> animationModule;
+        private AnimationModule animationModule;
         private SSTUAnimateRotation rotationModule;
         private PartResourceDefinition resourceDef;
         
@@ -154,8 +154,8 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule<SSTUInflatable>(part, this, Fields[nameof(persistentState)], null, Events[nameof(inflateEvent)], Events[nameof(deflateEvent)]);
-            animationModule.getSymmetryModule = m => m.animationModule;
+            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(inflateEvent)], Events[nameof(deflateEvent)]);
+            animationModule.getSymmetryModule = m => ((SSTUInflatable)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
 
             resourceDef = PartResourceLibrary.Instance.GetDefinition(resourceName);

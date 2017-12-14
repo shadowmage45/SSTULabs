@@ -94,7 +94,6 @@
     <Compile Include="Module\SSTUDockingSnapAdjust.cs" />
     <Compile Include="Module\SSTURCSFuelSelection.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
-    <Compile Include="Module\SSTUModularServiceModule.cs" />
     <Compile Include="Module\SSTUModularUpperStage.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />
@@ -104,8 +103,10 @@
     <Compile Include="Module\SSTUModelFix.cs" />
     <Compile Include="Module\SSTUModelSwitch.cs" />
     <Compile Include="Settings\SSTUGameSettings.cs" />
+    <Compile Include="Util\AnimationModule.cs" />
     <Compile Include="Util\Interfaces.cs" />
     <Compile Include="Util\ModelModule.cs" />
+    <Compile Include="Util\SolarModule.cs" />
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
     <Compile Include="WIPModule\SSTULinearMultiDock.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
@@ -154,6 +155,7 @@
     <Compile Include="Util\SSTUConfigNodeUtils.cs" />
     <Compile Include="Util\TechLimit.cs" />
     <Compile Include="Util\SSTUUtils.cs" />
+    <Compile Include="Module\SSTUModularServiceModule.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

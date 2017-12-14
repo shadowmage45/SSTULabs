@@ -56,7 +56,8 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
-        private SolarModule<SSTUSolarPanelDeployable> solarModule;
+        private AnimationModule animationModule;
+        private SolarModule solarModule;
 
         private bool initialized = false;
 

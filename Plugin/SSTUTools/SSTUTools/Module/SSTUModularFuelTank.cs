@@ -157,10 +157,6 @@ namespace SSTUTools
         protected ModelModule<SingleModelData, SSTUModularFuelTank> noseModule;
         protected ModelModule<SingleModelData, SSTUModularFuelTank> mountModule;
 
-        AnimationModule<SSTUModularFuelTank> topAnimationModule;
-        AnimationModule<SSTUModularFuelTank> coreAnimationModule;
-        AnimationModule<SSTUModularFuelTank> bottomAnimationModule;
-
         protected String[] topNodeNames;
         protected String[] bottomNodeNames;
 
@@ -174,31 +170,31 @@ namespace SSTUTools
         #region REGION - GUI Events/Interaction methods
 
         [KSPEvent]
-        public void topDeployEvent() { topAnimationModule.onDeployEvent(); }
+        public void topDeployEvent() { noseModule.animationModule.onDeployEvent(); }
 
         [KSPEvent]
-        public void coreDeployEvent() { coreAnimationModule.onDeployEvent(); }
+        public void coreDeployEvent() { tankModule.animationModule.onDeployEvent(); }
 
         [KSPEvent]
-        public void bottomDeployEvent() { bottomAnimationModule.onDeployEvent(); }
+        public void bottomDeployEvent() { mountModule.animationModule.onDeployEvent(); }
 
         [KSPEvent]
-        public void topRetractEvent() { topAnimationModule.onRetractEvent(); }
+        public void topRetractEvent() { noseModule.animationModule.onRetractEvent(); }
 
         [KSPEvent]
-        public void coreRetractEvent() { coreAnimationModule.onRetractEvent(); }
+        public void coreRetractEvent() { tankModule.animationModule.onRetractEvent(); }
 
         [KSPEvent]
-        public void bottomRetractEvent() { bottomAnimationModule.onRetractEvent(); }
+        public void bottomRetractEvent() { mountModule.animationModule.onRetractEvent(); }
 
         [KSPAction]
-        public void topToggleAction(KSPActionParam param) { topAnimationModule.onToggleAction(param); }
+        public void topToggleAction(KSPActionParam param) { noseModule.animationModule.onToggleAction(param); }
 
         [KSPAction]
-        public void coreToggleAction(KSPActionParam param) { coreAnimationModule.onToggleAction(param); }
+        public void coreToggleAction(KSPActionParam param) { tankModule.animationModule.onToggleAction(param); }
 
         [KSPAction]
-        public void bottomToggleAction(KSPActionParam param) { bottomAnimationModule.onToggleAction(param); }
+        public void bottomToggleAction(KSPActionParam param) { mountModule.animationModule.onToggleAction(param); }
 
         private void updateAvailableVariants(bool useDefaultIfInvalid)
         {
@@ -310,7 +306,6 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.topAnimationModule, m.noseModule, m.noseAnimationLayer);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -327,7 +322,6 @@ namespace SSTUTools
                     }
                     m.updateEditorStats(true);
                     m.lastSelectedVariant = tankModule.model.variantName;
-                    m.updateAnimationControl(m.coreAnimationModule, m.tankModule, m.coreAnimationLayer);
                     m.updateUIScaleControls();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -340,7 +334,6 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     m.updateEditorStats(true);
-                    m.updateAnimationControl(m.bottomAnimationModule, m.mountModule, m.mountAnimationLayer);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -375,9 +368,9 @@ namespace SSTUTools
 
         public void Update()
         {
-            topAnimationModule.updateAnimations();
-            coreAnimationModule.updateAnimations();
-            bottomAnimationModule.updateAnimations();
+            noseModule.animationModule.Update();
+            tankModule.animationModule.Update();
+            mountModule.animationModule.Update();
         }
         
         /// <summary>
@@ -591,19 +584,6 @@ namespace SSTUTools
             };
             mountModule.setupModelList(mounts);
             mountModule.setupModel();
-
-            //animation-module setup/initialization
-            topAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(topAnimationPersistentData)], Fields[nameof(topAnimationDeployLimit)], Events[nameof(topDeployEvent)], Events[nameof(topRetractEvent)]);
-            topAnimationModule.getSymmetryModule = m => m.topAnimationModule;
-            topAnimationModule.setupAnimations(noseModule.animationData, noseModule.root, noseAnimationLayer);
-
-            coreAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(coreAnimationPersistentData)], Fields[nameof(coreAnimationDeployLimit)], Events[nameof(coreDeployEvent)], Events[nameof(coreRetractEvent)]);
-            coreAnimationModule.getSymmetryModule = m => m.coreAnimationModule;
-            coreAnimationModule.setupAnimations(tankModule.animationData, tankModule.root, coreAnimationLayer);
-
-            bottomAnimationModule = new AnimationModule<SSTUModularFuelTank>(part, this, Fields[nameof(bottomAnimationPersistentData)], Fields[nameof(bottomAnimationDeployLimit)], Events[nameof(bottomDeployEvent)], Events[nameof(bottomRetractEvent)]);
-            bottomAnimationModule.getSymmetryModule = m => m.bottomAnimationModule;
-            bottomAnimationModule.setupAnimations(mountModule.animationData, mountModule.root, mountAnimationLayer);
         }
 
         /// <summary>
@@ -736,11 +716,6 @@ namespace SSTUTools
             }
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
-        }
-
-        private void updateAnimationControl<T>(AnimationModule<SSTUModularFuelTank> module, ModelModule<T, SSTUModularFuelTank> model, int layer) where T : SingleModelData
-        {
-            module.setupAnimations(model.model.getAnimationData(), model.root, layer);
         }
 
         #endregion ENDREGION - Updating methods

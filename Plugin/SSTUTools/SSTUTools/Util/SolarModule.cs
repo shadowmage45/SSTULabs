@@ -6,8 +6,15 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class SolarModule<T> : AnimationModule<T> where T : PartModule
+    public class SolarModule
     {
+        public delegate SolarModule SymmetryModule(PartModule module);
+
+        private Part part;
+
+        private PartModule module;
+
+        private AnimationModule animModule;
 
         /// <summary>
         /// GUI status field for the solar panel.  Updated every Update()?
@@ -29,6 +36,11 @@ namespace SSTUTools
         /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation.  Not tracked persistently -- if part is saved out while close-lerp is in action, it will actually save out as if it were deployed
         /// </summary>
         private bool closingLerp;
+
+        /// <summary>
+        /// Delegate for retrieval of the symmetry counterpart module(s) from an input PartModule
+        /// </summary>
+        public SymmetryModule getSymmetryModule;
 
         /*
         
@@ -52,8 +64,22 @@ namespace SSTUTools
             set { rotationPersistenceField.SetValue(value, module); }
         }
 
-        public SolarModule(Part part, T module, BaseField animationPersistence, BaseField rotationPersistence, BaseField panelStatusField, BaseEvent deploy, BaseEvent retract) : base(part, module, animationPersistence, null, deploy, retract)
+        private AnimState animState
         {
+            get { return animModule.animState; }
+            set { animModule.setAnimState(value, false); }
+        }
+
+        private float animTime
+        {
+            get { return animModule.animTime; }
+        }
+
+        public SolarModule(Part part, PartModule module, AnimationModule animModule, BaseField rotationPersistence, BaseField panelStatusField)
+        {
+            this.part = part;
+            this.module = module;
+            this.animModule = animModule;
             this.rotationPersistenceField = rotationPersistence;
             this.panelStatusField = panelStatusField;
         }
@@ -92,9 +118,8 @@ namespace SSTUTools
         /// This just rotates the panel pivots towards the solar target, does not check occlusion or ec-output
         /// but will be disabled if the panel is already occluded.
         /// </summary>
-        public override void Update()
+        public void Update()
         {
-            base.Update();
             //TODO -- support solar panels that lack animations (static panels)
             //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
             //TODO -- how useful is the locking feature, really?
@@ -114,7 +139,7 @@ namespace SSTUTools
                 if (finished)
                 {
                     closingLerp = false;
-                    setAnimState(AnimState.PLAYING_BACKWARD);
+                    animState = AnimState.PLAYING_BACKWARD;
                 }
             }
             else if(HighLogic.LoadedSceneIsFlight)//sun tracking only active in flight
@@ -132,9 +157,8 @@ namespace SSTUTools
         /// Should be called on fixed-update to calculate the EC output from solar panels.  Includes raycasts
         /// for occlusion checks, as well as
         /// </summary>
-        public override void FixedUpdate()
+        public void FixedUpdate()
         {
-            base.FixedUpdate();
             if (!HighLogic.LoadedSceneIsFlight || part.vessel == null)
             {
                 return;
@@ -207,7 +231,7 @@ namespace SSTUTools
         {
             float time = animTime;
             //sample to deployed state
-            setAnimTime(1, true);
+            animModule.setAnimTime(1, true);
             string[] persistentDataSplits = rotationPersistentData.Split(';');
             string data;
             int len = panelData.Length;
@@ -225,7 +249,7 @@ namespace SSTUTools
                 panelData[i].initializeRotations(data);
             }
             //return animation state to previous state
-            setAnimTime(time, true);
+            animModule.setAnimTime(time, true);
         }
 
         /// <summary>
