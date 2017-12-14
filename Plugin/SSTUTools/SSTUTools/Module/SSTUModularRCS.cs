@@ -152,6 +152,10 @@ namespace SSTUTools
             standoffModule.setupModelList(ModelData.parseModels<SingleModelData>(node.GetNodes("STRUCTURE"), m => new SingleModelData(m)));
             standoffModule.setupModel();
 
+            if (string.IsNullOrEmpty(modelName))
+            {
+                MonoBehaviour.print("ERROR: SSTUModularRCS - null/empty modelName in module config.");
+            }
             modelTransform = part.transform.FindModel(modelName);
 
             updateModelScale();
@@ -187,9 +191,9 @@ namespace SSTUTools
             {
                 modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
             }
-            
             standoffModule.model.updateScaleForDiameter(currentScale * structureScale);
-            standoffModule.setPosition(structureOffset*currentScale - standoffModule.model.currentHeight, ModelOrientation.TOP);
+            float position = -standoffModule.moduleHeight - structureOffset * currentScale;
+            standoffModule.setPosition(position, ModelOrientation.TOP);
             standoffModule.updateModel();
         }
 

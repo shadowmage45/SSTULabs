@@ -209,8 +209,8 @@ namespace SSTUTools
             }
         }
 
-        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit){return standAlonePart ? -defaultMass + modifiedMass : modifiedMass;}
-        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit){return standAlonePart ? -defaultCost + modifiedCost : modifiedCost;}
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) {return standAlonePart ? -defaultMass + modifiedMass : modifiedMass;}
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) {return standAlonePart ? -defaultCost + modifiedCost : modifiedCost;}
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
@@ -288,13 +288,13 @@ namespace SSTUTools
             shieldTypeData = HeatShieldTypeData.load(typeNodes);
             currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
             updateModuleStats();
-
-            updatePartCost();
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 updatePartResources();
                 initializedResources = true;
             }
+            updatePartCost();
+            SSTUStockInterop.fireEditorUpdate();//update for mass/cost/etc.
         }
 
         #endregion
@@ -455,18 +455,26 @@ namespace SSTUTools
 
         private void updatePartCost()
         {
-            float scale = Mathf.Pow(getScale(), massScalePower);
-            if (heatSoak)
+            modifiedMass = shieldMass * currentShieldTypeData.massMult;
+            modifiedCost = 0;
+            if (standAlonePart && model != null)
             {
-                modifiedCost = 0;
+                modifiedMass += model.moduleMass;
+                modifiedCost += model.moduleCost;
+                PartResource res = part.Resources[resourceName];
+                modifiedCost += (float)res.maxAmount * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
             }
-            else
+            else if (heatSoak)
+            {
+                //TODO -- need to specify a 'shieldCost' that can be increased along with the shield type multiplier and/or scale factors
+            }
+            else //integrated heat-shield; non-scaling, mass adjustment handled above
             {
                 PartResource res = part.Resources[resourceName];
-                modifiedCost = ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
-                modifiedCost += scale * (part.partInfo == null ? 0 : part.partInfo.cost);
+                //the shield cost currently is just the cost of the additional ablator resource
+                modifiedCost += ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;
+                //TODO -- need to specify a 'shieldCost' that can be increased along with the shield type multiplier
             }
-            modifiedMass = scale * shieldMass * currentShieldTypeData.massMult;
         }
 
         private void updatePartResources()
