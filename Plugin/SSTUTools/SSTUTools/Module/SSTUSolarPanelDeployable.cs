@@ -79,13 +79,13 @@ namespace SSTUTools
         [KSPAction("Toggle Solar Panels")]
         public void toggleAction(KSPActionParam param)
         {
-            solarModule.onToggleAction(param);
+            animationModule.onToggleAction(param);
         }
 
         [KSPEvent(name = "extendEvent", guiName = "Extend Solar Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
         public void extendEvent()
         {
-            solarModule.onDeployEvent();
+            animationModule.onDeployEvent();
         }
 
         [KSPEvent(name = "retractEvent", guiName = "Retract Solar Panels", guiActiveUnfocused = true, externalToEVAOnly = true, guiActive = true, unfocusedRange = 4f, guiActiveEditor = true)]
@@ -124,7 +124,7 @@ namespace SSTUTools
             if (moduleIsEnabled)
             {
                 //TODO
-                MonoBehaviour.print("TODO -- SSTUSolarPanel - GetInfo()");
+                MonoBehaviour.print("TODO -- SSTUSolarPanelDeployable - GetInfo()");
             }
             return base.GetInfo();
         }
@@ -132,13 +132,14 @@ namespace SSTUTools
         public void FixedUpdate()
         {
             if (!moduleIsEnabled) { return; }
-            solarModule.solarFixedUpdate();
+            solarModule.FixedUpdate();
         }
 
         public void Update()
         {
             if (!moduleIsEnabled) { return; }
-            solarModule.solarUpdate();
+            animationModule.Update();
+            solarModule.Update();
         }
 
         /// <summary>
@@ -161,11 +162,14 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));            
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            solarModule = new SolarModule<SSTUSolarPanelDeployable>(part, this, Fields[nameof(persistentState)], Fields[nameof(solarPersistentData)], Fields[nameof(guiStatus)], Events[nameof(extendEvent)], Events[nameof(retractEvent)]);
-            solarModule.getSymmetryModule = m => m.solarModule;
-            solarModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(extendEvent)], Events[nameof(retractEvent)]);
+            animationModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).animationModule;
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);//TODO -- set animation layer for solar panel deploy animation from part/module config value
+
+            solarModule = new SolarModule(part, this, animationModule, Fields[nameof(solarPersistentData)], Fields[nameof(guiStatus)]);
+            solarModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).solarModule;            
             solarModule.setupSolarPanelData(node.GetNode("SOLARDATA"), part.transform.FindRecursive("model"));
         }
         

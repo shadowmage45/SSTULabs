@@ -539,7 +539,7 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
+            mountModule = new ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
             mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }

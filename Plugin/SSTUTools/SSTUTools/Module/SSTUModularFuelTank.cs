@@ -535,7 +535,7 @@ namespace SSTUTools
             topNodeNames = SSTUUtils.parseCSV(topManagedNodeNames);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodeNames);
 
-            tankModule = new ModelModule<TankModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(bodyModuleData), nameof(currentTankType), nameof(currentTankTexture));
+            tankModule = new ModelModule<TankModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootTransformName, true), ModelOrientation.CENTRAL, nameof(currentTankType), nameof(currentTankTexture), nameof(bodyModuleData), null, null, null, null);
             tankModule.getSymmetryModule = m => m.tankModule;
             tankModule.getDisplayNames = m => SSTUUtils.getNames(m, s => s.variantName);
             tankModule.setupModelList(mainTankModules);
@@ -567,7 +567,7 @@ namespace SSTUTools
                 }
             }
             
-            noseModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(noseModuleData), nameof(currentNoseType), nameof(currentNoseTexture));
+            noseModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootNoseTransformName, true), ModelOrientation.TOP, nameof(currentNoseType), nameof(currentNoseTexture), nameof(noseModuleData), null, null, null, null);
             noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) 
             {
@@ -576,7 +576,7 @@ namespace SSTUTools
             noseModule.setupModelList(noses);
             noseModule.setupModel();
 
-            mountModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountType), nameof(currentMountTexture));
+            mountModule = new ModelModule<SingleModelData, SSTUModularFuelTank>(part, this, getRootTransform(rootMountTransformName, true), ModelOrientation.BOTTOM, nameof(currentMountType), nameof(currentMountTexture), nameof(mountModuleData), null, null, null, null);
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.getValidSelections = delegate (IEnumerable<SingleModelData> data) 
             {

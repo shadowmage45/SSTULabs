@@ -194,7 +194,7 @@ namespace SSTUTools
         /// <summary>
         /// Should be called directly from the PartModule when the KSPEvent for deploy is called.
         /// </summary>
-        public virtual void onDeployEvent()
+        public void onDeployEvent()
         {
             if (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD)
             {
@@ -209,7 +209,7 @@ namespace SSTUTools
         /// <summary>
         /// Should be called directly from the PartModule when the KSPEvent for retract is called.
         /// </summary>
-        public virtual void onRetractEvent()
+        public void onRetractEvent()
         {
             if (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD)
             {
@@ -238,7 +238,7 @@ namespace SSTUTools
             }
         }
 
-        public virtual string getModuleInfo()
+        public string getModuleInfo()
         {
             return moduleInfo;
         }
@@ -270,7 +270,7 @@ namespace SSTUTools
         /// Should be called from the owning modules' Update() method, and should be called/updated per-frame.
         /// (TODO -- investigate if this can be moved to FixedUpdate, or other?)
         /// </summary>
-        public virtual void Update()
+        public void Update()
         {
             if (animationState == AnimState.PLAYING_BACKWARD || animationState == AnimState.PLAYING_FORWARD)
             {
@@ -297,12 +297,7 @@ namespace SSTUTools
             }
         }
 
-        public virtual void FixedUpdate()
-        {
-
-        }
-
-        public virtual void updateModuleInfo()
+        public void updateModuleInfo()
         {
             if (modelAnimationData != null)
             {

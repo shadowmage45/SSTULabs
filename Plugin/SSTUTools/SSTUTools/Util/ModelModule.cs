@@ -116,7 +116,9 @@ namespace SSTUTools
         /// <param name="dataFieldName"></param>
         /// <param name="modelFieldName"></param>
         /// <param name="textureFieldName"></param>
-        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName, string foo1, string foo2, string foo3, string foo4)
+        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, 
+            string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName, 
+            string animationPersistenceFieldName, string deployLimitField, string deployEventName, string retractEventName)
         {
             this.part = part;
             this.partModule = partModule;
@@ -125,7 +127,7 @@ namespace SSTUTools
             this.modelField = partModule.Fields[modelPersistenceFieldName];
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
-            this.animationModule = new AnimationModule(part, partModule, foo1, foo2, foo3, foo4);
+            this.animationModule = new AnimationModule(part, partModule, partModule.Fields[animationPersistenceFieldName], partModule.Fields[deployLimitField], partModule.Events[deployEventName], partModule.Events[retractEventName]);
             loadPersistentData(persistentData);
         }
 
@@ -192,11 +194,6 @@ namespace SSTUTools
         public void Update()
         {
             animationModule.Update();
-        }
-
-        public void FixedUpdate()
-        {
-            animationModule.FixedUpdate();
         }
 
         #endregion ENDREGION - Update Methods

@@ -433,7 +433,6 @@ namespace SSTUTools
 
         private void updateSolarModules()
         {
-            solarPanelModule.setupAnimations(solarModule.animationData, solarModule.root, solarAnimationLayer);
             solarPanelModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
         }
 

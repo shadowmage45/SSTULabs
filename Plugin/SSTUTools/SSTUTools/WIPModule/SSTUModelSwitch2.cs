@@ -207,7 +207,7 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(modelPersistentData), nameof(currentModel), nameof(currentTexture));
+            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(modelPersistentData), nameof(currentTexture));
             models.getSymmetryModule = m => m.models;
             models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
             models.setupModel();

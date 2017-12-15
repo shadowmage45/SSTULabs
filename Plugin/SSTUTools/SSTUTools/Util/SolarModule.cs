@@ -84,7 +84,7 @@ namespace SSTUTools
             this.panelStatusField = panelStatusField;
         }
 
-        public override void onRetractEvent()
+        public void onRetractEvent()
         {
             if (animState == AnimState.STOPPED_END)
             {
@@ -92,7 +92,7 @@ namespace SSTUTools
             }
             else
             {
-                base.onRetractEvent();
+                animModule.onRetractEvent();
             }            
         }
 
