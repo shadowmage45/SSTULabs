@@ -94,7 +94,6 @@
     <Compile Include="Module\SSTUDockingSnapAdjust.cs" />
     <Compile Include="Module\SSTURCSFuelSelection.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
-    <Compile Include="Module\SSTUModularUpperStage.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />
     <Compile Include="Module\SSTUControlTransform.cs" />
@@ -110,12 +109,10 @@
     <Compile Include="WIPModule\SSTUDockingPortFix.cs" />
     <Compile Include="WIPModule\SSTULinearMultiDock.cs" />
     <Compile Include="WIPModule\SSTUModelSwitch2.cs" />
-    <Compile Include="Module\SSTUModularFuelTank.cs" />
     <Compile Include="Module\SSTUDecalSwitch.cs" />
     <Compile Include="Module\SSTUFieldManipulator.cs" />
     <Compile Include="WIPModule\SSTUAnimateRotation.cs" />
     <Compile Include="WIPModule\SSTUInflatable.cs" />
-    <Compile Include="Module\SSTUModularStationCore.cs" />
     <Compile Include="Module\SSTUResourceBoiloff.cs" />
     <Compile Include="Module\SSTUVolumeContainer.cs" />
     <Compile Include="Util\SSTUEngineLayout.cs" />
@@ -125,7 +122,6 @@
     <Compile Include="Module\SSTUFlagDecal.cs" />
     <Compile Include="Module\SSTUInterstageDecoupler.cs" />
     <Compile Include="Util\SSTUAttachNodeUtils.cs" />
-    <Compile Include="Module\SSTUModularBooster.cs" />
     <Compile Include="Module\SSTUModularParachute.cs" />
     <Compile Include="Module\SSTUAnimateLight.cs" />
     <Compile Include="Module\SSTUAutoDepletionDecoupler.cs" />
@@ -155,7 +151,6 @@
     <Compile Include="Util\SSTUConfigNodeUtils.cs" />
     <Compile Include="Util\TechLimit.cs" />
     <Compile Include="Util\SSTUUtils.cs" />
-    <Compile Include="Module\SSTUModularServiceModule.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

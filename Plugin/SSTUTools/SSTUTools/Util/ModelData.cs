@@ -49,6 +49,31 @@ namespace SSTUTools
         }
     }
 
+    public enum ModelOrientation
+    {
+
+        /// <summary>
+        /// Denotes that a model is setup for use as a 'nose' or 'top' part, with the origin at the bottom of the model.<para/>
+        /// Will be rotated 180 degrees around origin when used in a slot denoted for 'bottom' style models.<para/>
+        /// Will be offset vertically downwards by half of its height when used in a slot denoted for 'central' models.<para/>
+        /// </summary>
+        TOP,
+
+        /// <summary>
+        /// Denotes that a model is setup for use as a 'central' part, with the origin in the center of the model.<para/>
+        /// Will be offset upwards by half of its height when used in a slot denoted for 'top' style models.<para/>
+        /// Will be offset downwards by half of its height when used in a slot denoted for 'bottom' style models.<para/>
+        /// </summary>
+        CENTRAL,
+
+        /// <summary>
+        /// Denotes that a model is setup for use as a 'bottom' part, with the origin located at the top of the model.<para/>
+        /// Will be rotated 180 degrees around origin when used in a slot denoted for 'top' style models.<para/>
+        /// Will be offset vertically upwards by half of its height when used in a slot denoted for 'central' models.<para/>
+        /// </summary>
+        BOTTOM
+    }
+
     /// <summary>
     /// Data storage for persistent data about a single loaded model.
     /// Includes height, volume, mass, cost, tech-limitations, node positions, 
@@ -56,21 +81,70 @@ namespace SSTUTools
     /// </summary>
     public class ModelDefinition
     {
+        /// <summary>
+        /// The config node that this ModelDefinition is loaded from.
+        /// </summary>
         public readonly ConfigNode configNode;
+
+        /// <summary>
+        /// The name of the model in the model database to use, if any.  May be blank if model is a 'dummy' model (no meshes).<para/>
+        /// If using COMPOUND_MODEL setup, must be populated with a user-specified name (unused)
+        /// </summary>
         public readonly String modelName;
+
+        /// <summary>
+        /// The unique registered name for this model definition.  MUST be unique among all model definitions.
+        /// </summary>
         public readonly String name;
+
+        /// <summary>
+        /// The display name to use for this model definition.  This will be the value displayed on any GUIs for this specific model def.
+        /// </summary>
         public readonly String title;
+
+        /// <summary>
+        /// A description of this model definition.  Optional.  Currently unused.
+        /// </summary>
         public readonly String description;
-        public readonly String icon;
+
+        /// <summary>
+        /// The name of the PartUpgrade that 'unlocks' this model definition.  If blank, denotes always unlocked.<para/>
+        /// If populated, MUST correspond to one of the part-upgrades in the PartModule that this model-definition is used in.
+        /// </summary>
         public readonly string upgradeUnlockName;
+
+        /// <summary>
+        /// The height of this model, as denoted by colliders and/or attach nodes.<para/>
+        /// This value is used to determine positioning of other models relative to this model when used in multi-model setups.
+        /// </summary>
         public readonly float height = 1;
+
+        /// <summary>
+        /// The core diameter of this model.
+        /// </summary>
+        public readonly float diameter = 5;
+
+        /// <summary>
+        /// The vertical offset applied to the meshes in the model to make the model conform with its specified orientation setup.
+        /// </summary>
+        public readonly float verticalOffset = 0;
+
+        /// <summary>
+        /// The resource volume that this model definition contains at default scale.  Used to determine the total volume available for resource containers.
+        /// </summary>
         public readonly float volume = 0;
+
+        /// <summary>
+        /// The 'mass' of this model-definition.
+        /// </summary>
         public readonly float mass = 0;
         public readonly float cost = 0;
-        public readonly float diameter = 5;
-        public readonly float verticalOffset = 0;
+
         public readonly ModelOrientation orientation = ModelOrientation.CENTRAL;
         public readonly Vector3 invertAxis = Vector3.forward;
+
+        public readonly ModelFairingData fairingData;
+
         public readonly bool fairingDisabled = false;
         public readonly float fairingTopOffset = 0;
         public readonly float rcsVerticalPosition = 0;
@@ -93,7 +167,6 @@ namespace SSTUTools
             name = node.GetStringValue("name", String.Empty);
             title = node.GetStringValue("title", name);
             description = node.GetStringValue("description", title);
-            icon = node.GetStringValue("icon");
             modelName = node.GetStringValue("modelName", String.Empty);
             upgradeUnlockName = node.GetStringValue("upgradeUnlock", upgradeUnlockName);
             height = node.GetFloatValue("height", height);
@@ -199,6 +272,29 @@ namespace SSTUTools
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
+    }
+
+    /// <summary>
+    /// Information pertaining to a single ModelDefinition, defining how NodeFairings are configured for the model at its default scale.
+    /// </summary>
+    public class ModelFairingData
+    {
+
+        /// <summary>
+        /// Are fairings supported on this model?
+        /// </summary>
+        public readonly bool fairingsSupported = false;
+
+        /// <summary>
+        /// Are fairings inverted on this model?  If true, the user-adjustable diameter will be the 'top'.
+        /// </summary>
+        public readonly bool fairingInverted = false;
+
+        /// <summary>
+        /// An offset from the models origin point to where the fairing attaches.  Positive values denote Y+, negative values denote Y-
+        /// </summary>
+        public readonly float fairingOffsetFromOrigin = 0f;
+        
     }
 
     /// <summary>
@@ -314,13 +410,6 @@ namespace SSTUTools
             }
             return false;
         }
-    }
-
-    public enum ModelOrientation
-    {
-        TOP,
-        CENTRAL,
-        BOTTOM
     }
 
     /// <summary>
@@ -1310,6 +1399,430 @@ namespace SSTUTools
             offset = node.GetFloatValue("offset");
             order = node.GetIntValue("order");
             vScaleAxis = node.GetVector3("axis", Vector3.up);
+        }
+    }
+
+
+
+    public class SSTUModularUpperStageRCS : SingleModelData
+    {
+        public GameObject[] models;
+        public string thrustTransformName;
+        public bool dummyModel = false;
+        public float currentHorizontalPosition;
+        public float modelRotation = 0;
+        public float modelHorizontalZOffset = 0;
+        public float modelHorizontalXOffset = 0;
+        public float modelVerticalOffset = 0;
+
+        public float mountVerticalRotation = 0;
+        public float mountHorizontalRotation = 0;
+
+        public SSTUModularUpperStageRCS(ConfigNode node) : base(node)
+        {
+            dummyModel = node.GetBoolValue("dummyModel");
+            modelRotation = node.GetFloatValue("modelRotation");
+            modelHorizontalZOffset = node.GetFloatValue("modelHorizontalZOffset");
+            modelHorizontalXOffset = node.GetFloatValue("modelHorizontalXOffset");
+            modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
+            thrustTransformName = modelDefinition.configNode.GetStringValue("thrustTransformName");
+        }
+
+        public override void setupModel(Transform parent, ModelOrientation orientation)
+        {
+            if (model != null || models != null) { destroyCurrentModel(); }
+            model = new GameObject(modelDefinition.name);
+            model.transform.NestToParent(parent);
+            models = new GameObject[4];
+            for (int i = 0; i < 4; i++)
+            {
+                models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
+            }
+            foreach (GameObject go in models)
+            {
+                go.transform.NestToParent(model.transform);
+            }
+        }
+
+        public override void updateModel()
+        {
+            if (models != null)
+            {
+                float rotation = 0;
+                float posX = 0, posZ = 0, posY = 0;
+                float scale = 1;
+                float length = 0;
+                for (int i = 0; i < 4; i++)
+                {
+                    rotation = (float)(i * 90) + mountVerticalRotation;
+                    scale = currentDiameterScale;
+                    length = currentHorizontalPosition + (scale * modelHorizontalZOffset);
+                    posX = (float)Math.Sin(SSTUUtils.toRadians(rotation)) * length;
+                    posZ = (float)Math.Cos(SSTUUtils.toRadians(rotation)) * length;
+                    posY = currentVerticalPosition + (scale * modelVerticalOffset);
+                    models[i].transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
+                    models[i].transform.localPosition = new Vector3(posX, posY, posZ);
+                    models[i].transform.localRotation = Quaternion.AngleAxis(rotation + 90f, new Vector3(0, 1, 0));
+                    models[i].transform.Rotate(new Vector3(0, 0, 1), mountHorizontalRotation, Space.Self);
+                }
+            }
+        }
+
+        public override void destroyCurrentModel()
+        {
+            GameObject.Destroy(model);
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i] == null) { continue; }
+                models[i].transform.parent = null;
+                GameObject.Destroy(models[i]);
+                models[i] = null;
+            }
+            models = null;
+        }
+
+        public void renameThrustTransforms(string moduleThrustTransformName)
+        {
+            Transform[] trs = model.transform.FindChildren(thrustTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].name = trs[i].gameObject.name = moduleThrustTransformName;
+            }
+        }
+
+    }
+
+
+
+    public class ServiceModuleCoreModel : SingleModelData
+    {
+        //list of available solar panel model definitions
+        //each one will have a list of 'positions' relative to the unscaled core model
+        //each one will list a minimum 'core scale', below which it is unavailable.
+        public ServiceModuleSolarPanelConfiguration[] solarConfigs;
+        public float rcsOffsetRange = 0f;
+        public float rcsPosition = 0f;
+        public float topRatio = 1f;
+        public float bottomRatio = 1f;
+
+        public ServiceModuleCoreModel(ConfigNode node) : base(node)
+        {
+            topRatio = modelDefinition.configNode.GetFloatValue("topRatio", topRatio);
+            bottomRatio = modelDefinition.configNode.GetFloatValue("bottomRatio", bottomRatio);
+            rcsOffsetRange = modelDefinition.configNode.GetFloatValue("rcsOffsetRange", 0f);
+            rcsPosition = modelDefinition.configNode.GetFloatValue("rcsPosition", 0f);
+            ConfigNode[] solarNodes = modelDefinition.configNode.GetNodes("SOLAR");
+            int len = solarNodes.Length;
+            solarConfigs = new ServiceModuleSolarPanelConfiguration[len];
+            for (int i = 0; i < len; i++)
+            {
+                solarConfigs[i] = new ServiceModuleSolarPanelConfiguration(solarNodes[i]);
+            }
+        }
+
+        /// <summary>
+        /// Return the list of solar panel variants that are currently available to this body model
+        /// </summary>
+        /// <param name="scale"></param>
+        /// <returns></returns>
+        public string[] getAvailableSolarVariants(float scale)
+        {
+            List<string> vars = new List<string>();
+            int len = solarConfigs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (scale >= solarConfigs[i].minScale)
+                {
+                    vars.Add(solarConfigs[i].name);
+                }
+            }
+            return vars.ToArray();
+        }
+
+        /// <summary>
+        /// Returns if the input solar panel variant is a valid option at the input scale
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="scale"></param>
+        /// <returns></returns>
+        public bool isValidSolarOption(string name, float scale)
+        {
+            ServiceModuleSolarPanelConfiguration config = getPanelConfiguration(name);
+            return scale >= config.minScale;
+        }
+
+        /// <summary>
+        /// Get the solar panel configuration for the input solar panel type name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public ServiceModuleSolarPanelConfiguration getPanelConfiguration(string name)
+        {
+            return Array.Find(solarConfigs, m => m.name == name);
+        }
+
+    }
+
+    /// <summary>
+    /// Wrapper for RCS
+    /// </summary>
+    public class ServiceModuleRCSModelData : SingleModelData
+    {
+        public GameObject[] models;
+        public string thrustTransformName;
+        public bool dummyModel = false;
+        public float currentHorizontalPosition;
+        public float modelRotation = 0;
+        public float modelHorizontalZOffset = 0;
+        public float modelVerticalOffset = 0;
+
+        public float mountVerticalRotation = 0;
+
+        public ServiceModuleRCSModelData(ConfigNode node) : base(node)
+        {
+            dummyModel = node.GetBoolValue("dummyModel");
+            mountVerticalRotation = node.GetFloatValue("rotation");
+            modelHorizontalZOffset = node.GetFloatValue("modelHorizontalZOffset");
+            modelVerticalOffset = node.GetFloatValue("modelVerticalOffset");
+            thrustTransformName = modelDefinition.configNode.GetStringValue("thrustTransformName");
+        }
+
+        public override void setupModel(Transform parent, ModelOrientation orientation)
+        {
+            if (model != null || models != null) { destroyCurrentModel(); }
+            model = new GameObject(modelDefinition.name);
+            model.transform.NestToParent(parent);
+            models = new GameObject[4];
+            for (int i = 0; i < 4; i++)
+            {
+                models[i] = SSTUUtils.cloneModel(modelDefinition.modelName);
+            }
+            foreach (GameObject go in models)
+            {
+                go.transform.NestToParent(model.transform);
+            }
+        }
+
+        public override void updateModel()
+        {
+            if (models != null)
+            {
+                float rotation = 0;
+                float posX = 0, posZ = 0, posY = 0;
+                float scale = 1;
+                float length = 0;
+                for (int i = 0; i < 4; i++)
+                {
+                    rotation = (float)(i * 90) + mountVerticalRotation;
+                    scale = currentDiameterScale;
+                    length = currentHorizontalPosition + (scale * modelHorizontalZOffset);
+                    posX = (float)Math.Sin(SSTUUtils.toRadians(rotation)) * length;
+                    posZ = (float)Math.Cos(SSTUUtils.toRadians(rotation)) * length;
+                    posY = currentVerticalPosition + (scale * modelVerticalOffset);
+                    models[i].transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
+                    models[i].transform.localPosition = new Vector3(posX, posY, posZ);
+                    models[i].transform.localRotation = Quaternion.AngleAxis(rotation + 90f, new Vector3(0, 1, 0));
+                }
+            }
+        }
+
+        public override void destroyCurrentModel()
+        {
+            GameObject.Destroy(model);
+            if (models == null) { return; }
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (models[i] == null) { continue; }
+                models[i].transform.parent = null;
+                GameObject.Destroy(models[i]);
+                models[i] = null;
+            }
+            models = null;
+        }
+
+        public void renameThrustTransforms(string moduleThrustTransformName)
+        {
+            Transform[] trs = model.transform.FindChildren(thrustTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].name = trs[i].gameObject.name = moduleThrustTransformName;
+            }
+        }
+
+    }
+
+    public class ServiceModuleSolarPanelConfiguration
+    {
+        public readonly string name;
+        public readonly SolarPosition[] positions;
+        public readonly float minScale;
+        public ServiceModuleSolarPanelConfiguration(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            minScale = node.GetFloatValue("minScale", 0f);
+            ConfigNode[] posNodes = node.GetNodes("POSITION");
+            ConfigNode posNode;
+            int len = posNodes.Length;
+            positions = new SolarPosition[len];
+            for (int i = 0; i < len; i++)
+            {
+                posNode = posNodes[i];
+                positions[i] = new SolarPosition(posNode);
+            }
+        }
+
+        public SolarPosition[] getScaledPositions(float scale)
+        {
+            int len = this.positions.Length;
+            SolarPosition[] positions = new SolarPosition[len];
+            for (int i = 0; i < len; i++)
+            {
+                positions[i] = new SolarPosition(this.positions[i], scale);
+            }
+            return positions;
+        }
+    }
+
+
+
+    /// <summary>
+    /// Data for the main segment models for the SRB
+    /// </summary>
+    public class SRBModelData : SingleModelData
+    {
+        public string variant;
+        public string length;
+        public float minThrust;
+        public float maxThrust;
+        public String engineConfig;
+        public SRBModelData(ConfigNode node) : base(node)
+        {
+            variant = node.GetStringValue("variant", "default");
+            length = node.GetStringValue("length", "1x");
+            minThrust = node.GetFloatValue("minThrust");
+            maxThrust = node.GetFloatValue("maxThrust");
+            engineConfig = node.GetStringValue("engineConfig");
+        }
+    }
+
+    /// <summary>
+    /// Data for an srb nozzle, including gimbal adjustment data and ISP curve adjustment.
+    /// </summary>
+    public class SRBNozzleData : SingleModelData
+    {
+        public readonly String thrustTransformName;
+        public readonly String gimbalTransformName;
+        public readonly float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
+        public readonly float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
+
+        public readonly bool hasRCS = false;
+        public readonly string rcsThrustTransformName;
+        public readonly float rcsPower = 0;
+        public readonly bool enableRCSPitch = true;
+        public readonly bool enableRCSYaw = true;
+        public readonly bool enableRCSRoll = true;
+        public readonly bool enableRCSX = true;
+        public readonly bool enableRCSY = true;
+        public readonly bool enableRCSZ = true;
+
+        public readonly ConfigNode constraintData;
+
+        private Quaternion[] gimbalDefaultOrientations;
+        private Transform[] thrustTransforms;
+        private Transform[] gimbalTransforms;
+        private Transform[] rcsTransforms;
+
+        public SRBNozzleData(ConfigNode node) : base(node)
+        {
+            thrustTransformName = node.GetStringValue("thrustTransformName");
+            gimbalTransformName = node.GetStringValue("gimbalTransformName");
+            gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
+            gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
+            hasRCS = node.GetBoolValue("hasRCS");
+            rcsThrustTransformName = node.GetStringValue("rcsTransformName");
+            rcsPower = node.GetFloatValue("rcsPower", rcsPower);
+            enableRCSPitch = node.GetBoolValue("enableRCSPitch", enableRCSPitch);
+            enableRCSYaw = node.GetBoolValue("enableRCSYaw", enableRCSYaw);
+            enableRCSRoll = node.GetBoolValue("enableRCSRoll", enableRCSRoll);
+            enableRCSX = node.GetBoolValue("enableRCSX", enableRCSX);
+            enableRCSY = node.GetBoolValue("enableRCSY", enableRCSY);
+            enableRCSZ = node.GetBoolValue("enableRCSZ", enableRCSZ);
+            if (node.HasNode("CONSTRAINTS"))
+            {
+                constraintData = node.GetNode("CONSTRAINTS");
+            }
+        }
+
+        public void setupTransforms(string moduleThrustTransformName, string moduleGimbalTransformName, string rcsTransformName)
+        {
+            Transform[] origThrustTransforms = model.transform.FindChildren(this.thrustTransformName);
+            int len = origThrustTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                origThrustTransforms[i].name = origThrustTransforms[i].gameObject.name = moduleThrustTransformName;
+            }
+            Transform[] origGimbalTransforms = model.transform.FindChildren(this.gimbalTransformName);
+            len = origGimbalTransforms.Length;
+            gimbalDefaultOrientations = new Quaternion[len];
+            for (int i = 0; i < len; i++)
+            {
+                origGimbalTransforms[i].name = origGimbalTransforms[i].gameObject.name = moduleGimbalTransformName;
+                gimbalDefaultOrientations[i] = origGimbalTransforms[i].localRotation;
+            }
+            Transform[] origRcsTransforms = model.transform.FindChildren(this.rcsThrustTransformName);
+            len = origRcsTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                origRcsTransforms[i].name = origRcsTransforms[i].gameObject.name = rcsTransformName;
+            }
+            this.gimbalTransforms = origGimbalTransforms;
+            this.thrustTransforms = origThrustTransforms;
+        }
+
+        /// <summary>
+        /// Resets the gimbal to its default orientation, and then applies newRotation to it as a direct rotation around the input world axis
+        /// </summary>
+        /// <param name="partGimbalTransform"></param>
+        /// <param name="newRotation"></param>
+        public void updateGimbalRotation(Vector3 worldAxis, float newRotation)
+        {
+            int len = gimbalTransforms.Length;
+            for (int i = 0; i < len; i++)
+            {
+                gimbalTransforms[i].localRotation = gimbalDefaultOrientations[i];
+                gimbalTransforms[i].Rotate(worldAxis, -newRotation, Space.World);
+            }
+        }
+
+        public GameObject[] createRCSThrustTransforms(string name, Transform parent)
+        {
+            MonoBehaviour.print("Creating new rcs thrust transforms");
+            if (!hasRCS)
+            {
+                GameObject[] dumArr = new GameObject[1];
+                dumArr[0] = new GameObject(name);
+                dumArr[0].transform.NestToParent(parent);
+                return dumArr;
+            }
+            int len2;
+            List<GameObject> goList = new List<GameObject>();
+            Transform[] trs;
+            GameObject go;
+            trs = model.transform.FindChildren(rcsThrustTransformName);
+            len2 = trs.Length;
+            MonoBehaviour.print("Found: " + len2 + " trs with name: " + rcsThrustTransformName);
+            for (int k = 0; k < len2; k++)
+            {
+                go = new GameObject(name);
+                go.transform.NestToParent(parent);
+                goList.Add(go);
+            }
+            return goList.ToArray();
         }
     }
 

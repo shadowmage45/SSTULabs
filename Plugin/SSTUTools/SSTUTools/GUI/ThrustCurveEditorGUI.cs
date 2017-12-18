@@ -17,7 +17,7 @@ namespace SSTUTools
         private static int presetHeight = scrollHeight + graphHeight;
         
         private static int id;
-        private static SSTUModularBooster module;
+        private static PartModule module;
         private static FloatCurve curve;
         private static Texture2D texture;        
         private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + scrollHeight + margin);
@@ -31,7 +31,7 @@ namespace SSTUTools
         //private static Vector2 presetScrollPos;
 
 
-        public static void openGUI(SSTUModularBooster srbModule, FloatCurve inputCurve)
+        public static void openGUI(PartModule srbModule, FloatCurve inputCurve)
         {
             module = srbModule;
             id = module.GetInstanceID();
@@ -58,7 +58,7 @@ namespace SSTUTools
         {
             sortKeys(true);
             updateFloatCurve();
-            module.closeGui(curve, presetName);
+            //module.closeGui(curve, presetName);
             MonoBehaviour.Destroy(texture);
             curve = null;
             module = null;
