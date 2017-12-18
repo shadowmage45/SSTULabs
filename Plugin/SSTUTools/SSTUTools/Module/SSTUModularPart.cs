@@ -334,7 +334,7 @@ namespace SSTUTools
                 m.updateDragCubes();
                 m.updateResourceVolume();
                 m.updateFairing(true);
-                m.updateGUI();
+                m.updateAvailableVariants();
                 SSTUModInterop.onPartGeometryUpdate(m.part, true);
             };
 
@@ -458,20 +458,27 @@ namespace SSTUTools
         //standard Unity lifecyle override
         public void Update()
         {
-            //TODO -- call Update() on ModelModules
+            noseModule.Update();
+            upperModule.Update();
+            coreModule.Update();
+            lowerModule.Update();
+            mountModule.Update();
+            solarModule.Update();
+            solarFunctionsModule.Update();
+            upperRcsModule.Update();
+            lowerRcsModule.Update();
         }
 
         //standard Unity lifecyle override
         public void FixedUpdate()
         {
-            //TODO -- call FixedUpdate() on ModelModules
+            solarFunctionsModule.FixedUpdate();
         }
 
         //KSP editor modified event callback
         private void onEditorVesselModified(ShipConstruct ship)
         {
-            //TODO -- update UI for change in available options based on occupied attach nodes
-            updateGUI();
+            updateAvailableVariants();
         }
 
         //IPartMass/CostModifier override
@@ -497,23 +504,43 @@ namespace SSTUTools
         //IRecolorable override
         public string[] getSectionNames()
         {
-            return new string[] { "Top", "Body", "Bottom" };
+            return new string[] { "Nose", "Upper", "Core", "Lower", "Mount", "UpperRCS", "LowerRCS", "Solar" };
         }
 
         //IRecolorable override
         public RecoloringData[] getSectionColors(string section)
         {
-            if (section == "Top")
+            if (section == "Nose")
+            {
+                return noseModule.customColors;
+            }
+            else if (section == "Upper")
             {
                 return upperModule.customColors;
             }
-            else if (section == "Body")
+            else if (section == "Core")
             {
                 return coreModule.customColors;
             }
-            else if (section == "Bottom")
+            else if (section == "Lower")
             {
                 return lowerModule.customColors;
+            }
+            else if (section == "Mount")
+            {
+                return mountModule.customColors;
+            }
+            else if (section == "UpperRCS")
+            {
+                return upperRcsModule.customColors;
+            }
+            else if (section == "LowerRCS")
+            {
+                return lowerRcsModule.customColors;
+            }
+            else if (section == "Solar")
+            {
+                return solarModule.customColors;
             }
             return coreModule.customColors;
         }
@@ -521,34 +548,74 @@ namespace SSTUTools
         //IRecolorable override
         public void setSectionColors(string section, RecoloringData[] colors)
         {
-            if (section == "Top")
+            if (section == "Nose")
+            {
+                noseModule.setSectionColors(colors);
+            }
+            else if (section == "Upper")
             {
                 upperModule.setSectionColors(colors);
             }
-            else if (section == "Body")
+            else if (section == "Core")
             {
                 coreModule.setSectionColors(colors);
             }
-            else if (section == "Bottom")
+            else if (section == "Lower")
             {
                 lowerModule.setSectionColors(colors);
+            }
+            else if (section == "Mount")
+            {
+                mountModule.setSectionColors(colors);
+            }
+            else if (section == "UpperRCS")
+            {
+                upperRcsModule.setSectionColors(colors);
+            }
+            else if (section == "LowerRCS")
+            {
+                lowerRcsModule.setSectionColors(colors);
+            }
+            else if (section == "Solar")
+            {
+                solarModule.setSectionColors(colors);
             }
         }
 
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            if (section == "Top")
+            if (section == "Nose")
+            {
+                return noseModule.currentTextureSet;
+            }
+            else if (section == "Upper")
             {
                 return upperModule.currentTextureSet;
             }
-            else if (section == "Body")
+            else if (section == "Core")
             {
                 return coreModule.currentTextureSet;
             }
-            else if (section == "Bottom")
+            else if (section == "Lower")
             {
                 return lowerModule.currentTextureSet;
+            }
+            else if (section == "Mount")
+            {
+                return mountModule.currentTextureSet;
+            }
+            else if (section == "UpperRCS")
+            {
+                return upperRcsModule.currentTextureSet;
+            }
+            else if (section == "LowerRCS")
+            {
+                return lowerRcsModule.currentTextureSet;
+            }
+            else if (section == "Solar")
+            {
+                return solarModule.currentTextureSet;
             }
             return coreModule.currentTextureSet;
         }
@@ -568,19 +635,19 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            upperModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("MSC-TOP", true), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData));
+            upperModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER", true), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData));
             upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.getValidSelections = m => upperModule.models.FindAll(s => s.canSwitchTo(part, topNodeNames));
 
-            coreModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("MSC-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.setupModelList(ModelData.parseModels(node.GetNodes("CORE"), m => new ServiceModuleCoreModel(m)));
 
-            lowerModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("MSC-BOTTOM", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData));
+            lowerModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData));
             lowerModule.getSymmetryModule = m => m.lowerModule;
             lowerModule.getValidSelections = m => lowerModule.models.FindAll(s => s.canSwitchTo(part, bottomNodeNames));
 
-            solarModule = new ModelModule<SolarModelData, SSTUModularPart>(part, this, getRootTransform("MSC-Solar", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData));
+            solarModule = new ModelModule<SolarModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData));
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.setupModelList(ModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarModelData(m)));
             solarModule.getValidSelections = delegate (IEnumerable<SolarModelData> all)
@@ -598,7 +665,7 @@ namespace SSTUTools
                 d.positions = coreModule.model.getPanelConfiguration(d.name).positions;
             };
 
-            upperRcsModule = new ModelModule<ServiceModuleRCSModelData, SSTUModularPart>(part, this, getRootTransform("MSC-Rcs", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null);
+            upperRcsModule = new ModelModule<ServiceModuleRCSModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
             upperRcsModule.setupModelList(ModelData.parseModels(node.GetNodes("RCS"), m => new ServiceModuleRCSModelData(m)));
             upperRcsModule.getValidSelections = m => upperRcsModule.models.FindAll(s => s.isAvailable(upgradesApplied));
@@ -811,7 +878,7 @@ namespace SSTUTools
             return lowerModule.model.getPosition(ModelOrientation.BOTTOM) - lowerModule.model.getFairingOffset();
         }
 
-        private void updateGUI()
+        private void updateAvailableVariants()
         {
             upperModule.updateSelections();
             lowerModule.updateSelections();

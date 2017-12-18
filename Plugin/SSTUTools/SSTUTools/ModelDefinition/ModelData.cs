@@ -49,283 +49,6 @@ namespace SSTUTools
         }
     }
 
-    public enum ModelOrientation
-    {
-
-        /// <summary>
-        /// Denotes that a model is setup for use as a 'nose' or 'top' part, with the origin at the bottom of the model.<para/>
-        /// Will be rotated 180 degrees around origin when used in a slot denoted for 'bottom' style models.<para/>
-        /// Will be offset vertically downwards by half of its height when used in a slot denoted for 'central' models.<para/>
-        /// </summary>
-        TOP,
-
-        /// <summary>
-        /// Denotes that a model is setup for use as a 'central' part, with the origin in the center of the model.<para/>
-        /// Will be offset upwards by half of its height when used in a slot denoted for 'top' style models.<para/>
-        /// Will be offset downwards by half of its height when used in a slot denoted for 'bottom' style models.<para/>
-        /// </summary>
-        CENTRAL,
-
-        /// <summary>
-        /// Denotes that a model is setup for use as a 'bottom' part, with the origin located at the top of the model.<para/>
-        /// Will be rotated 180 degrees around origin when used in a slot denoted for 'top' style models.<para/>
-        /// Will be offset vertically upwards by half of its height when used in a slot denoted for 'central' models.<para/>
-        /// </summary>
-        BOTTOM
-    }
-
-    /// <summary>
-    /// Data storage for persistent data about a single loaded model.
-    /// Includes height, volume, mass, cost, tech-limitations, node positions, 
-    /// texture-set data, and whether the model is intended for top or bottom stack mounting.
-    /// </summary>
-    public class ModelDefinition
-    {
-        /// <summary>
-        /// The config node that this ModelDefinition is loaded from.
-        /// </summary>
-        public readonly ConfigNode configNode;
-
-        /// <summary>
-        /// The name of the model in the model database to use, if any.  May be blank if model is a 'dummy' model (no meshes).<para/>
-        /// If using COMPOUND_MODEL setup, must be populated with a user-specified name (unused)
-        /// </summary>
-        public readonly String modelName;
-
-        /// <summary>
-        /// The unique registered name for this model definition.  MUST be unique among all model definitions.
-        /// </summary>
-        public readonly String name;
-
-        /// <summary>
-        /// The display name to use for this model definition.  This will be the value displayed on any GUIs for this specific model def.
-        /// </summary>
-        public readonly String title;
-
-        /// <summary>
-        /// A description of this model definition.  Optional.  Currently unused.
-        /// </summary>
-        public readonly String description;
-
-        /// <summary>
-        /// The name of the PartUpgrade that 'unlocks' this model definition.  If blank, denotes always unlocked.<para/>
-        /// If populated, MUST correspond to one of the part-upgrades in the PartModule that this model-definition is used in.
-        /// </summary>
-        public readonly string upgradeUnlockName;
-
-        /// <summary>
-        /// The height of this model, as denoted by colliders and/or attach nodes.<para/>
-        /// This value is used to determine positioning of other models relative to this model when used in multi-model setups.
-        /// </summary>
-        public readonly float height = 1;
-
-        /// <summary>
-        /// The core diameter of this model.
-        /// </summary>
-        public readonly float diameter = 5;
-
-        /// <summary>
-        /// The vertical offset applied to the meshes in the model to make the model conform with its specified orientation setup.
-        /// </summary>
-        public readonly float verticalOffset = 0;
-
-        /// <summary>
-        /// The resource volume that this model definition contains at default scale.  Used to determine the total volume available for resource containers.
-        /// </summary>
-        public readonly float volume = 0;
-
-        /// <summary>
-        /// The 'mass' of this model-definition.
-        /// </summary>
-        public readonly float mass = 0;
-        public readonly float cost = 0;
-
-        public readonly ModelOrientation orientation = ModelOrientation.CENTRAL;
-        public readonly Vector3 invertAxis = Vector3.forward;
-
-        public readonly ModelFairingData fairingData;
-
-        public readonly bool fairingDisabled = false;
-        public readonly float fairingTopOffset = 0;
-        public readonly float rcsVerticalPosition = 0;
-        public readonly float rcsHorizontalPosition = 0;
-        public readonly float rcsVerticalRotation = 0;
-        public readonly float rcsHorizontalRotation = 0;
-        public readonly SubModelData[] subModelData;
-        public readonly AttachNodeBaseData[] attachNodeData;
-        public readonly AttachNodeBaseData surfaceNode;
-        public readonly String defaultTextureSet;
-        public readonly TextureSet[] textureSets;
-        public readonly CompoundModelData compoundModelData;
-        public readonly AnimationData animationData;
-        public readonly ConfigNode solarData;
-        public readonly ConfigNode constraintData;
-
-        public ModelDefinition(ConfigNode node)
-        {
-            configNode = node;
-            name = node.GetStringValue("name", String.Empty);
-            title = node.GetStringValue("title", name);
-            description = node.GetStringValue("description", title);
-            modelName = node.GetStringValue("modelName", String.Empty);
-            upgradeUnlockName = node.GetStringValue("upgradeUnlock", upgradeUnlockName);
-            height = node.GetFloatValue("height", height);
-            volume = node.GetFloatValue("volume", volume);
-            mass = node.GetFloatValue("mass", mass);
-            cost = node.GetFloatValue("cost", cost);
-            diameter = node.GetFloatValue("diameter", diameter);
-            verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
-            if (node.GetBoolValue("invertForTop", false))
-            {
-                orientation = ModelOrientation.BOTTOM;
-            }
-            else if (node.GetBoolValue("invertForBottom", false))
-            {
-                orientation = ModelOrientation.TOP;
-            }
-            invertAxis = node.GetVector3("invertAxis", invertAxis);
-            fairingDisabled = node.GetBoolValue("fairingDisabled", fairingDisabled);
-            fairingTopOffset = node.GetFloatValue("fairingTopOffset", fairingTopOffset);
-            rcsVerticalPosition = node.GetFloatValue("rcsVerticalPosition", rcsVerticalPosition);
-            rcsHorizontalPosition = node.GetFloatValue("rcsHorizontalPosition", rcsHorizontalPosition);
-            rcsVerticalRotation = node.GetFloatValue("rcsVerticalRotation", rcsVerticalRotation);
-            rcsHorizontalRotation = node.GetFloatValue("rcsHorizontalRotation", rcsHorizontalRotation);
-
-            ConfigNode[] subModelNodes = node.GetNodes("SUBMODEL");
-            int len = subModelNodes.Length;
-            subModelData = new SubModelData[len];
-            for (int i = 0; i < len; i++)
-            {
-                subModelData[i] = new SubModelData(subModelNodes[i]);
-            }
-
-            defaultTextureSet = node.GetStringValue("defaultTextureSet");
-
-            String[] attachNodeStrings = node.GetValues("node");
-            len = attachNodeStrings.Length;
-            attachNodeData = new AttachNodeBaseData[len];
-            for (int i = 0; i < len; i++)
-            {
-                attachNodeData[i] = new AttachNodeBaseData(attachNodeStrings[i]);
-            }
-
-            ConfigNode[] textureSetNodes = node.GetNodes("TEXTURESET");
-            len = textureSetNodes.Length;
-            textureSets = new TextureSet[len];
-            for (int i = 0; i < len; i++)
-            {
-                textureSets[i] = new TextureSet(textureSetNodes[i]);
-            }
-            if (node.HasValue("surface"))
-            {
-                surfaceNode = new AttachNodeBaseData(node.GetStringValue("surface"));
-            }
-            else
-            {
-                String val = (diameter*0.5f) + ",0,0,1,0,0,2";
-                surfaceNode = new AttachNodeBaseData(val);
-            }
-
-            if (node.HasNode("COMPOUNDMODEL"))
-            {
-                compoundModelData = new CompoundModelData(node.GetNode("COMPOUNDMODEL"));
-            }
-
-            if (node.HasNode("ANIMATIONDATA"))
-            {
-                animationData = new AnimationData(node.GetNode("ANIMATIONDATA"));
-            }
-
-            if (node.HasNode("SOLARDATA"))
-            {
-                solarData = node.GetNode("SOLARDATA");
-            }
-
-            if (node.HasNode("CONSTRAINT"))
-            {
-                constraintData = node.GetNode("CONSTRAINT");
-            }
-        }
-
-        public bool isAvailable(List<String> partUpgrades)
-        {
-            return String.IsNullOrEmpty(upgradeUnlockName) || partUpgrades.Contains(upgradeUnlockName);
-        }
-
-        public string[] getTextureSetNames()
-        {
-            return SSTUUtils.getNames(textureSets, m => m.name);
-        }
-
-        public string[] getTextureSetTitles()
-        {
-            return SSTUUtils.getNames(textureSets, m => m.title);
-        }
-
-        public TextureSet findTextureSet(string name)
-        {
-            return Array.Find(textureSets, m => m.name == name);
-        }
-
-        internal bool shouldInvert(ModelOrientation orientation)
-        {
-            return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
-        }
-
-    }
-
-    /// <summary>
-    /// Information pertaining to a single ModelDefinition, defining how NodeFairings are configured for the model at its default scale.
-    /// </summary>
-    public class ModelFairingData
-    {
-
-        /// <summary>
-        /// Are fairings supported on this model?
-        /// </summary>
-        public readonly bool fairingsSupported = false;
-
-        /// <summary>
-        /// Are fairings inverted on this model?  If true, the user-adjustable diameter will be the 'top'.
-        /// </summary>
-        public readonly bool fairingInverted = false;
-
-        /// <summary>
-        /// An offset from the models origin point to where the fairing attaches.  Positive values denote Y+, negative values denote Y-
-        /// </summary>
-        public readonly float fairingOffsetFromOrigin = 0f;
-        
-    }
-
-    /// <summary>
-    /// Stores the data defining a single animation for a single model definition.
-    /// Should include animation name, parent transform name (of the animation component), default speed
-    /// </summary>
-    public class ModelAnimationData
-    {
-        public readonly string animationName;
-        public readonly float speed;
-        public readonly bool isLoop;
-
-        public ModelAnimationData(ConfigNode node)
-        {
-            animationName = node.GetStringValue("name");
-            speed = node.GetFloatValue("speed", 1f);
-            isLoop = node.GetBoolValue("loop", false);
-        }
-
-        public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
-        {
-            int len = nodes.Length;
-            ModelAnimationData[] data = new ModelAnimationData[len];
-            for (int i = 0; i < len; i++)
-            {
-                data[i] = new ModelAnimationData(nodes[i]);
-            }
-            return data;
-        }
-    }
-
     public class SubModelData
     {
 
@@ -344,6 +67,16 @@ namespace SSTUTools
             position = node.GetVector3("position", Vector3.zero);
             rotation = node.GetVector3("rotation", Vector3.zero);
             scale = node.GetVector3("scale", Vector3.one);
+        }
+
+        public SubModelData(string modelURL, string[] meshNames, string parent, Vector3 pos, Vector3 rot, Vector3 scale)
+        {
+            this.modelURL = modelURL;
+            this.modelMeshes = meshNames;
+            this.parent = parent;
+            this.position = pos;
+            this.rotation = rot;
+            this.scale = scale;
         }
 
         public void setupSubmodel(GameObject modelRoot)
@@ -864,15 +597,7 @@ namespace SSTUTools
         /// <param name="reUse"></param>
         public void setupModel(Transform parent, ModelOrientation orientation, bool reUse)
         {
-            if (modelDefinition.subModelData.Length <= 0)
-            {
-                constructSingleModel(parent, orientation, reUse);
-            }
-            else
-            {
-                constructSubModels(parent, orientation, reUse);
-            }
-
+            constructSubModels(parent, orientation, reUse);
         }
 
         /// <summary>
@@ -900,41 +625,6 @@ namespace SSTUTools
             model.transform.parent = null;
             GameObject.Destroy(model);
             model = null;
-        }
-        
-        private void constructSingleModel(Transform parent, ModelOrientation orientation, bool reUse)
-        {
-            String modelName = modelDefinition.modelName;
-            if (String.IsNullOrEmpty(modelName))//no model to setup
-            {
-                return;
-            }
-            if (reUse)
-            {
-                Transform tr = parent.transform.FindModel(modelDefinition.modelName);
-                if (tr != null)
-                {
-                    tr.name = modelDefinition.modelName;
-                    tr.gameObject.name = modelDefinition.modelName;
-                }
-                model = tr == null ? null : tr.gameObject;
-            }
-            if (!String.IsNullOrEmpty(modelName) && model == null)
-            {
-                model = SSTUUtils.cloneModel(modelName);
-            }
-            if (model != null)
-            {
-                model.transform.NestToParent(parent);
-                if (modelDefinition.shouldInvert(orientation))
-                {
-                    model.transform.Rotate(modelDefinition.invertAxis, 180, Space.Self);
-                }
-            }
-            else
-            {
-                MonoBehaviour.print("ERROR: Could not locate model for name: " + modelName);
-            }
         }
 
         private void constructSubModels(Transform parent, ModelOrientation orientation, bool reUse)

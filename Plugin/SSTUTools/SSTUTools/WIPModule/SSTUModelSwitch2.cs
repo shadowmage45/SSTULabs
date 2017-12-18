@@ -90,6 +90,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string modelPersistentData;
 
+        [KSPField(isPersistant = true)]
+        public string animationPersistentData;
+
+        [KSPField(isPersistant = true)]
+        public float animationMaxDeploy = 1;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -98,6 +104,24 @@ namespace SSTUTools
         private float modifiedMass;
         private ModelModule<PositionedModelData, SSTUModelSwitch2> models;
         private bool initialized = false;
+
+        [KSPAction("Toggle")]
+        public void toggleAnimationAction(KSPActionParam param)
+        {
+            models.animationModule.onToggleAction(param);
+        }
+
+        [KSPEvent(guiName = "Enable", guiActive = true, guiActiveEditor = true)]
+        public void enableAnimationEvent()
+        {
+            models.animationModule.onDeployEvent();
+        }
+
+        [KSPEvent(guiName = "Disable", guiActive = true, guiActiveEditor = true)]
+        public void disableAnimationEvent()
+        {
+            models.animationModule.onRetractEvent();
+        }
 
         public override void OnLoad(ConfigNode node)
         {
@@ -207,7 +231,7 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(modelPersistentData), nameof(currentTexture));
+            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             models.getSymmetryModule = m => m.models;
             models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
             models.setupModel();

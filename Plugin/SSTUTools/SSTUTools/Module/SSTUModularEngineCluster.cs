@@ -561,7 +561,7 @@ namespace SSTUTools
                 {
                     EngineClusterLayoutMountData eclmd = ecld.mountData[k];
                     float bse = eclmd.modelDefinition.diameter;
-                    float bmd = eclmd.modelDefinition.configNode.GetFloatValue("mountingDiameter");
+                    float bmd = eclmd.modelDefinition.lowerDiameter;
                     float min = eclmd.minDiameter;
                     float max = eclmd.maxDiameter;
                     float def = eclmd.initialDiameter;
@@ -1046,7 +1046,7 @@ namespace SSTUTools
         private ConfigNode getAutoSizeNode(SSTUEngineLayoutMountOption option, float engineSpacing, float engineMountSize, float increment)
         {
             ModelDefinition mdf = SSTUModelData.getModelDefinition(option.mountName);
-            float modelMountArea = mdf.configNode.GetFloatValue("mountingDiameter");//TODO clean up the need to cache the config node for a simple use
+            float modelMountArea = mdf.lowerDiameter;
             float minSize = 2.5f, maxSize = 10f, size = 2.5f;
             calcAutoMountSize(engineSpacing, engineMountSize, mdf.diameter, modelMountArea, layoutData.mountSizeMult, increment, out size, out minSize, out maxSize);
             ConfigNode node = new ConfigNode("MOUNT");
