@@ -586,18 +586,7 @@ namespace SSTUTools
         /// <param name="orientation"></param>
         public override void setupModel(Transform parent, ModelOrientation orientation)
         {
-            setupModel(parent, orientation, false);
-        }
-
-        /// <summary>
-        /// Creates the transforms and meshes for the model using default positioning and orientation defined by the passed in ModelOrientation parameter
-        /// </summary>
-        /// <param name="parent"></param>
-        /// <param name="orientation"></param>
-        /// <param name="reUse"></param>
-        public void setupModel(Transform parent, ModelOrientation orientation, bool reUse)
-        {
-            constructSubModels(parent, orientation, reUse);
+            constructSubModels(parent, orientation);
         }
 
         /// <summary>
@@ -627,27 +616,8 @@ namespace SSTUTools
             model = null;
         }
 
-        private void constructSubModels(Transform parent, ModelOrientation orientation, bool reUse)
-        {        
-            String modelName = modelDefinition.modelName;
-            if (String.IsNullOrEmpty(modelName))//no model name given, log user-error for them to correct
-            {
-                MonoBehaviour.print("ERROR: Could not setup sub-models for ModelDefinition: " + modelDefinition.name + " as no modelName was specified to use as the root transform.");
-                MonoBehaviour.print("Please add a modelName to this model definition to enable sub-model creation.");
-                return;
-            }
-            //attempt to re-use the model if it is already present on the part
-            if (reUse)
-            {
-                Transform tr = parent.transform.FindModel(modelDefinition.modelName);
-                if (tr != null)
-                {
-                    tr.name = modelDefinition.modelName;
-                    tr.gameObject.name = modelDefinition.modelName;
-                }
-                model = tr == null ? null : tr.gameObject;
-            }
-            //not re-used, recreate it entirely from the sub-model data
+        private void constructSubModels(Transform parent, ModelOrientation orientation)
+        {
             if (model == null)
             {
                 //create a new GO at 0,0,0 with default orientation and the given model name

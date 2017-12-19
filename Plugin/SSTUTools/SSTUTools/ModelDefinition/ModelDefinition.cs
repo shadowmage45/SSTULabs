@@ -346,16 +346,35 @@ namespace SSTUTools
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
-        //TODO
         public ModelDefinition[] getValidUpperOptions(List<string> partUpgrades)
         {
-            return null;
+            return getValidOptions(partUpgrades, validUpperModels);
         }
 
-        //TODO
         public ModelDefinition[] getValidLowerOptions(List<string> partUpgrades)
         {
-            return null;
+            return getValidOptions(partUpgrades, validLowerModels);
+        }
+
+        private ModelDefinition[] getValidOptions(List<string> partUpgrades, string[] defNames)
+        {
+            List<ModelDefinition> defs = new List<ModelDefinition>();
+            ModelDefinition def;
+            int len = validUpperModels.Length;
+            for (int i = 0; i < len; i++)
+            {
+                def = SSTUModelData.getModelDefinition(defNames[i]);
+                if (def == null)
+                {
+                    MonoBehaviour.print("ERROR: Could not locate model definition for name: " + defNames[i]+" while loading valid adapters for: "+name);
+                    continue;
+                }
+                if (def.isAvailable(partUpgrades))
+                {
+                    defs.Add(def);
+                }
+            }
+            return defs.ToArray();
         }
 
     }
