@@ -24,22 +24,22 @@ namespace SSTUTools
         /// <summary>
         /// The name of the model in the model database to use, if any.  May be blank if model is a 'dummy' model (no meshes).<para/>
         /// </summary>
-        public readonly String modelName;
+        public readonly string modelName;
 
         /// <summary>
         /// The unique registered name for this model definition.  MUST be unique among all model definitions.
         /// </summary>
-        public readonly String name;
+        public readonly string name;
 
         /// <summary>
         /// The display name to use for this model definition.  This will be the value displayed on any GUIs for this specific model def.
         /// </summary>
-        public readonly String title;
+        public readonly string title;
 
         /// <summary>
         /// A description of this model definition.  Optional.  Currently unused.
         /// </summary>
-        public readonly String description;
+        public readonly string description;
 
         /// <summary>
         /// The name of the PartUpgrade that 'unlocks' this model definition.  If blank, denotes always unlocked.<para/>
@@ -170,8 +170,7 @@ namespace SSTUTools
         /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
         /// </summary>
         public readonly ModelRCSData rcsData;
-        
-        //TODO -- parse this from config node
+
         /// <summary>
         /// List of ModelDefinitions that are valid options for use as an 'upper' adatper/nose option for this model definition.
         /// Used in modular part configurations to auto-determine the current valid adapter selections for any given 'core' model selection.<para/>
@@ -179,7 +178,6 @@ namespace SSTUTools
         /// </summary>
         public readonly string[] validUpperModels;
 
-        //TODO -- parse this from config node
         /// <summary>
         /// List of ModelDefinitions that are valid options for use as an 'lower' adatper/nose option for this model definition.
         /// Used in modular part configurations to auto-determine the current valid adapter selections for any given 'core' model selection.<para/>
@@ -319,6 +317,41 @@ namespace SSTUTools
             {
                 fairingData = new ModelFairingData(node.GetNode("FAIRINGDATA"));
             }
+
+            List<string> validAdapters = new List<string>();
+
+            if (node.HasValue("topAdapterGroup"))
+            {
+                string[] groups = node.GetStringValues("topAdapterGroup");
+                len = groups.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    validAdapters.AddUniqueRange(getAdapterGroup(groups[i]));
+                }
+            }
+            if (node.HasValue("topAdapter"))
+            {
+                string[] adapters = node.GetStringValues("topAdapter");
+                validAdapters.AddUniqueRange(adapters);
+            }
+            validUpperModels = validAdapters.ToArray();
+
+            validAdapters.Clear();
+            if (node.HasValue("bottomAdapterGroup"))
+            {
+                string[] groups = node.GetStringValues("bottomAdapterGroup");
+                len = groups.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    validAdapters.AddUniqueRange(getAdapterGroup(groups[i]));
+                }
+            }
+            if (node.HasValue("bottomAdapter"))
+            {
+                string[] adapters = node.GetStringValues("bottomAdapter");
+                validAdapters.AddRange(adapters);
+            }
+            validLowerModels = validAdapters.ToArray();
         }
 
         public bool isAvailable(List<String> partUpgrades)
@@ -375,6 +408,24 @@ namespace SSTUTools
                 }
             }
             return defs.ToArray();
+        }
+
+        private static string[] getAdapterGroup(string name)
+        {
+            ConfigNode[] groupNodes = GameDatabase.Instance.GetConfigNodes("ADAPTER_GROUP");
+            int len = groupNodes.Length;
+            ConfigNode groupNode;
+            string groupName;
+            for (int i = 0; i < len; i++)
+            {
+                groupNode = groupNodes[i];
+                groupName = groupNode.GetStringValue("name");
+                if (groupName == name)
+                {
+                    return groupNode.GetStringValues("definition");
+                }
+            }
+            return new string[0];
         }
 
     }
