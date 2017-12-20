@@ -161,7 +161,7 @@ namespace SSTUTools
         private float modifiedCost;
         private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
-        private ModelModule<ISDCModelData, SSTUInterstageDecoupler> engineModels;
+        private ModelModule<SingleModelData, SSTUInterstageDecoupler> engineModels;
 
         private RecoloringHandler recolorHandler;
 
@@ -525,9 +525,8 @@ namespace SSTUTools
             ConfigNode[] modelNodes = baseNode.GetNodes("MODEL");
             Transform engineRoot = modelBase.FindOrCreate("SSTU-ISDC-EngineRoot");
 
-            engineModels = new ModelModule<ISDCModelData, SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(currentEngineModel), nameof(customEngineColorData), nameof(currentEngineTextureSet), null, null, null, null);
-            engineModels.getSymmetryModule = m => m.engineModels;
-            engineModels.setupModelList(ModelData.parseModels<ISDCModelData>(modelNodes, m => new ISDCModelData(m)));
+            engineModels = new ModelModule<SingleModelData, SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(currentEngineModel), nameof(customEngineColorData), nameof(currentEngineTextureSet), null, null, null, null);            engineModels.getSymmetryModule = m => m.engineModels;
+            engineModels.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
             engineModels.setupModel();
             updateEnginePositionAndScale();
         }
@@ -665,9 +664,33 @@ namespace SSTUTools
             SSTUModInterop.onPartTextureUpdated(part);
         }
 
-        private class ISDCModelData : SingleModelData
+        private class InterstageDecouplerModel : FairingContainer
         {
+            private GameObject collider;
+            private float colliderHeight;
 
+            public InterstageDecouplerModel(GameObject root, GameObject collider, float colliderHeight, int cylinderFaces, int numberOfPanels, float thickness) : base(root, cylinderFaces, numberOfPanels, thickness)
+            {
+                this.collider = collider;
+                this.colliderHeight = colliderHeight;
+            }
+
+            public override void generateFairing()
+            {
+                base.generateFairing();
+                rebuildCollider();
+            }
+
+            //TODO
+            private void rebuildCollider()
+            {
+                //throw new NotImplementedException();
+            }
+        }
+
+        private class ISDCModelData
+        {
+            public readonly string name;
             public readonly int numberOfEngines = 4;
             public readonly float[] engineRotations;
             public readonly string engineThrustTransformName = string.Empty;
@@ -677,8 +700,9 @@ namespace SSTUTools
             public float engineScale = 1f;//this is relative to the scale set by the diamter/etc
             public bool invertEngines = false;
 
-            public ISDCModelData(ConfigNode node) : base(node)
+            public ISDCModelData(ConfigNode node)
             {
+                name = node.GetStringValue("name");
                 numberOfEngines = modelDefinition.configNode.GetIntValue("numberOfEngines");
                 engineRotations = modelDefinition.configNode.GetFloatValuesCSV("engineRotations");
                 engineThrustTransformName = modelDefinition.configNode.GetStringValue("engineThrustTransformName");
@@ -718,30 +742,6 @@ namespace SSTUTools
                 }
             }
 
-        }
-
-        private class InterstageDecouplerModel : FairingContainer
-        {
-            private GameObject collider;
-            private float colliderHeight;
-            
-            public InterstageDecouplerModel(GameObject root, GameObject collider, float colliderHeight, int cylinderFaces, int numberOfPanels, float thickness) : base(root, cylinderFaces, numberOfPanels, thickness)
-            {
-                this.collider = collider;
-                this.colliderHeight = colliderHeight;
-            }
-
-            public override void generateFairing()
-            {
-                base.generateFairing();
-                rebuildCollider();
-            }
-
-            //TODO
-            private void rebuildCollider()
-            {
-                //throw new NotImplementedException();
-            }
         }
 
     }

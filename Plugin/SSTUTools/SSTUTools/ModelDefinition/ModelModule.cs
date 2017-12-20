@@ -9,39 +9,48 @@ namespace SSTUTools
 
     public class ModelModule<T, U> where T : SingleModelData where U : PartModule
     {
-        //apparently these are like a class declaration.... the delegate name becomes a new type that can be referenced
+
         public delegate ModelModule<T, U> SymmetryModule(U m);
 
-        public delegate IEnumerable<T> ValidSelections(IEnumerable<T> allSelections);
+        public delegate ModelDefinition[] ValidOptions();
 
-        public delegate String[] DisplayNames(IEnumerable<T> validSelections);
+        public delegate void PreModelSetup(SingleModelData model);
 
-        public delegate void PreModelSetup(T model);
+        public delegate T CreatModel(string name);
 
         public readonly Part part;
-        public readonly PartModule partModule;
+        public readonly U partModule;
         public readonly Transform root;
         public readonly ModelOrientation orientation;
+
+        public ValidOptions getValidOptions;
+
         public SymmetryModule getSymmetryModule;
 
-        public ValidSelections getValidSelections = delegate (IEnumerable<T> allSelections)
+        public SymmetryModule getParentModule = delegate (U module) 
         {
-            return allSelections;
+            return null;
         };
 
-        public DisplayNames getDisplayNames = delegate (IEnumerable<T> validSelections) 
-        {
-            return SSTUUtils.getNames(validSelections, m => m.modelDefinition.title);
-        };
-
-        public PreModelSetup preModelSetup = delegate (T model) 
+        public PreModelSetup preModelSetup = delegate (SingleModelData model) 
         {
             //noop
         };
 
-        public List<T> models = new List<T>();
+        public CreatModel createModel = delegate (string name) 
+        {
+            return (T) new SingleModelData(name);
+        };
+
+        /// <summary>
+        /// Base model definition list, used for stand-alone modules that do not rely on external modules for model validation
+        /// </summary>
+        public string[] baseOptions;
+
         public T model;
         public RecoloringData[] customColors = new RecoloringData[0];//zero-length array triggers default color assignment from texture set colors (if present)
+
+        private ModelDefinition[] optionsCache;
 
         private BaseField dataField;
         private BaseField textureField;
@@ -68,6 +77,16 @@ namespace SSTUTools
             set { if (dataField != null) { dataField.SetValue(value, partModule); } }
         }
 
+        #region REGION - Convenience wrappers for model/definition data
+
+        public ModelDefinition modelDefinition { get { return model.modelDefinition; } }
+
+        public ModelRCSData rcsData { get { return model.modelDefinition.rcsData; } }
+
+        public ModelEngineThrustData engineThrustData { get { return model.modelDefinition.engineThrustData; } }
+
+        public ModelEngineTransformData engineTransformData { get { return model.modelDefinition.engineTransformData; } }
+
         public float moduleMass { get { return model.getModuleMass(); } }
 
         public float moduleCost { get { return model.getModuleCost(); } }
@@ -78,7 +97,7 @@ namespace SSTUTools
 
         public float moduleHeight { get { return model.currentHeight; } }
 
-        public AnimationData animationData { get { return model.getAnimationData(); } }
+        #endregion ENDREGION - Convenience wrappers for model/definition data
 
         /// <summary>
         /// Sets the position of the model so that the origin of the model is at the input Y coordinate, for the input model orientation.<para/>
@@ -88,7 +107,10 @@ namespace SSTUTools
         /// </summary>
         /// <param name="yPos"></param>
         /// <param name="orientation"></param>
-        public void setPosition(float yPos, ModelOrientation orientation = ModelOrientation.TOP) { model.setPosition(yPos, orientation); }
+        public void setPosition(float yPos)
+        {
+            model.setPosition(yPos, orientation);
+        }
 
         /// <summary>
         /// Updates the model for the currently specified position and scale
@@ -116,7 +138,7 @@ namespace SSTUTools
         /// <param name="dataFieldName"></param>
         /// <param name="modelFieldName"></param>
         /// <param name="textureFieldName"></param>
-        public ModelModule(Part part, PartModule partModule, Transform root, ModelOrientation orientation, 
+        public ModelModule(Part part, U partModule, Transform root, ModelOrientation orientation, 
             string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName, 
             string animationPersistenceFieldName, string deployLimitField, string deployEventName, string retractEventName)
         {
@@ -132,15 +154,18 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Initialization method.  May be called to update the available mount list later, but the model must be re-setup afterwards
+        /// Initialization method.  May be called to update the available model list later, but the model must be re-setup afterwards
         /// </summary>
         /// <param name="models"></param>
-        public void setupModelList(IEnumerable<T> models)
+        public void setupModelList(ModelDefinition[] modelDefs)
         {
-            this.models.Clear();
-            this.models.AddUniqueRange(models);
-            if (model != null) { model.destroyCurrentModel(); }
-            model = this.models.Find(m => m.name == modelName);
+            optionsCache = modelDefs;
+            if (model != null)
+            {
+                model.destroyCurrentModel();
+            }
+            model = null;
+            createModel(modelName);
             updateSelections();
         }
 
@@ -150,14 +175,14 @@ namespace SSTUTools
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
-            if (models == null) { MonoBehaviour.print("ERROR: model list was null!  Models must be populated after module construction."); }
-            model = models.Find(m => m.name == modelName);
+            if (model != null)
+            {
+                model.destroyCurrentModel();
+            }
+            createModel(modelName);
             if (model == null)
             {
-                MonoBehaviour.print("ERROR: could not locate model for name: "+modelName);
-                model = models[0];
-                modelName = model.name;
-                MonoBehaviour.print("Using first available model: "+ model.name);
+                loadDefaultModel();
             }
             preModelSetup(model);
             model.setupModel(root, orientation);
@@ -184,7 +209,7 @@ namespace SSTUTools
                 useDefaultTextureColors = true;
             }
             applyTextureSet(textureSet, useDefaultTextureColors);
-            animationModule.setupAnimations(animationData, root, animationLayer);
+            animationModule.setupAnimations(model.getAnimationData(), root, animationLayer);
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -194,6 +219,26 @@ namespace SSTUTools
         public void Update()
         {
             animationModule.Update();
+        }
+
+        public void renameRCSThrustTransforms(string destinationName)
+        {
+            if (modelDefinition.rcsData == null)
+            {
+                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + modelDefinition.name);
+                return;
+            }
+            modelDefinition.rcsData.renameTransforms(root, destinationName);
+        }
+
+        public void renameEngineThrustTransforms(string destinationName)
+        {
+            if (modelDefinition.engineTransformData == null)
+            {
+                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + modelDefinition.name);
+                return;
+            }
+            modelDefinition.engineTransformData.renameThrustTransforms(root, destinationName);
         }
 
         #endregion ENDREGION - Update Methods
@@ -228,7 +273,6 @@ namespace SSTUTools
         {
             actionWithSymmetry(m => 
             {
-                m.loadModel(modelName);
                 m.setupModel();
             });
         }
@@ -254,7 +298,6 @@ namespace SSTUTools
         /// <param name="newModel"></param>
         public void modelSelected(string newModel)
         {
-            loadModel(newModel);
             setupModel();
         }
 
@@ -263,9 +306,9 @@ namespace SSTUTools
         /// </summary>
         public void updateSelections(bool updateIfInvalid = false)
         {
-            IEnumerable<T> validSelections = getValidSelections(models);
-            string[] names = SSTUUtils.getNames(validSelections, s => s.name);
-            string[] displays = getDisplayNames(validSelections);
+            optionsCache = getValidOptions();
+            string[] names = SSTUUtils.getNames(optionsCache, s => s.name);
+            string[] displays = SSTUUtils.getNames(optionsCache, s => s.title);
             if (updateIfInvalid && !Array.Exists(names, m => m == modelName))
             {
                 modelSelected(names[0]);
@@ -273,6 +316,10 @@ namespace SSTUTools
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
         }
+
+        public ModelDefinition[] getUpperOptions() { return model.modelDefinition.getValidUpperOptions(partModule.upgradesApplied); }
+
+        public ModelDefinition[] getLowerOptions() { return model.modelDefinition.getValidLowerOptions(partModule.upgradesApplied); }
 
         #endregion ENDREGION - GUI Interaction Methods
 
@@ -354,22 +401,12 @@ namespace SSTUTools
         private void loadModel(string name)
         {
             modelName = name;
-            if (model != null)
-            {
-                model.destroyCurrentModel();
-            }
-            model = models.Find(s => s.name == modelName);
-            if (model == null)
-            {
-                loadDefaultModel();
-            }
-            setupModel();
         }
 
         private void loadDefaultModel()
         {
-            model = getValidSelections(models).First();
-            modelName = model.name;
+            modelName = optionsCache[0].name;
+            model = createModel(modelName);
             if (!model.isValidTextureSet(textureSet))
             {
                 textureSet = model.getDefaultTextureSet();

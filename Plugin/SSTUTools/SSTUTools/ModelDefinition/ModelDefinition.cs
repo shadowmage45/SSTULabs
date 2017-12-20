@@ -435,29 +435,56 @@ namespace SSTUTools
     /// </summary>
     public class ModelEngineTransformData
     {
-        //TODO
+
+        public readonly string thrustTransformName;
+
         public ModelEngineTransformData(ConfigNode node)
         {
-
+            thrustTransformName = node.GetStringValue("thrustTransform");
         }
+
+        public void renameThrustTransforms(Transform root, string destinationName)
+        {
+            Transform[] trs = root.FindChildren(thrustTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].gameObject.name = trs[i].name = destinationName;
+            }
+        }
+
     }
 
     /// <summary>
-    /// Information for a single model definition that specifies engine thrust information -- including split thrust transform sharing data.
+    /// Information for a single model definition that specifies engine thrust information<para/>
+    /// Min, Max, and per-transform percentages.
     /// </summary>
     public class ModelEngineThrustData
     {
-        //TODO
+
+        public readonly float maxThrust;
+        public readonly float minThrust;
+        public readonly float[] thrustSplit;
+
         public ModelEngineThrustData(ConfigNode node)
         {
-
+            minThrust = node.GetFloatValue("minThrust", 0);
+            maxThrust = node.GetFloatValue("maxThrust", 1);
+            thrustSplit = node.GetFloatValuesCSV("thrustSplit", new float[] { 1.0f });
         }
+
+        //TODO
+        public float[] getCombinedSplitThrust(int count)
+        {
+            return null;
+        }
+
     }
 
     /// <summary>
     /// Information for a single ModelDefinition that specifies what solar panel ModelDefinitions are valid options, as well as specifying the layouts available.
     /// </summary>
-    public class SolarCompatibilityData
+    public class ModelSolarLayoutData
     {
         //TODO
         //somewhere down the line, this should be structured about like an 'EngineLayout'
@@ -471,11 +498,75 @@ namespace SSTUTools
     /// </summary>
     public class ModelSolarData
     {
-        //TODO
+
+        public readonly ModelSolarDataPivot[] pivotDefinitions;
+        public readonly ModelSolarDataSuncatcher[] suncatcherDefinitions;
+
         public ModelSolarData(ConfigNode node)
         {
+            ConfigNode[] panelNodes = node.GetNodes("PIVOT");
+            int len = panelNodes.Length;
+            pivotDefinitions = new ModelSolarDataPivot[len];
+            for (int i = 0; i < len; i++)
+            {
+                pivotDefinitions[i] = new ModelSolarDataPivot(panelNodes[i]);
+            }
+
+            ConfigNode[] suncatcherNodes = node.GetNodes("SUNCATCHER");
+            len = suncatcherNodes.Length;
+            suncatcherDefinitions = new ModelSolarDataSuncatcher[len];
+            for (int i = 0; i < len; i++)
+            {
+                suncatcherDefinitions[i] = new ModelSolarDataSuncatcher(suncatcherNodes[i]);
+            }
+        }
+
+        public PanelData[] createPanelData(int numberOfPanels)
+        {
+            return null;
+        }
+
+        public class ModelSolarDataPivot
+        {
+
+            public readonly string transformName;
+            public readonly int pivotIndex = 0;
+            public readonly int pivotStride = 1;
+            public readonly float pivotSpeed;
+            public readonly Axis rotAxis;
+            public readonly Axis sunAxis;
+            public readonly int suncatcherOcclusionIndex;
+
+            public ModelSolarDataPivot(ConfigNode node)
+            {
+                pivotIndex = node.GetIntValue("pivotIndex", 0);
+                pivotStride = node.GetIntValue("pivotStride", 1);
+                pivotSpeed = node.GetFloatValue("pivotSpeed", 1);
+                rotAxis = node.getAxis("rotAxis", Axis.YPlus);
+                sunAxis = node.getAxis("sunAxis", Axis.ZPlus);
+                suncatcherOcclusionIndex = node.GetIntValue("suncatcherIndex");
+            }
 
         }
+
+        public class ModelSolarDataSuncatcher
+        {
+
+            public readonly string transformName;
+            public readonly int suncatcherIndex = 0;
+            public readonly int suncatcherStride = 1;
+            public readonly float rate = 0;
+
+            public ModelSolarDataSuncatcher(ConfigNode node)
+            {
+                transformName = node.GetStringValue("suncatcher");
+                suncatcherIndex = node.GetIntValue("suncatcherIndex", 0);
+                suncatcherStride = node.GetIntValue("suncatcherStride", 1);
+                rate = node.GetFloatValue("rate", 0);
+            }
+
+        }
+
     }
 
     /// <summary>
@@ -551,12 +642,37 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsVerticalAngle;
 
+        /// <summary>
+        /// The name of the thrust transforms as they are in the model hierarchy.  These will be renamed at runtime to match whatever the RCS module is expecting.
+        /// </summary>
+        public readonly string thrustTransformName;
+
         //TODO
         public ModelRCSData(ConfigNode node)
         {
 
         }
 
+        public void renameTransforms(Transform root, string destinationName)
+        {
+            Transform[] trs = root.FindChildren(thrustTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].gameObject.name = trs[i].name = destinationName;
+            }
+        }
+
+    }
+
+    public enum Axis
+    {
+        XPlus,
+        XNeg,
+        YPlus,
+        YNeg,
+        ZPlus,
+        ZNeg
     }
 
     public enum ModelOrientation

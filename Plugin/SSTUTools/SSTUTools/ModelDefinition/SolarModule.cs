@@ -270,16 +270,6 @@ namespace SSTUTools
 
     }
 
-    public enum Axis
-    {
-        XPlus,
-        XNeg,
-        YPlus,
-        YNeg,
-        ZPlus,
-        ZNeg
-    }
-
     /// <summary>
     /// Wrapper for a single 'solar panel' -- suncatchers, pivots, broken status
     /// </summary>

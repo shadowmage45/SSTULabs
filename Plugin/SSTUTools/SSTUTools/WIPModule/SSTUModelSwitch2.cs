@@ -102,7 +102,7 @@ namespace SSTUTools
         private float modifiedVolume;
         private float modifiedCost;
         private float modifiedMass;
-        private ModelModule<PositionedModelData, SSTUModelSwitch2> models;
+        private ModelModule<SingleModelData, SSTUModelSwitch2> models;
         private bool initialized = false;
 
         [KSPAction("Toggle")]
@@ -231,9 +231,9 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<PositionedModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
+            models = new ModelModule<SingleModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             models.getSymmetryModule = m => m.models;
-            models.setupModelList(ModelData.parseModels<PositionedModelData>(node.GetNodes("MODEL"), m => new PositionedModelData(m)));
+            models.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("MODEL")));
             models.setupModel();
             models.model.updateScale(currentScale);
             models.updateModel();

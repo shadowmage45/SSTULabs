@@ -41,107 +41,34 @@ namespace SSTUTools
             return data;
         }
 
+        public static ModelDefinition[] getModelDefinitions(string[] names)
+        {
+            List<ModelDefinition> defs = new List<ModelDefinition>();
+            int len = names.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ModelDefinition def = getModelDefinition(names[i]);
+                if (def != null) { defs.AddUnique(def); }
+            }
+            return defs.ToArray();
+        }
+
         public static void loadConfigData()
         {
             defsLoaded = false;
             baseModelData.Clear();
             loadDefs();
         }
-    }
 
-    public class SubModelData
-    {
-
-        public readonly string modelURL;
-        public readonly string[] modelMeshes;
-        public readonly string parent;
-        public readonly Vector3 rotation;
-        public readonly Vector3 position;
-        public readonly Vector3 scale;
-
-        public SubModelData(ConfigNode node)
+        public static ModelDefinition[] getModelDefinitions(ConfigNode[] nodes)
         {
-            modelURL = node.GetStringValue("modelName");
-            modelMeshes = node.GetStringValues("transform");
-            parent = node.GetStringValue("parent", string.Empty);
-            position = node.GetVector3("position", Vector3.zero);
-            rotation = node.GetVector3("rotation", Vector3.zero);
-            scale = node.GetVector3("scale", Vector3.one);
-        }
-
-        public SubModelData(string modelURL, string[] meshNames, string parent, Vector3 pos, Vector3 rot, Vector3 scale)
-        {
-            this.modelURL = modelURL;
-            this.modelMeshes = meshNames;
-            this.parent = parent;
-            this.position = pos;
-            this.rotation = rot;
-            this.scale = scale;
-        }
-
-        public void setupSubmodel(GameObject modelRoot)
-        {
-            if (modelMeshes.Length > 0)
-            {
-                Transform[] trs = modelRoot.transform.GetAllChildren();
-                List<Transform> toKeep = new List<Transform>();
-                List<Transform> toCheck = new List<Transform>();
-                int len = trs.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    if (trs[i] == null)
-                    {
-                        continue;
-                    }
-                    else if (isActiveMesh(trs[i].name))
-                    {
-                        toKeep.Add(trs[i]);
-                    }
-                    else
-                    {
-                        toCheck.Add(trs[i]);
-                    }
-                }
-                List<Transform> transformsToDelete = new List<Transform>();
-                len = toCheck.Count;
-                for (int i = 0; i < len; i++)
-                {
-                    if (!isParent(toCheck[i], toKeep))
-                    {
-                        transformsToDelete.Add(toCheck[i]);
-                    }
-                }
-                len = transformsToDelete.Count;
-                for (int i = 0; i < len; i++)
-                {
-                    GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
-                }
-            }
-        }
-
-        private bool isActiveMesh(string transformName)
-        {
-            int len = modelMeshes.Length;
-            bool found = false;
+            int len = nodes.Length;
+            string[] names = new string[len];
             for (int i = 0; i < len; i++)
             {
-                if (modelMeshes[i] == transformName)
-                {
-                    found = true;
-                    break;
-                }
+                names[i] = nodes[i].GetStringValue("name");
             }
-            return found;
-        }
-
-        private bool isParent(Transform toCheck, List<Transform> children)
-        {
-            int len = children.Count;
-            for (int i = 0; i < len; i++)
-            {
-                if (children[i].isParent(toCheck)) { return true; }
-            }
-            return false;
+            return getModelDefinitions(names);
         }
     }
 
@@ -155,13 +82,7 @@ namespace SSTUTools
         public ModelDefinition modelDefinition;
         public readonly String name;
         public readonly string modelName;
-        public readonly Vector3 baseScale = Vector3.one;
 
-        public float volume;
-        public float mass;
-        public float cost;
-        public float minVerticalScale;
-        public float maxVerticalScale;
         public float currentDiameterScale = 1f;
         public float currentHeightScale = 1f;
         public float currentDiameter;
@@ -179,12 +100,6 @@ namespace SSTUTools
             }
             currentDiameter = modelDefinition.diameter;
             currentHeight = modelDefinition.height;
-            volume = node.GetFloatValue("volume", modelDefinition.volume);
-            mass = node.GetFloatValue("mass", modelDefinition.mass);
-            cost = node.GetFloatValue("cost", modelDefinition.cost);
-            minVerticalScale = node.GetFloatValue("minVerticalScale", 1f);
-            maxVerticalScale = node.GetFloatValue("maxVerticalScale", 1f);
-            baseScale = node.GetVector3("scale",  Vector3.one);
         }
 
         public ModelData(String name)
@@ -197,9 +112,6 @@ namespace SSTUTools
             }
             currentDiameter = modelDefinition.diameter;
             currentHeight = modelDefinition.height;
-            volume = modelDefinition.volume;
-            mass = modelDefinition.mass;
-            cost = modelDefinition.cost;
         }
 
         public bool isValidTextureSet(String val)
@@ -302,22 +214,22 @@ namespace SSTUTools
 
         public virtual float getModuleVolume()
         {            
-            return currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z * volume;
+            return modelDefinition.volume * currentDiameterScale * currentDiameterScale * currentHeightScale;
         }
 
         public virtual float getModuleMass()
         {
-            return mass * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z;
+            return modelDefinition.mass * currentDiameterScale * currentDiameterScale * currentHeightScale;
         }
 
         public virtual float getModuleCost()
         {
-            return cost * currentDiameterScale * currentDiameterScale * currentHeightScale * baseScale.x * baseScale.y * baseScale.z;
+            return modelDefinition.cost * currentDiameterScale * currentDiameterScale * currentHeightScale;
         }
 
         public float getVerticalOffset()
         {
-            return currentHeightScale * baseScale.y * modelDefinition.verticalOffset;
+            return currentHeightScale * modelDefinition.verticalOffset;
         }
 
         /// <summary>
@@ -345,42 +257,6 @@ namespace SSTUTools
             if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
             else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
             return currentVerticalPosition - offset;
-        }
-
-        public virtual float getFairingOffset()
-        {
-            return currentHeightScale * modelDefinition.fairingTopOffset;
-        }
-
-        public static string[] getModelNames(ModelData[] data)
-        {
-            int len = data.Length;
-            string[] vals = new string[len];
-            for (int i = 0; i < len; i++)
-            {
-                vals[i] = data[i].name;
-            }
-            return vals;
-        }
-
-        /// <summary>
-        /// Get array of model data names, taking into consideration upgrade-unlocks available on the part module
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="module"></param>
-        /// <returns></returns>
-        public static string[] getAvailableModelNames(ModelData[] data, PartModule module)
-        {
-            List<string> names = new List<string>();
-            int len = data.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (data[i].isAvailable(module.upgradesApplied))
-                {
-                    names.Add(data[i].name);
-                }
-            }
-            return names.ToArray();
         }
 
         /// <summary>
@@ -598,11 +474,11 @@ namespace SSTUTools
             {
                 if (modelDefinition.compoundModelData != null)
                 {
-                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale * baseScale.x, currentHeightScale * baseScale.y, modelDefinition.orientation);
+                    modelDefinition.compoundModelData.setHeightFromScale(modelDefinition, model, currentDiameterScale, currentHeightScale, modelDefinition.orientation);
                 }
                 else
                 {
-                    model.transform.localScale = new Vector3(currentDiameterScale * baseScale.x, currentHeightScale * baseScale.y, currentDiameterScale * baseScale.z);
+                    model.transform.localScale = new Vector3(currentDiameterScale, currentHeightScale, currentDiameterScale);
                 }
                 model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
             }
@@ -712,6 +588,102 @@ namespace SSTUTools
                 }
             }
             return model;
+        }
+    }
+
+    public class SubModelData
+    {
+
+        public readonly string modelURL;
+        public readonly string[] modelMeshes;
+        public readonly string parent;
+        public readonly Vector3 rotation;
+        public readonly Vector3 position;
+        public readonly Vector3 scale;
+
+        public SubModelData(ConfigNode node)
+        {
+            modelURL = node.GetStringValue("modelName");
+            modelMeshes = node.GetStringValues("transform");
+            parent = node.GetStringValue("parent", string.Empty);
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
+        }
+
+        public SubModelData(string modelURL, string[] meshNames, string parent, Vector3 pos, Vector3 rot, Vector3 scale)
+        {
+            this.modelURL = modelURL;
+            this.modelMeshes = meshNames;
+            this.parent = parent;
+            this.position = pos;
+            this.rotation = rot;
+            this.scale = scale;
+        }
+
+        public void setupSubmodel(GameObject modelRoot)
+        {
+            if (modelMeshes.Length > 0)
+            {
+                Transform[] trs = modelRoot.transform.GetAllChildren();
+                List<Transform> toKeep = new List<Transform>();
+                List<Transform> toCheck = new List<Transform>();
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (trs[i] == null)
+                    {
+                        continue;
+                    }
+                    else if (isActiveMesh(trs[i].name))
+                    {
+                        toKeep.Add(trs[i]);
+                    }
+                    else
+                    {
+                        toCheck.Add(trs[i]);
+                    }
+                }
+                List<Transform> transformsToDelete = new List<Transform>();
+                len = toCheck.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    if (!isParent(toCheck[i], toKeep))
+                    {
+                        transformsToDelete.Add(toCheck[i]);
+                    }
+                }
+                len = transformsToDelete.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
+                }
+            }
+        }
+
+        private bool isActiveMesh(string transformName)
+        {
+            int len = modelMeshes.Length;
+            bool found = false;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelMeshes[i] == transformName)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
+        }
+
+        private bool isParent(Transform toCheck, List<Transform> children)
+        {
+            int len = children.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (children[i].isParent(toCheck)) { return true; }
+            }
+            return false;
         }
     }
 
