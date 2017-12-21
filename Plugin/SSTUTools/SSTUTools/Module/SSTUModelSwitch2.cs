@@ -102,7 +102,7 @@ namespace SSTUTools
         private float modifiedVolume;
         private float modifiedCost;
         private float modifiedMass;
-        private ModelModule<SingleModelData, SSTUModelSwitch2> models;
+        private ModelModule<SSTUModelSwitch2> models;
         private bool initialized = false;
 
         [KSPAction("Toggle")]
@@ -141,8 +141,8 @@ namespace SSTUTools
                 models.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.models.model.updateScale(currentScale);
-                    m.models.updateModel();
+                    m.models.setScale(currentScale);
+                    m.models.updateModelMeshes();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -164,8 +164,8 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m => 
                 {
-                    m.models.model.updateScale(currentScale);
-                    m.models.updateModel();
+                    m.models.setScale(currentScale);
+                    m.models.updateModelMeshes();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -176,7 +176,7 @@ namespace SSTUTools
             {
                 models.textureSetSelected(a, b);
             };
-            Fields[nameof(currentTexture)].guiActiveEditor = models.model.modelDefinition.textureSets.Length > 1;
+            Fields[nameof(currentTexture)].guiActiveEditor = models.definition.textureSets.Length > 1;
             SSTUStockInterop.fireEditorUpdate();
         }
 
@@ -231,12 +231,12 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<SingleModelData, SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
+            models = new ModelModule<SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             models.getSymmetryModule = m => m.models;
             models.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("MODEL")));
             models.setupModel();
-            models.model.updateScale(currentScale);
-            models.updateModel();
+            models.setScale(currentScale);
+            models.updateModelMeshes();
             updateMassAndCost();
             updateAttachNodes(false);
         }
@@ -244,15 +244,15 @@ namespace SSTUTools
         private void updateMassAndCost()
         {
             if (models == null) { return; }
-            modifiedMass = models.model.getModuleMass();
-            modifiedCost = models.model.getModuleCost();
-            modifiedVolume = models.model.getModuleVolume();
+            modifiedMass = models.moduleMass;
+            modifiedCost = models.moduleCost;
+            modifiedVolume = models.moduleVolume;
         }
 
         private void updateAttachNodes(bool userInput)
         {
             string[] nodeNames = managedNodeNames.Split(',');
-            models.model.updateAttachNodes(part, nodeNames, userInput, ModelOrientation.TOP);
+            models.updateAttachNodes(nodeNames, userInput);
         }
 
         public string[] getSectionNames()
@@ -262,12 +262,12 @@ namespace SSTUTools
 
         public RecoloringData[] getSectionColors(string name)
         {
-            return models.customColors;
+            return models.recoloringData;
         }
 
         public TextureSet getSectionTexture(string name)
         {
-            return models.currentTextureSet;
+            return models.textureSet;
         }
 
         public void setSectionColors(string name, RecoloringData[] colors)

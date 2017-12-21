@@ -242,15 +242,15 @@ namespace SSTUTools
         private string[] topNodeNames;
         private string[] bottomNodeNames;
 
-        private ModelModule<SingleModelData, SSTUModularPart> noseModule;
-        private ModelModule<SingleModelData, SSTUModularPart> upperModule;
-        private ModelModule<SingleModelData, SSTUModularPart> coreModule;
-        private ModelModule<SingleModelData, SSTUModularPart> lowerModule;
-        private ModelModule<SingleModelData, SSTUModularPart> mountModule;
+        private ModelModule<SSTUModularPart> noseModule;
+        private ModelModule<SSTUModularPart> upperModule;
+        private ModelModule<SSTUModularPart> coreModule;
+        private ModelModule<SSTUModularPart> lowerModule;
+        private ModelModule<SSTUModularPart> mountModule;
 
-        private ModelModule<SingleModelData, SSTUModularPart> solarModule;
-        private ModelModule<SingleModelData, SSTUModularPart> lowerRcsModule;
-        private ModelModule<SingleModelData, SSTUModularPart> upperRcsModule;
+        private ModelModule<SSTUModularPart> solarModule;
+        private ModelModule<SSTUModularPart> lowerRcsModule;
+        private ModelModule<SSTUModularPart> upperRcsModule;
 
         private SolarModule solarFunctionsModule;
         
@@ -392,7 +392,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     modelChangedAction(m);
-                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.model.getSolarData(), m.solarModule.root);
+                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.definition.getSolarData(), m.solarModule.root);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -402,7 +402,7 @@ namespace SSTUTools
                 upperRcsModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.upperRcsModule.modelDefinition.renameThrustTransforms(upperRCSThrustTransform);
+                    m.upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
                     modelChangedAction(m);
                     m.updateRCSModule();
                 });
@@ -414,7 +414,7 @@ namespace SSTUTools
                 lowerRcsModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.lowerRcsModule.modelDefinition.renameThrustTransforms(lowerRCSThrustTransform);
+                    m.lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
                     modelChangedAction(m);
                     m.updateRCSModule();
                 });
@@ -552,37 +552,37 @@ namespace SSTUTools
         {
             if (section == "Nose")
             {
-                return noseModule.customColors;
+                return noseModule.recoloringData;
             }
             else if (section == "Upper")
             {
-                return upperModule.customColors;
+                return upperModule.recoloringData;
             }
             else if (section == "Core")
             {
-                return coreModule.customColors;
+                return coreModule.recoloringData;
             }
             else if (section == "Lower")
             {
-                return lowerModule.customColors;
+                return lowerModule.recoloringData;
             }
             else if (section == "Mount")
             {
-                return mountModule.customColors;
+                return mountModule.recoloringData;
             }
             else if (section == "UpperRCS")
             {
-                return upperRcsModule.customColors;
+                return upperRcsModule.recoloringData;
             }
             else if (section == "LowerRCS")
             {
-                return lowerRcsModule.customColors;
+                return lowerRcsModule.recoloringData;
             }
             else if (section == "Solar")
             {
-                return solarModule.customColors;
+                return solarModule.recoloringData;
             }
-            return coreModule.customColors;
+            return coreModule.recoloringData;
         }
 
         //IRecolorable override
@@ -627,37 +627,37 @@ namespace SSTUTools
         {
             if (section == "Nose")
             {
-                return noseModule.currentTextureSet;
+                return noseModule.textureSet;
             }
             else if (section == "Upper")
             {
-                return upperModule.currentTextureSet;
+                return upperModule.textureSet;
             }
             else if (section == "Core")
             {
-                return coreModule.currentTextureSet;
+                return coreModule.textureSet;
             }
             else if (section == "Lower")
             {
-                return lowerModule.currentTextureSet;
+                return lowerModule.textureSet;
             }
             else if (section == "Mount")
             {
-                return mountModule.currentTextureSet;
+                return mountModule.textureSet;
             }
             else if (section == "UpperRCS")
             {
-                return upperRcsModule.currentTextureSet;
+                return upperRcsModule.textureSet;
             }
             else if (section == "LowerRCS")
             {
-                return lowerRcsModule.currentTextureSet;
+                return lowerRcsModule.textureSet;
             }
             else if (section == "Solar")
             {
-                return solarModule.currentTextureSet;
+                return solarModule.textureSet;
             }
-            return coreModule.currentTextureSet;
+            return coreModule.textureSet;
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -675,85 +675,58 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            noseModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE", true), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
+            noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE", true), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getParentModule = m => m.upperModule;
             noseModule.getValidOptions = upperModule.getUpperOptions;
 
-            upperModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER", true), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
+            upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER", true), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
             upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.getParentModule = m => m.coreModule;
             upperModule.getValidOptions = coreModule.getUpperOptions;
 
-            coreModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.getSymmetryModule = m => m.coreModule;
             solarModule.getParentModule = m => null;
             coreModule.getValidOptions = () => SSTUModelData.getModelDefinitions(node.GetNodes("CORE"));
             coreModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("CORE")));
 
-            lowerModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
+            lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.getSymmetryModule = m => m.lowerModule;
             lowerModule.getParentModule = m => m.coreModule;
             lowerModule.getValidOptions = coreModule.getLowerOptions;
 
-            mountModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
+            mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT", true), ModelOrientation.BOTTOM, nameof(currentMount), nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.getParentModule = m => m.lowerModule;
             mountModule.getValidOptions = lowerModule.getLowerOptions;
 
-            solarModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData));
+            solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getParentModule = m => null;
-            solarModule.setupModelList(ModelData.parseModels(node.GetNodes("SOLAR"), m => new SolarModelData(m)));
-            solarModule.getValidSelections = delegate (IEnumerable<SolarModelData> all)
-            {
-                //System.Linq.Enumerable.Where(all, s => s.isAvailable(upgradesApplied));
-                float scale = coreModule.model.currentDiameterScale;
-                //find all solar panels that are unlocked via upgrades/tech-tree
-                List<SolarModelData> unlocked = solarModule.models.FindAll(s => s.isAvailable(upgradesApplied));
-                //filter those to find only the ones available for the current
-                List<SolarModelData> availableByScale = unlocked.FindAll(s => coreModule.model.isValidSolarOption(s.name, scale));
-                return availableByScale;
-            };
-            solarModule.preModelSetup = delegate (SolarModelData d)
-            {
-                d.positions = coreModule.model.getPanelConfiguration(d.name).positions;
-            };
 
-            upperRcsModule = new ModelModule<SingleModelData, SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null);
+            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
-            upperRcsModule.setupModelList(ModelData.parseModels(node.GetNodes("RCS"), m => new ServiceModuleRCSModelData(m)));
-            upperRcsModule.getValidSelections = m => upperRcsModule.models.FindAll(s => s.isAvailable(upgradesApplied));
 
-            List<ConfigNode> tops = new List<ConfigNode>();
-            List<ConfigNode> bottoms = new List<ConfigNode>();
-            ConfigNode[] mNodes = node.GetNodes("CAP");
-            ConfigNode mNode;
-            int len = mNodes.Length;
-            for (int i = 0; i < len; i++)
-            {
-                mNode = mNodes[i];
-                if (mNode.GetBoolValue("useForTop", true)) { tops.Add(mNode); }
-                if (mNode.GetBoolValue("useForBottom", true)) { bottoms.Add(mNode); }
-            }
-            upperModule.setupModelList(SingleModelData.parseModels(tops.ToArray()));
-            lowerModule.setupModelList(SingleModelData.parseModels(bottoms.ToArray()));
-            tops.Clear();
-            bottoms.Clear();
+            coreModule.setScaleForDiameter(currentDiameter);
 
             //model-module model-creation
-            upperModule.setupModel();
-            coreModule.setupModel();
-            coreModule.model.updateScaleForDiameter(currentDiameter);
+            noseModule.setupModel();
+            upperModule.setupModel();            
+            coreModule.setupModel();            
             lowerModule.setupModel();
+            mountModule.setupModel();
             solarModule.setupModel();
             upperRcsModule.setupModel();
-            upperRcsModule.model.renameThrustTransforms(lowerRCSThrustTransform);
+            lowerRcsModule.setupModel();
+
+
+            upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
 
             //solar panel animation and solar panel UI controls
             solarFunctionsModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);
             solarFunctionsModule.getSymmetryModule = m => ((SSTUModularPart)m).solarFunctionsModule;
-            solarFunctionsModule.setupSolarPanelData(solarModule.model.getSolarData(), solarModule.root);
+            solarFunctionsModule.setupSolarPanelData(solarModule.definition.getSolarData(), solarModule.root);
 
             updateModulePositions();
             updateMassAndCost();
@@ -764,12 +737,12 @@ namespace SSTUTools
         private void updateModulePositions()
         {
             //update for model scale
-            upperModule.model.updateScaleForDiameter(currentDiameter);
-            coreModule.model.updateScaleForDiameter(currentDiameter);
-            lowerModule.model.updateScaleForDiameter(currentDiameter);
-            float coreScale = coreModule.model.currentDiameterScale;
-            solarModule.model.updateScale(coreScale);
-            upperRcsModule.model.updateScale(coreScale);
+            upperModule.setScaleForDiameter(currentDiameter);
+            coreModule.setScaleForDiameter(currentDiameter);
+            lowerModule.setScaleForDiameter(currentDiameter);
+            float coreScale = coreModule.moduleHorizontalScale;
+            solarModule.setScale(coreScale);
+            upperRcsModule.setScale(coreScale);
 
             //calc positions
             float yPos = upperModule.moduleHeight + (coreModule.moduleHeight * 0.5f);
@@ -789,12 +762,14 @@ namespace SSTUTools
             upperRcsModule.setPosition(coreY + (coreScale * currentUpperRCSOffset * coreModule.model.rcsOffsetRange) + (coreScale * coreModule.model.rcsPosition));
 
             //update actual model positions and scales
-            upperModule.updateModel();
-            coreModule.updateModel();
-            lowerModule.updateModel();
-            solarModule.updateModel();
-            upperRcsModule.model.currentHorizontalPosition = coreModule.model.currentDiameterScale * coreModule.model.modelDefinition.rcsHorizontalPosition;
-            upperRcsModule.updateModel();
+            noseModule.updateModelMeshes();
+            upperModule.updateModelMeshes();
+            coreModule.updateModelMeshes();
+            lowerModule.updateModelMeshes();
+            mountModule.updateModelMeshes();
+            solarModule.updateModelMeshes();
+            upperRcsModule.updateModelMeshes();
+            lowerRcsModule.updateModelMeshes();
         }
 
         private void updateResourceVolume()
@@ -862,8 +837,8 @@ namespace SSTUTools
 
         private void updateAttachNodes(bool userInput)
         {
-            upperModule.model.updateAttachNodes(part, topNodeNames, userInput, ModelOrientation.TOP);
-            lowerModule.model.updateAttachNodes(part, bottomNodeNames, userInput, ModelOrientation.BOTTOM);
+            upperModule.updateAttachNodes(topNodeNames, userInput);
+            lowerModule.updateAttachNodes( bottomNodeNames, userInput);
 
             Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
             SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
@@ -914,30 +889,16 @@ namespace SSTUTools
             }
         }
 
-        private float getPartTopY()
-        {
-            return coreModule.model.currentHeight * 0.5f + upperModule.model.currentHeight;
-        }
-
-        private float getTopFairingBottomY()
-        {
-            return upperModule.model.getPosition(ModelOrientation.TOP) + upperModule.model.getFairingOffset();
-        }
-
-        private float getBottomFairingTopY()
-        {
-            if (!coreModule.model.modelDefinition.fairingDisabled)
-            {
-                return coreModule.model.getPosition(ModelOrientation.TOP) + coreModule.model.getFairingOffset();
-            }
-            return lowerModule.model.getPosition(ModelOrientation.BOTTOM) - lowerModule.model.getFairingOffset();
-        }
-
         private void updateAvailableVariants()
         {
+            noseModule.updateSelections();
             upperModule.updateSelections();
+            coreModule.updateSelections();
             lowerModule.updateSelections();
+            mountModule.updateSelections();
             solarModule.updateSelections();
+            upperRcsModule.updateSelections();
+            lowerRcsModule.updateSelections();
         }
 
         private void updateDragCubes()

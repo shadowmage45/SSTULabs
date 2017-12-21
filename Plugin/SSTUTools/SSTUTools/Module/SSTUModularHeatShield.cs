@@ -143,7 +143,7 @@ namespace SSTUTools
         private float modifiedMass;
 
         //resizable heat-shield fields
-        private ModelModule<SingleModelData, SSTUModularHeatShield> model;
+        private ModelModule<SSTUModularHeatShield> model;
 
         private bool initialized = false;
 
@@ -174,9 +174,9 @@ namespace SSTUTools
                 this.actionWithSymmetry(m => 
                 {
                     if (m != this) { m.currentDiameter = currentDiameter; }
-                    m.model.model.updateScaleForDiameter(currentDiameter);
-                    m.model.model.setPosition(0, ModelOrientation.CENTRAL);
-                    m.model.updateModel();
+                    m.model.setScaleForDiameter(currentDiameter);
+                    m.model.setPosition(0, ModelOrientation.CENTRAL);
+                    m.model.updateModelMeshes();
                     m.updateFairing(true);
                     m.updateModuleStats();
                     m.updatePartResources();
@@ -191,7 +191,7 @@ namespace SSTUTools
             {
                 model.textureSetSelected(a, b);
             };
-            this.Fields[nameof(currentShieldTexture)].guiActiveEditor = standAlonePart && model.model.modelDefinition.textureSets.Length > 1;
+            this.Fields[nameof(currentShieldTexture)].guiActiveEditor = standAlonePart && model.definition.textureSets.Length > 1;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -221,12 +221,12 @@ namespace SSTUTools
 
         public RecoloringData[] getSectionColors(string name)
         {
-            return model==null ? null : model.customColors;
+            return model == null ? null : model.recoloringData;
         }
 
         public TextureSet getSectionTexture(string name)
         {
-            return model==null? null : model.currentTextureSet;
+            return model == null? null : model.textureSet;
         }
 
         public void setSectionColors(string name, RecoloringData[] colors)
@@ -274,12 +274,12 @@ namespace SSTUTools
             if (standAlonePart)
             {
                 ConfigNode[] modelNodes = node.GetNodes("MODEL");
-                model = new ModelModule<SingleModelData, SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), nameof(modelPersistentData), nameof(currentShieldTexture), null, null, null, null);                
+                model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), nameof(modelPersistentData), nameof(currentShieldTexture), null, null, null, null);                
                 model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
                 model.setupModel();
-                model.model.updateScaleForDiameter(currentDiameter);
+                model.setScaleForDiameter(currentDiameter);
                 model.setPosition(0, ModelOrientation.CENTRAL);
-                model.model.updateModel();
+                model.updateModelMeshes();
                 updateAttachNodes(false);
                 updateDragCube();
             }
@@ -433,7 +433,7 @@ namespace SSTUTools
             if (fairing == null) { return; }
             fairing.canDisableInEditor = true;
             FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(model.model.currentHeight * 0.5f + model.model.getFairingOffset());
+            data.setTopY(model.modulePosition + model.moduleFairingOffset);
             data.setTopRadius(currentDiameter * 0.5f);
             if (userInput)
             {
@@ -497,7 +497,7 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             if (!standAlonePart) { return; }
-            float height = model.model.currentHeight;
+            float height = model.moduleHeight;
             AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
@@ -520,7 +520,7 @@ namespace SSTUTools
 
         private float getScale()
         {
-            return model == null ? 1.0f : model.model.currentDiameterScale;
+            return model == null ? 1.0f : model.moduleHorizontalScale;
         }
 
         #endregion

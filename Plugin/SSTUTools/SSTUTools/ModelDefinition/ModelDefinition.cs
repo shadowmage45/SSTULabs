@@ -9,7 +9,8 @@ namespace SSTUTools
 {
 
     /// <summary>
-    /// Data storage for persistent data about a single loaded model.
+    /// Immutable data storage for persistent data about a single 'model'.<para/>
+    /// A 'model' is defined by any number of meshes from models in the GameDatabase, along with any function-specific data for the functions of those meshes -- animations, gimbals, rcs, engine, texture sets<para/>
     /// Includes height, volume, mass, cost, tech-limitations, attach-node positions, 
     /// texture-set data, and whether the model is intended for top, center, or bottom stack mounting.
     /// </summary>
@@ -185,6 +186,11 @@ namespace SSTUTools
         /// </summary>
         public readonly string[] validLowerModels;
 
+        /// <summary>
+        /// Construct the model definition from the data in the input ConfigNode.<para/>
+        /// All data constructs MUST conform to the expected format (see documentation), or things will not load properly and the model will likely not work as expected.
+        /// </summary>
+        /// <param name="node"></param>
         public ModelDefinition(ConfigNode node)
         {
             //load basic model definition values -- data that pertains to every model definition regardless of end-use.
@@ -354,42 +360,76 @@ namespace SSTUTools
             validLowerModels = validAdapters.ToArray();
         }
 
+        /// <summary>
+        /// Return true/false if this model definition is available given the input 'part upgrades' list.  Checks versus the 'upgradeUnlock' specified in the model definition config.
+        /// </summary>
+        /// <param name="partUpgrades"></param>
+        /// <returns></returns>
         public bool isAvailable(List<String> partUpgrades)
         {
             return String.IsNullOrEmpty(upgradeUnlock) || partUpgrades.Contains(upgradeUnlock);
         }
 
+        /// <summary>
+        /// Return a string array containing the names of the texture sets that are available for this model definition.
+        /// </summary>
+        /// <returns></returns>
         public string[] getTextureSetNames()
         {
             return SSTUUtils.getNames(textureSets, m => m.name);
         }
 
+        /// <summary>
+        /// Returns a string array of the UI-label titles for the texture sets for this model definition.<para/>
+        /// Returned in the same order as getTextureSetNames(), so they can be used in with basic indexing to map one value to another.
+        /// </summary>
+        /// <returns></returns>
         public string[] getTextureSetTitles()
         {
             return SSTUUtils.getNames(textureSets, m => m.title);
         }
 
+        /// <summary>
+        /// Return the TextureSet data for the input texture set name.<para/>
+        /// Returns null if the input texture set name was not found in the currently loaded texture sets for this model definition.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public TextureSet findTextureSet(string name)
         {
             return Array.Find(textureSets, m => m.name == name);
         }
 
+        /// <summary>
+        /// Returns the default texture set as defined in the model definition config
+        /// </summary>
+        /// <returns></returns>
+        public TextureSet getDefaultTextureSet()
+        {
+            return findTextureSet(defaultTextureSet);
+        }
+
+        /// <summary>
+        /// Return true/false if this model should be inverted/rotated based on the input use-orientation and the models config-defined orientation.
+        /// </summary>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
         internal bool shouldInvert(ModelOrientation orientation)
         {
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
-        public ModelDefinition[] getValidUpperOptions(List<string> partUpgrades)
+        internal ModelDefinition[] getValidUpperOptions(List<string> partUpgrades)
         {
             return getValidOptions(partUpgrades, validUpperModels);
         }
 
-        public ModelDefinition[] getValidLowerOptions(List<string> partUpgrades)
+        internal ModelDefinition[] getValidLowerOptions(List<string> partUpgrades)
         {
             return getValidOptions(partUpgrades, validLowerModels);
         }
 
-        private ModelDefinition[] getValidOptions(List<string> partUpgrades, string[] defNames)
+        internal ModelDefinition[] getValidOptions(List<string> partUpgrades, string[] defNames)
         {
             List<ModelDefinition> defs = new List<ModelDefinition>();
             ModelDefinition def;
@@ -410,7 +450,7 @@ namespace SSTUTools
             return defs.ToArray();
         }
 
-        private static string[] getAdapterGroup(string name)
+        internal static string[] getAdapterGroup(string name)
         {
             ConfigNode[] groupNodes = GameDatabase.Instance.GetConfigNodes("ADAPTER_GROUP");
             int len = groupNodes.Length;
@@ -430,6 +470,7 @@ namespace SSTUTools
 
     }
 
+    //TODO
     /// <summary>
     /// Information for a single model definition that specifies engine thrust transforms -- essentially just transform name(s).
     /// </summary>
@@ -437,10 +478,16 @@ namespace SSTUTools
     {
 
         public readonly string thrustTransformName;
+        public readonly string gimbalTransformName;
+        public readonly float gimbalAdjustmentRange;//how far the gimbal can be adjusted from reference while in the editor
+        public readonly float gimbalFlightRange;//how far the gimbal may be actuated while in flight from the adjusted reference angle
 
         public ModelEngineTransformData(ConfigNode node)
         {
             thrustTransformName = node.GetStringValue("thrustTransform");
+            gimbalTransformName = node.GetStringValue("gimbalTransformName");
+            gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
+            gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
         }
 
         public void renameThrustTransforms(Transform root, string destinationName)
@@ -453,8 +500,25 @@ namespace SSTUTools
             }
         }
 
+        public void renameGimbalTransforms(Transform root, string destinationName)
+        {
+            Transform[] trs = root.FindChildren(gimbalTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].gameObject.name = trs[i].name = destinationName;
+            }
+        }
+
+        //TODO
+        public void updateGimbalModule(Part part)
+        {
+            //TODO
+        }
+
     }
 
+    //TODO
     /// <summary>
     /// Information for a single model definition that specifies engine thrust information<para/>
     /// Min, Max, and per-transform percentages.
@@ -481,6 +545,7 @@ namespace SSTUTools
 
     }
 
+    //TODO
     /// <summary>
     /// Information for a single ModelDefinition that specifies what solar panel ModelDefinitions are valid options, as well as specifying the layouts available.
     /// </summary>
@@ -492,6 +557,7 @@ namespace SSTUTools
         //can combine into a single slider, or have individual sliders?
     }
 
+    //TODO
     /// <summary>
     /// Information denoting the solar panel information for a single ModelDefinition.  Should include all suncatcher, pivot, and energy rate data.<para/>
     /// Animation data for deploy animation is handled through existing ModelAnimationData container class.
@@ -569,6 +635,7 @@ namespace SSTUTools
 
     }
 
+    //TODO
     /// <summary>
     /// Information denoting the model-animation-constraint setup for the meshes a single ModelDefinition.  Contains all information for all constraints used by the model.
     /// </summary>
@@ -580,6 +647,7 @@ namespace SSTUTools
         }        
     }
 
+    //TODO
     /// <summary>
     /// Information pertaining to a single ModelDefinition, defining how NodeFairings are configured for the model at its default scale.
     /// </summary>
@@ -609,6 +677,7 @@ namespace SSTUTools
 
     }
 
+    //TODO
     /// <summary>
     /// Container for RCS position related data for a standard structural model definition.
     /// </summary>
@@ -665,6 +734,10 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Simple enum defining the cardinal axis' of a transform.<para/>
+    /// Used with Transform extension methods to return a vector for the specified axis (local or world-space).
+    /// </summary>
     public enum Axis
     {
         XPlus,
@@ -675,6 +748,10 @@ namespace SSTUTools
         ZNeg
     }
 
+    /// <summary>
+    /// Simple enum defining how a the meshes of a model are oriented relative to their root transform.<para/>
+    /// ModelModule uses this information to position the model and attach nodes properly.
+    /// </summary>
     public enum ModelOrientation
     {
 

@@ -7,48 +7,54 @@ using KSPShaderTools;
 namespace SSTUTools
 {
 
-    public class ModelModule<T, U> where T : SingleModelData where U : PartModule
+    public class ModelModule<U> where U : PartModule
     {
 
-        public delegate ModelModule<T, U> SymmetryModule(U m);
-
+        #region REGION - Delegate Signatures
+        public delegate ModelModule<U> SymmetryModule(U m);
         public delegate ModelDefinition[] ValidOptions();
+        #endregion ENDREGION - Delegate Signatures
 
-        public delegate void PreModelSetup(SingleModelData model);
-
-        public delegate T CreatModel(string name);
-
+        #region REGION - Immutable fields
         public readonly Part part;
         public readonly U partModule;
         public readonly Transform root;
         public readonly ModelOrientation orientation;
+        public readonly int animationLayer = 0;
+        public AnimationModule animationModule;
+        #endregion ENDREGION - Immutable fields
 
+        #region REGION - Public Delegate Stubs
+
+        /// <summary>
+        /// Delegate MUST be populated.
+        /// </summary>
         public ValidOptions getValidOptions;
 
+        /// <summary>
+        /// Delegate MUST be populated.
+        /// </summary>
         public SymmetryModule getSymmetryModule;
 
-        public SymmetryModule getParentModule = delegate (U module) 
+        /// <summary>
+        /// Delegate can optionally be populated to override default behavior.
+        /// </summary>
+        public SymmetryModule getParentModule = delegate (U module)
         {
             return null;
         };
 
-        public PreModelSetup preModelSetup = delegate (SingleModelData model) 
-        {
-            //noop
-        };
+        #endregion ENDREGION - Public Delegate Stubs
 
-        public CreatModel createModel = delegate (string name) 
-        {
-            return (T) new SingleModelData(name);
-        };
+        #region REGION - Private working data
 
-        /// <summary>
-        /// Base model definition list, used for stand-alone modules that do not rely on external modules for model validation
-        /// </summary>
-        public string[] baseOptions;
+        private Transform[] models;
 
-        public T model;
-        public RecoloringData[] customColors = new RecoloringData[0];//zero-length array triggers default color assignment from texture set colors (if present)
+        private ModelPositionData[] positionData;
+
+        private RecoloringData[] customColors = new RecoloringData[] { new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1) };
+
+        private ModelDefinition modelDefinition;
 
         private ModelDefinition[] optionsCache;
 
@@ -56,75 +62,94 @@ namespace SSTUTools
         private BaseField textureField;
         private BaseField modelField;
 
-        public AnimationModule animationModule;
-        private int animationLayer = 0;
+        private float currentHorizontalScale = 1f;
+        private float currentVerticalScale = 1f;
+        private float currentDiameter;
+        private float currentHeight;
+        private float currentVerticalPosition;
+        private float currentCost;
+        private float currentMass;
+        private float currentVolume;
 
-        private string textureSet
+        #endregion ENDREGION - Private working data
+
+        #region REGION - BaseField wrappers
+
+        /// <summary>
+        /// Wrapper for the BaseField in the PartModule.  Uses reflection, so a bit dirty, but functional and reliable.
+        /// </summary>
+        private string textureSetName
         {
-            get { return textureField==null? "default" : textureField.GetValue<string>(partModule); }
+            get { return textureField == null ? "default" : textureField.GetValue<string>(partModule); }
             set { if (textureField != null) { textureField.SetValue(value, partModule); } }
         }
 
+        /// <summary>
+        /// Wrapper for the BaseField in the PartModule.  Uses reflection, so a bit dirty, but functional and reliable.
+        /// </summary>
         private string modelName
         {
             get { return modelField.GetValue<string>(partModule); }
             set { modelField.SetValue(value, partModule); }
         }
 
+        /// <summary>
+        /// Wrapper for the BaseField in the PartModule.  Uses reflection, so a bit dirty, but functional and reliable.
+        /// </summary>
         private string persistentData
         {
-            get { return dataField==null? string.Empty : dataField.GetValue<string>(partModule); }
+            get { return dataField == null ? string.Empty : dataField.GetValue<string>(partModule); }
             set { if (dataField != null) { dataField.SetValue(value, partModule); } }
         }
 
-        #region REGION - Convenience wrappers for model/definition data
+        #endregion ENDREGION - BaseField wrappers
 
-        public ModelDefinition modelDefinition { get { return model.modelDefinition; } }
+        #region REGION - Convenience wrappers for model definition data for external use
 
-        public ModelRCSData rcsData { get { return model.modelDefinition.rcsData; } }
+        public bool fairingEnabled { get { return modelDefinition.fairingData == null ? false : modelDefinition.fairingData.fairingsSupported; } }
 
-        public ModelEngineThrustData engineThrustData { get { return model.modelDefinition.engineThrustData; } }
+        public bool animationEnabled { get { return modelDefinition.animationData != null; } }
 
-        public ModelEngineTransformData engineTransformData { get { return model.modelDefinition.engineTransformData; } }
+        public bool engineTransformEnabled { get { return modelDefinition.engineTransformData != null; } }
 
-        public float moduleMass { get { return model.getModuleMass(); } }
+        public bool engineThrustEnabled { get { return modelDefinition.engineThrustData != null; } }
 
-        public float moduleCost { get { return model.getModuleCost(); } }
+        //TODO -- create specific gimbal transform data holder class
+        public bool engineGimalEnabled { get { return modelDefinition.engineTransformData != null; } }
 
-        public float moduleVolume { get { return model.getModuleVolume(); } }
+        public bool solarEnabled { get { return modelDefinition.solarData != null; } }
 
-        public float moduleDiameter { get { return model.currentDiameter; } }
+        public ModelDefinition definition { get { return modelDefinition; } }
 
-        public float moduleHeight { get { return model.currentHeight; } }
+        public TextureSet textureSet { get { return modelDefinition.findTextureSet(textureSetName); } }
 
-        #endregion ENDREGION - Convenience wrappers for model/definition data
+        public float moduleMass { get { return currentMass; } }
 
-        /// <summary>
-        /// Sets the position of the model so that the origin of the model is at the input Y coordinate, for the input model orientation.<para/>
-        /// TOP = Y == bottom<para/>
-        /// CENTRAL = Y == center<para/>
-        /// BOTTOM = Y == top<para/>
-        /// </summary>
-        /// <param name="yPos"></param>
-        /// <param name="orientation"></param>
-        public void setPosition(float yPos)
-        {
-            model.setPosition(yPos, orientation);
-        }
+        public float moduleCost { get { return currentCost; } }
 
-        /// <summary>
-        /// Updates the model for the currently specified position and scale
-        /// </summary>
-        public void updateModel()
-        {
-            preModelSetup(model);
-            model.updateModel();
-        }
+        public float moduleVolume { get { return currentVolume; } }
 
-        public TextureSet currentTextureSet
-        {
-            get { return model.modelDefinition.findTextureSet(textureSet); }
-        }
+        public float moduleDiameter { get { return currentDiameter; } }
+
+        public float moduleHeight { get { return currentHeight; } }
+
+        public float moduleHorizontalScale { get { return currentHorizontalScale; } }
+
+        public float moduleVerticalScale { get { return currentVerticalScale; } }
+
+        public float modulePosition { get { return currentVerticalPosition; } }
+
+        public float moduleTop { get { return 0f; } }
+
+        public float moduleCenter { get { return moduleTop - 0.5f * moduleHeight; } }
+
+        public float moduleBottom { get { return moduleTop - moduleHeight; } }
+
+        public float moduleFairingOffset { get { return modelDefinition.fairingData == null ? 0 : modelDefinition.fairingData.fairingOffsetFromOrigin; } }
+
+        public RecoloringData[] recoloringData { get { return customColors; } }
+
+        #endregion ENDREGION - Convenience wrappers for model definition data for external use
 
         #region REGION - Constructors and Init Methods
 
@@ -138,8 +163,8 @@ namespace SSTUTools
         /// <param name="dataFieldName"></param>
         /// <param name="modelFieldName"></param>
         /// <param name="textureFieldName"></param>
-        public ModelModule(Part part, U partModule, Transform root, ModelOrientation orientation, 
-            string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName, 
+        public ModelModule(Part part, U partModule, Transform root, ModelOrientation orientation,
+            string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName,
             string animationPersistenceFieldName, string deployLimitField, string deployEventName, string retractEventName)
         {
             this.part = part;
@@ -150,66 +175,38 @@ namespace SSTUTools
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
             this.animationModule = new AnimationModule(part, partModule, partModule.Fields[animationPersistenceFieldName], partModule.Fields[deployLimitField], partModule.Events[deployEventName], partModule.Events[retractEventName]);
-            loadPersistentData(persistentData);
+            positionData = new ModelPositionData[1];
+            positionData[0] = new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero);
+            loadColors(persistentData);
         }
 
         /// <summary>
-        /// Initialization method.  May be called to update the available model list later, but the model must be re-setup afterwards
+        /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.
         /// </summary>
         /// <param name="models"></param>
         public void setupModelList(ModelDefinition[] modelDefs)
         {
             optionsCache = modelDefs;
-            if (model != null)
+            if (!Array.Exists(optionsCache, m => m.name == modelName))
             {
-                model.destroyCurrentModel();
+                modelName = optionsCache[0].name;
             }
-            model = null;
-            createModel(modelName);
+            setupModel();
             updateSelections();
         }
 
         /// <summary>
-        /// Initialization method.  Subsequent changes to model should call the modelSelectedXXX methods below.
+        /// Initialization method.  Creates the model transforms, and sets their position and scale to the current config values.<para/>
+        /// Initializes texture set, including 'defualts' handling.  Initializes animation module with the animation data for the current model.<para/>
+        /// Only for use during part initialization.  Subsequent changes to model should call the modelSelectedXXX methods.
         /// </summary>
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
-            if (model != null)
-            {
-                model.destroyCurrentModel();
-            }
-            createModel(modelName);
-            if (model == null)
-            {
-                loadDefaultModel();
-            }
-            preModelSetup(model);
-            model.setupModel(root, orientation);
-            bool useDefaultTextureColors = false;
-            if (!model.isValidTextureSet(textureSet) && !string.Equals("default", textureSet))
-            {
-                if (!string.Equals(string.Empty, textureSet))
-                {
-                    MonoBehaviour.print("Current texture set for model " + model.name + " invalid: " + textureSet + ", clearing colors and assigning default texture set.");
-                }
-                textureSet = model.getDefaultTextureSet();
-                if (!model.isValidTextureSet(textureSet))
-                {
-                    MonoBehaviour.print("ERROR: Default texture set: " + textureSet + " set for model: " + model.name + " is invalid.  This is a configuration level error in the model definition that needs to be corrected.");
-                }
-                useDefaultTextureColors = true;
-                if (SSTUGameSettings.persistRecolor())
-                {
-                    useDefaultTextureColors = false;
-                }
-            }
-            if (customColors == null || customColors.Length == 0)
-            {
-                useDefaultTextureColors = true;
-            }
-            applyTextureSet(textureSet, useDefaultTextureColors);
-            animationModule.setupAnimations(model.getAnimationData(), root, animationLayer);
+            constructModels();
+            positionModels();
+            setupTextureSet();
+            animationModule.setupAnimations(definition.animationData, root, animationLayer);
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -221,24 +218,49 @@ namespace SSTUTools
             animationModule.Update();
         }
 
+        /// <summary>
+        /// If the model definition contains rcs-thrust-transform data, will rename the model's rcs thrust transforms to match the input 'destinationName'.<para/>
+        /// This allows for the model's transforms to be properly found by the ModuleRCS when it is (re)initialized.
+        /// </summary>
+        /// <param name="destinationName"></param>
         public void renameRCSThrustTransforms(string destinationName)
         {
-            if (modelDefinition.rcsData == null)
+            if (definition.rcsData == null)
             {
-                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + modelDefinition.name);
+                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + definition.name);
                 return;
             }
-            modelDefinition.rcsData.renameTransforms(root, destinationName);
+            definition.rcsData.renameTransforms(root, destinationName);
         }
 
+        /// <summary>
+        /// If the model definition contains engine-thrust-transform data, will rename the model's engine thrust transforms to match the input 'destinationName'.<para/>
+        /// This allows for the model's transforms to be properly found by the ModuleEngines when it is (re)initialized.
+        /// </summary>
+        /// <param name="destinationName"></param>
         public void renameEngineThrustTransforms(string destinationName)
         {
-            if (modelDefinition.engineTransformData == null)
+            if (definition.engineTransformData == null)
             {
-                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + modelDefinition.name);
+                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name);
                 return;
             }
-            modelDefinition.engineTransformData.renameThrustTransforms(root, destinationName);
+            definition.engineTransformData.renameThrustTransforms(root, destinationName);
+        }
+
+        /// <summary>
+        /// If the model definition contains gimbal-transform data, will rename the model's gimbal transforms to match the input 'destinationName'.<para/>
+        /// This allows for the model's transforms to be properly found by the ModuleGimbal when it is (re)initialized.
+        /// </summary>
+        /// <param name="destinationName"></param>
+        public void renameGimbalTransforms(string destinationName)
+        {
+            if (definition.engineTransformData == null)
+            {
+                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name);
+                return;
+            }
+            definition.engineTransformData.renameGimbalTransforms(root, destinationName);
         }
 
         #endregion ENDREGION - Update Methods
@@ -252,14 +274,13 @@ namespace SSTUTools
         /// <param name="oldValue"></param>
         public void textureSetSelected(BaseField field, System.Object oldValue)
         {
-            bool defaultColors = !SSTUGameSettings.persistRecolor();
-            actionWithSymmetry(m => 
+            actionWithSymmetry(m =>
             {
-                m.textureSet = textureSet;
-                m.applyTextureSet(m.textureSet, defaultColors);
-                if (textureField != null)
+                m.textureSetName = textureSetName;
+                m.applyTextureSet(m.textureSetName, !SSTUGameSettings.persistRecolor());
+                if (m.textureField != null)
                 {
-                    m.partModule.updateUIChooseOptionControl(textureField.name, m.model.modelDefinition.getTextureSetNames(), m.model.modelDefinition.getTextureSetTitles(), true, m.textureSet);                    
+                    m.partModule.updateUIChooseOptionControl(m.textureField.name, m.definition.getTextureSetNames(), m.definition.getTextureSetTitles(), true, m.textureSetName);
                 }
             });
         }
@@ -271,7 +292,7 @@ namespace SSTUTools
         /// <param name="oldValue"></param>
         public void modelSelected(BaseField field, System.Object oldValue)
         {
-            actionWithSymmetry(m => 
+            actionWithSymmetry(m =>
             {
                 m.setupModel();
             });
@@ -285,89 +306,91 @@ namespace SSTUTools
         {
             actionWithSymmetry(m =>
             {
-                m.textureSet = textureSet;
+                m.textureSetName = textureSetName;
                 m.customColors = colors;
-                m.model.enableTextureSet(m.textureSet, m.customColors);
+                m.enableTextureSet();
                 m.saveColors(m.customColors);
             });
         }
 
         /// <summary>
-        /// NON-Symmetry enabled method.
+        /// NON-Symmetry enabled method.<para/>
+        /// Sets the currently selected model name to the input model, and setup
         /// </summary>
         /// <param name="newModel"></param>
         public void modelSelected(string newModel)
         {
-            setupModel();
+            if (Array.Exists(optionsCache, m => m.name == newModel))
+            {
+                modelName = newModel;
+                setupModel();
+            }
+            else
+            {
+                MonoBehaviour.print("ERROR: No model definition found for input name: " + newModel);
+            }
         }
 
         /// <summary>
-        /// NON-Symmetry enabled method
+        /// NON-Symmetry enabled method.<para/>
+        /// Updates the UI controls for the currently available models specified through setupModelList.
         /// </summary>
-        public void updateSelections(bool updateIfInvalid = false)
+        public void updateSelections()
         {
-            optionsCache = getValidOptions();
             string[] names = SSTUUtils.getNames(optionsCache, s => s.name);
             string[] displays = SSTUUtils.getNames(optionsCache, s => s.title);
-            if (updateIfInvalid && !Array.Exists(names, m => m == modelName))
-            {
-                modelSelected(names[0]);
-            }
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
         }
 
-        public ModelDefinition[] getUpperOptions() { return model.modelDefinition.getValidUpperOptions(partModule.upgradesApplied); }
+        //TODO
+        /// <summary>
+        /// Updates the current models with the current scale and position data.
+        /// </summary>
+        public void updateModelMeshes()
+        {
 
-        public ModelDefinition[] getLowerOptions() { return model.modelDefinition.getValidLowerOptions(partModule.upgradesApplied); }
+        }
+
+        public ModelDefinition[] getUpperOptions() { return modelDefinition.getValidUpperOptions(partModule.upgradesApplied); }
+
+        public ModelDefinition[] getLowerOptions() { return modelDefinition.getValidLowerOptions(partModule.upgradesApplied); }
+
+        public void setScaleForDiameter(float newDiameter)
+        {
+            float newScale = newDiameter / definition.diameter;
+            setScale(newScale);
+        }
+
+        public void setScaleForHeightAndDiameter(float newHeight, float newDiameter)
+        {
+            float newHorizontalScale = newDiameter / definition.diameter;
+            float newVerticalScale = newHeight / definition.height;
+            setScale(newHorizontalScale, newVerticalScale);
+        }
+
+        public void setScale(float newScale)
+        {
+            setScale(newScale, newScale);
+        }
+
+        public void setScale(float newHorizontalScale, float newVerticalScale)
+        {
+            currentHorizontalScale = newHorizontalScale;
+            currentVerticalScale = newVerticalScale;
+            currentHeight = newVerticalScale * definition.height;
+            currentDiameter = newHorizontalScale * definition.diameter;
+        }
 
         #endregion ENDREGION - GUI Interaction Methods
 
         #region REGION - Private/Internal methods
 
-        private void applyTextureSet(string setName, bool useDefaultColors)
-        {
-            if (!model.isValidTextureSet(setName))
-            {
-                setName = model.getDefaultTextureSet();
-                textureSet = setName;
-            }
-            if (useDefaultColors)
-            {
-                TextureSet ts = Array.Find(model.modelDefinition.textureSets, m => m.name == setName);
-                if (ts!=null && ts.maskColors != null && ts.maskColors.Length > 0)
-                {
-                    customColors = new RecoloringData[3];
-                    customColors[0] = ts.maskColors[0];
-                    customColors[1] = ts.maskColors[1];
-                    customColors[2] = ts.maskColors[2];
-                }
-                else
-                {
-                    RecoloringData dummy = new RecoloringData(Color.white, 0, 0);
-                    customColors = new RecoloringData[] { dummy, dummy, dummy };
-                }
-                saveColors(customColors);
-            }
-            model.enableTextureSet(textureSet, customColors);
-            if (textureField != null)
-            {
-                model.updateTextureUIControl(partModule, textureField.name, textureSet);
-            }
-            SSTUModInterop.onPartTextureUpdated(part);
-        }
-
-        private void actionWithSymmetry(Action<ModelModule<T, U>> action)
-        {
-            action(this);
-            int index = part.Modules.IndexOf(partModule);
-            foreach (Part p in part.symmetryCounterparts)
-            {
-                action(getSymmetryModule((U)p.Modules[index]));
-            }
-        }
-
-        private void loadPersistentData(string data)
+        /// <summary>
+        /// Load custom colors from persistent color data.  Creates default array of colors if no data is present persistence.
+        /// </summary>
+        /// <param name="data"></param>
+        private void loadColors(string data)
         {
             if (!string.IsNullOrEmpty(data))
             {
@@ -381,10 +404,17 @@ namespace SSTUTools
             }
             else
             {
-                customColors = new RecoloringData[0];
+                customColors = new RecoloringData[3];
+                customColors[0] = new RecoloringData(Color.white, 1, 1);
+                customColors[1] = new RecoloringData(Color.white, 1, 1);
+                customColors[2] = new RecoloringData(Color.white, 1, 1);
             }
         }
 
+        /// <summary>
+        /// Save the current custom color data to persistent data in part-module.
+        /// </summary>
+        /// <param name="colors"></param>
         private void saveColors(RecoloringData[] colors)
         {
             if (colors == null || colors.Length == 0) { return; }
@@ -398,22 +428,661 @@ namespace SSTUTools
             persistentData = data;
         }
 
-        private void loadModel(string name)
+        /// <summary>
+        /// Updates the input texture-control text field with the texture-set names for this model.  Disables field if no texture sets found, enables field if more than one texture set is available.
+        /// </summary>
+        public void updateTextureUIControl()
         {
-            modelName = name;
+            if (textureField == null) { return; }
+            string[] names = definition.getTextureSetNames();
+            partModule.updateUIChooseOptionControl(textureField.name, names, definition.getTextureSetTitles(), true, textureSetName);
+            textureField.guiActiveEditor = names.Length > 1;
         }
 
-        private void loadDefaultModel()
+        /// <summary>
+        /// Updates the internal position reference for the input position
+        /// Includes offsetting for the models offset; the input position should be the desired location
+        /// of the bottom of the model.
+        /// </summary>
+        /// <param name="positionOfBottomOfModel"></param>
+        public virtual void setPosition(float positionOfBottomOfModel, ModelOrientation orientation = ModelOrientation.TOP)
         {
-            modelName = optionsCache[0].name;
-            model = createModel(modelName);
-            if (!model.isValidTextureSet(textureSet))
+            float offset = getVerticalOffset();
+            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
+            currentVerticalPosition = positionOfBottomOfModel + offset;
+        }
+
+        /// <summary>
+        /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
+        /// Any 'extra' attach nodes from the part will be disabled.
+        /// </summary>
+        /// <param name="nodeNames"></param>
+        /// <param name="userInput"></param>
+        public void updateAttachNodes(String[] nodeNames, bool userInput)
+        {
+            if (nodeNames == null || nodeNames.Length < 1) { return; }
+            if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0] == "none")) { return; }
+            float currentVerticalPosition = this.currentVerticalPosition;
+            float offset = getVerticalOffset();
+            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+            currentVerticalPosition -= offset;
+
+            AttachNode node = null;
+            AttachNodeBaseData data;
+
+            int nodeCount = definition.attachNodeData.Length;
+            int len = nodeNames.Length;
+
+            Vector3 pos = Vector3.zero;
+            Vector3 orient = Vector3.up;
+            int size = 4;
+
+            bool invert = definition.shouldInvert(orientation);
+            for (int i = 0; i < len; i++)
             {
-                textureSet = model.getDefaultTextureSet();
+                node = part.FindAttachNode(nodeNames[i]);
+                if (i < nodeCount)
+                {
+                    data = definition.attachNodeData[i];
+                    size = Mathf.RoundToInt(data.size * currentHorizontalScale);
+                    pos = data.position * currentVerticalScale;
+                    if (invert)
+                    {
+                        pos.y = -pos.y;
+                        pos.x = -pos.x;
+                    }
+                    pos.y += currentVerticalPosition;
+                    orient = data.orientation;
+                    if (invert) { orient = -orient; orient.z = -orient.z; }
+                    if (node == null)//create it
+                    {
+                        SSTUAttachNodeUtils.createAttachNode(part, nodeNames[i], pos, orient, size);
+                    }
+                    else//update its position
+                    {
+                        SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, orient, userInput);
+                    }
+                }
+                else//extra node, destroy
+                {
+                    if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
+                    {
+                        SSTUAttachNodeUtils.destroyAttachNode(part, node);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies the currently selected texture set.  Does not validate anything.
+        /// </summary>
+        /// <param name="setName"></param>
+        private void enableTextureSet()
+        {
+            if (string.IsNullOrEmpty(textureSetName) || textureSetName == "none" )
+            {
+                return;
+            }
+            TextureSet textureSet = this.textureSet;
+            if (textureSet != null)
+            {
+                textureSet.enable(root.gameObject, customColors);
+            }
+        }
+
+        /// <summary>
+        /// Initialization method.  Validates the current texture set selection, assigns default set if current selection is invalid.
+        /// </summary>
+        private void setupTextureSet()
+        {
+            bool useDefaultTextureColors = false;
+            if (!isValidTextureSet(textureSetName))
+            {
+                TextureSet def = definition.getDefaultTextureSet();
+                textureSetName = def == null ? "none" : def.name;
+                if (!isValidTextureSet(textureSetName))
+                {
+                    MonoBehaviour.print("ERROR: Default texture set: " + textureSetName + " set for model: " + definition.name + " is invalid.  This is a configuration level error in the model definition that needs to be corrected.  Bad things are about to happen....");
+                }
+                useDefaultTextureColors = true;
+            }
+            else if (customColors == null || customColors.Length == 0)
+            {
+                useDefaultTextureColors = true;
+            }
+            applyTextureSet(textureSetName, useDefaultTextureColors);
+        }
+
+        /// <summary>
+        /// Updates recoloring data for the input texture set, applies the texture set to the model, updates UI controls for the current texture set selection.<para/>
+        /// Should be called whenever a new model is selected, or when a new texture set for the current model is chosen.
+        /// </summary>
+        /// <param name="setName"></param>
+        /// <param name="useDefaultColors"></param>
+        private void applyTextureSet(string setName, bool useDefaultColors)
+        {
+            textureSetName = setName;
+            TextureSet textureSet = this.textureSet;
+            if (useDefaultColors || textureSet == null)
+            {
+                if (textureSet != null && textureSet.maskColors != null && textureSet.maskColors.Length > 0)
+                {
+                    customColors = new RecoloringData[3];
+                    customColors[0] = textureSet.maskColors[0];
+                    customColors[1] = textureSet.maskColors[1];
+                    customColors[2] = textureSet.maskColors[2];
+                }
+                else//invalid colors or texture set, create default placeholder color array
+                {
+                    RecoloringData placeholder = new RecoloringData(Color.white, 1, 1);
+                    customColors = new RecoloringData[] { placeholder, placeholder, placeholder };
+                }
+                saveColors(customColors);
+            }
+            enableTextureSet();
+            updateTextureUIControl();
+            SSTUModInterop.onPartTextureUpdated(part);
+        }
+
+        //TODO
+        private void positionModels()
+        {
+            int len = positionData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                positionModel(i);
+            }
+        }
+
+        //TODO
+        private void positionModel(int index)
+        {
+
+        }
+
+        //TODO
+        private void constructModels()
+        {
+            int len = positionData.Length;
+            models = new Transform[len];
+            for (int i = 0; i < len; i++)
+            {
+                models[i] = new GameObject("ModelModule-" + i).transform;
+                models[i].NestToParent(root);
+                constructSubModels(models[i], positionData[i]);
+            }
+        }
+
+        //TODO
+        private void constructSubModels(Transform parent, ModelPositionData pos)
+        {
+            SubModelData[] smds = definition.subModelData;
+            SubModelData smd;
+            GameObject clonedModel;
+            Transform localParent;
+            int len = smds.Length;
+            //add sub-models to the input model transform
+            for (int i = 0; i < len; i++)
+            {
+                smd = smds[i];
+                clonedModel = SSTUUtils.cloneModel(smd.modelURL);
+                if (clonedModel == null)
+                {
+                    MonoBehaviour.print("ERROR: Could not clone model for url: " + smd.modelURL + " while constructing meshes for model definition" + definition.name);
+                    continue;
+                }
+                clonedModel.transform.NestToParent(parent.transform);
+                clonedModel.transform.localRotation = Quaternion.Euler(smd.rotation);
+                clonedModel.transform.localPosition = smd.position;
+                clonedModel.transform.localScale = smd.scale;
+                if (!string.IsNullOrEmpty(smd.parent))
+                {
+                    localParent = root.transform.FindRecursive(smd.parent);
+                    if (localParent != null)
+                    {
+                        clonedModel.transform.parent = localParent;
+                    }
+                }
+                //de-activate any non-active sub-model transforms
+                //iterate through all transforms for the model and deactivate(destroy?) any not on the active mesh list
+                if (smd.modelMeshes.Length > 0)
+                {
+                    smd.setupSubmodel(clonedModel);
+                }
+            }
+            if (definition.shouldInvert(orientation))
+            {
+                root.transform.Rotate(definition.invertAxis, 180, Space.Self);
+            }
+        }
+
+        //TODO
+        /// <summary>
+        /// Applies the current scale and position values to the models.
+        /// </summary>
+        private void updateModelScaleAndPosition()
+        {
+            int len = models.Length;
+            Transform model;
+            for (int i = 0; i < len; i++)
+            {
+                model = models[i];
+                if (definition.compoundModelData != null)
+                {
+                    definition.compoundModelData.setHeightFromScale(definition, model.gameObject, currentHorizontalScale, currentVerticalScale, definition.orientation);
+                }
+                else
+                {
+                    model.transform.localScale = new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale);
+                }
+                model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
+            }
+        }
+        
+        //TODO
+        private float getVerticalOffset()
+        {
+            return 0f;
+        }
+
+        //TODO
+        private bool isValidTextureSet(String val)
+        {
+            bool noTextures = definition.textureSets.Length == 0;
+            if (String.IsNullOrEmpty(val))
+            {
+                return noTextures;
+            }
+            if (val == definition.defaultTextureSet) { return true; }
+            foreach (TextureSet set in definition.textureSets)
+            {
+                if (set.name == val) { return true; }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Determine if the number of parts attached to the part will prevent this mount from being applied;
+        /// if any node that has a part attached would be deleted, return false.  To be used for GUI validation
+        /// to determine what modules are valid 'swap' selections for the current part setup.
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="nodeNames"></param>
+        /// <returns></returns>
+        private bool canSwitchTo(Part part, String[] nodeNames)
+        {
+            AttachNode node;
+            int len = nodeNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (i < definition.attachNodeData.Length) { continue; }//don't care about those nodes, they will be present
+                node = part.FindAttachNode(nodeNames[i]);//this is a node that would be disabled
+                if (node == null) { continue; }//already disabled, and that is just fine
+                else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount
+            }
+            return true;//and if all node checks go okay, return true by default...
+        }
+
+        /// <summary>
+        /// Internal utility method to allow accessing of symmetry ModelModules' in symmetry parts/part-modules
+        /// </summary>
+        /// <param name="action"></param>
+        private void actionWithSymmetry(Action<ModelModule<U>> action)
+        {
+            action(this);
+            int index = part.Modules.IndexOf(partModule);
+            foreach (Part p in part.symmetryCounterparts)
+            {
+                action(getSymmetryModule((U)p.Modules[index]));
             }
         }
 
         #endregion ENDREGION - Private/Internal methods
 
     }
+
+    /// <summary>
+    /// Class denoting a the transforms to use from a single database model.  Allows for combining multiple entire models, and/or transforms from models, all into a single active/usable Model
+    /// </summary>
+    public class SubModelData
+    {
+
+        public readonly string modelURL;
+        public readonly string[] modelMeshes;
+        public readonly string parent;
+        public readonly Vector3 rotation;
+        public readonly Vector3 position;
+        public readonly Vector3 scale;
+
+        public SubModelData(ConfigNode node)
+        {
+            modelURL = node.GetStringValue("modelName");
+            modelMeshes = node.GetStringValues("transform");
+            parent = node.GetStringValue("parent", string.Empty);
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
+        }
+
+        public SubModelData(string modelURL, string[] meshNames, string parent, Vector3 pos, Vector3 rot, Vector3 scale)
+        {
+            this.modelURL = modelURL;
+            this.modelMeshes = meshNames;
+            this.parent = parent;
+            this.position = pos;
+            this.rotation = rot;
+            this.scale = scale;
+        }
+
+        public void setupSubmodel(GameObject modelRoot)
+        {
+            if (modelMeshes.Length > 0)
+            {
+                Transform[] trs = modelRoot.transform.GetAllChildren();
+                List<Transform> toKeep = new List<Transform>();
+                List<Transform> toCheck = new List<Transform>();
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (trs[i] == null)
+                    {
+                        continue;
+                    }
+                    else if (isActiveMesh(trs[i].name))
+                    {
+                        toKeep.Add(trs[i]);
+                    }
+                    else
+                    {
+                        toCheck.Add(trs[i]);
+                    }
+                }
+                List<Transform> transformsToDelete = new List<Transform>();
+                len = toCheck.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    if (!isParent(toCheck[i], toKeep))
+                    {
+                        transformsToDelete.Add(toCheck[i]);
+                    }
+                }
+                len = transformsToDelete.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
+                }
+            }
+        }
+
+        private bool isActiveMesh(string transformName)
+        {
+            int len = modelMeshes.Length;
+            bool found = false;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelMeshes[i] == transformName)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
+        }
+
+        private bool isParent(Transform toCheck, List<Transform> children)
+        {
+            int len = children.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (children[i].isParent(toCheck)) { return true; }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Data that defines how a compound model scales and updates its height with scale changes.
+    /// </summary>
+    public class CompoundModelData
+    {
+        /*
+            Compound Model Definition and Manipulation
+
+            Compound Model defines the following information for all transforms in the model that need position/scale updated:
+            * total model height - combined height of the model at its default diameter.
+            * height - of the meshes of the transform at default scale
+            * canScaleHeight - if this particular transform is allowed to scale its height
+            * index - index of the transform in the model, working from origin outward.
+            * v-scale axis -- in case it differs from Y axis
+
+            Updating the height on a Compound Model will do the following:
+            * Inputs - vertical scale, horizontal scale
+            * Calculate the desired height from the total model height and input vertical scale factor
+            * Apply horizontal scaling directly to all transforms.  
+            * Apply horizontal scale factor to the vertical scale for non-v-scale enabled meshes (keep aspect ratio of those meshes).
+            * From total desired height, subtract the height of non-scaleable meshes.
+            * The 'remainderTotalHeight' is then divided proportionately between all remaining scale-able meshes.
+            * Calculate needed v-scale for the portion of height needed for each v-scale-able mesh.
+         */
+        CompoundModelTransformData[] compoundTransformData;
+
+        public CompoundModelData(ConfigNode node)
+        {
+            ConfigNode[] trNodes = node.GetNodes("TRANSFORM");
+            int len = trNodes.Length;
+            compoundTransformData = new CompoundModelTransformData[len];
+            for (int i = 0; i < len; i++)
+            {
+                compoundTransformData[i] = new CompoundModelTransformData(trNodes[i]);
+            }
+        }
+
+        public void setHeightExplicit(ModelDefinition def, GameObject root, float dScale, float height, ModelOrientation orientation)
+        {
+            float vScale = height / def.height;
+            setHeightFromScale(def, root, dScale, vScale, orientation);
+        }
+
+        public void setHeightFromScale(ModelDefinition def, GameObject root, float dScale, float vScale, ModelOrientation orientation)
+        {
+            float desiredHeight = def.height * vScale;
+            float staticHeight = getStaticHeight() * dScale;
+            float neededScaleHeight = desiredHeight - staticHeight;
+
+            //iterate through scaleable transforms, calculate total height of scaleable transforms; use this height to determine 'percent share' of needed scale height for each transform
+            int len = compoundTransformData.Length;
+            float totalScaleableHeight = 0f;
+            for (int i = 0; i < len; i++)
+            {
+                totalScaleableHeight += compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height : 0f;
+            }
+
+            float pos = 0f;//pos starts at origin, is incremented according to transform height along 'dir'
+            float dir = orientation == ModelOrientation.BOTTOM ? -1f : 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
+            float localVerticalScale = 1f;
+            Transform[] trs;
+            int len2;
+            float percent, scale, height;
+
+            for (int i = 0; i < len; i++)
+            {
+                percent = compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height / totalScaleableHeight : 0f;
+                height = percent * neededScaleHeight;
+                scale = height / compoundTransformData[i].height;
+
+                trs = root.transform.FindChildren(compoundTransformData[i].name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    trs[k].localPosition = compoundTransformData[i].vScaleAxis * (pos + compoundTransformData[i].offset * dScale);
+                    if (compoundTransformData[i].canScaleHeight)
+                    {
+                        pos += dir * height;
+                        localVerticalScale = scale;
+                    }
+                    else
+                    {
+                        pos += dir * dScale * compoundTransformData[i].height;
+                        localVerticalScale = dScale;
+                    }
+                    trs[k].localScale = getScaleVector(dScale, localVerticalScale, compoundTransformData[i].vScaleAxis);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a vector representing the 'localScale' of a transform, using the input 'axis' as the vertical-scale axis.
+        /// Essentially returns axis*vScale + ~axis*hScale
+        /// </summary>
+        /// <param name="sHoriz"></param>
+        /// <param name="sVert"></param>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        private Vector3 getScaleVector(float sHoriz, float sVert, Vector3 axis)
+        {
+            if (axis.x < 0) { axis.x = 1; }
+            if (axis.y < 0) { axis.y = 1; }
+            if (axis.z < 0) { axis.z = 1; }
+            return (axis * sVert) + (getInverseVector(axis) * sHoriz);
+        }
+
+        /// <summary>
+        /// Kind of like a bitwise inversion for a vector.
+        /// If the input has any value for x/y/z, the output will have zero for that variable.
+        /// If the input has zero for x/y/z, the output will have a one for that variable.
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        private Vector3 getInverseVector(Vector3 axis)
+        {
+            Vector3 val = Vector3.one;
+            if (axis.x != 0) { val.x = 0; }
+            if (axis.y != 0) { val.y = 0; }
+            if (axis.z != 0) { val.z = 0; }
+            return val;
+        }
+
+        /// <summary>
+        /// Returns the sum of non-scaleable transform heights from the compound model data.
+        /// </summary>
+        /// <returns></returns>
+        private float getStaticHeight()
+        {
+            float val = 0f;
+            int len = compoundTransformData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (!compoundTransformData[i].canScaleHeight) { val += compoundTransformData[i].height; }
+            }
+            return val;
+        }
+
+    }
+
+    /// <summary>
+    /// Data class for a single transform in a compound-transform-enabled model.
+    /// </summary>
+    public class CompoundModelTransformData
+    {
+        public readonly string name;
+        public readonly bool canScaleHeight = false;//can this transform scale its height
+        public readonly float height;//the height of the meshes attached to this transform, at scale = 1
+        public readonly float offset;//the vertical offset of the meshes attached to this transform, when translated this amount the top/botom of the meshes will be at transform origin.
+        public readonly int order;//the linear index of this transform in a vertical model setup stack
+        public readonly Vector3 vScaleAxis = Vector3.up;
+
+        public CompoundModelTransformData(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            canScaleHeight = node.GetBoolValue("canScale");
+            height = node.GetFloatValue("height");
+            offset = node.GetFloatValue("offset");
+            order = node.GetIntValue("order");
+            vScaleAxis = node.GetVector3("axis", Vector3.up);
+        }
+    }
+
+    /// <summary>
+    /// Data that defines how a single model is positioned inside a ModelModule when more than one internal model is desired.
+    /// This position/scale/rotation data is applied in addition to the base ModelModule position/scale data.
+    /// </summary>
+    public struct ModelPositionData
+    {
+
+        /// <summary>
+        /// The local position of a single model, relative to the model-modules position
+        /// </summary>
+        public readonly Vector3 localPosition;
+
+        /// <summary>
+        /// The local scale of a single model, relative to the model-modules scale
+        /// </summary>
+        public readonly Vector3 localScale;
+
+        /// <summary>
+        /// The local rotation to be applied to a single model (euler x,y,z)
+        /// </summary>
+        public readonly Vector3 localRotation;
+
+        public ModelPositionData(ConfigNode node)
+        {
+            localPosition = node.GetVector3("position", Vector3.zero);
+            localScale = node.GetVector3("scale", Vector3.one);
+            localRotation = node.GetVector3("rotation", Vector3.zero);
+        }
+
+        public ModelPositionData(Vector3 pos, Vector3 scale, Vector3 rotation)
+        {
+            localPosition = pos;
+            localScale = scale;
+            localRotation = rotation;
+        }
+
+        public Vector3 scaledPosition(Vector3 scale)
+        {
+            return Vector3.Scale(localPosition, scale);
+        }
+
+        public Vector3 scaledPosition(float scale)
+        {
+            return localPosition * scale;
+        }
+
+        public Vector3 scaledScale(Vector3 scale)
+        {
+            return Vector3.Scale(localScale, scale);
+        }
+
+        public Vector3 scaledScale(float scale)
+        {
+            return localScale * scale;
+        }
+
+    }
+
+    /// <summary>
+    /// Named model position layout data structure.  Used to store positions of models, for use in ModelModule setup.<para/>
+    /// Defined independently of the models that may use them, stored and referenced globally/game-wide.<para/>
+    /// A single ModelLayoutData may be used by multiple ModelDefinitions, and a single ModelDefinition may have different ModelLayoutDatas applied to it by the controlling part-module.
+    /// </summary>
+    public struct ModelLayoutData
+    {
+
+        public readonly string name;
+        public readonly ModelPositionData[] positions;
+        public ModelLayoutData(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            ConfigNode[] posNodes = node.GetNodes("POSITION");
+            int len = posNodes.Length;
+            positions = new ModelPositionData[len];
+            for (int i = 0; i < len; i++)
+            {
+                positions[i] = new ModelPositionData(posNodes[i]);
+            }
+        }
+
+    }
+
 }

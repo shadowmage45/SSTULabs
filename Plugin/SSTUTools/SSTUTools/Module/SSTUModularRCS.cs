@@ -49,7 +49,7 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData;
 
-        private ModelModule<SingleModelData, SSTUModularRCS> standoffModule;
+        private ModelModule<SSTUModularRCS> standoffModule;
         private ContainerFuelPreset[] fuelTypes;
         private ContainerFuelPreset fuelType;
         public float rcsThrust = -1;
@@ -147,7 +147,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
             standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
-            standoffModule = new ModelModule<SingleModelData, SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(structurePersistentData), nameof(currentStructureTexture), null, null, null, null);
+            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(structurePersistentData), nameof(currentStructureTexture), null, null, null, null);
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("STRUCTURE")));
             standoffModule.setupModel();
@@ -191,10 +191,10 @@ namespace SSTUTools
             {
                 modelTransform.localScale = new Vector3(currentScale, currentScale, currentScale);
             }
-            standoffModule.model.updateScaleForDiameter(currentScale * structureScale);
+            standoffModule.setScaleForDiameter(currentScale * structureScale);
             float position = -standoffModule.moduleHeight - structureOffset * currentScale;
             standoffModule.setPosition(position, ModelOrientation.TOP);
-            standoffModule.updateModel();
+            standoffModule.updateModelMeshes();
         }
 
         private void updateRCSThrust()
@@ -220,14 +220,14 @@ namespace SSTUTools
             AttachNode srf = part.srfAttachNode;
             if (srf != null)
             {
-                float standoffHeight = standoffModule.model.currentHeight + currentScale * structureOffset;
+                float standoffHeight = standoffModule.moduleHeight + currentScale * structureOffset;
                 Vector3 pos = new Vector3(standoffHeight, 0, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, srf, pos, srf.orientation, userInput);
             }
             AttachNode btm = part.FindAttachNode("bottom");
             if (btm != null)
             {
-                float standoffHeight = standoffModule.model.currentHeight + currentScale * structureOffset;
+                float standoffHeight = standoffModule.moduleHeight + currentScale * structureOffset;
                 Vector3 pos = new Vector3(standoffHeight, 0, 0);
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, btm, pos, btm.orientation, userInput);
             }

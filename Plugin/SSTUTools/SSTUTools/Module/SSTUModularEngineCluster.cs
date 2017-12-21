@@ -208,7 +208,7 @@ namespace SSTUTools
 
         #region REGION - Private working variables
 
-        private ModelModule<SingleModelData, SSTUModularEngineCluster> mountModule;
+        private ModelModule<SSTUModularEngineCluster> mountModule;
         private EngineClusterLayoutData[] engineLayouts;
         private EngineClusterLayoutData currentEngineLayout = null;
         private EngineClusterLayoutMountData mountData
@@ -248,17 +248,13 @@ namespace SSTUTools
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            if (Array.Exists(mountModule.baseOptions, m => m == "Mount-None"))
+            this.actionWithSymmetry(m => 
             {
-                currentMountName = "Mount-None";
-                mountModule.modelSelected(Fields[nameof(currentMountName)], currentMountName);
-                this.actionWithSymmetry(m =>
-                {
-                    m.updateEditorStats(true);
-                    m.updateMountSizeGuiControl(true, m.mountData.initialDiameter);
-                    MonoUtilities.RefreshContextWindows(m.part);
-                });
-            }
+                m.mountModule.modelSelected("Mount-None");
+                m.updateEditorStats(true);
+                m.updateMountSizeGuiControl(true, m.mountData.initialDiameter);
+                MonoUtilities.RefreshContextWindows(m.part);
+            });
         }
 
         #endregion ENDREGION - GUI Interaction Methods
@@ -436,7 +432,7 @@ namespace SSTUTools
 
         public RecoloringData[] getSectionColors(string section)
         {
-            return mountModule.customColors;
+            return mountModule.recoloringData;
         }
 
         public void setSectionColors(string section, RecoloringData[] colors)
@@ -447,7 +443,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return mountModule.currentTextureSet;
+            return mountModule.textureSet;
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -544,7 +540,7 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<SingleModelData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
+            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
             mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }
@@ -599,15 +595,12 @@ namespace SSTUTools
         /// </summary>
         private void positionMountModel()
         {
-            SingleModelData currentMountData = mountModule.model;
-            float currentMountScale = getCurrentMountScale();
-            float mountY = partTopY + (currentMountScale * currentMountData.modelDefinition.verticalOffset);
-            currentMountData.currentVerticalPosition = mountY;
-            currentMountData.updateScaleForDiameter(currentMountDiameter);
-            currentMountData.updateModel();
+            mountModule.setPosition(partTopY);
+            mountModule.setScaleForDiameter(currentMountDiameter);
+            mountModule.updateModelMeshes();
             //set up fairing/engine/node positions
-            float mountScaledHeight = currentMountData.modelDefinition.height * currentMountScale;
-            fairingTopY = partTopY + (currentMountData.modelDefinition.fairingTopOffset * currentMountScale);
+            float mountScaledHeight = mountModule.moduleHeight;
+            fairingTopY = partTopY + mountModule.moduleFairingOffset;
             engineMountingY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + currentEngineVerticalOffset;
             fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + currentEngineVerticalOffset;          
         }
@@ -707,8 +700,8 @@ namespace SSTUTools
         private void updatePartCostAndMass()
         {
             positions = currentEngineLayout.getLayoutData().positions.Count;
-            modifiedMass = mountModule.model.getModuleMass();
-            modifiedCost = mountModule.model.getModuleCost();
+            modifiedMass = mountModule.moduleMass;
+            modifiedCost = mountModule.moduleCost;
         }
 
         /// <summary>
@@ -742,7 +735,7 @@ namespace SSTUTools
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }            
-            bool enable = !mountModule.model.modelDefinition.fairingDisabled;
+            bool enable = mountModule.fairingEnabled;
             AttachNode node = part.FindAttachNode("top");
             fairing.canDisableInEditor = enable;
             FairingUpdateData data = new FairingUpdateData();
@@ -761,6 +754,12 @@ namespace SSTUTools
         /// </summary>
         private void updateNodePositions(bool userInput)
         {
+            AttachNode topNode = part.FindAttachNode("top");
+            if (topNode != null)
+            {
+                mountModule.updateAttachNodes(new string[] { "top" }, userInput);
+            }
+
             AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
             {
@@ -771,7 +770,7 @@ namespace SSTUTools
                    
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
-                float y = partTopY + (mountModule.model.modelDefinition.fairingTopOffset * getCurrentMountScale());
+                float y = mountModule.modulePosition + mountModule.moduleFairingOffset;
                 Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
                 AttachNode interstage = part.FindAttachNode(interstageNodeName);
@@ -944,7 +943,7 @@ namespace SSTUTools
         /// <returns></returns>
         private float getCurrentMountScale()
         {
-            return currentMountDiameter / mountModule.model.modelDefinition.diameter;
+            return currentMountDiameter / mountModule.definition.diameter;
         }
 
         #endregion ENDREGION - Utility Methods
