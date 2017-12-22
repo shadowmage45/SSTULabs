@@ -158,7 +158,7 @@ namespace SSTUTools
         #region REGION - Constructors and Init Methods
 
         /// <summary>
-        /// Only a partial constructor.  Need to also call 'setupFields', 'setupModelList', and 'setupModel' before the module will actually be usable.
+        /// Only a partial constructor.  Need to also call at least 'setupModelList' and/or 'setupModel' before the module will actually be usable.
         /// </summary>
         /// <param name="part"></param>
         /// <param name="partModule"></param>

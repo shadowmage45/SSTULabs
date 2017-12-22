@@ -720,7 +720,6 @@ namespace SSTUTools
             upperRcsModule.setupModel();
             lowerRcsModule.setupModel();
 
-
             upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
 
             //solar panel animation and solar panel UI controls
@@ -811,6 +810,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         private void updateRCSModule()
         {
             //TODO

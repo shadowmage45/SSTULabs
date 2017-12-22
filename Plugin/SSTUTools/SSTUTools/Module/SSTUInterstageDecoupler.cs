@@ -527,7 +527,6 @@ namespace SSTUTools
 
             engineModels = new ModelModule<SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(currentEngineModel), nameof(customEngineColorData), nameof(currentEngineTextureSet), null, null, null, null);            engineModels.getSymmetryModule = m => m.engineModels;
             engineModels.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
-            engineModels.setupModel();
             updateEnginePositionAndScale();
         }
 
