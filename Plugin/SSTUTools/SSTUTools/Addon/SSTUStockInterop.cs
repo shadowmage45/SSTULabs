@@ -124,6 +124,7 @@ namespace SSTUTools
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
             SSTUDatabase.loadConfigData();//loads heat-shield types
+            ModelLayout.load();
             SSTUModelData.loadConfigData();
         }
 

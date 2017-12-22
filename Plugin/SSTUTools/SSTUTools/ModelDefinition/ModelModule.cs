@@ -104,7 +104,7 @@ namespace SSTUTools
 
         #endregion ENDREGION - BaseField wrappers
 
-        #region REGION - Convenience wrappers for model definition data for external use
+        #region REGION - Convenience wrappers for accessing model definition data for external use
 
         public bool fairingEnabled { get { return modelDefinition.fairingData == null ? false : modelDefinition.fairingData.fairingsSupported; } }
 
@@ -468,6 +468,7 @@ namespace SSTUTools
             textureField.guiActiveEditor = names.Length > 1;
         }
 
+        //TODO rewrite for new offset handling
         /// <summary>
         /// Updates the internal position reference for the input position
         /// Includes offsetting for the models offset; the input position should be the desired location
@@ -482,6 +483,7 @@ namespace SSTUTools
             currentVerticalPosition = positionOfBottomOfModel + offset;
         }
 
+        //TODO rewrite for new offset handling
         /// <summary>
         /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
         /// Any 'extra' attach nodes from the part will be disabled.
@@ -1040,93 +1042,6 @@ namespace SSTUTools
             order = node.GetIntValue("order");
             vScaleAxis = node.GetVector3("axis", Vector3.up);
         }
-    }
-
-    /// <summary>
-    /// Data that defines how a single model is positioned inside a ModelModule when more than one internal model is desired.
-    /// This position/scale/rotation data is applied in addition to the base ModelModule position/scale data.
-    /// </summary>
-    public struct ModelPositionData
-    {
-
-        /// <summary>
-        /// The local position of a single model, relative to the model-modules position
-        /// </summary>
-        public readonly Vector3 localPosition;
-
-        /// <summary>
-        /// The local scale of a single model, relative to the model-modules scale
-        /// </summary>
-        public readonly Vector3 localScale;
-
-        /// <summary>
-        /// The local rotation to be applied to a single model (euler x,y,z)
-        /// </summary>
-        public readonly Vector3 localRotation;
-
-        public ModelPositionData(ConfigNode node)
-        {
-            localPosition = node.GetVector3("position", Vector3.zero);
-            localScale = node.GetVector3("scale", Vector3.one);
-            localRotation = node.GetVector3("rotation", Vector3.zero);
-        }
-
-        public ModelPositionData(Vector3 pos, Vector3 scale, Vector3 rotation)
-        {
-            localPosition = pos;
-            localScale = scale;
-            localRotation = rotation;
-        }
-
-        public Vector3 scaledPosition(Vector3 scale)
-        {
-            return Vector3.Scale(localPosition, scale);
-        }
-
-        public Vector3 scaledPosition(float scale)
-        {
-            return localPosition * scale;
-        }
-
-        public Vector3 scaledScale(Vector3 scale)
-        {
-            return Vector3.Scale(localScale, scale);
-        }
-
-        public Vector3 scaledScale(float scale)
-        {
-            return localScale * scale;
-        }
-
-    }
-
-    /// <summary>
-    /// Named model position layout data structure.  Used to store positions of models, for use in ModelModule setup.<para/>
-    /// Defined independently of the models that may use them, stored and referenced globally/game-wide.<para/>
-    /// A single ModelLayoutData may be used by multiple ModelDefinitions, and a single ModelDefinition may have different ModelLayoutDatas applied to it by the controlling part-module.
-    /// </summary>
-    public struct ModelLayoutData
-    {
-
-        public readonly string name;
-        public readonly ModelPositionData[] positions;
-        public ModelLayoutData(ConfigNode node)
-        {
-            name = node.GetStringValue("name");
-            ConfigNode[] posNodes = node.GetNodes("POSITION");
-            int len = posNodes.Length;
-            positions = new ModelPositionData[len];
-            for (int i = 0; i < len; i++)
-            {
-                positions[i] = new ModelPositionData(posNodes[i]);
-            }
-        }
-        public ModelLayoutData(string name, ModelPositionData[] positions)
-        {
-            this.name = name;
-            this.positions = positions;
-        }
-
     }
 
 }

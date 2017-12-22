@@ -170,7 +170,7 @@ namespace SSTUTools
         /// <summary>
         /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
         /// </summary>
-        public readonly ModelRCSData rcsData;
+        public readonly ModelRCSModuleData rcsData;
 
         /// <summary>
         /// List of ModelDefinitions that are valid options for use as an 'upper' adatper/nose option for this model definition.
@@ -303,7 +303,7 @@ namespace SSTUTools
             //load model RCS data, if present
             if (node.HasNode("RCSDATA"))
             {
-                rcsData = new ModelRCSData(node.GetNode("RCSDATA"));
+                rcsData = new ModelRCSModuleData(node.GetNode("RCSDATA"));
             }
 
             //load model engine thrust data, if present
@@ -544,20 +544,7 @@ namespace SSTUTools
         }
 
     }
-
-    //TODO
-    /// <summary>
-    /// Information for a single ModelDefinition that specifies what solar panel ModelDefinitions are valid options, as well as specifying the layouts available.
-    /// </summary>
-    public class ModelSolarLayoutData
-    {
-        //TODO
-        //somewhere down the line, this should be structured about like an 'EngineLayout'
-        //the solar options selection in the GUI should allow for selecting a type of solar panel (the model), and its layout (the solar layout)
-        //can combine into a single slider, or have individual sliders?
-    }
-
-    //TODO
+    
     /// <summary>
     /// Information denoting the solar panel information for a single ModelDefinition.  Should include all suncatcher, pivot, and energy rate data.<para/>
     /// Animation data for deploy animation is handled through existing ModelAnimationData container class.
@@ -679,7 +666,38 @@ namespace SSTUTools
     /// <summary>
     /// Container for RCS position related data for a standard structural model definition.
     /// </summary>
-    public class ModelRCSData
+    public class ModelRCSModuleData
+    {
+
+        /// <summary>
+        /// The name of the thrust transforms as they are in the model hierarchy.  These will be renamed at runtime to match whatever the RCS module is expecting.
+        /// </summary>
+        public readonly string thrustTransformName;
+
+        /// <summary>
+        /// The thrust of the RCS model at its base scale.
+        /// </summary>
+        public readonly float rcsThrust;
+
+        //TODO
+        public ModelRCSModuleData(ConfigNode node)
+        {
+
+        }
+
+        public void renameTransforms(Transform root, string destinationName)
+        {
+            Transform[] trs = root.FindChildren(thrustTransformName);
+            int len = trs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                trs[i].gameObject.name = trs[i].name = destinationName;
+            }
+        }
+
+    }
+
+    public class ModelRCSPositionData
     {
 
         /// <summary>
@@ -709,27 +727,14 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsVerticalAngle;
 
-        /// <summary>
-        /// The name of the thrust transforms as they are in the model hierarchy.  These will be renamed at runtime to match whatever the RCS module is expecting.
-        /// </summary>
-        public readonly string thrustTransformName;
-
-        //TODO
-        public ModelRCSData(ConfigNode node)
+        public ModelRCSPositionData(ConfigNode node)
         {
-
+            rcsEnabled = node.GetBoolValue("enabled");
+            rcsVerticalPosition = node.GetFloatValue("verticalPosition");
+            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition");
+            rcsVerticalRange = node.GetFloatValue("verticalRange");
+            rcsVerticalAngle = node.GetFloatValue("verticalAngle");
         }
-
-        public void renameTransforms(Transform root, string destinationName)
-        {
-            Transform[] trs = root.FindChildren(thrustTransformName);
-            int len = trs.Length;
-            for (int i = 0; i < len; i++)
-            {
-                trs[i].gameObject.name = trs[i].name = destinationName;
-            }
-        }
-
     }
 
     /// <summary>

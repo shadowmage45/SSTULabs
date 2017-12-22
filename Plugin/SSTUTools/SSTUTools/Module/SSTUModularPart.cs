@@ -9,6 +9,7 @@ namespace SSTUTools
 {
     public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier
     {
+
         #region REGION - Standard Part Config Fields
 
         [KSPField]
@@ -112,13 +113,25 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolar = "Solar-None";
 
+        [KSPField(isPersistant = true, guiName = "Solar Layout"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentSolarLayout = "Solar-None";
+
         [KSPField(isPersistant = true, guiName = "Upper RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCS = "MUS-RCS1";
 
+        [KSPField(isPersistant = true, guiName = "Upper RCS Layout"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentUpperRCSLayout = "MUS-RCS1";
+
         [KSPField(isPersistant = true, guiName = "Lower RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCS = "MUS-RCS1";
+
+        [KSPField(isPersistant = true, guiName = "Lower RCS Layout"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentLowerRCSLayout = "MUS-RCS1";
 
         //persistent config fields for module texture sets
         //also GUI controls for texture selection
