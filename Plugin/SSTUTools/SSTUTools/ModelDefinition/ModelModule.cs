@@ -50,7 +50,7 @@ namespace SSTUTools
 
         private Transform[] models;
 
-        private ModelPositionData[] positionData;
+        private ModelLayoutData currentLayout;
 
         private RecoloringData[] customColors = new RecoloringData[] { new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1) };
 
@@ -123,6 +123,8 @@ namespace SSTUTools
 
         public TextureSet textureSet { get { return modelDefinition.findTextureSet(textureSetName); } }
 
+        public ModelLayoutData layout { get { return layout; } }
+
         public float moduleMass { get { return currentMass; } }
 
         public float moduleCost { get { return currentCost; } }
@@ -148,6 +150,8 @@ namespace SSTUTools
         public float moduleFairingOffset { get { return modelDefinition.fairingData == null ? 0 : modelDefinition.fairingData.fairingOffsetFromOrigin; } }
 
         public RecoloringData[] recoloringData { get { return customColors; } }
+
+        public Transform[] moduleModelTransforms { get { return models; } }
 
         #endregion ENDREGION - Convenience wrappers for model definition data for external use
 
@@ -175,8 +179,7 @@ namespace SSTUTools
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
             this.animationModule = new AnimationModule(part, partModule, partModule.Fields[animationPersistenceFieldName], partModule.Fields[deployLimitField], partModule.Events[deployEventName], partModule.Events[retractEventName]);
-            positionData = new ModelPositionData[1];
-            positionData[0] = new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero);
+            currentLayout = new ModelLayoutData("default", new ModelPositionData[] { new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero)});
             loadColors(persistentData);
         }
 
@@ -263,6 +266,21 @@ namespace SSTUTools
             definition.engineTransformData.renameGimbalTransforms(root, destinationName);
         }
 
+        /// <summary>
+        /// Return an array populated with copies of the solar data for this model, one copy for each model position in the current layout.
+        /// </summary>
+        /// <returns></returns>
+        public ModelSolarData[] getSolarData()
+        {
+            int len = currentLayout.positions.Length;
+            ModelSolarData[] msds = new ModelSolarData[len];
+            for (int i = 0; i < len; i++)
+            {
+                msds[i] = definition.solarData;
+            }
+            return msds;
+        }
+
         #endregion ENDREGION - Update Methods
 
         #region REGION - GUI Interaction Methods - With symmetry updating
@@ -299,7 +317,7 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Symmetry enabled
+        /// Symmetry enabled.  Updates the current persistent color data, and reapplies the textures/color data to the models materials.
         /// </summary>
         /// <param name="colors"></param>
         public void setSectionColors(RecoloringData[] colors)
@@ -343,13 +361,24 @@ namespace SSTUTools
             modelField.guiActiveEditor = names.Length > 1;
         }
 
-        //TODO
         /// <summary>
+        /// NON-symmetry enabled method.
+        /// Set the current model layout.  Should only be called after model list is populated, as it will (attempt to) re-setup the models for the new layout.
+        /// </summary>
+        /// <param name="mld"></param>
+        public void setModelLayout(ModelLayoutData mld)
+        {
+            this.currentLayout = mld;
+            this.setupModel();
+        }
+        
+        /// <summary>
+        /// NON-symmetry enabled method.
         /// Updates the current models with the current scale and position data.
         /// </summary>
         public void updateModelMeshes()
         {
-
+            updateModelScaleAndPosition();
         }
 
         public ModelDefinition[] getUpperOptions() { return modelDefinition.getValidUpperOptions(partModule.upgradesApplied); }
@@ -584,38 +613,58 @@ namespace SSTUTools
             updateTextureUIControl();
             SSTUModInterop.onPartTextureUpdated(part);
         }
-
-        //TODO
+        
+        /// <summary>
+        /// Loops through the individual model instances and updates their position, rotation, and scale, for the currently configured ModelLayoutData
+        /// </summary>
         private void positionModels()
         {
-            int len = positionData.Length;
+            int len = currentLayout.positions.Length;
             for (int i = 0; i < len; i++)
             {
                 positionModel(i);
             }
         }
 
-        //TODO
+        /// <summary>
+        /// Update the position of a single model, by index, for the currently configured ModelLayoutData.
+        /// </summary>
+        /// <param name="index"></param>
         private void positionModel(int index)
         {
-
+            Transform model = models[index];
+            ModelPositionData mpd = currentLayout.positions[index];
+            model.transform.localPosition = mpd.localPosition;
+            model.transform.localRotation = Quaternion.Euler(mpd.localRotation);
+            model.transform.localScale = mpd.localScale;
         }
 
-        //TODO
+        /// <summary>
+        /// Constructs all of the models for the current ModelDefinition and ModelLayoutData
+        /// </summary>
         private void constructModels()
         {
-            int len = positionData.Length;
+            int len = currentLayout.positions.Length;
             models = new Transform[len];
             for (int i = 0; i < len; i++)
             {
                 models[i] = new GameObject("ModelModule-" + i).transform;
                 models[i].NestToParent(root);
-                constructSubModels(models[i], positionData[i]);
+                constructSubModels(models[i]);
+                positionModel(i);
+            }
+            if (definition.shouldInvert(orientation))
+            {
+                root.transform.localRotation = Quaternion.Euler(definition.invertAxis * 180f);
             }
         }
-
-        //TODO
-        private void constructSubModels(Transform parent, ModelPositionData pos)
+        
+        /// <summary>
+        /// Constructs a single model instance from the model definition, parents it to the input transform.<para/>
+        /// Does not position or orient the created model; positionModel(index) should be called to update its position for the current ModelLayoutData configuration
+        /// </summary>
+        /// <param name="parent"></param>
+        private void constructSubModels(Transform parent)
         {
             SubModelData[] smds = definition.subModelData;
             SubModelData smd;
@@ -638,7 +687,7 @@ namespace SSTUTools
                 clonedModel.transform.localScale = smd.scale;
                 if (!string.IsNullOrEmpty(smd.parent))
                 {
-                    localParent = root.transform.FindRecursive(smd.parent);
+                    localParent = parent.transform.FindRecursive(smd.parent);
                     if (localParent != null)
                     {
                         clonedModel.transform.parent = localParent;
@@ -651,33 +700,23 @@ namespace SSTUTools
                     smd.setupSubmodel(clonedModel);
                 }
             }
-            if (definition.shouldInvert(orientation))
-            {
-                root.transform.Rotate(definition.invertAxis, 180, Space.Self);
-            }
         }
-
-        //TODO
+        
         /// <summary>
-        /// Applies the current scale and position values to the models.
+        /// Applies the current module position and scale values to the root transform of the ModelModule.  Does not adjust rotation.
         /// </summary>
         private void updateModelScaleAndPosition()
         {
             int len = models.Length;
-            Transform model;
-            for (int i = 0; i < len; i++)
+            if (definition.compoundModelData != null)
             {
-                model = models[i];
-                if (definition.compoundModelData != null)
-                {
-                    definition.compoundModelData.setHeightFromScale(definition, model.gameObject, currentHorizontalScale, currentVerticalScale, definition.orientation);
-                }
-                else
-                {
-                    model.transform.localScale = new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale);
-                }
-                model.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
+                definition.compoundModelData.setHeightFromScale(definition, root.gameObject, currentHorizontalScale, currentVerticalScale, definition.orientation);
             }
+            else
+            {
+                root.transform.localScale = new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale);
+            }
+            root.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
         }
         
         //TODO
@@ -1081,6 +1120,11 @@ namespace SSTUTools
             {
                 positions[i] = new ModelPositionData(posNodes[i]);
             }
+        }
+        public ModelLayoutData(string name, ModelPositionData[] positions)
+        {
+            this.name = name;
+            this.positions = positions;
         }
 
     }

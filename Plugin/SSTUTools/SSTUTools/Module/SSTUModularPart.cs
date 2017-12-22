@@ -392,7 +392,7 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     modelChangedAction(m);
-                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.definition.getSolarData(), m.solarModule.root);
+                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.getSolarData(), m.solarModule.moduleModelTransforms);
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -705,7 +705,7 @@ namespace SSTUTools
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getParentModule = m => null;
 
-            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null);
+            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null, null, null, null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
 
             coreModule.setScaleForDiameter(currentDiameter);
@@ -726,7 +726,7 @@ namespace SSTUTools
             //solar panel animation and solar panel UI controls
             solarFunctionsModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);
             solarFunctionsModule.getSymmetryModule = m => ((SSTUModularPart)m).solarFunctionsModule;
-            solarFunctionsModule.setupSolarPanelData(solarModule.definition.getSolarData(), solarModule.root);
+            solarFunctionsModule.setupSolarPanelData(solarModule.getSolarData(), solarModule.moduleModelTransforms);
 
             updateModulePositions();
             updateMassAndCost();
@@ -759,7 +759,7 @@ namespace SSTUTools
             coreModule.setPosition(coreY);
             solarModule.setPosition(coreY);
             lowerModule.setPosition(bottomY, ModelOrientation.BOTTOM);
-            upperRcsModule.setPosition(coreY + (coreScale * currentUpperRCSOffset * coreModule.model.rcsOffsetRange) + (coreScale * coreModule.model.rcsPosition));
+            upperRcsModule.setPosition(coreY);
 
             //update actual model positions and scales
             noseModule.updateModelMeshes();
@@ -830,8 +830,9 @@ namespace SSTUTools
             }
             if (rcsThrust >= 0)
             {
-                float thrust = rcsThrust * Mathf.Pow(coreModule.model.currentDiameterScale, 2);
-                SSTUModularRCS.updateRCSModules(part, !upperRcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
+                float thrust = rcsThrust * Mathf.Pow(coreModule.moduleHorizontalScale, 2);
+                MonoBehaviour.print("TODO -- Adjust RCS thrust/enabled/disabled status from SSTUModularPart");
+                //SSTUModularRCS.updateRCSModules(part, !upperRcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
             }
         }
 
@@ -887,6 +888,21 @@ namespace SSTUTools
                 if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
                 bottomFairing.updateExternal(data);
             }
+        }
+
+        private float getPartTopY()
+        {
+            return 0f;
+        }
+
+        private float getTopFairingBottomY()
+        {
+            return 0f;
+        }
+
+        private float getBottomFairingTopY()
+        {
+            return 0f;
         }
 
         private void updateAvailableVariants()

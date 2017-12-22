@@ -27,10 +27,15 @@ namespace SSTUTools
         private BaseField rotationPersistenceField;
 
         /// <summary>
-        /// Live solar panel data, including references to pivot and suncatcher transforms.  Includes tracking of 'broken' status for each panel.<para/>
+        /// Live solar panel data, including references to pivots.  Includes tracking of 'broken' status for each panel.<para/>
         /// Each entry in the array is a single 'panel' denoted by a shared breakage point.
         /// </summary>
         private PanelData[] panelData;
+
+        /// <summary>
+        /// Live suncatcher data, including refernces to suncatcher transforms.
+        /// </summary>
+        private SuncatcherData[] suncatcherData;
 
         /// <summary>
         /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation.  Not tracked persistently -- if part is saved out while close-lerp is in action, it will actually save out as if it were deployed
@@ -101,14 +106,13 @@ namespace SSTUTools
         /// to sample and properly setup default rotations for the pivot transforms
         /// </summary>
         /// <param name="node"></param>
-        public void setupSolarPanelData(ConfigNode node, Transform root)
+        public void setupSolarPanelData(ModelSolarData[] data, Transform[] roots)
         {
-            ConfigNode[] panelNodes = node.GetNodes("PANEL");
-            int len = panelNodes.Length;
+            int len = data.Length;
             panelData = new PanelData[len];
             for (int i = 0; i < len; i++)
             {
-                panelData[i] = new PanelData(panelNodes[i], root);
+                panelData[i] = new PanelData(data[i], roots[i]);
             }
             initializeRotations();
         }
@@ -294,14 +298,9 @@ namespace SSTUTools
         public bool isBroken = false;
 
         /// <summary>
-        /// Main pivot container
+        /// Pivot Data
         /// </summary>
-        public SolarPivotData mainPivot;
-
-        /// <summary>
-        /// Secondary pivot container
-        /// </summary>
-        public SolarPivotData secondPivot;
+        public SolarPivotData[] pivots;
 
         /// <summary>
         /// Suncatcher containers
@@ -313,35 +312,26 @@ namespace SSTUTools
         /// </summary>
         public string occluderName = string.Empty;
 
-        public PanelData(ConfigNode node, Transform root)
+        public PanelData(ModelSolarData data, Transform root)
         {
-            string mainName = node.GetStringValue("mainPivot", string.Empty);
-            if (!string.IsNullOrEmpty(mainName))
+            int len = data.pivotDefinitions.Length;
+            pivots = new SolarPivotData[len];
+            Transform[] pivotTransforms;
+            Transform pivotTransform;
+            ModelSolarData.ModelSolarDataPivot pivotData;
+            for (int i = 0; i < len; i++)
             {
-                int mainIndex = node.GetIntValue("mainPivotIndex", 0);
-                Axis mainSunAxis = node.getAxis("mainSunAxis", Axis.ZPlus);
-                Axis mainRotAxis = node.getAxis("mainRotAxis", Axis.YPlus);
-                float speed = node.GetFloatValue("mainPivotSpeed", 10f);
-                Transform[] trs = root.FindChildren(mainName);
-                mainPivot = new SolarPivotData(trs[mainIndex], speed, mainSunAxis, mainRotAxis);
-
-                string secondName = node.GetStringValue("secondPivot", string.Empty);
-                if (!string.IsNullOrEmpty(secondName))
-                {
-                    speed = node.GetFloatValue("secondPivotSpeed", 10f);
-                    int secondIndex = node.GetIntValue("secondPivotIndex", 0);
-                    Axis secSunAxis = node.getAxis("secondSunAxis", Axis.ZPlus);
-                    Axis secRotAxis = node.getAxis("secondRotAxis", Axis.YPlus);
-                    trs = root.FindChildren(secondName);
-                    secondPivot = new SolarPivotData(trs[secondIndex], speed, secSunAxis, secRotAxis);
-                }
+                pivotData = data.pivotDefinitions[i];
+                pivotTransforms = root.FindChildren(pivotData.transformName);
+                pivotTransform = pivotTransforms[pivotData.pivotIndex];
+                pivots[i] = new SolarPivotData(pivotTransform, pivotData.pivotSpeed, pivotData.sunAxis, pivotData.rotAxis);
             }
-            ConfigNode[] suncatcherNodes = node.GetNodes("SUNCATCHER");
-            int len = suncatcherNodes.Length;
+
+            len = data.suncatcherDefinitions.Length;
             suncatchers = new SuncatcherData[len];
             for (int i = 0; i < len; i++)
             {
-                suncatchers[i] = new SuncatcherData(suncatcherNodes[i], root);
+                suncatchers[i] = new SuncatcherData(data.suncatcherDefinitions[i], root);
             }
         }
 
@@ -351,17 +341,13 @@ namespace SSTUTools
         /// </summary>
         public bool panelUpdateRetract()
         {
-            bool mainDone = true;
-            bool secondDone = true;
-            if (mainPivot != null)
+            bool done = true;
+            int len = pivots.Length;
+            for (int i = 0; i < len; i++)
             {
-                mainDone = mainPivot.rotateTowardsDefault();
-                if (secondPivot != null)
-                {
-                    secondDone = secondPivot.rotateTowardsDefault();
-                }
+                done = done && pivots[i].rotateTowardsDefault();
             }
-            return mainDone && secondDone;
+            return done;
         }
 
         /// <summary>
@@ -372,13 +358,10 @@ namespace SSTUTools
         {
             if (isBroken) { return; }
             if (!string.IsNullOrEmpty(occluderName)) { return; }
-            if (mainPivot != null)
+            int len = pivots.Length;
+            for (int i = 0; i < len; i++)
             {
-                mainPivot.rotateTowards(solarSource);
-                if (secondPivot != null)
-                {
-                    secondPivot.rotateTowards(solarSource);
-                }
+                pivots[i].rotateTowards(solarSource);
             }
         }
 
@@ -414,19 +397,25 @@ namespace SSTUTools
         /// <param name="persistentData"></param>
         public void initializeRotations(string persistentData)
         {
+            int len = pivots.Length;
             string[] splitData = string.IsNullOrEmpty(persistentData) ? new string[] { "","","false"} : persistentData.Split(':');
-            string mainPivotPersistence = splitData[0];
-            string secondPivotPersistence = splitData[1];
-            string brokenPersistence = splitData[2];
-            if (mainPivot != null)
+            if (string.IsNullOrEmpty(persistentData))
             {
-                mainPivot.initializeRotation(mainPivotPersistence);
+                splitData = new string[len + 1];
+                for (int i = 0; i < len + 1; i++)
+                {
+                    splitData[i] = "";
+                }
             }
-            if (secondPivot != null)
+            else
             {
-                secondPivot.initializeRotation(secondPivotPersistence);
+                splitData = persistentData.Split(':');
             }
-            isBroken = brokenPersistence == "true";
+            for (int i = 0; i < len; i++)
+            {
+                pivots[i].initializeRotation(splitData[i]);
+            }
+            isBroken = splitData[len] == "true";
         }
 
         /// <summary>
@@ -436,10 +425,15 @@ namespace SSTUTools
         /// <returns></returns>
         public string getPersistentData()
         {
-            string main = mainPivot == null ? "" : mainPivot.getPersistentData();
-            string second = secondPivot==null ? "" : secondPivot.getPersistentData();
-            string broken = isBroken ? "true" : "false";
-            return main + ":" + second + ":" + broken;
+            int len = pivots.Length;
+            string output = "";
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0) { output += ":"; }
+                output += pivots[i].getPersistentData();
+            }
+            output += ":" + (isBroken ? "true" : "false");
+            return output;
         }
 
     }
@@ -477,14 +471,14 @@ namespace SSTUTools
         /// </summary>
         private RaycastHit hitData;
 
-        public SuncatcherData(ConfigNode node, Transform root)
+        public SuncatcherData(ModelSolarData.ModelSolarDataSuncatcher data, Transform root)
         {
-            string sunName = node.GetStringValue("suncatcher");
-            suncatcherAxis = node.getAxis("suncatcherAxis", Axis.ZPlus);
-            int index = node.GetIntValue("suncatcherIndex", 0);
+            string sunName = data.transformName;
+            suncatcherAxis = data.sunAxis;
+            int index = data.suncatcherIndex;
             Transform[] trs = root.FindChildren(sunName);
             suncatcher = trs[index];
-            resourceRate = node.GetFloatValue("chargeRate");
+            resourceRate = data.rate;
         }
 
         /// <summary>
@@ -678,7 +672,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Rotate the panel pivot towards its default orientation, using the currently configured rotation speed
+        /// Rotate the panel pivot towards its default orientation, using the currently configured rotation speed.<para/>
+        /// Returns true if finished rotating.
         /// </summary>
         /// <returns></returns>
         public bool rotateTowardsDefault()

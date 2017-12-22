@@ -597,7 +597,6 @@ namespace SSTUTools
 
             public readonly string transformName;
             public readonly int pivotIndex = 0;
-            public readonly int pivotStride = 1;
             public readonly float pivotSpeed;
             public readonly Axis rotAxis;
             public readonly Axis sunAxis;
@@ -606,7 +605,6 @@ namespace SSTUTools
             public ModelSolarDataPivot(ConfigNode node)
             {
                 pivotIndex = node.GetIntValue("pivotIndex", 0);
-                pivotStride = node.GetIntValue("pivotStride", 1);
                 pivotSpeed = node.GetFloatValue("pivotSpeed", 1);
                 rotAxis = node.getAxis("rotAxis", Axis.YPlus);
                 sunAxis = node.getAxis("sunAxis", Axis.ZPlus);
@@ -620,15 +618,15 @@ namespace SSTUTools
 
             public readonly string transformName;
             public readonly int suncatcherIndex = 0;
-            public readonly int suncatcherStride = 1;
             public readonly float rate = 0;
+            public readonly Axis sunAxis;
 
             public ModelSolarDataSuncatcher(ConfigNode node)
             {
                 transformName = node.GetStringValue("suncatcher");
                 suncatcherIndex = node.GetIntValue("suncatcherIndex", 0);
-                suncatcherStride = node.GetIntValue("suncatcherStride", 1);
                 rate = node.GetFloatValue("rate", 0);
+                sunAxis = node.getAxis("suncatcherAxis");
             }
 
         }

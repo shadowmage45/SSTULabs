@@ -564,17 +564,17 @@ namespace SSTUTools
         private void updateEnginePositionAndScale()
         {
             engineModels.setScaleForDiameter(currentBottomDiameter);
-            engineModels.engineScale = this.currentEngineScale;
-            engineModels.invertEngines = this.invertEngines;
-            engineModels.moduleThrustTransformName = engineModuleThrustTransform;
+            //engineModels.engineScale = this.currentEngineScale;
+            engineModels.root.localRotation = this.invertEngines ? Quaternion.Euler(180, 0, 0) : Quaternion.identity;
             engineModels.setPosition(-currentHeight * 0.5f, ModelOrientation.TOP);
             engineModels.updateModelMeshes();
+            engineModels.renameEngineThrustTransforms(engineModuleThrustTransform);
         }
 
         private void updateResources()
         {
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
-            float volume = resourceVolume * scale * engineModels.numberOfEngines;
+            float volume = resourceVolume * scale * engineModels.layout.positions.Length;
             if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
             {
                 SSTUResourceList resources = new SSTUResourceList();
@@ -592,7 +592,7 @@ namespace SSTUTools
             scale = Mathf.Pow(scale, 3);
 
             float escale = Mathf.Pow(getEngineScale(), thrustScalePower);
-            float volume = resourceVolume * escale * engineModels.numberOfEngines;
+            float volume = resourceVolume * escale * engineModels.layout.positions.Length;
 
             float engineScaledMass = engineMass * scale;
             float panelMass = massPerPanelArea * panelArea;
@@ -614,7 +614,7 @@ namespace SSTUTools
                 float scale = getEngineScale();
                 float thrustScalar = Mathf.Pow(scale, thrustScalePower);
                 float thrustPerEngine = engineThrust * thrustScalar;
-                float totalThrust = thrustPerEngine * engineModels.numberOfEngines;
+                float totalThrust = thrustPerEngine * engineModels.layout.positions.Length;
                 guiEngineThrust = totalThrust;
                 SSTUStockInterop.updateEngineThrust(engine, engine.minThrust, totalThrust);
             }

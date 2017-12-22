@@ -169,8 +169,10 @@ namespace SSTUTools
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);//TODO -- set animation layer for solar panel deploy animation from part/module config value
 
             solarModule = new SolarModule(part, this, animationModule, Fields[nameof(solarPersistentData)], Fields[nameof(guiStatus)]);
-            solarModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).solarModule;            
-            solarModule.setupSolarPanelData(node.GetNode("SOLARDATA"), part.transform.FindRecursive("model"));
+            solarModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).solarModule;
+            ModelSolarData msd = null;
+            MonoBehaviour.print("TODO -- setup model solar data for stand-alone solar panel.  Can parse from config node?");
+            solarModule.setupSolarPanelData(new ModelSolarData[] { msd }, new Transform[] { part.transform.FindRecursive("model") });
         }
         
         //TODO
