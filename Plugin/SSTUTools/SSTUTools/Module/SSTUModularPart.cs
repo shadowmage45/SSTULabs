@@ -22,13 +22,13 @@ namespace SSTUTools
         public float maxDiameter = 10f;
 
         [KSPField]
-        public bool useAdapterVolume = false;
+        public bool useAdapterVolume = true;
 
         [KSPField]
-        public bool useAdapterMass = false;
+        public bool useAdapterMass = true;
 
         [KSPField]
-        public bool useAdapterCost = false;
+        public bool useAdapterCost = true;
 
         [KSPField]
         public int solarAnimationLayer = 1;
