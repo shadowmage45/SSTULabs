@@ -240,13 +240,27 @@ namespace SSTUTools
             }
 
             //Load texture set definitions.
-            ConfigNode[] textureSetNodes = node.GetNodes("TEXTURESET");
+            List<TextureSet> textureSetList = new List<TextureSet>();
+            //first load any of the global sets that are specified by name
+            string[] textureSetNames = node.GetStringValues("textureSet");
+            len = textureSetNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                TextureSet ts = KSPShaderLoader.getTextureSet(textureSetNames[i]);
+                if (ts != null) { textureSetList.Add(ts); }
+            }
+
+            //then load any of the model-specific sets
+            ConfigNode[] textureSetNodes = node.GetNodes("KSP_TEXTURE_SET");
             len = textureSetNodes.Length;
             textureSets = new TextureSet[len];
             for (int i = 0; i < len; i++)
             {
-                textureSets[i] = new TextureSet(textureSetNodes[i]);
+                textureSetList.Add(new TextureSet(textureSetNodes[i]));
             }
+            textureSets = textureSetList.ToArray();
+            textureSetList.Clear();
+            textureSetList = null;
 
             //Load the default texture set specification
             defaultTextureSet = node.GetStringValue("defaultTextureSet");
