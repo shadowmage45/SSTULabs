@@ -700,7 +700,7 @@ namespace SSTUTools
 
             coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.getSymmetryModule = m => m.coreModule;
-            solarModule.getParentModule = m => null;
+            coreModule.getParentModule = m => null;
             coreModule.getValidOptions = () => SSTUModelData.getModelDefinitions(node.GetNodes("CORE"));
             coreModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("CORE")));
 
@@ -717,11 +717,30 @@ namespace SSTUTools
             solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getParentModule = m => null;
+            solarModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
+            solarModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), null, null, null, null, null, null);
+            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
+            upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
+            upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
+
+            lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS", true), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
+            lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
+            lowerRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
+            lowerRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
             coreModule.setScaleForDiameter(currentDiameter);
+
+            upperModule.setScaleForDiameter(coreModule.moduleUpperDiameter);
+            noseModule.setScaleForDiameter(upperModule.moduleUpperDiameter);
+
+            lowerModule.setScaleForDiameter(coreModule.moduleLowerDiameter);
+            mountModule.setScaleForDiameter(lowerModule.moduleLowerDiameter);
+
+            solarModule.setScale(1);
+            upperRcsModule.setScale(1);
+            lowerRcsModule.setScale(1);
 
             //model-module model-creation
             noseModule.setupModel();
@@ -734,6 +753,7 @@ namespace SSTUTools
             lowerRcsModule.setupModel();
 
             upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
+            lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
 
             //solar panel animation and solar panel UI controls
             solarFunctionsModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);

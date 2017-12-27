@@ -7,6 +7,19 @@ using KSPShaderTools;
 namespace SSTUTools
 {
 
+    //ModelModule transform hierarchy
+    //part(the GO with the Part Component on it)
+    //model(the standard Part 'model' transform)
+    //    NamedOuterModelTransform -- positioned and scaled by ModularPart code
+    //        ModelModule-0 -- positioned relative to parent by ModuleModule, using the ModelLayoutData currently set in the ModelModule -- defaults to 0,0,0 position, 1,1,1 scale, 0,0,0 rotation
+    //        ModelModule-n -- second/third/etc -- there will be one entry for every 'position' in the ModelLayoutData config
+
+    /// <summary>
+    /// ModelModule is a 'standard class' that can be used from within PartModule code to manage a single active model, as well as any potential alternate model selections.<para/>
+    /// Uses ModelDefinition configs to define how the models are setup.<para/>
+    /// Includes support for all features that are supported by ModelDefinition (animation, solar, rcs, engine, gimbal, constraints)
+    /// </summary>
+    /// <typeparam name="U"></typeparam>
     public class ModelModule<U> where U : PartModule
     {
 
@@ -42,6 +55,16 @@ namespace SSTUTools
         public SymmetryModule getParentModule = delegate (U module)
         {
             return null;
+        };
+
+        public Func<float> getLayoutPositionScalar = delegate ()
+        {
+            return 0f;
+        };
+
+        public Func<float> getLayoutScaleScalar = delegate ()
+        {
+            return 0f;
         };
 
         #endregion ENDREGION - Public Delegate Stubs
@@ -132,6 +155,10 @@ namespace SSTUTools
         public float moduleVolume { get { return currentVolume; } }
 
         public float moduleDiameter { get { return currentDiameter; } }
+
+        public float moduleUpperDiameter { get { return (definition.shouldInvert(orientation) ? definition.lowerDiameter : definition.upperDiameter) * currentHorizontalScale; } }
+
+        public float moduleLowerDiameter { get { return (definition.shouldInvert(orientation) ? definition.upperDiameter : definition.lowerDiameter) * currentHorizontalScale; } }
 
         public float moduleHeight { get { return currentHeight; } }
 
@@ -622,23 +649,23 @@ namespace SSTUTools
         private void positionModels()
         {
             int len = currentLayout.positions.Length;
+            float posScalar = getLayoutPositionScalar();
+            float scaleScalar = getLayoutScaleScalar();
+            float rotation = getFacingRotation();
+            //TODO -- might not need this
+            //invert the rotation around Y-axis when model itself is inverted
+            if (definition.shouldInvert(orientation))
+            {
+                rotation = -rotation;
+            }
             for (int i = 0; i < len; i++)
             {
-                positionModel(i);
+                Transform model = models[i];
+                ModelPositionData mpd = currentLayout.positions[i];
+                model.transform.localPosition = mpd.localPosition * posScalar;
+                model.transform.localRotation = Quaternion.Euler(mpd.localRotation + Vector3.up * rotation);
+                model.transform.localScale = mpd.localScale * scaleScalar;
             }
-        }
-
-        /// <summary>
-        /// Update the position of a single model, by index, for the currently configured ModelLayoutData.
-        /// </summary>
-        /// <param name="index"></param>
-        private void positionModel(int index)
-        {
-            Transform model = models[index];
-            ModelPositionData mpd = currentLayout.positions[index];
-            model.transform.localPosition = mpd.localPosition;
-            model.transform.localRotation = Quaternion.Euler(mpd.localRotation);
-            model.transform.localScale = mpd.localScale;
         }
 
         /// <summary>
@@ -646,6 +673,9 @@ namespace SSTUTools
         /// </summary>
         private void constructModels()
         {
+            //reset the orientation on the root transform, in case it was rotated by previous invert/etc
+            root.transform.localRotation = Quaternion.identity;
+            //create model array with length based on the positions defined in the ModelLayoutData
             int len = currentLayout.positions.Length;
             models = new Transform[len];
             for (int i = 0; i < len; i++)
@@ -653,17 +683,17 @@ namespace SSTUTools
                 models[i] = new GameObject("ModelModule-" + i).transform;
                 models[i].NestToParent(root);
                 constructSubModels(models[i]);
-                positionModel(i);
             }
-            if (definition.shouldInvert(orientation))
-            {
-                root.transform.localRotation = Quaternion.Euler(definition.invertAxis * 180f);
-            }
+            //figure out the rotation needed in order to make this model conform to the Z-Plus = Forward standard
+            //as well as its currently used orientation in cases where it is used on top or bottom.
+            bool shouldInvert = definition.shouldInvert(orientation);
+            Vector3 rotation = shouldInvert ? definition.invertAxis * 180f : Vector3.zero;            
+            root.transform.localRotation = Quaternion.Euler(rotation);
         }
         
         /// <summary>
         /// Constructs a single model instance from the model definition, parents it to the input transform.<para/>
-        /// Does not position or orient the created model; positionModel(index) should be called to update its position for the current ModelLayoutData configuration
+        /// Does not position or orient the created model; positionModels() should be called to update its position for the current ModelLayoutData configuration
         /// </summary>
         /// <param name="parent"></param>
         private void constructSubModels(Transform parent)
@@ -730,15 +760,17 @@ namespace SSTUTools
         //TODO
         private bool isValidTextureSet(String val)
         {
+            //are there any texture sets present?
             bool noTextures = definition.textureSets.Length == 0;
-            if (String.IsNullOrEmpty(val))
+            //if the current input string is null or empty, or 'default' or 'none', return valid if there are no texture sets, otherwise, it must be invalid
+            if (String.IsNullOrEmpty(val) || "default" == val || "none" == val)
             {
                 return noTextures;
             }
-            if (val == definition.defaultTextureSet) { return true; }
-            foreach (TextureSet set in definition.textureSets)
+            int len = definition.textureSets.Length;
+            for (int i = 0; i < len; i++)
             {
-                if (set.name == val) { return true; }
+                if (definition.textureSets[i].name == val) { return true; }
             }
             return false;
         }
@@ -777,6 +809,39 @@ namespace SSTUTools
             {
                 action(getSymmetryModule((U)p.Modules[index]));
             }
+        }
+
+        /// <summary>
+        /// Return the number of degrees that the model needs to be rotated around the Y axis to conform to the Z+ = forward standard
+        /// </summary>
+        /// <returns></returns>
+        private float getFacingRotation()
+        {
+            float rotation = 0f;
+            switch (definition.facing)
+            {
+                case Axis.XPlus:
+                    rotation -= 90f;//TODO might be +90
+                    break;
+                case Axis.XNeg:
+                    rotation += 90f;//TODO might be -90
+                    break;
+                case Axis.YPlus:
+                    //undefined
+                    break;
+                case Axis.YNeg:
+                    //undefined
+                    break;
+                case Axis.ZPlus:
+                    //noop
+                    break;
+                case Axis.ZNeg:
+                    rotation += 180f;
+                    break;
+                default:
+                    break;
+            }
+            return rotation;
         }
 
         #endregion ENDREGION - Private/Internal methods

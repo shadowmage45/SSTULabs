@@ -98,6 +98,13 @@ namespace SSTUTools
         public readonly ModelOrientation orientation = ModelOrientation.CENTRAL;
 
         /// <summary>
+        /// The orientation of the model about the Y axis.  Determines what direction is 'forward' in the compiled model.  Used to 
+        /// properly rotate models using the ModelLayout system in cases where not all models are compiled/exported with the same
+        /// default orientation.
+        /// </summary>
+        public readonly Axis facing = Axis.ZPlus;
+
+        /// <summary>
         /// Axis to use when inverting a model when a 'TOP' model is used for slot marked as 'BOTTOM' or 'BOTTOM' models used for a slot marked as 'TOP'.
         /// </summary>
         public readonly Vector3 invertAxis = Vector3.forward;
@@ -213,6 +220,7 @@ namespace SSTUTools
             lowerDiameter = node.GetFloatValue("lowerDiameter", diameter);
             verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
             orientation = (ModelOrientation)Enum.Parse(typeof(ModelOrientation), node.GetStringValue("orientation", ModelOrientation.TOP.ToString()));
+            facing = node.getAxis("facing", Axis.ZPlus);
             invertAxis = node.GetVector3("invertAxis", invertAxis);
             
             //load sub-model definitions

@@ -107,10 +107,12 @@ namespace SSTUTools
     {
 
         public readonly string name;
+        public readonly string title;
         public readonly ModelPositionData[] positions;
         public ModelLayoutData(ConfigNode node)
         {
             name = node.GetStringValue("name");
+            title = node.GetStringValue("title", name);
             ConfigNode[] posNodes = node.GetNodes("POSITION");
             int len = posNodes.Length;
             positions = new ModelPositionData[len];
