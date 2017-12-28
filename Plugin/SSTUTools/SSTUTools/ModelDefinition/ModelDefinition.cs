@@ -719,6 +719,10 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Container for RCS positional data for a model definition. <para/>
+    /// Specifies if the model supports RCS block addition, where on the model the blocks are positioned, and if they may have their position adjusted.
+    /// </summary>
     public class ModelRCSPositionData
     {
 
@@ -749,14 +753,30 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsVerticalAngle;
 
-        public ModelRCSPositionData(ConfigNode node)
+        public ModelRCSPositionData(ConfigNode node, ModelDefinition parent)
         {
-            rcsEnabled = node.GetBoolValue("enabled");
-            rcsVerticalPosition = node.GetFloatValue("verticalPosition");
-            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition");
-            rcsVerticalRange = node.GetFloatValue("verticalRange");
-            rcsVerticalAngle = node.GetFloatValue("verticalAngle");
+            rcsEnabled = node.GetBoolValue("enabled", false);
+            rcsVerticalPosition = node.GetFloatValue("verticalPosition", 0);
+            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition", parent.diameter * 0.5f);
+            rcsVerticalRange = node.GetFloatValue("verticalRange", parent.height);
+            rcsVerticalAngle = node.GetFloatValue("verticalAngle", 0);
         }
+
+        public float scaledHorizontalPosition(float hScale)
+        {
+            return hScale * rcsHorizontalPosition;
+        }
+
+        public float scaledVerticalPosition(float vScale)
+        {
+            return vScale * rcsVerticalPosition;
+        }
+
+        public float scaledRange(float scale)
+        {
+            return scale * rcsVerticalRange;
+        }
+
     }
 
     /// <summary>
