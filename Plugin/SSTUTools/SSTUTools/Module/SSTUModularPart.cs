@@ -688,6 +688,9 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
+            //core defs
+            ModelDefinition[] coreDefs = SSTUModelData.getModelDefinitions(node.GetNodes("CORE"));
+
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE", true), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getParentModule = m => m.upperModule;
@@ -701,8 +704,7 @@ namespace SSTUTools
             coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.getParentModule = m => null;
-            coreModule.getValidOptions = () => SSTUModelData.getModelDefinitions(node.GetNodes("CORE"));
-            coreModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("CORE")));
+            coreModule.getValidOptions = () => coreDefs;
 
             lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.getSymmetryModule = m => m.lowerModule;
@@ -722,36 +724,29 @@ namespace SSTUTools
 
             upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
+            upperRcsModule.getParentModule = m => null;
             upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
             lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS", true), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
             lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
+            lowerRcsModule.getParentModule = m => null;
             lowerRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             lowerRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            coreModule.setScaleForDiameter(currentDiameter);
+            //set up the model lists and load the currently selected model
+            coreModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("CORE")));
+            upperModule.setupModelList(coreModule.getUpperOptions());
+            noseModule.setupModelList(upperModule.getUpperOptions());
+            lowerModule.setupModelList(coreModule.getLowerOptions());
+            mountModule.setupModelList(lowerModule.getLowerOptions());
 
-            upperModule.setScaleForDiameter(coreModule.moduleUpperDiameter);
-            noseModule.setScaleForDiameter(upperModule.moduleUpperDiameter);
-
-            lowerModule.setScaleForDiameter(coreModule.moduleLowerDiameter);
-            mountModule.setScaleForDiameter(lowerModule.moduleLowerDiameter);
-
-            solarModule.setScale(1);
-            upperRcsModule.setScale(1);
-            lowerRcsModule.setScale(1);
-
-            //model-module model-creation
-            noseModule.setupModel();
-            upperModule.setupModel();            
-            coreModule.setupModel();            
-            lowerModule.setupModel();
-            mountModule.setupModel();
-            solarModule.setupModel();
-            upperRcsModule.setupModel();
-            lowerRcsModule.setupModel();
-
+            //TODO -- where are the rcs and solar options defined -- as root nodes?
+            upperRcsModule.setupModelList(null);
+            lowerRcsModule.setupModelList(null);
+            solarModule.setupModelList(null);
+            
+            //initialize RCS thrust transforms
             upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
             lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
 
@@ -764,6 +759,11 @@ namespace SSTUTools
             updateMassAndCost();
             updateAttachNodes(false);
             SSTUStockInterop.updatePartHighlighting(part);
+        }
+
+        private void modelSelectedUpdate(ModelModule<SSTUModularPart> mod)
+        {
+
         }
 
         private void updateModulePositions()
