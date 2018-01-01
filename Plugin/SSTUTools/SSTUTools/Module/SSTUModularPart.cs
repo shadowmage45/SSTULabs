@@ -10,6 +10,64 @@ namespace SSTUTools
     public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier
     {
 
+        /**
+        * UI Layout for part right-click menu (Editor)
+        * Line     Feature
+        * 1        Diameter Adjust Control
+        * 2        Nose Selection
+        * 3        Upper Selection
+        * 4        Core Selection
+        * 5        Lower Selection
+        * 6        Mount Selection
+        * 7        Upper RCS Mounting Choice (nose/upper/core)
+        * 8        Upper RCS Selection
+        * 9        Upper RCS Offset
+        * 10       Upper RCS Layout
+        * 11       Lower RCS Mounting Choice (core/lower/mount)
+        * 12       Lower RCS Selection
+        * 13       Lower RCS Offset
+        * 14       Lower RCS Layout
+        * 15       Solar Panel Mouting Choice (upper/core/lower)
+        * 16       Solar Panel Selection
+        * 17       Solar Panel Layout
+        * 18       Nose Texture
+        * 19       Upper Texture
+        * 20       Core Texture
+        * 21       Lower Texture
+        * 22       Mount Texture
+        * 23       Upper RCS Texture
+        * 24       Lower RCS Texture
+        * 25       Solar Panel Texture
+        * 26       Nose Animation Toggle
+        * 27       Nose Animation Deploy Limit
+        * 28       Upper Animation Toggle
+        * 29       Upper Animation Deploy Limit
+        * 30       Core Animation Toggle
+        * 31       Core Animation Deploy Limit
+        * 32       Lower Animation Toggle
+        * 33       Lower Animation Deploy Limit
+        * 34       Mount Animation Toggle
+        * 35       Mount Animation Deploy Limit
+        * 36       Open Volume Container GUI
+        * 37       Open Recoloring GUI
+        * 38+++    Stock RCS, gimbal, ReactionWheel toggles (lots more lines)
+        **/
+        /**
+        * UI Layout for part right-click menu (Flight)
+        * Line     Feature
+        * 1        Solar Panel Status
+        * 2        Nose Animation Toggle
+        * 3        Nose Animation Deploy Limit
+        * 4        Upper Animation Toggle
+        * 5        Upper Animation Deploy Limit
+        * 6        Core Animation Toggle
+        * 7        Core Animation Deploy Limit
+        * 8        Lower Animation Toggle
+        * 9        Lower Animation Deploy Limit
+        * 10       Mount Animation Toggle
+        * 11       Mount Animation Deploy Limit
+        * 12+++    Stock RCS, gimbal, ReactionWheel toggles (lots more lines)
+        **/
         #region REGION - Standard Part Config Fields
 
         [KSPField]
@@ -75,16 +133,13 @@ namespace SSTUTools
         [KSPField]
         public string mountInterstageNode = "mountInterstage";
 
-        //persistent config fields for module selections
-        //also GUI controls for module selection
+        //solar panel GUI status field
+        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "SolarState:")]
+        public string solarPanelStatus = string.Empty;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentDiameter = 2.5f;
-
-        //solar panel GUI status field
-        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "SolarState:")]
-        public string solarPanelStatus = string.Empty;
 
         #region REGION - Module persistent data fields
 
@@ -189,12 +244,12 @@ namespace SSTUTools
         public float mountAnimationDeployLimit = 1f;
 
         //vertical offset control for RCS models
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset1"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentUpperRCSOffset = 0f;
 
         //vertical offset control for RCS models
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset2"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentLowerRCSOffset = 0f;
 
