@@ -63,12 +63,12 @@ namespace SSTUTools
         public static ModelDefinition[] getModelDefinitions(ConfigNode[] nodes)
         {
             int len = nodes.Length;
-            string[] names = new string[len];
+            List<string> names = new List<string>();
             for (int i = 0; i < len; i++)
             {
-                names[i] = nodes[i].GetStringValue("name");
+                names.AddUniqueRange(nodes[i].GetStringValues("model"));
             }
-            return getModelDefinitions(names);
+            return getModelDefinitions(names.ToArray());
         }
     }
 

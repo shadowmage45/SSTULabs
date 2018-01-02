@@ -180,18 +180,18 @@ namespace SSTUTools
         public readonly ModelRCSModuleData rcsData;
 
         /// <summary>
-        /// List of ModelDefinitions that are valid options for use as an 'upper' adatper/nose option for this model definition.
-        /// Used in modular part configurations to auto-determine the current valid adapter selections for any given 'core' model selection.<para/>
-        /// If unpopulated, this adatper will have no further options.  Should be left emtpy/unpopulated for pure solar panel and RCS model definitions.
+        /// What part profiles are valid selections for mounting on the top of this model?<para/>
+        /// For a model to be compatible, it must have at least one matching profile specified.<para/>
+        /// E.G.  If this model specifies an upper-profile of 'foo', then the potential upper-adapter must have a lower profile of 'foo' as well.
         /// </summary>
-        public readonly string[] validUpperModels;
+        public readonly string[] upperProfiles;
 
         /// <summary>
-        /// List of ModelDefinitions that are valid options for use as an 'lower' adatper/nose option for this model definition.
-        /// Used in modular part configurations to auto-determine the current valid adapter selections for any given 'core' model selection.<para/>
-        /// If unpopulated, this adatper will have no further options.  Should be left emtpy/unpopulated for pure solar panel and RCS model definitions.
+        /// What part profiles are valid selections for mounting on the bottom of this model?<para/>
+        /// For a model to be compatible, it must have at least one matching profile specified.<para/>
+        /// E.G.  If this model specifies an upper-profile of 'foo', then the potential upper-adapter must have a lower profile of 'foo' as well.
         /// </summary>
-        public readonly string[] validLowerModels;
+        public readonly string[] lowerProfiles;
 
         /// <summary>
         /// Construct the model definition from the data in the input ConfigNode.<para/>
@@ -222,6 +222,9 @@ namespace SSTUTools
             orientation = (ModelOrientation)Enum.Parse(typeof(ModelOrientation), node.GetStringValue("orientation", ModelOrientation.TOP.ToString()));
             facing = node.getAxis("facing", Axis.ZPlus);
             invertAxis = node.GetVector3("invertAxis", invertAxis);
+
+            upperProfiles = node.GetStringValues("upperProfile");
+            lowerProfiles = node.GetStringValues("lowerProfile");
             
             //load sub-model definitions
             ConfigNode[] subModelNodes = node.GetNodes("SUBMODEL");
@@ -345,41 +348,26 @@ namespace SSTUTools
             {
                 fairingData = new ModelFairingData(node.GetNode("FAIRINGDATA"));
             }
+        }
 
-            List<string> validAdapters = new List<string>();
+        /// <summary>
+        /// Return the list of lower-attachment profiles if the model is used in the input orientation
+        /// </summary>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
+        public string[] getLowerProfiles(ModelOrientation orientation)
+        {
+            return shouldInvert(orientation) ? upperProfiles : lowerProfiles;
+        }
 
-            if (node.HasValue("topAdapterGroup"))
-            {
-                string[] groups = node.GetStringValues("topAdapterGroup");
-                len = groups.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    validAdapters.AddUniqueRange(getAdapterGroup(groups[i]));
-                }
-            }
-            if (node.HasValue("topAdapter"))
-            {
-                string[] adapters = node.GetStringValues("topAdapter");
-                validAdapters.AddUniqueRange(adapters);
-            }
-            validUpperModels = validAdapters.ToArray();
-
-            validAdapters.Clear();
-            if (node.HasValue("bottomAdapterGroup"))
-            {
-                string[] groups = node.GetStringValues("bottomAdapterGroup");
-                len = groups.Length;
-                for (int i = 0; i < len; i++)
-                {
-                    validAdapters.AddUniqueRange(getAdapterGroup(groups[i]));
-                }
-            }
-            if (node.HasValue("bottomAdapter"))
-            {
-                string[] adapters = node.GetStringValues("bottomAdapter");
-                validAdapters.AddRange(adapters);
-            }
-            validLowerModels = validAdapters.ToArray();
+        /// <summary>
+        /// Return the list of upper-attachment profiles if the model is used in the input orientation
+        /// </summary>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
+        public string[] getUpperProfiles(ModelOrientation orientation)
+        {
+            return shouldInvert(orientation) ? lowerProfiles : upperProfiles;
         }
 
         /// <summary>
@@ -441,53 +429,34 @@ namespace SSTUTools
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
-        internal ModelDefinition[] getValidUpperOptions(List<string> partUpgrades)
+        private bool isValidUpperOption(string[] profiles)
         {
-            return getValidOptions(partUpgrades, validUpperModels);
-        }
-
-        internal ModelDefinition[] getValidLowerOptions(List<string> partUpgrades)
-        {
-            return getValidOptions(partUpgrades, validLowerModels);
-        }
-
-        internal ModelDefinition[] getValidOptions(List<string> partUpgrades, string[] defNames)
-        {
-            List<ModelDefinition> defs = new List<ModelDefinition>();
-            ModelDefinition def;
-            int len = validUpperModels.Length;
+            int len = profiles.Length;
             for (int i = 0; i < len; i++)
             {
-                def = SSTUModelData.getModelDefinition(defNames[i]);
-                if (def == null)
-                {
-                    MonoBehaviour.print("ERROR: Could not locate model definition for name: " + defNames[i]+" while loading valid adapters for: "+name);
-                    continue;
-                }
-                if (def.isAvailable(partUpgrades))
-                {
-                    defs.Add(def);
-                }
+                if (Array.Exists(upperProfiles, m => m == profiles[i])) { return true; }
             }
-            return defs.ToArray();
+            return false;
         }
 
-        internal static string[] getAdapterGroup(string name)
+        private bool isValidLowerOption(string[] profiles)
         {
-            ConfigNode[] groupNodes = GameDatabase.Instance.GetConfigNodes("ADAPTER_GROUP");
-            int len = groupNodes.Length;
-            ConfigNode groupNode;
-            string groupName;
+            int len = profiles.Length;
             for (int i = 0; i < len; i++)
             {
-                groupNode = groupNodes[i];
-                groupName = groupNode.GetStringValue("name");
-                if (groupName == name)
-                {
-                    return groupNode.GetStringValues("definition");
-                }
+                if (Array.Exists(lowerProfiles, m => m == profiles[i])) { return true; }
             }
-            return new string[0];
+            return false;
+        }
+
+        internal bool isValidLowerProfile(string[] profiles, ModelOrientation orientation)
+        {
+            return shouldInvert(orientation) ? isValidUpperOption(profiles) : isValidLowerOption(profiles);
+        }
+
+        internal bool isValidUpperProfile(string[] profiles, ModelOrientation orientation)
+        {
+            return shouldInvert(orientation) ? isValidLowerOption(profiles) : isValidUpperOption(profiles);
         }
 
     }
@@ -654,7 +623,6 @@ namespace SSTUTools
         }        
     }
 
-    //TODO
     /// <summary>
     /// Information pertaining to a single ModelDefinition, defining how NodeFairings are configured for the model at its default scale.
     /// </summary>
@@ -667,24 +635,23 @@ namespace SSTUTools
         public readonly bool fairingsSupported = false;
 
         /// <summary>
-        /// Are fairings inverted on this model?  If true, the user-adjustable diameter will be the 'top'.
-        /// </summary>
-        public readonly bool fairingInverted = false;
-
-        /// <summary>
         /// An offset from the models origin point to where the fairing attaches.  Positive values denote Y+, negative values denote Y-
         /// </summary>
         public readonly float fairingOffsetFromOrigin = 0f;
 
-        //TODO
         public ModelFairingData(ConfigNode node)
         {
+            fairingsSupported = node.GetBoolValue("enabled", false);
+            fairingOffsetFromOrigin = node.GetFloatValue("offset", 0f);
+        }
 
+        public float getOffset(float scale, bool inverted)
+        {
+            return scale * (inverted? -fairingOffsetFromOrigin : fairingOffsetFromOrigin);
         }
 
     }
 
-    //TODO
     /// <summary>
     /// Container for RCS position related data for a standard structural model definition.
     /// </summary>
@@ -701,10 +668,15 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsThrust;
 
-        //TODO
         public ModelRCSModuleData(ConfigNode node)
         {
+            thrustTransformName = node.GetStringValue("thrustTransformName");
+            rcsThrust = node.GetFloatValue("thrust");
+        }
 
+        public float getThrust(float scale)
+        {
+            return scale * scale * rcsThrust;
         }
 
         public void renameTransforms(Transform root, string destinationName)

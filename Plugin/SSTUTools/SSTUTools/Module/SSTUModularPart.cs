@@ -50,8 +50,9 @@ namespace SSTUTools
         * 35       Mount Animation Deploy Limit
         * 36       Open Volume Container GUI
         * 37       Open Recoloring GUI
-        * 38+++    Stock RCS, gimbal, ReactionWheel toggles (lots more lines)
+        * 38+++    Stock RCS, gimbal, ReactionWheel toggles, resources (lots more lines)
         **/
+
         /**
         * UI Layout for part right-click menu (Flight)
         * Line     Feature
@@ -66,8 +67,9 @@ namespace SSTUTools
         * 9        Lower Animation Deploy Limit
         * 10       Mount Animation Toggle
         * 11       Mount Animation Deploy Limit
-        * 12+++    Stock RCS, gimbal, ReactionWheel toggles (lots more lines)
+        * 12+++    Stock RCS, gimbal, ReactionWheel toggles, resources (lots more lines)
         **/
+
         #region REGION - Standard Part Config Fields
 
         [KSPField]
@@ -133,17 +135,51 @@ namespace SSTUTools
         [KSPField]
         public string mountInterstageNode = "mountInterstage";
 
-        //solar panel GUI status field
+        /// <summary>
+        /// Which model slots may the solar panels be parented to? <para/>
+        /// Only one of RCS or SOLAR may be parented to any given slot at any given time,
+        /// unless there is only one valid slot specified for each
+        /// </summary>
+        [KSPField]
+        public string solarParentOptions = "NOSE,UPPER,CORE,LOWER,MOUNT";
+
+        /// <summary>
+        /// Which model slots may the upper rcs blocks be parented to? <para/>
+        /// Only one of RCS or SOLAR may be parented to any given slot at any given time,
+        /// unless there is only one valid slot specified for each
+        /// </summary>
+        [KSPField]
+        public string upperRCSParentOptions = "NOSE,UPPER,CORE,LOWER,MOUNT";
+
+        /// <summary>
+        /// Which model slots may the lower rcs blocks be parented to? <para/>
+        /// Only one of RCS or SOLAR may be parented to any given slot at any given time,
+        /// unless there is only one valid slot specified for each
+        /// </summary>
+        [KSPField]
+        public string lowerRCSParentOptions = "NOSE,UPPER,CORE,LOWER,MOUNT";
+
+        /// <summary>
+        /// Solar panel display status field.  Updated by solar functions module with occlusion and/or EC generation stats.
+        /// </summary>
         [KSPField(guiActive = true, guiActiveEditor = false, guiName = "SolarState:")]
         public string solarPanelStatus = string.Empty;
 
+        /// <summary>
+        /// The current user selected diamater of the part.  Drives the scaling and positioning of everything else in the model.
+        /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentDiameter = 2.5f;
 
         #region REGION - Module persistent data fields
 
-        //persistence and UI controls for module/model selection (top, core, bottom, solar, RCS)
+        //------------------------------------------MODEL SELECTION SET PERSISTENCE-----------------------------------------------//
+
+        [KSPField(isPersistant = true, guiName = "Variant"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentVariant = "Default";
+
         [KSPField(isPersistant = true, guiName = "Top"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentNose = "Mount-None";
@@ -172,6 +208,10 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolarLayout = "Solar-None";
 
+        [KSPField(isPersistant = true, guiName = "Solar Parent"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentSolarParent = "CORE";
+
         [KSPField(isPersistant = true, guiName = "Upper RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCS = "MUS-RCS1";
@@ -179,6 +219,14 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName = "Upper RCS Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCSLayout = "MUS-RCS1";
+
+        [KSPField(isPersistant = true, guiName = "Upper RCS Parent"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentUpperRCSParent = "CORE";
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset1"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float currentUpperRCSOffset = 0f;
 
         [KSPField(isPersistant = true, guiName = "Lower RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -188,8 +236,16 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCSLayout = "MUS-RCS1";
 
-        //persistent config fields for module texture sets
-        //also GUI controls for texture selection
+        [KSPField(isPersistant = true, guiName = "Lower RCS Parent"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentLowerRCSParent = "CORE";
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset2"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float currentLowerRCSOffset = 0f;
+
+        //------------------------------------------TEXTURE SET PERSISTENCE-----------------------------------------------//
+
         [KSPField(isPersistant = true, guiName = "Nose Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentNoseTexture = "default";
@@ -222,7 +278,35 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolarTexture = "default";
 
-        //persistent config fields and UI controls for deploy limits for nose, core, and mount animation modules
+        //------------------------------------------RECOLORING PERSISTENCE-----------------------------------------------//
+
+        //persistent data for modules; stores colors
+        [KSPField(isPersistant = true)]
+        public string noseModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string upperModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string coreModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string lowerModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string mountModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string solarModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string upperRCSModulePersistentData = string.Empty;
+
+        [KSPField(isPersistant = true)]
+        public string lowerRCSModulePersistentData = string.Empty;
+
+        //------------------------------------------ANIMATION PERSISTENCE-----------------------------------------------//
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float noseAnimationDeployLimit = 1f;
@@ -242,50 +326,25 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float mountAnimationDeployLimit = 1f;
-
-        //vertical offset control for RCS models
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset1"),
-         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
-        public float currentUpperRCSOffset = 0f;
-
-        //vertical offset control for RCS models
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset2"),
-         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
-        public float currentLowerRCSOffset = 0f;
-
-        //persistent data for modules; stores colors and other per-module data
-        [KSPField(isPersistant = true)]
-        public string noseModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string upperModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string coreModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string lowerModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string mountModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string solarModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string upperRCSModulePersistentData = string.Empty;
-        [KSPField(isPersistant = true)]
-        public string lowerRCSModulePersistentData = string.Empty;
-
-        //persistence data for animation modules, stores animation state
+        
         [KSPField(isPersistant = true)]
         public string noseAnimationPersistentData = string.Empty;
+
         [KSPField(isPersistant = true)]
         public string upperAnimationPersistentData = string.Empty;
+
         [KSPField(isPersistant = true)]
         public string coreAnimationPersistentData = string.Empty;
+
         [KSPField(isPersistant = true)]
         public string lowerAnimationPersistentData = string.Empty;
+
         [KSPField(isPersistant = true)]
         public string mountAnimationPersistentData = string.Empty;
-
-        //persistence data for solar module, stores animation state and rotation cache
+        
         [KSPField(isPersistant = true)]
         public string solarAnimationPersistentData = string.Empty;
+
         [KSPField(isPersistant = true)]
         public string solarRotationPersistentData = string.Empty;
 
@@ -327,6 +386,25 @@ namespace SSTUTools
         /// </summary>
         private SSTURCSFuelSelection rcsFuelControl;
 
+        private Dictionary<string, ModelDefinitionVariantSet> variantSets = new Dictionary<string, ModelDefinitionVariantSet>();
+
+        private ModelDefinitionVariantSet getVariantSet(string name)
+        {
+            ModelDefinitionVariantSet set = null;
+            if (!variantSets.TryGetValue(name, out set))
+            {
+                set = new ModelDefinitionVariantSet(name);
+                variantSets.Add(name, set);
+            }
+            return set;
+        }
+
+        private ModelDefinitionVariantSet getVariantSet(ModelDefinition def)
+        {
+            //returns the first variant set out of all variants where the variants definitions contains the input definition
+            return variantSets.Values.Where((a, b) => { return a.definitions.Contains(def); }).First();
+        }
+
         #endregion ENDREGION - Private working vars
 
         #region REGION - UI Controls
@@ -362,6 +440,9 @@ namespace SSTUTools
         public void mountRetractEvent() { mountModule.animationModule.onRetractEvent(); }
 
         [KSPAction]
+        public void noseToggleAction(KSPActionParam param) { noseModule.animationModule.onToggleAction(param); }
+
+        [KSPAction]
         public void topToggleAction(KSPActionParam param) { upperModule.animationModule.onToggleAction(param); }
 
         [KSPAction]
@@ -369,6 +450,9 @@ namespace SSTUTools
 
         [KSPAction]
         public void bottomToggleAction(KSPActionParam param) { lowerModule.animationModule.onToggleAction(param); }
+
+        [KSPAction]
+        public void mountToggleAction(KSPActionParam param) { mountModule.animationModule.onToggleAction(param); }
 
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Deploy Solar Panels")]
         public void solarDeployEvent() { solarModule.animationModule.onDeployEvent(); }
@@ -388,145 +472,15 @@ namespace SSTUTools
         {
             base.OnLoad(node);
             if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
-            initialize(false);
+            initialize();
         }
 
         //standard KSP lifecyle override
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            initialize(true);
-
-            Action<SSTUModularPart> modelChangedAction = delegate (SSTUModularPart m)
-            {
-                m.updateModulePositions();
-                m.updateMassAndCost();
-                m.updateAttachNodes(true);
-                m.updateDragCubes();
-                m.updateResourceVolume();
-                m.updateFairing(true);
-                m.updateAvailableVariants();
-                SSTUModInterop.onPartGeometryUpdate(m.part, true);
-            };
-
-            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, object b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    modelChangedAction(m);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentNose)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                noseModule.modelSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentUpper)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                upperModule.modelSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentCore)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                coreModule.modelSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
-                //TODO validate solar, adapters, etc
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentLower)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                lowerModule.modelSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentMount)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                mountModule.modelSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentSolar)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                solarModule.modelSelected(a, b);
-                this.actionWithSymmetry(m =>
-                {
-                    modelChangedAction(m);
-                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.getSolarData(), m.solarModule.moduleModelTransforms);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentUpperRCS)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                upperRcsModule.modelSelected(a, b);
-                this.actionWithSymmetry(m =>
-                {
-                    m.upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
-                    modelChangedAction(m);
-                    m.updateRCSModule();
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentLowerRCS)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                lowerRcsModule.modelSelected(a, b);
-                this.actionWithSymmetry(m =>
-                {
-                    m.lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
-                    modelChangedAction(m);
-                    m.updateRCSModule();
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    modelChangedAction(m);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            Fields[nameof(currentLowerRCSOffset)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    modelChangedAction(m);
-                });
-                SSTUStockInterop.fireEditorUpdate();
-            };
-
-            if (maxDiameter == minDiameter)
-            {
-                Fields[nameof(currentDiameter)].guiActiveEditor = false;
-            }
-            else
-            {
-                this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
-            }
-
-            Fields[nameof(currentNoseTexture)].uiControlEditor.onFieldChanged = noseModule.textureSetSelected;
-            Fields[nameof(currentUpperTexture)].uiControlEditor.onFieldChanged = upperModule.textureSetSelected;
-            Fields[nameof(currentCoreTexture)].uiControlEditor.onFieldChanged = coreModule.textureSetSelected;
-            Fields[nameof(currentLowerTexture)].uiControlEditor.onFieldChanged = lowerModule.textureSetSelected;
-            Fields[nameof(currentMountTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
-
-            if (HighLogic.LoadedSceneIsEditor)
-            {
-                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
-            }
-            updateDragCubes();
+            initialize();
+            initializeUI();
         }
 
         //standard KSP lifecycle override
@@ -552,6 +506,7 @@ namespace SSTUTools
             }
             initializedDefaults = true;
             updateRCSModule();
+            updateDragCubes();
         }
 
         //standard Unity lifecyle override
@@ -732,78 +687,102 @@ namespace SSTUTools
 
         #region REGION - Custom Update Methods
 
-        private void initialize(bool start)
+        /// <summary>
+        /// Initialization method.  Sets up model modules, loads their configs from the input config node.  Does all initial linking of part-modules.<para/>
+        /// Does NOT set up their UI interaction -- that is all handled during OnStart()
+        /// </summary>
+        private void initialize()
         {
             if (initialized) { return; }
             initialized = true;
 
-            //model-module setup/initialization
+            //attach node names, parsed from CSVs in config into standard arrays
             topNodeNames = SSTUUtils.parseCSV(topManagedNodes);
             bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodes);
 
+            //model-module setup/initialization
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+                        
+            //list of CORE model nodes from config
+            //each one may contain multiple 'model=modelDefinitionName' entries
+            //but must contain no more than a single 'variant' entry.
+            //if no variant is specified, they are added to the 'Default' variant.
+            ConfigNode[] coreDefNodes = node.GetNodes("CORE");
+            ModelDefinition[] coreDefs;
+            List<ModelDefinition> coreDefList = new List<ModelDefinition>();
+            int coreDefLen = coreDefNodes.Length;
+            for (int i = 0; i < coreDefLen; i++)
+            {
+                string variantName = coreDefNodes[i].GetStringValue("variant", "Default");
+                coreDefs = SSTUModelData.getModelDefinitions(coreDefNodes[i].GetStringValues("model"));
+                coreDefList.AddUniqueRange(coreDefs);
+                ModelDefinitionVariantSet mdvs = getVariantSet(variantName);
+                mdvs.addModels(coreDefs);
+            }
+            coreDefs = coreDefList.ToArray();
 
-            //core defs
-            ModelDefinition[] coreDefs = SSTUModelData.getModelDefinitions(node.GetNodes("CORE"));
+            //model defs - brought here so we can capture the array rather than the config node+method call
+            ModelDefinition[] noseDefs = SSTUModelData.getModelDefinitions(node.GetNodes("NOSE"));
+            ModelDefinition[] upperDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPER"));            
+            ModelDefinition[] lowerDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWER"));
+            ModelDefinition[] mountDefs = SSTUModelData.getModelDefinitions(node.GetNodes("MOUNT"));
+            ModelDefinition[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
+            ModelDefinition[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
+            ModelDefinition[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
 
-            noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE", true), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
+            noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.getSymmetryModule = m => m.noseModule;
-            noseModule.getParentModule = m => m.upperModule;
-            noseModule.getValidOptions = upperModule.getUpperOptions;
+            noseModule.getValidOptions = () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation);
 
-            upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER", true), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
+            upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
             upperModule.getSymmetryModule = m => m.upperModule;
-            upperModule.getParentModule = m => m.coreModule;
-            upperModule.getValidOptions = coreModule.getUpperOptions;
+            upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation);
 
-            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE", true), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.getSymmetryModule = m => m.coreModule;
-            coreModule.getParentModule = m => null;
-            coreModule.getValidOptions = () => coreDefs;
+            coreModule.getValidOptions = () => getVariantSet(currentVariant).definitions;
 
-            lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER", true), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
+            lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.getSymmetryModule = m => m.lowerModule;
-            lowerModule.getParentModule = m => m.coreModule;
-            lowerModule.getValidOptions = coreModule.getLowerOptions;
+            lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation);
 
-            mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT", true), ModelOrientation.BOTTOM, nameof(currentMount), nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
+            mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.getSymmetryModule = m => m.mountModule;
-            mountModule.getParentModule = m => m.lowerModule;
-            mountModule.getValidOptions = lowerModule.getLowerOptions;
+            mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation);
 
-            solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR", true), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
+            solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
             solarModule.getSymmetryModule = m => m.solarModule;
-            solarModule.getParentModule = m => null;
+            solarModule.getValidOptions = () => solarDefs;
             solarModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             solarModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS", true), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
+            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS"), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
-            upperRcsModule.getParentModule = m => null;
+            upperRcsModule.getValidOptions = () => rcsUpDefs;
             upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS", true), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
+            lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS"), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
             lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
-            lowerRcsModule.getParentModule = m => null;
+            lowerRcsModule.getValidOptions = () => rcsDnDefs;
             lowerRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             lowerRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
             //set up the model lists and load the currently selected model
-            coreModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("CORE")));
-            upperModule.setupModelList(coreModule.getUpperOptions());
-            noseModule.setupModelList(upperModule.getUpperOptions());
-            lowerModule.setupModelList(coreModule.getLowerOptions());
-            mountModule.setupModelList(lowerModule.getLowerOptions());
-
-            //TODO -- where are the rcs and solar options defined -- as root nodes?
-            upperRcsModule.setupModelList(null);
-            lowerRcsModule.setupModelList(null);
-            solarModule.setupModelList(null);
+            noseModule.setupModelList(noseDefs);
+            upperModule.setupModelList(upperDefs);
+            coreModule.setupModelList(coreDefs);
+            lowerModule.setupModelList(lowerDefs);
+            mountModule.setupModelList(mountDefs);
+            upperRcsModule.setupModelList(rcsUpDefs);
+            lowerRcsModule.setupModelList(rcsDnDefs);
+            solarModule.setupModelList(solarDefs);
             
             //initialize RCS thrust transforms
             upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
             lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
+
+            //TODO handle engine transform and gimbal transform initial renaming
 
             //solar panel animation and solar panel UI controls
             solarFunctionsModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);
@@ -816,37 +795,201 @@ namespace SSTUTools
             SSTUStockInterop.updatePartHighlighting(part);
         }
 
-        private void modelSelectedUpdate(ModelModule<SSTUModularPart> mod)
+        //TODO - model changed UI functions
+        //TODO - controls for rcs vertical position functions
+        //TODO - controls for layout change functions
+        private void initializeUI()
         {
 
-        }
+            //set up the core variant UI control
+            string[] variantNames = SSTUUtils.getNames(variantSets.Values, m => m.variantName);
+            this.updateUIChooseOptionControl(nameof(currentVariant), variantNames, variantNames, true, currentVariant);
+            Fields[nameof(currentVariant)].guiActiveEditor = variantSets.Count > 1;
 
+            Fields[nameof(currentVariant)].uiControlEditor.onFieldChanged = (a, b) => 
+            {
+                //TODO find variant set for the currently enabled core model
+                //query the index from that variant set
+                ModelDefinitionVariantSet prevMdvs = getVariantSet(coreModule.definition);
+                //this is the index of the currently selected model within its variant set
+                int previousIndex = prevMdvs.indexOf(coreModule.definition);
+                //grab ref to the current/new variant set
+                ModelDefinitionVariantSet mdvs = getVariantSet(currentVariant);
+                //and a reference to the model from same index out of the new set ([] call does validation internally for IAOOBE)
+                ModelDefinition newCoreDef = mdvs[previousIndex];
+                //now, call model-selected on the core model to update for the changes, including symmetry counterpart updating.
+                this.actionWithSymmetry(m => 
+                {
+                    m.currentVariant = currentVariant;
+                    m.coreModule.modelSelected(newCoreDef.name);
+                });
+            };
+
+            Action<SSTUModularPart> modelChangedAction = (m) =>
+            {
+                m.updateModulePositions();
+                m.updateMassAndCost();
+                m.updateAttachNodes(true);
+                m.updateDragCubes();
+                m.updateResourceVolume();
+                m.updateFairing(true);
+                m.updateAvailableVariants();
+                SSTUModInterop.onPartGeometryUpdate(m.part, true);
+            };
+
+            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentNose)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                noseModule.modelSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentUpper)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                upperModule.modelSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentCore)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                coreModule.modelSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+                //TODO validate solar, adapters, etc
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentLower)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                lowerModule.modelSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentMount)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                mountModule.modelSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentSolar)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                solarModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.getSolarData(), m.solarModule.moduleModelTransforms);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentUpperRCS)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                upperRcsModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
+                    modelChangedAction(m);
+                    m.updateRCSModule();
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentLowerRCS)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                lowerRcsModule.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
+                    modelChangedAction(m);
+                    m.updateRCSModule();
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentLowerRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            if (maxDiameter == minDiameter)
+            {
+                Fields[nameof(currentDiameter)].guiActiveEditor = false;
+            }
+            else
+            {
+                this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
+            }
+
+            Fields[nameof(currentNoseTexture)].uiControlEditor.onFieldChanged = noseModule.textureSetSelected;
+            Fields[nameof(currentUpperTexture)].uiControlEditor.onFieldChanged = upperModule.textureSetSelected;
+            Fields[nameof(currentCoreTexture)].uiControlEditor.onFieldChanged = coreModule.textureSetSelected;
+            Fields[nameof(currentLowerTexture)].uiControlEditor.onFieldChanged = lowerModule.textureSetSelected;
+            Fields[nameof(currentMountTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
+
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
+            }
+        }
+        
+        //TODO
         private void updateModulePositions()
         {
-            //update for model scale
-            upperModule.setScaleForDiameter(currentDiameter);
+            //scales for modules depend on the module above/below them
+            //first set the scale for the core module -- this depends directly on the UI specified 'diameter' value.
             coreModule.setScaleForDiameter(currentDiameter);
-            lowerModule.setScaleForDiameter(currentDiameter);
-            float coreScale = coreModule.moduleHorizontalScale;
-            solarModule.setScale(coreScale);
-            upperRcsModule.setScale(coreScale);
 
-            //calc positions
-            float yPos = upperModule.moduleHeight + (coreModule.moduleHeight * 0.5f);
-            yPos -= upperModule.moduleHeight;
-            float topY = yPos;
-            yPos -= coreModule.moduleHeight;
-            float coreY = yPos;
-            float bottomY = coreY;
-            yPos -= lowerModule.moduleHeight;
-            float bottomDockY = yPos;
+            //next, set upper, and then nose scale values
+            upperModule.setDiameterFromBelow(coreModule.moduleUpperDiameter);
+            noseModule.setDiameterFromBelow(upperModule.moduleUpperDiameter);
 
-            //update internal ref of position
-            upperModule.setPosition(topY);
-            coreModule.setPosition(coreY);
-            solarModule.setPosition(coreY);
-            lowerModule.setPosition(bottomY, ModelOrientation.BOTTOM);
-            upperRcsModule.setPosition(coreY);
+            //finally, set lower and mount scale values
+            lowerModule.setDiameterFromAbove(coreModule.moduleLowerDiameter);
+            mountModule.setDiameterFromAbove(lowerModule.moduleLowerDiameter);
+
+            //total height of the part is determined by the sum of the heights of the modules at their current scale
+            float totalHeight = noseModule.moduleHeight;
+            totalHeight += upperModule.moduleHeight;
+            totalHeight += coreModule.moduleHeight;
+            totalHeight += lowerModule.moduleHeight;
+            totalHeight += mountModule.moduleHeight;
+
+            //position of each module is set such that the vertical center of the models is at part origin/COM
+            float pos = totalHeight * 0.5f;
+            pos -= noseModule.moduleHeight;
+            noseModule.setPosition(pos);
+            pos -= upperModule.moduleHeight;
+            upperModule.setPosition(pos);
+            pos -= coreModule.moduleHeight * 0.5f;
+            coreModule.setPosition(pos);
+            pos -= coreModule.moduleHeight * 0.5f;
+            lowerModule.setPosition(pos);
+            pos -= lowerModule.moduleHeight;
+            mountModule.setPosition(pos);
 
             //update actual model positions and scales
             noseModule.updateModelMeshes();
@@ -854,11 +997,28 @@ namespace SSTUTools
             coreModule.updateModelMeshes();
             lowerModule.updateModelMeshes();
             mountModule.updateModelMeshes();
+            
+            //scale and position of RCS and solar models handled a bit differently
+            float coreScale = coreModule.moduleHorizontalScale;
+            solarModule.setScale(coreScale);
+            upperRcsModule.setScale(coreScale);
+            lowerRcsModule.setScale(coreScale);
+
+            //TODO -- these positions need to depend on what the current 'parent' module is for the add-on
+            // as well as, at least for RCS, the currently configured 'offset'
+            solarModule.setPosition(coreModule.modulePosition);
+            upperRcsModule.setPosition(coreModule.modulePosition);
+            lowerRcsModule.setPosition(coreModule.modulePosition);
+
             solarModule.updateModelMeshes();
             upperRcsModule.updateModelMeshes();
             lowerRcsModule.updateModelMeshes();
         }
 
+        /// <summary>
+        /// Update VolumeContainer resource volume from the currently configured model selections.<para/>
+        /// Optionally includes volume from adapters if specified in config.
+        /// </summary>
         private void updateResourceVolume()
         {
             float volume = coreModule.moduleVolume;
@@ -872,6 +1032,10 @@ namespace SSTUTools
             SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 1000f);
         }
 
+        /// <summary>
+        /// Update the cached modifiedMass and modifiedCost field values.  Used with stock cost/mass modifier interface.<para/>
+        /// Optionally includes adapter mass/cost if enabled in config.
+        /// </summary>
         private void updateMassAndCost()
         {
             modifiedMass = coreModule.moduleMass;
@@ -924,6 +1088,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         private void updateAttachNodes(bool userInput)
         {
             upperModule.updateAttachNodes(topNodeNames, userInput);
@@ -947,6 +1112,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         private void updateFairing(bool userInput)
         {
             SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
@@ -978,21 +1144,25 @@ namespace SSTUTools
             }
         }
 
+        //TODO
         private float getPartTopY()
         {
             return 0f;
         }
 
+        //TODO
         private float getTopFairingBottomY()
         {
             return 0f;
         }
 
+        //TODO
         private float getBottomFairingTopY()
         {
             return 0f;
         }
 
+        //TODO
         private void updateAvailableVariants()
         {
             noseModule.updateSelections();
@@ -1005,23 +1175,29 @@ namespace SSTUTools
             lowerRcsModule.updateSelections();
         }
 
+        /// <summary>
+        /// Calls the generic SSTU procedural drag-cube updating routines.  Will update the drag cubes for whatever the current model state is.
+        /// </summary>
         private void updateDragCubes()
         {
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
-
-        private Transform getRootTransform(string name, bool recreate)
+        
+        /// <summary>
+        /// Return the root transform for the specified name.  If does not exist, will create it and parent it to the parts' 'model' transform.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="recreate"></param>
+        /// <returns></returns>
+        private Transform getRootTransform(string name)
         {
             Transform root = part.transform.FindRecursive(name);
-            if (recreate && root != null)
+            if (root != null)
             {
                 GameObject.DestroyImmediate(root.gameObject);
                 root = null;
             }
-            if (root == null)
-            {
-                root = new GameObject(name).transform;
-            }
+            root = new GameObject(name).transform;
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
         }
@@ -1029,4 +1205,38 @@ namespace SSTUTools
         #endregion ENDREGION - Custom Update Methods
 
     }
+
+    public class ModelDefinitionVariantSet
+    {
+        public readonly string variantName;
+
+        public ModelDefinition[] definitions = new ModelDefinition[0];
+        
+        public ModelDefinition this[int index]
+        {
+            get
+            {
+                if (index < 0) { index = 0; }
+                if (index >= definitions.Length) { index = definitions.Length - 1; }
+                return definitions[index];
+            }
+        }
+
+        public ModelDefinitionVariantSet(string name)
+        {
+            this.variantName = name;
+        }
+
+        public void addModels(ModelDefinition[] defs)
+        {
+            definitions.AddUniqueRange(defs);
+        }
+
+        public int indexOf(ModelDefinition def)
+        {
+            return definitions.IndexOf(def);
+        }
+
+    }
+
 }

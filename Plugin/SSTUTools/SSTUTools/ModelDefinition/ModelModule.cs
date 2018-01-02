@@ -49,14 +49,6 @@ namespace SSTUTools
         /// </summary>
         public SymmetryModule getSymmetryModule;
 
-        /// <summary>
-        /// Delegate can optionally be populated to override default behavior.
-        /// </summary>
-        public SymmetryModule getParentModule = delegate (U module)
-        {
-            return null;
-        };
-
         public Func<float> getLayoutPositionScalar = delegate ()
         {
             return 0f;
@@ -408,10 +400,32 @@ namespace SSTUTools
             updateModelScaleAndPosition();
         }
 
-        public ModelDefinition[] getUpperOptions() { return modelDefinition.getValidUpperOptions(partModule.upgradesApplied); }
+        /// <summary>
+        /// Updates the diamter/scale values so that the upper-diameter of this model matches the input diamter
+        /// </summary>
+        /// <param name="newDiameter"></param>
+        public void setDiameterFromAbove(float newDiameter)
+        {
+            float baseUpperDiameter = definition.shouldInvert(orientation) ? definition.lowerDiameter : definition.upperDiameter;
+            float scale = newDiameter / baseUpperDiameter;
+            setScale(scale);
+        }
 
-        public ModelDefinition[] getLowerOptions() { return modelDefinition.getValidLowerOptions(partModule.upgradesApplied); }
+        /// <summary>
+        /// Updates the diamter/scale values so that the lower-diameter of this model matches the input diamter
+        /// </summary>
+        /// <param name="newDiameter"></param>
+        public void setDiameterFromBelow(float newDiameter)
+        {
+            float baseLowerDiameter = definition.shouldInvert(orientation) ? definition.upperDiameter : definition.lowerDiameter;
+            float scale = newDiameter / baseLowerDiameter;
+            setScale(scale);
+        }
 
+        /// <summary>
+        /// Updates the diameter/scale values so that the core-diameter of this model matches the input diameter
+        /// </summary>
+        /// <param name="newDiameter"></param>
         public void setScaleForDiameter(float newDiameter)
         {
             float newScale = newDiameter / definition.diameter;
@@ -845,6 +859,54 @@ namespace SSTUTools
         }
 
         #endregion ENDREGION - Private/Internal methods
+
+        #region REGION - Module Linking
+
+        /// <summary>
+        /// Return an array with containing the models that are valid options for use as upper-adapters for the currently
+        /// selected/enabled model definition.
+        /// </summary>
+        /// <param name="defs"></param>
+        /// <returns></returns>
+        public ModelDefinition[] getValidUpperModels(ModelDefinition[] defs, ModelOrientation otherModelOrientation)
+        {
+            List<ModelDefinition> validDefs = new List<ModelDefinition>();
+            ModelDefinition def;
+            int len = defs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                def = defs[i];
+                if (definition.isValidUpperProfile(def.getLowerProfiles(otherModelOrientation), orientation))
+                {
+                    validDefs.Add(def);
+                }
+            }
+            return validDefs.ToArray();
+        }
+
+        /// <summary>
+        /// Return an array with containing the models that are valid options for use as lower-adapters for the currently
+        /// selected/enabled model definition.
+        /// </summary>
+        /// <param name="defs"></param>
+        /// <returns></returns>
+        public ModelDefinition[] getValidLowerModels(ModelDefinition[] defs, ModelOrientation otherModelOrientation)
+        {
+            List<ModelDefinition> validDefs = new List<ModelDefinition>();
+            ModelDefinition def;
+            int len = defs.Length;
+            for (int i = 0; i < len; i++)
+            {
+                def = defs[i];
+                if (definition.isValidLowerProfile(def.getUpperProfiles(otherModelOrientation), orientation))
+                {
+                    validDefs.Add(def);
+                }
+            }
+            return validDefs.ToArray();
+        }
+
+        #endregion ENDREGION - Module Linking
 
     }
 
