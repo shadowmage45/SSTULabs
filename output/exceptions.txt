@@ -1,0 +1,31 @@
+>>>>-------------------- SSTU-TANK-MFT-A --------------------<<<<
+Incomp Model Exception for slots: CORE/UPPER  Models: MFT-IP-0-5 / Model-None apnf: cylinder,uncapped
+Incomp Model Exception for slots: UPPER/NOSE  Models: MFT-B-0-5 / Model-TankCap-Inset apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: UPPER/NOSE  Models: MFT-B-0-5 / Model-TankCap-Flat apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: CORE/LOWER  Models: MFT-IP-0-5 / Model-None apnf: cylinder,pipes
+Incomp Model Exception for slots: LOWER/MOUNT Models: MFT-A-0-5 / Model-TankCap-Inset apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: LOWER/MOUNT Models: MFT-A-0-5 / Model-TankCap-Flat apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: CORE/LOWER  Models: MFT-IP-0-5 / MFT-B-0-5 apnf: pipes
+Unused Model Exception for slot : NOSE        Model : Model-TankCap-Inset
+Unused Model Exception for slot : NOSE        Model : Model-TankCap-Flat
+Unused Model Exception for slot : UPPER       Model : Model-None
+Unused Model Exception for slot : CORE        Model : MFT-CF-0-5
+Unused Model Exception for slot : LOWER       Model : Model-None
+Unused Model Exception for slot : LOWER       Model : MFT-B-0-5
+Unused Model Exception for slot : MOUNT       Model : Model-TankCap-Inset
+Unused Model Exception for slot : MOUNT       Model : Model-TankCap-Flat
+Incomp Model Exception for slots: CORE/UPPER  Models: MFT-CF-0-5 / Model-None apnf: cylinder,uncapped
+Incomp Model Exception for slots: UPPER/NOSE  Models: MFT-B-0-5 / Model-TankCap-Inset apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: UPPER/NOSE  Models: MFT-B-0-5 / Model-TankCap-Flat apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: CORE/LOWER  Models: MFT-CF-0-5 / Model-None apnf: cylinder,uncapped
+Incomp Model Exception for slots: CORE/LOWER  Models: MFT-CF-0-5 / MFT-A-0-5 bpnf: pipes
+Incomp Model Exception for slots: LOWER/MOUNT Models: MFT-B-0-5 / Model-TankCap-Inset apnf: cylinder,uncapped : bpnf: cylinderBare
+Incomp Model Exception for slots: LOWER/MOUNT Models: MFT-B-0-5 / Model-TankCap-Flat apnf: cylinder,uncapped : bpnf: cylinderBare
+Unused Model Exception for slot : NOSE        Model : Model-TankCap-Inset
+Unused Model Exception for slot : NOSE        Model : Model-TankCap-Flat
+Unused Model Exception for slot : UPPER       Model : Model-None
+Unused Model Exception for slot : CORE        Model : MFT-IP-0-5
+Unused Model Exception for slot : LOWER       Model : Model-None
+Unused Model Exception for slot : LOWER       Model : MFT-A-0-5
+Unused Model Exception for slot : MOUNT       Model : Model-TankCap-Inset
+Unused Model Exception for slot : MOUNT       Model : Model-TankCap-Flat

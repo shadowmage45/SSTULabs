@@ -180,18 +180,30 @@ namespace SSTUTools
         public readonly ModelRCSModuleData rcsData;
 
         /// <summary>
-        /// What part profiles are valid selections for mounting on the top of this model?<para/>
-        /// For a model to be compatible, it must have at least one matching profile specified.<para/>
-        /// E.G.  If this model specifies an upper-profile of 'foo', then the potential upper-adapter must have a lower profile of 'foo' as well.
+        /// Denotes what type of mounting this part has on its upper attach point (top of model).<para/>
+        /// These values are checked vs. the 'compatibleLowerProfiles' of the part being attached to this one (and vise-versa).<para/>
+        /// The target must accept -all- of the upper profiles specified in this model, or it will not be available as a valid option.
         /// </summary>
         public readonly string[] upperProfiles;
 
         /// <summary>
-        /// What part profiles are valid selections for mounting on the bottom of this model?<para/>
-        /// For a model to be compatible, it must have at least one matching profile specified.<para/>
-        /// E.G.  If this model specifies an upper-profile of 'foo', then the potential upper-adapter must have a lower profile of 'foo' as well.
+        /// Denotes what type of mounting this part has on its lower attach point (bottom of model).<para/>
+        /// These values are checked vs. the 'compatibleUpperProfiles' of the part being attached to this one (and vise-versa).<para/>
+        /// The target must accept -all- of the upper profiles specified in this model, or it will not be available as a valid option.
         /// </summary>
         public readonly string[] lowerProfiles;
+
+        /// <summary>
+        /// List of profiles that this model is compatible with.  May contain multiple profile definitions.<para/>
+        /// The compatible profiles must contain -all- of the profiles from the input list, but the compatible list may contain extras.
+        /// </summary>
+        public readonly string[] compatibleUpperProfiles;
+
+        /// <summary>
+        /// List of profiles that this model is compatible with.  May contain multiple profile definitions.<para/>
+        /// The compatible profiles must contain -all- of the profiles from the input list, but the compatible list may contain extras.
+        /// </summary>
+        public readonly string[] compatibleLowerProfiles;
 
         /// <summary>
         /// Construct the model definition from the data in the input ConfigNode.<para/>
@@ -225,6 +237,8 @@ namespace SSTUTools
 
             upperProfiles = node.GetStringValues("upperProfile");
             lowerProfiles = node.GetStringValues("lowerProfile");
+            compatibleUpperProfiles = node.GetStringValues("compatibleUpperProfile");
+            compatibleLowerProfiles = node.GetStringValues("compatibleLowerProfile");
             
             //load sub-model definitions
             ConfigNode[] subModelNodes = node.GetNodes("SUBMODEL");
@@ -420,7 +434,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Return true/false if this model should be inverted/rotated based on the input use-orientation and the models config-defined orientation.
+        /// Return true/false if this model should be inverted/rotated based on the input use-orientation and the models config-defined orientation.<para/>
+        /// If specified model orientation == CENTER, model will never invert regardless of input value.
         /// </summary>
         /// <param name="orientation"></param>
         /// <returns></returns>
@@ -429,34 +444,53 @@ namespace SSTUTools
             return (orientation == ModelOrientation.BOTTOM && this.orientation == ModelOrientation.TOP) || (orientation == ModelOrientation.TOP && this.orientation == ModelOrientation.BOTTOM);
         }
 
-        private bool isValidUpperOption(string[] profiles)
+        /// <summary>
+        /// Returns true/false if every value in 'profiles' is present in 'compatible'.
+        /// If even a single value from 'profiles' is not found in 'compatible', return false.
+        /// </summary>
+        /// <param name="compatible"></param>
+        /// <param name="profiles"></param>
+        /// <returns></returns>
+        private bool canAttach(string[] compatible, string[] profiles)
         {
+            bool foundAll = true;
             int len = profiles.Length;
+            int len2 = compatible.Length;
+            string prof;
             for (int i = 0; i < len; i++)
             {
-                if (Array.Exists(upperProfiles, m => m == profiles[i])) { return true; }
+                prof = profiles[i];
+                if (!compatible.Contains(prof))
+                {
+                    foundAll = false;
+                    break;
+                }
             }
-            return false;
+            return foundAll;
         }
 
-        private bool isValidLowerOption(string[] profiles)
-        {
-            int len = profiles.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (Array.Exists(lowerProfiles, m => m == profiles[i])) { return true; }
-            }
-            return false;
-        }
-
+        /// <summary>
+        /// Return if the input profiles are compatible with being mounted on the bottom of this model when this model is used in the input orientation.<para/>
+        /// E.G. If model specified orientation==TOP, but being used for 'BOTTOM', will actually check the 'upper' profiles list (as that is the attach point that is at the bottom of the model when inverted)
+        /// </summary>
+        /// <param name="profiles"></param>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
         internal bool isValidLowerProfile(string[] profiles, ModelOrientation orientation)
         {
-            return shouldInvert(orientation) ? isValidUpperOption(profiles) : isValidLowerOption(profiles);
+            return shouldInvert(orientation) ? canAttach(compatibleUpperProfiles, profiles) : canAttach(compatibleLowerProfiles, profiles);
         }
 
+        /// <summary>
+        /// Return if the input profiles are compatible with being mounted on the top of this model when this model is used in the input orientation.<para/>
+        /// E.G. If model specified orientation==TOP, but being used for 'BOTTOM', will actually check the 'upper' profiles list (as that is the attach point that is at the bottom of the model when inverted)
+        /// </summary>
+        /// <param name="profiles"></param>
+        /// <param name="orientation"></param>
+        /// <returns></returns>
         internal bool isValidUpperProfile(string[] profiles, ModelOrientation orientation)
         {
-            return shouldInvert(orientation) ? isValidLowerOption(profiles) : isValidUpperOption(profiles);
+            return shouldInvert(orientation) ? canAttach(compatibleLowerProfiles, profiles) : canAttach(compatibleUpperProfiles, profiles);
         }
 
     }

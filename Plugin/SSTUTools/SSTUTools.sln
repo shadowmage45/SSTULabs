@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUBuildTools", "SSTUBuild
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TexturesUnlimited", "..\..\..\TexturesUnlimited\Plugin\SSTUTools\KSPShaderTools\TexturesUnlimited.csproj", "{90C22D61-2261-4B94-844C-59536357B09D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUModelCombinations", "SSTUModelCombinations\SSTUModelCombinations.csproj", "{535BC447-E712-41DF-86B5-E18B37132703}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,14 @@ Global
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|x86.ActiveCfg = Release|Any CPU
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|x86.Build.0 = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|x86.Build.0 = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|x86.ActiveCfg = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
