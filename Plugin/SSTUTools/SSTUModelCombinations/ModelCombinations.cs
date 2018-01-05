@@ -16,9 +16,20 @@ namespace SSTUModelCombinations
         private static List<ConfigNode> modelDefinitions = new List<ConfigNode>();
         private static Dictionary<string, Model> modelDefinitionsByName = new Dictionary<string, Model>();
 
-        //output data, list of lines written out to files
-        private static List<string> combinations = new List<string>();
-        private static List<string> exceptions = new List<string>();
+        private static List<Model> usedCores = new List<Model>();
+        private static List<Model> usedUpper = new List<Model>();
+        private static List<Model> usedNoses = new List<Model>();
+        private static List<Model> usedLower = new List<Model>();
+        private static List<Model> usedMount = new List<Model>();
+
+        private static int foundCombinations = 0;
+        private static int incompatibleCount = 0;
+        private static int unusedModelsCount = 0;
+
+        private static StreamWriter combinationStream;
+        private static StreamWriter incompExceptionStream;
+        private static StreamWriter unusedExceptionStream;
+        private static StreamWriter logStream;
 
         static void Main(string[] args)
         {
@@ -28,24 +39,36 @@ namespace SSTUModelCombinations
             }
             string gameDataPath = args[0];
             string fullPath = Path.GetFullPath(gameDataPath);
-            print("Parsing configs from folder: " + fullPath);
-            parseDirectory(fullPath);
-            findSpecificConfigs();
-            findAllCombinations();
-
+            
             string outputPath = fullPath + "\\..\\output";
             //create the directory in case it didn't previously exist
             Directory.CreateDirectory(outputPath);
             string outputFile = outputPath + "/combinations.txt";
-            string exceptionsFile = outputPath + "/exceptions.txt";
-            //delete file in case it did previously exist
-            if (File.Exists(outputFile)) { File.Delete(outputFile); }
-            File.WriteAllLines(outputFile, combinations.ToArray());
-            if (File.Exists(exceptionsFile)) { File.Delete(exceptionsFile); }
-            File.WriteAllLines(exceptionsFile, exceptions.ToArray());
-            print("Found " + (combinations.Count - modularPartNodes.Count) + " valid combinations across all modular parts.");
+            string incompExceptionsFile = outputPath + "/incompatible.txt";
+            string unusedExceptionsFile = outputPath + "/unused.txt";
+
+            logStream = new StreamWriter(new FileStream(outputPath + "/log.txt", FileMode.Create));
+            combinationStream = new StreamWriter(new FileStream(outputFile, FileMode.Create));
+            incompExceptionStream = new StreamWriter(new FileStream(incompExceptionsFile, FileMode.Create));
+            unusedExceptionStream = new StreamWriter(new FileStream(unusedExceptionsFile, FileMode.Create));
+
+            print("Parsing configs from folder: " + fullPath);
+
+            parseDirectory(fullPath);
+            findSpecificConfigs();
+            findAllCombinations();
+
+            logStream.Flush();
+            combinationStream.Flush();
+            incompExceptionStream.Flush();
+            unusedExceptionStream.Flush();
+
+            print("Examined: " + modularPartNodes.Count + " modular parts.");
+            print("Found   : " + foundCombinations + " valid combinations across all modular parts.");
+            print("Logged  : " + incompatibleCount + " incompatible combinations");
+            print("Logged  : " + unusedModelsCount + " unused models");
             print("Combinations written to: " + Path.GetFullPath(outputFile));
-            print("Exceptions written to: " + Path.GetFullPath(exceptionsFile));
+            print("Exceptions written to: " + Path.GetFullPath(incompExceptionsFile));
             print("Finished processing.  Press any key to exit.");
             System.Console.ReadLine();
         }
@@ -110,7 +133,14 @@ namespace SSTUModelCombinations
             for (int i = 0; i < len; i++)
             {
                 Model model = new Model(modelDefinitions[i]);
-                modelDefinitionsByName.Add(model.name, model);
+                if (!modelDefinitionsByName.ContainsKey(model.name))
+                {
+                    modelDefinitionsByName.Add(model.name, model);
+                }
+                else
+                {
+                    print("ERROR: Duplicate model defintion found for name: " + model.name);
+                }                
             }
             print("Found total of: " + partNodes.Count + " PART nodes");
             print("Found total of: " + modularPartNodes.Count + " SSTUModularPart module nodes");
@@ -119,6 +149,7 @@ namespace SSTUModelCombinations
 
         public static void print(string value)
         {
+            logStream.WriteLine(value);
             System.Console.WriteLine(value);
         }
 
@@ -133,8 +164,9 @@ namespace SSTUModelCombinations
 
         private static void findPartCombinations(string name, ConfigNode modularPartNode)
         {
-            combinations.Add(">>>>-------------------- " + name + " --------------------<<<<");
-            exceptions.Add(">>>>-------------------- " + name + " --------------------<<<<");
+            combinationStream.WriteLine("PART>>>>-------------------- " + name + " --------------------<<<<");
+            unusedExceptionStream.WriteLine("UNUSED>>>>-------------------- " + name + " --------------------<<<<");
+            incompExceptionStream.WriteLine("INCOMP>>>>-------------------- " + name + " --------------------<<<<");
             List<Model> noseModels = new List<Model>();
             List<Model> upperModels = new List<Model>();
             List<Model> coreModels = new List<Model>();
@@ -158,6 +190,16 @@ namespace SSTUModelCombinations
             {
                 findCombinations(coreModels[i], coreModels, upperModels, noseModels, lowerModels, mountModels);
             }
+            findUnusedModels("NOSE      ", noseModels, usedNoses);
+            findUnusedModels("UPPER     ", upperModels, usedUpper);
+            findUnusedModels("CORE      ", coreModels, usedCores);
+            findUnusedModels("LOWER     ", lowerModels, usedLower);
+            findUnusedModels("MOUNT     ", mountModels, usedMount);
+            usedNoses.Clear();
+            usedUpper.Clear();
+            usedCores.Clear();
+            usedLower.Clear();
+            usedMount.Clear();
         }
 
         private static void addModels(string[] names, List<Model> models)
@@ -179,11 +221,7 @@ namespace SSTUModelCombinations
 
         private static void findCombinations(Model coreModel, List<Model> cores, List<Model> upperModels, List<Model> noseModels, List<Model> lowerModels, List<Model> mountModels)
         {
-            List<Model> usedCores = new List<Model>();
-            List<Model> usedUpper = new List<Model>();
-            List<Model> usedNoses = new List<Model>();
-            List<Model> usedLower = new List<Model>();
-            List<Model> usedMount = new List<Model>();
+            combinationStream.WriteLine("CORE>>>>-------------------- " + coreModel.name + " --------------------<<<<");
             int upperLen = upperModels.Count;
             int noseLen = noseModels.Count;
             int lowerLen = lowerModels.Count;
@@ -213,11 +251,6 @@ namespace SSTUModelCombinations
                                         if (lowerModel.isValidLowerProfile(mountModel.getUpperProfiles(ModelOrientation.BOTTOM), ModelOrientation.BOTTOM) && mountModel.isValidUpperProfile(lowerModel.getLowerProfiles(ModelOrientation.BOTTOM), ModelOrientation.BOTTOM))
                                         {
                                             addCombination(noseModel, upperModel, coreModel, lowerModel, mountModel);
-                                            usedNoses.AddUnique(noseModel);
-                                            usedUpper.AddUnique(upperModel);
-                                            usedCores.AddUnique(coreModel);
-                                            usedLower.AddUnique(lowerModel);
-                                            usedMount.AddUnique(mountModel);
                                         }
                                         else
                                         {
@@ -242,18 +275,18 @@ namespace SSTUModelCombinations
                     logException("CORE/UPPER ", coreModel, ModelOrientation.CENTRAL, true, upperModel, ModelOrientation.TOP, false);
                 }
             }
-
-            findUnusedModels("NOSE      ", noseModels, usedNoses);
-            findUnusedModels("UPPER     ", upperModels, usedUpper);
-            findUnusedModels("CORE      ", cores, usedCores);
-            findUnusedModels("LOWER     ", lowerModels, usedLower);
-            findUnusedModels("MOUNT     ", mountModels, usedMount);
         }
 
         private static void addCombination(Model nose, Model upper, Model core, Model lower, Model mount)
         {
+            foundCombinations++;
             string output = nose.name + "," + upper.name + "," + core.name + "," + lower.name + "," + mount.name;
-            combinations.Add(output);
+            combinationStream.WriteLine(output);
+            usedNoses.AddUnique(nose);
+            usedUpper.AddUnique(upper);
+            usedCores.AddUnique(core);
+            usedLower.AddUnique(lower);
+            usedMount.AddUnique(mount);
         }
 
         private static void logException(string slot, Model a, ModelOrientation ao, bool aUpper, Model b, ModelOrientation bo, bool bUpper)
@@ -298,7 +331,7 @@ namespace SSTUModelCombinations
             {
                 output += "bpnf: " + bpnf;
             }
-            exceptions.Add(output);
+            incompExceptionStream.WriteLine(output);
         }
 
         private static void logUnusedModelException(string slot, List<Model> unused)
@@ -308,7 +341,7 @@ namespace SSTUModelCombinations
             string output = "Unused Model Exception for slot : " + slot+" ";
             for (int i = 0; i < len; i++)
             {
-                exceptions.Add(output + " Model : "+unused[i].name);
+                unusedExceptionStream.WriteLine(output + " Model : "+unused[i].name);
             }
         }
 
