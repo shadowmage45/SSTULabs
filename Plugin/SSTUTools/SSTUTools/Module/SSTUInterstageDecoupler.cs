@@ -159,7 +159,6 @@ namespace SSTUTools
 
         private float modifiedMass;
         private float modifiedCost;
-        private Material fairingMaterial;
         private InterstageDecouplerModel fairingBase;
         private ModelModule< SSTUInterstageDecoupler> engineModels;
 
@@ -211,6 +210,7 @@ namespace SSTUTools
             updatePartMass();
             updateShielding();
             updateDragCubes();
+            updateTextureSet(false);
         }
 
         private void dimensionsWereUpdatedWithEngineRecalc()
@@ -223,6 +223,7 @@ namespace SSTUTools
             updateEngineThrust();
             updateShielding();
             updateDragCubes();
+            updateTextureSet(false);
         }
 
         #endregion ENDREGION - GUI Interaction
@@ -311,6 +312,7 @@ namespace SSTUTools
                     {
                         m.fairingBase.generateColliders = m.generateColliders;
                         m.buildFairing();
+                        m.updateTextureSet(false);
                     }
                 });
             };
@@ -446,11 +448,11 @@ namespace SSTUTools
             switch (name)
             {
                 case "Decoupler":
-                    return KSPShaderLoader.getTextureSet(currentTextureSet);
+                    return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 case "Engines":
                     return engineModels.textureSet;
                 default:
-                    return KSPShaderLoader.getTextureSet(currentTextureSet);
+                    return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             }
         }
 
@@ -463,11 +465,11 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = TextureSet.getTextureSetNames(textureNodes);
             string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSet = names[0];
-                currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
+                currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -477,8 +479,6 @@ namespace SSTUTools
             }
             this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
             Fields[nameof(currentTextureSet)].guiActiveEditor = textureNodes.Length > 1;
-            
-            fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
 
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 
@@ -552,7 +552,6 @@ namespace SSTUTools
             }
             fairingBase.generateColliders = this.generateColliders;
             fairingBase.generateFairing();
-            fairingBase.setMaterial(fairingMaterial);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor && editorTransparency ? 0.25f : 1.0f);
 
             updateEnginePositionAndScale();
@@ -653,7 +652,7 @@ namespace SSTUTools
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             fairingBase.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

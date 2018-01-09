@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using KSPShaderTools;
+using System.Collections.Generic;
 
 namespace SSTUTools
 {
@@ -182,7 +183,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentTextureSet);
+            return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
         }
 
         private void initialize()
@@ -198,11 +199,11 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = TextureSet.getTextureSetNames(textureNodes);
             string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
                 currentTextureSet = names[0];
-                t = KSPShaderLoader.getTextureSet(currentTextureSet);
+                t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -250,16 +251,13 @@ namespace SSTUTools
         private void updateTextureSet(bool useDefaults)
         {
             if (mpf == null) { return; }
-            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             Material fm = mpf.FairingMaterial;
-            if (fm != null)
-            {
-                s.textureData[0].enable(fm, colors);
-            }
+            List<Transform> trs = new List<Transform>();
             foreach (ProceduralFairings.FairingPanel fp in mpf.Panels)
             {
-                s.enable(fp.go, colors);
+                s.enable(fp.go.transform, colors);
             }
             if (useDefaults)
             {

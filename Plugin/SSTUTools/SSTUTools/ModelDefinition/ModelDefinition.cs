@@ -271,7 +271,7 @@ namespace SSTUTools
             len = textureSetNames.Length;
             for (int i = 0; i < len; i++)
             {
-                TextureSet ts = KSPShaderLoader.getTextureSet(textureSetNames[i]);
+                TextureSet ts = TexturesUnlimitedLoader.getTextureSet(textureSetNames[i]);
                 if (ts != null) { textureSetList.Add(ts); }
             }
 

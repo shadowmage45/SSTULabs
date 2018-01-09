@@ -20,7 +20,7 @@ namespace SSTUTools
         public void Start()
         {
             INSTANCE = this;
-            KSPShaderTools.KSPShaderLoader.addPostLoadCallback(KSPShaderToolsPostLoad);
+            KSPShaderTools.TexturesUnlimitedLoader.addPostLoadCallback(KSPShaderToolsPostLoad);
             GameObject.DontDestroyOnLoad(this);
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));

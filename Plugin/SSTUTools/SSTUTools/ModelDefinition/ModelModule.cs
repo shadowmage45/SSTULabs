@@ -599,7 +599,7 @@ namespace SSTUTools
             TextureSet textureSet = this.textureSet;
             if (textureSet != null)
             {
-                textureSet.enable(root.gameObject, customColors);
+                textureSet.enable(root, customColors);
             }
         }
 
