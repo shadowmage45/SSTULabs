@@ -711,7 +711,7 @@ namespace SSTUTools
                 {
                     rotOffset = engineRotations[i] + (invertEngines ? 180f : 0f);
                     modelTransforms[i].localScale = Vector3.one * engineScale;
-                    modelTransforms[i].rotation = Quaternion.Euler(0, rotOffset, invertEngines ? 180 : 0);
+                    modelTransforms[i].localRotation = Quaternion.Euler(0, rotOffset, invertEngines ? 180 : 0);
                     pos = modelTransforms[i].localPosition;
                     pos.y = yPos;
                     modelTransforms[i].localPosition = pos;
