@@ -906,6 +906,84 @@ namespace SSTUTools
             return validDefs.ToArray();
         }
 
+        /// <summary>
+        /// Returns if the input model definition is valid for being attached to the upper of this module, using the input orientation for the input definition
+        /// </summary>
+        /// <param name="def"></param>
+        /// <param name="otherModelOrientation"></param>
+        /// <returns></returns>
+        public bool isValidUpper(ModelDefinition def, ModelOrientation otherModelOrientation)
+        {
+            return definition.isValidUpperProfile(def.getLowerProfiles(otherModelOrientation), orientation);
+        }
+
+        /// <summary>
+        /// Return if the input model-module is configured properly to be used as an upper attach option for this current modules configuration.
+        /// </summary>
+        /// <param name="module"></param>
+        /// <returns></returns>
+        public bool isValidUpper(ModelModule<U> module)
+        {
+            return isValidUpper(module.definition, module.orientation);
+        }
+
+        /// <summary>
+        /// Returns if the input model definition is vaild for being attached to the lower of this module, using the input orientation for the input definition
+        /// </summary>
+        /// <param name="def"></param>
+        /// <param name="otherModelOrientation"></param>
+        /// <returns></returns>
+        public bool isValidLower(ModelDefinition def, ModelOrientation otherModelOrientation)
+        {
+            return definition.isValidLowerProfile(def.getUpperProfiles(otherModelOrientation), orientation);
+        }
+
+        /// <summary>
+        /// Return if the input model-module is configured properly to be used as a lower attach option for this current modules configuration.
+        /// </summary>
+        /// <param name="module"></param>
+        /// <returns></returns>
+        public bool isValidLower(ModelModule<U> module)
+        {
+            return isValidLower(module.definition, module.orientation);
+        }
+
+        /// <summary>
+        /// Returns the first model found from the input module that is valid to be used for an upper attachment for this module
+        /// </summary>
+        /// <param name="module"></param>
+        /// <returns></returns>
+        public ModelDefinition findFirstValidUpper(ModelModule<U> module)
+        {
+            int len = module.optionsCache.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (isValidUpper(module.optionsCache[i], module.orientation))
+                {
+                    return module.optionsCache[i];
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the first model found from the input module that is valid to be used for a lower attachment for this module
+        /// </summary>
+        /// <param name="module"></param>
+        /// <returns></returns>
+        public ModelDefinition findFirstValidLower(ModelModule<U> module)
+        {
+            int len = module.optionsCache.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (isValidLower(module.optionsCache[i], module.orientation))
+                {
+                    return module.optionsCache[i];
+                }
+            }
+            return null;
+        }
+
         #endregion ENDREGION - Module Linking
 
     }

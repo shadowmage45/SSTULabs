@@ -364,23 +364,51 @@ namespace SSTUTools
 
         #region REGION - Private working vars
 
+        /// <summary>
+        /// Has initialization been run?  Set to true the first time init methods are run (OnLoad/OnStart), and ensures that init is only run a single time.
+        /// </summary>
         private bool initialized = false;
+
+        /// <summary>
+        /// Cache of the base/config thrust for the RCS module(s)
+        /// TODO -- add differentiation for upper/lower rcs base thrusts
+        /// </summary>
         private float rcsThrust = -1;
+
+        /// <summary>
+        /// The adjusted modified mass for this part.
+        /// </summary>
         private float modifiedMass = 0;
+
+        /// <summary>
+        /// The adjusted modified cost for this part.
+        /// </summary>
         private float modifiedCost = 0;
+
+        /// <summary>
+        /// The list of attach node names that the 'nose' module is responsible for.
+        /// </summary>
         private string[] topNodeNames;
+
+        /// <summary>
+        /// The list of attach node names that the 'mount' module is responsible for
+        /// </summary>
         private string[] bottomNodeNames;
 
+        //Main module slots for nose/upper/core/lower/mount
         private ModelModule<SSTUModularPart> noseModule;
         private ModelModule<SSTUModularPart> upperModule;
         private ModelModule<SSTUModularPart> coreModule;
         private ModelModule<SSTUModularPart> lowerModule;
         private ModelModule<SSTUModularPart> mountModule;
-
+        //Acessory module slots for solar panels, lower and upper RCS
         private ModelModule<SSTUModularPart> solarModule;
         private ModelModule<SSTUModularPart> lowerRcsModule;
         private ModelModule<SSTUModularPart> upperRcsModule;
 
+        /// <summary>
+        /// Ref to the solar module that updates solar panel functions -- ec gen, tracking (animations handled through built-in animation handling)
+        /// </summary>
         private SolarModule solarFunctionsModule;
         
         /// <summary>
@@ -388,8 +416,16 @@ namespace SSTUTools
         /// </summary>
         private SSTURCSFuelSelection rcsFuelControl;
 
+        /// <summary>
+        /// Mapping of all of the variant sets available for this part.  When variant list length > 0, an additional 'variant' UI slider is added to allow for switching between variants.
+        /// </summary>
         private Dictionary<string, ModelDefinitionVariantSet> variantSets = new Dictionary<string, ModelDefinitionVariantSet>();
 
+        /// <summary>
+        /// Helper method to get or create a variant set for the input variant name.  If no set currently exists, a new set is empty set is created and returned.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         private ModelDefinitionVariantSet getVariantSet(string name)
         {
             ModelDefinitionVariantSet set = null;
@@ -401,6 +437,11 @@ namespace SSTUTools
             return set;
         }
 
+        /// <summary>
+        /// Helper method to find the variant set for the input model definition.  Will nullref/error if no variant set is found.  Will NOT create a new set if not found.
+        /// </summary>
+        /// <param name="def"></param>
+        /// <returns></returns>
         private ModelDefinitionVariantSet getVariantSet(ModelDefinition def)
         {
             //returns the first variant set out of all variants where the variants definitions contains the input definition
@@ -796,8 +837,7 @@ namespace SSTUTools
             updateAttachNodes(false);
             SSTUStockInterop.updatePartHighlighting(part);
         }
-
-        //TODO - model changed UI functions
+        
         //TODO - controls for rcs vertical position functions
         //TODO - controls for layout change functions
         private void initializeUI()
@@ -829,6 +869,7 @@ namespace SSTUTools
 
             Action<SSTUModularPart> modelChangedAction = (m) =>
             {
+                m.validateModules();
                 m.updateModulePositions();
                 m.updateMassAndCost();
                 m.updateAttachNodes(true);
@@ -866,7 +907,6 @@ namespace SSTUTools
             {
                 coreModule.modelSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
-                //TODO validate solar, adapters, etc
                 SSTUStockInterop.fireEditorUpdate();
             };
 
@@ -900,7 +940,7 @@ namespace SSTUTools
                 upperRcsModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
+                    m.upperRcsModule.renameRCSThrustTransforms(m.upperRCSThrustTransform);
                     modelChangedAction(m);
                     m.updateRCSModule();
                 });
@@ -912,7 +952,7 @@ namespace SSTUTools
                 lowerRcsModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
+                    m.lowerRcsModule.renameRCSThrustTransforms(m.lowerRCSThrustTransform);
                     modelChangedAction(m);
                     m.updateRCSModule();
                 });
@@ -951,14 +991,60 @@ namespace SSTUTools
             Fields[nameof(currentCoreTexture)].uiControlEditor.onFieldChanged = coreModule.textureSetSelected;
             Fields[nameof(currentLowerTexture)].uiControlEditor.onFieldChanged = lowerModule.textureSetSelected;
             Fields[nameof(currentMountTexture)].uiControlEditor.onFieldChanged = mountModule.textureSetSelected;
+            Fields[nameof(currentSolarTexture)].uiControlEditor.onFieldChanged = solarModule.textureSetSelected;
+            Fields[nameof(currentUpperRCSTexture)].uiControlEditor.onFieldChanged = upperRcsModule.textureSetSelected;
+            Fields[nameof(currentLowerRCSTexture)].uiControlEditor.onFieldChanged = lowerRcsModule.textureSetSelected;
 
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
         }
+
+        private void validateModules()
+        {
+            //core module is automatically 'valid' -- don't touch it.
+            //but do need to validate upper+nose, and lower+mount
+            //as well as validating the solar/RCS
+
+            //validate upper model
+            if (!coreModule.isValidUpper(upperModule))
+            {
+                ModelDefinition def = coreModule.findFirstValidUpper(upperModule);
+                if (def == null) { }//TODO throw error...
+                upperModule.modelSelected(def.name);
+            }
+
+            //validate nose model regardless of if upper changed or not
+            if (!upperModule.isValidUpper(noseModule))
+            {
+                ModelDefinition def = upperModule.findFirstValidUpper(noseModule);
+                if (def == null) { }//TODO throw error...
+                noseModule.modelSelected(def.name);
+            }
+
+            //validate lower model
+            if (!coreModule.isValidLower(lowerModule))
+            {
+                ModelDefinition def = coreModule.findFirstValidLower(lowerModule);
+                if (def == null) { }//TODO throw error...
+                lowerModule.modelSelected(def.name);
+            }
+
+            //validate mount model
+            if (!lowerModule.isValidLower(mountModule))
+            {
+                ModelDefinition def = lowerModule.findFirstValidLower(mountModule);
+                if (def == null) { }//TODO throw error...
+                mountModule.modelSelected(def.name);
+            }
+
+            //TODO validate solar/RCS selections (model and parent)
+            //what determines valid RCS/solar options for a given module?
+            //what determines valid parent options for a given configuration?
+        }
         
-        //TODO
+        //TODO - solar and RCS positioning
         private void updateModulePositions()
         {
             //scales for modules depend on the module above/below them
@@ -1068,11 +1154,11 @@ namespace SSTUTools
         private void updateRCSModule()
         {
             //TODO
-            //rcsFuelControl = part.GetComponent<SSTUModularRCS>();
-            //if (rcsFuelControl != null)
-            //{
-            //    rcsFuelControl.Start();
-            //}
+            rcsFuelControl = part.GetComponent<SSTURCSFuelSelection>();
+            if (rcsFuelControl != null)
+            {
+                rcsFuelControl.Start();
+            }
             //TODO
             if (rcsThrust < 0)
             {
@@ -1090,7 +1176,15 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        //TODO -- surface attach handling -- both internal and external.
+        /// <summary>
+        /// Update the attach nodes for the current model-module configuration. 
+        /// The 'nose' module is responsible for updating of upper attach nodes, while the 'mount' module is responsible for lower attach nodes.
+        /// Also includes updating of 'interstage' nose/mount attach nodes.
+        /// Also includes updating of surface-attach node position.
+        /// Also includes updating of any parts that are surface attached to this part.
+        /// </summary>
+        /// <param name="userInput"></param>
         private void updateAttachNodes(bool userInput)
         {
             upperModule.updateAttachNodes(topNodeNames, userInput);
@@ -1114,7 +1208,10 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        /// <summary>
+        /// Update the current fairing modules (top and bottom) for the current model-module configuration (diameters, positions).
+        /// </summary>
+        /// <param name="userInput"></param>
         private void updateFairing(bool userInput)
         {
             SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
@@ -1146,22 +1243,45 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        /// <summary>
+        /// Return the total height of this part in its current configuration.  This will be the distance from the bottom attach node to the top attach node, and may not include any 'extra' structure.
+        /// </summary>
+        /// <returns></returns>
+        private float getTotalHeight()
+        {
+            float totalHeight = noseModule.moduleHeight;
+            totalHeight += upperModule.moduleHeight;
+            totalHeight += coreModule.moduleHeight;
+            totalHeight += lowerModule.moduleHeight;
+            totalHeight += mountModule.moduleHeight;
+            return totalHeight;
+        }
+
+        /// <summary>
+        /// Return the topmost position in the models relative to the part's origin.
+        /// </summary>
+        /// <returns></returns>
         private float getPartTopY()
         {
-            return 0f;
+            return getTotalHeight() * 0.5f;
         }
-
-        //TODO
+        
+        /// <summary>
+        /// Return the Y position(model space) of the bottom edge of the upper fairing.  Should first check if the fairing is enabled before using this value.
+        /// </summary>
+        /// <returns></returns>
         private float getTopFairingBottomY()
         {
-            return 0f;
+            return getPartTopY() + noseModule.moduleFairingOffset;
         }
 
-        //TODO
+        /// <summary>
+        /// Return the Y position(model spae) of the upper edge of the lower fairing.  Should first check if the fairing is enabled before using this value.
+        /// </summary>
+        /// <returns></returns>
         private float getBottomFairingTopY()
         {
-            return 0f;
+            return getPartTopY() - getTotalHeight() + mountModule.moduleFairingOffset; ;
         }
 
         //TODO
@@ -1208,6 +1328,9 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Data storage for a group of model definitions that share the same 'variant' type.  Used by modular-part in variant-defined configurations.
+    /// </summary>
     public class ModelDefinitionVariantSet
     {
         public readonly string variantName;
