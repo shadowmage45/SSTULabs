@@ -121,55 +121,134 @@ namespace SSTUTools
 
         #region REGION - Convenience wrappers for accessing model definition data for external use
 
+        /// <summary>
+        /// Return true/false if fairings are enabled for this module in its current configuration.
+        /// </summary>
         public bool fairingEnabled { get { return modelDefinition.fairingData == null ? false : modelDefinition.fairingData.fairingsSupported; } }
 
+        /// <summary>
+        /// Return true/false if animations are enabled for this module in its current configuration.
+        /// </summary>
         public bool animationEnabled { get { return modelDefinition.animationData != null; } }
 
+        /// <summary>
+        /// Return true/false if this module has engine transform data for its current configuration.
+        /// </summary>
         public bool engineTransformEnabled { get { return modelDefinition.engineTransformData != null; } }
 
+        /// <summary>
+        /// Return true/false if this module has engine thrust data for its current configuration.
+        /// </summary>
         public bool engineThrustEnabled { get { return modelDefinition.engineThrustData != null; } }
 
         //TODO -- create specific gimbal transform data holder class
+        /// <summary>
+        /// Return true/false if this module has gimbal transform data for its current configuration.
+        /// </summary>
         public bool engineGimalEnabled { get { return modelDefinition.engineTransformData != null; } }
 
+        /// <summary>
+        /// Return true/false if this module has solar panel data for its current configuration.
+        /// </summary>
         public bool solarEnabled { get { return modelDefinition.solarData != null; } }
 
+        /// <summary>
+        /// Return the currently 'active' model definition.
+        /// </summary>
         public ModelDefinition definition { get { return modelDefinition; } }
 
+        /// <summary>
+        /// Return the currently active texture set from the currently active model definition.
+        /// </summary>
         public TextureSet textureSet { get { return modelDefinition.findTextureSet(textureSetName); } }
 
+        /// <summary>
+        /// Return the currently active model layout.
+        /// </summary>
         public ModelLayoutData layout { get { return layout; } }
 
+        /// <summary>
+        /// Return the current mass for this module slot.  Includes adjustments from the definition mass based on the current scale.
+        /// </summary>
         public float moduleMass { get { return currentMass; } }
 
+        /// <summary>
+        /// Return the current cost for this module slot.  Includes adjustments from the definition cost based on the current scale.
+        /// </summary>
         public float moduleCost { get { return currentCost; } }
 
+        /// <summary>
+        /// Return the current usable resource volume for this module slot.  Includes adjustments from the definition volume based on the current scale.
+        /// </summary>
         public float moduleVolume { get { return currentVolume; } }
 
+        /// <summary>
+        /// Return the current diameter of the model in this module slot.  This is the base diamter as specified in the model definition, modified by the currently specified scale.
+        /// </summary>
         public float moduleDiameter { get { return currentDiameter; } }
 
+        /// <summary>
+        /// Return the current upper-mounting diamter of the model in this module slot.  This value is to be used for sizing/scaling of any module slot used for an upper-adapter/nose option for this slot.
+        /// </summary>
         public float moduleUpperDiameter { get { return (definition.shouldInvert(orientation) ? definition.lowerDiameter : definition.upperDiameter) * currentHorizontalScale; } }
 
+        /// <summary>
+        /// Return the current lower-mounting diamter of the model in this module slot.  This value is to be used for sizing/scaling of any module slot used for a lower-adapter/mount option for this slot.
+        /// </summary>
         public float moduleLowerDiameter { get { return (definition.shouldInvert(orientation) ? definition.upperDiameter : definition.lowerDiameter) * currentHorizontalScale; } }
 
+        /// <summary>
+        /// Return the current height of the model in this module slot.  Based on the definition specified height and the current vertical scale.
+        /// </summary>
         public float moduleHeight { get { return currentHeight; } }
 
+        /// <summary>
+        /// Return the current x/z scaling used by the model in this module slot.
+        /// </summary>
         public float moduleHorizontalScale { get { return currentHorizontalScale; } }
 
+        /// <summary>
+        /// Return the current y scaling used by the model in this module slot.
+        /// </summary>
         public float moduleVerticalScale { get { return currentVerticalScale; } }
 
+        /// <summary>
+        /// Return the current origin position of the Y corrdinate of this module, in part-centric space.<para/>
+        /// A value of 0 denotes origin is at the parts' origin/COM.
+        /// </summary>
         public float modulePosition { get { return currentVerticalPosition; } }
 
+        //TODO -- currently returns 0 -- needs to return a value based on current model orienation and specified 'position'
+        /// <summary>
+        /// Return the Y coordinate of the top-most point in the model in part-centric space, as defined by model-height in the model definition and modified by current model scale, 
+        /// </summary>
         public float moduleTop { get { return 0f; } }
 
+        /// <summary>
+        /// Return the Y coordinate of the physical 'center' of this model in part-centric space.
+        /// </summary>
         public float moduleCenter { get { return moduleTop - 0.5f * moduleHeight; } }
 
+        /// <summary>
+        /// Returns the Y coordinate of the bottom of this model in part-centric space.
+        /// </summary>
         public float moduleBottom { get { return moduleTop - moduleHeight; } }
 
+        /// <summary>
+        /// Returns an offset that can be applied to the 'position' of this model that will specify the correct start point for a fairing. 
+        /// The returned offset will be correct for the currently configured orientation,
+        /// such that you can always use 'module.modulePosition + module.moduleFairingOffset' to attain the proper Y coordinate for fairing attachment.
+        /// </summary>
         public float moduleFairingOffset { get { return modelDefinition.fairingData == null ? 0 : modelDefinition.fairingData.fairingOffsetFromOrigin; } }
 
+        /// <summary>
+        /// Return the currently configured custom color data for this module slot.
+        /// </summary>
         public RecoloringData[] recoloringData { get { return customColors; } }
 
+        /// <summary>
+        /// Return the transforms that represent the root transforms for the models in this module slot.  Under normal circumstaces (standard single model layout), this should return an array of a single transform.
+        /// </summary>
         public Transform[] moduleModelTransforms { get { return models; } }
 
         #endregion ENDREGION - Convenience wrappers for model definition data for external use
@@ -370,7 +449,8 @@ namespace SSTUTools
 
         /// <summary>
         /// NON-Symmetry enabled method.<para/>
-        /// Updates the UI controls for the currently available models specified through setupModelList.
+        /// Updates the UI controls for the currently available models specified through setupModelList.<para/>
+        /// Also updates the texture-set selection widget options and visibility (only if texture set backing field is not null)
         /// </summary>
         public void updateSelections()
         {
@@ -378,6 +458,11 @@ namespace SSTUTools
             string[] displays = SSTUUtils.getNames(optionsCache, s => s.title);
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
+            //updates the texture set selection for the currently configured model definition, including disabling of the texture-set selection UI when needed
+            if (textureField != null)
+            {
+                partModule.updateUIChooseOptionControl(textureField.name, definition.getTextureSetNames(), definition.getTextureSetTitles(), true, textureSetName);
+            }
         }
 
         /// <summary>
@@ -432,6 +517,11 @@ namespace SSTUTools
             setScale(newScale);
         }
 
+        /// <summary>
+        /// Updates the current internal scale values for the input diameter and height values.
+        /// </summary>
+        /// <param name="newHeight"></param>
+        /// <param name="newDiameter"></param>
         public void setScaleForHeightAndDiameter(float newHeight, float newDiameter)
         {
             float newHorizontalScale = newDiameter / definition.diameter;
@@ -439,11 +529,20 @@ namespace SSTUTools
             setScale(newHorizontalScale, newVerticalScale);
         }
 
+        /// <summary>
+        /// Updates the current internal scale values for the input scale.  Sets x,y,z scale to the input value specified.
+        /// </summary>
+        /// <param name="newScale"></param>
         public void setScale(float newScale)
         {
             setScale(newScale, newScale);
         }
 
+        /// <summary>
+        /// Updates the current internal scale values for the input scales.  Updates x,z with the 'horizontal scale' and updates 'y' with the 'vertical scale'.
+        /// </summary>
+        /// <param name="newHorizontalScale"></param>
+        /// <param name="newVerticalScale"></param>
         public void setScale(float newHorizontalScale, float newVerticalScale)
         {
             currentHorizontalScale = newHorizontalScale;
