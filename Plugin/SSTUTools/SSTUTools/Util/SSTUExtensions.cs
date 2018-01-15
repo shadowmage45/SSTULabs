@@ -555,10 +555,12 @@ namespace SSTUTools
             if (HighLogic.LoadedSceneIsEditor)
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlEditor;
+                module.Fields[fieldName].guiActiveEditor = options.Length > 1;
             }
             else if (HighLogic.LoadedSceneIsFlight)
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlFlight;
+                module.Fields[fieldName].guiActive = options.Length > 1;
             }
             else { return; }
             if (widget == null) { return; }
