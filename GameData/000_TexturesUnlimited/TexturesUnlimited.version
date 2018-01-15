@@ -1,14 +1,14 @@
 {
 	"NAME":"TexturesUnlimited",
 	"URL":"http://ksp-avc.cybutek.net/version.php?id=532",
-	"DOWNLOAD":"https://github.com/shadowmage45/SSTULabs/releases/tag/1.0.0.5",
-	"CHANGE_LOG_URL":"https://github.com/shadowmage45/SSTULabs/releases/tag/1.0.0.5",
+	"DOWNLOAD":"https://github.com/shadowmage45/SSTULabs/releases/tag/1.0.0.6",
+	"CHANGE_LOG_URL":"https://github.com/shadowmage45/SSTULabs/releases/tag/1.0.0.6",
 	"VERSION":
 	{
 		"MAJOR":1,
 		"MINOR":0,
 		"PATCH":0,
-		"BUILD":5
+		"BUILD":6
 	},
 	"KSP_VERSION":
 	{
