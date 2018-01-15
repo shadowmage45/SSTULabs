@@ -1094,6 +1094,7 @@ namespace SSTUTools
 
             //TODO -- these positions need to depend on what the current 'parent' module is for the add-on
             // as well as, at least for RCS, the currently configured 'offset'
+            // -- need an easy way to track what the parent module is for each of these
             solarModule.setPosition(coreModule.modulePosition);
             upperRcsModule.setPosition(coreModule.modulePosition);
             lowerRcsModule.setPosition(coreModule.modulePosition);
@@ -1153,13 +1154,15 @@ namespace SSTUTools
         //TODO
         private void updateRCSModule()
         {
-            //TODO
+            //initialize the external RCS fuel-type control module
+            //TODO -- need more modules for upper/lower differentiation?
             rcsFuelControl = part.GetComponent<SSTURCSFuelSelection>();
             if (rcsFuelControl != null)
             {
                 rcsFuelControl.Start();
             }
-            //TODO
+
+            //initialize the thrust value from the RCS module
             if (rcsThrust < 0)
             {
                 ModuleRCS rcs = part.GetComponent<ModuleRCS>();
@@ -1168,6 +1171,8 @@ namespace SSTUTools
                     rcsThrust = rcs.thrusterPower;
                 }
             }
+
+            //if we have a valid thrust output rating, update the stock RCS module with that thrust value.
             if (rcsThrust >= 0)
             {
                 float thrust = rcsThrust * Mathf.Pow(coreModule.moduleHorizontalScale, 2);
@@ -1285,6 +1290,10 @@ namespace SSTUTools
         }
 
         //TODO
+        /// <summary>
+        /// Update the UI visibility for the currently available selections.<para/>
+        /// Will hide/remove UI fields for slots with only a single option (models, textures, layouts).
+        /// </summary>
         private void updateAvailableVariants()
         {
             noseModule.updateSelections();
