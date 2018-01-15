@@ -1,3 +1,0 @@
->>>>-------------------- SSTU-TANK-MFT-A --------------------<<<<
-Adapter-2-1-Flat,MFT-B-0-5,MFT-IP-0-5,MFT-A-0-5,Adapter-2-1-Flat
-Adapter-2-1-Flat,MFT-B-0-5,MFT-CF-0-5,MFT-B-0-5,Adapter-2-1-Flat
