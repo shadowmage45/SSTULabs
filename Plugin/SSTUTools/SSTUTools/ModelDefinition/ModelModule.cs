@@ -51,12 +51,12 @@ namespace SSTUTools
 
         public Func<float> getLayoutPositionScalar = delegate ()
         {
-            return 0f;
+            return 1f;
         };
 
         public Func<float> getLayoutScaleScalar = delegate ()
         {
-            return 0f;
+            return 1f;
         };
 
         #endregion ENDREGION - Public Delegate Stubs
@@ -130,6 +130,11 @@ namespace SSTUTools
         /// Return true/false if animations are enabled for this module in its current configuration.
         /// </summary>
         public bool animationEnabled { get { return modelDefinition.animationData != null; } }
+
+        /// <summary>
+        /// Return true/false if this part can be the parent of an RCS module/model.
+        /// </summary>
+        public bool rcsParentEnabled { get { return modelDefinition.rcsData != null; } }
 
         /// <summary>
         /// Return true/false if this module has engine transform data for its current configuration.

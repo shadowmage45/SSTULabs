@@ -118,6 +118,21 @@ namespace SSTUTools
         public string engineThrustTransform = "thrustTransform";
 
         [KSPField]
+        public string disabledRCSModelName = "RCS-None";
+
+        [KSPField]
+        public string disabledSolarName = "Solar-None";
+
+        [KSPField]
+        public string engineThrustModule = "NONE";
+
+        [KSPField]
+        public string engineTransformModule = "NONE";
+
+        [KSPField]
+        public string engineGimbalModule = "NONE";
+
+        [KSPField]
         public string topManagedNodes = "top1, top2";
 
         [KSPField]
@@ -832,6 +847,7 @@ namespace SSTUTools
             solarFunctionsModule.getSymmetryModule = m => ((SSTUModularPart)m).solarFunctionsModule;
             solarFunctionsModule.setupSolarPanelData(solarModule.getSolarData(), solarModule.moduleModelTransforms);
 
+            validateModules();
             updateModulePositions();
             updateMassAndCost();
             updateAttachNodes(false);
@@ -995,17 +1011,28 @@ namespace SSTUTools
             Fields[nameof(currentUpperRCSTexture)].uiControlEditor.onFieldChanged = upperRcsModule.textureSetSelected;
             Fields[nameof(currentLowerRCSTexture)].uiControlEditor.onFieldChanged = lowerRcsModule.textureSetSelected;
 
+            string[] upperRCSOptions = upperRCSParentOptions.Split(',');
+            this.updateUIChooseOptionControl(nameof(currentUpperRCSParent), upperRCSOptions, upperRCSOptions, true, currentUpperRCSParent);
+            string[] lowerRCSOptions = lowerRCSParentOptions.Split(',');
+            this.updateUIChooseOptionControl(nameof(currentLowerRCSParent), lowerRCSOptions, lowerRCSOptions, true, currentLowerRCSParent);
+            string[] solarOptions = solarParentOptions.Split(',');
+            this.updateUIChooseOptionControl(nameof(currentSolarParent), solarOptions, solarOptions, true, currentSolarParent);
+
             if (HighLogic.LoadedSceneIsEditor)
             {
                 GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorVesselModified));
             }
         }
 
+        /// <summary>
+        /// Validate the currently selected models, and select update any that are found to be invalid by setting to the first usable option form their model list.<para/>
+        /// Does not validate CORE, but updates other models from core outward.  Includes validating of solar and RCS options, setting to empty model if current parent slot cannot support RCS.
+        /// </summary>
         private void validateModules()
         {
             //core module is automatically 'valid' -- don't touch it.
             //but do need to validate upper+nose, and lower+mount
-            //as well as validating the solar/RCS
+            //as well as validating the solar/RCS (parent position + enabled/disbled status)
 
             //validate upper model
             if (!coreModule.isValidUpper(upperModule))
@@ -1042,9 +1069,26 @@ namespace SSTUTools
             //TODO validate solar/RCS selections (model and parent)
             //what determines valid RCS/solar options for a given module?
             //what determines valid parent options for a given configuration?
+            ModelModule<SSTUModularPart> p = getModuleByName(currentUpperRCSParent);
+            if (!p.rcsParentEnabled)
+            {
+                //TODO -- disable RCS module (set to inactive model), and/or move it to a valid parent slot.
+            }
+
+            p = getModuleByName(currentLowerRCSParent);
+            if (!p.rcsParentEnabled)
+            {
+                //TODO -- disable RCS module (set to inactive model), and/or move it to a valid parent slot.
+            }
+
+            p = getModuleByName(currentSolarParent);
+            if (!p.rcsParentEnabled)//TODO -- how to determine if a model is valid for mounting of solar panels, and -where- to mount them on the model?
+            {
+                //TODO -- disable solar module (set to inactive model), and/or move it to a valid parent slot
+            }
         }
         
-        //TODO - solar and RCS positioning
+        //TODO -- update solar/RCS positions
         private void updateModulePositions()
         {
             //scales for modules depend on the module above/below them
@@ -1095,9 +1139,9 @@ namespace SSTUTools
             //TODO -- these positions need to depend on what the current 'parent' module is for the add-on
             // as well as, at least for RCS, the currently configured 'offset'
             // -- need an easy way to track what the parent module is for each of these
-            solarModule.setPosition(coreModule.modulePosition);
-            upperRcsModule.setPosition(coreModule.modulePosition);
-            lowerRcsModule.setPosition(coreModule.modulePosition);
+            solarModule.setPosition(getModuleByName(currentSolarParent).modulePosition);
+            upperRcsModule.setPosition(getModuleByName(currentUpperRCSParent).modulePosition);
+            lowerRcsModule.setPosition(getModuleByName(currentLowerRCSParent).modulePosition);
 
             solarModule.updateModelMeshes();
             upperRcsModule.updateModelMeshes();
@@ -1152,6 +1196,9 @@ namespace SSTUTools
         }
 
         //TODO
+        /// <summary>
+        /// Update the ModuleRCSXX with the current stats for the current configuration (thrust, ISP, fuel type)
+        /// </summary>
         private void updateRCSModule()
         {
             //initialize the external RCS fuel-type control module
@@ -1179,6 +1226,24 @@ namespace SSTUTools
                 MonoBehaviour.print("TODO -- Adjust RCS thrust/enabled/disabled status from SSTUModularPart");
                 //SSTUModularRCS.updateRCSModules(part, !upperRcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
             }
+        }
+
+        //TODO
+        /// <summary>
+        /// Update the ModuleEnginesXX with the current stats for the current configuration.
+        /// </summary>
+        private void updateEngineModule()
+        {
+
+        }
+
+        //TODO
+        /// <summary>
+        /// Update the ModuleGimbal with the current stats for the current configuration.
+        /// </summary>
+        private void updateGimbalModule()
+        {
+
         }
 
         //TODO -- surface attach handling -- both internal and external.
@@ -1289,7 +1354,6 @@ namespace SSTUTools
             return getPartTopY() - getTotalHeight() + mountModule.moduleFairingOffset; ;
         }
 
-        //TODO
         /// <summary>
         /// Update the UI visibility for the currently available selections.<para/>
         /// Will hide/remove UI fields for slots with only a single option (models, textures, layouts).
@@ -1331,6 +1395,32 @@ namespace SSTUTools
             root = new GameObject(name).transform;
             root.NestToParent(part.transform.FindRecursive("model"));
             return root;
+        }
+
+        /// <summary>
+        /// Return the model-module corresponding to the input slot name.  Valid slot names are: NOSE,UPPER,CORE,LOWER,MOUNT
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        private ModelModule<SSTUModularPart> getModuleByName(string name)
+        {
+            switch (name)
+            {
+                case "NOSE":
+                    return noseModule;
+                case "UPPER":
+                    return upperModule;
+                case "CORE":
+                    return coreModule;
+                case "LOWER":
+                    return lowerModule;
+                case "MOUNT":
+                    return mountModule;
+                case "NONE":
+                    return null;
+                default:
+                    return coreModule;
+            }
         }
 
         #endregion ENDREGION - Custom Update Methods

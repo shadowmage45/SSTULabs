@@ -177,7 +177,12 @@ namespace SSTUTools
         /// <summary>
         /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
         /// </summary>
-        public readonly ModelRCSModuleData rcsData;
+        public readonly ModelRCSPositionData rcsData;
+
+        /// <summary>
+        /// The rcs-module data for use by the RCS thrusters in this model -- thrust, fuel type, ISP.  Will be null if this is not an RCS model.
+        /// </summary>
+        public readonly ModelRCSModuleData rcsModuleData;
 
         /// <summary>
         /// Denotes what type of mounting this part has on its upper attach point (top of model).<para/>
@@ -339,10 +344,16 @@ namespace SSTUTools
                 solarData = new ModelSolarData(node.GetNode("SOLARDATA"));
             }
 
-            //load model RCS data, if present
+            //load model RCS positioning data, if present
+            if (node.HasNode("RCSPOSITION"))
+            {
+                rcsData = new ModelRCSPositionData(node.GetNode("RCSPOSITION"));
+            }
+
+            //load model RCS module data, if present
             if (node.HasNode("RCSDATA"))
             {
-                rcsData = new ModelRCSModuleData(node.GetNode("RCSDATA"));
+                rcsModuleData = new ModelRCSModuleData(node.GetNode("RCSDATA"));
             }
 
             //load model engine thrust data, if present
@@ -759,12 +770,12 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsVerticalAngle;
 
-        public ModelRCSPositionData(ConfigNode node, ModelDefinition parent)
+        public ModelRCSPositionData(ConfigNode node)
         {
             rcsEnabled = node.GetBoolValue("enabled", false);
             rcsVerticalPosition = node.GetFloatValue("verticalPosition", 0);
-            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition", parent.diameter * 0.5f);
-            rcsVerticalRange = node.GetFloatValue("verticalRange", parent.height);
+            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition", 0);
+            rcsVerticalRange = node.GetFloatValue("verticalRange", 0);
             rcsVerticalAngle = node.GetFloatValue("verticalAngle", 0);
         }
 
