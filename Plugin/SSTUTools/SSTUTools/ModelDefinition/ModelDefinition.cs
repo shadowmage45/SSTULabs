@@ -159,6 +159,8 @@ namespace SSTUTools
         /// </summary>
         public readonly ModelSolarData solarData;
 
+        public readonly ModelSolarPositionData solarPositionData;
+
         /// <summary>
         /// The model animation constraint data that is applicable to this model definition.  Will be null if no constraint data is specified in the config.
         /// </summary>
@@ -342,6 +344,11 @@ namespace SSTUTools
             if (node.HasNode("SOLARDATA"))
             {
                 solarData = new ModelSolarData(node.GetNode("SOLARDATA"));
+            }
+
+            if (node.HasNode("SOLARPOSITION"))
+            {
+                solarPositionData = new ModelSolarPositionData(node.GetNode("SOLARPOSITION"));
             }
 
             //load model RCS positioning data, if present
@@ -610,11 +617,6 @@ namespace SSTUTools
             }
         }
 
-        public PanelData[] createPanelData(int numberOfPanels)
-        {
-            return null;
-        }
-
         public class ModelSolarDataPivot
         {
 
@@ -654,6 +656,18 @@ namespace SSTUTools
 
         }
 
+    }
+
+    /// <summary>
+    /// Specifies where on a model-definition that solar panels should be mounted.  This is relative to the models orienation and origin, and the value is inverted whenever the model is used inverted.
+    /// </summary>
+    public class ModelSolarPositionData
+    {
+        public float position;
+        public ModelSolarPositionData(ConfigNode node)
+        {
+            position = node.GetFloatValue("position");
+        }
     }
 
     //TODO

@@ -869,10 +869,13 @@ namespace SSTUTools
             root.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
         }
         
-        //TODO
+        /// <summary>
+        /// Return the current vertical offset applied to the model, adjusted for model scale
+        /// </summary>
+        /// <returns></returns>
         private float getVerticalOffset()
         {
-            return 0f;
+            return definition.verticalOffset * currentVerticalScale;
         }
 
         //TODO
