@@ -878,22 +878,23 @@ namespace SSTUTools
             return definition.verticalOffset * currentVerticalScale;
         }
 
-        //TODO
+        /// <summary>
+        /// Return true/false if the input texture set name is a valid texture set for this model definition.
+        /// <para/>
+        /// If the model does not contain any defined texture sets, return true if the input name is 'default' or 'none'
+        /// otherwise, examine the array of texture sets and return true/false depending on if the input name was found
+        /// in the defined sets.
+        /// </summary>
+        /// <param name="val"></param>
+        /// <returns></returns>
         private bool isValidTextureSet(String val)
         {
-            //are there any texture sets present?
             bool noTextures = definition.textureSets.Length == 0;
-            //if the current input string is null or empty, or 'default' or 'none', return valid if there are no texture sets, otherwise, it must be invalid
-            if (String.IsNullOrEmpty(val) || "default" == val || "none" == val)
+            if (noTextures)
             {
-                return noTextures;
+                return val == "none" || val == "default";
             }
-            int len = definition.textureSets.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (definition.textureSets[i].name == val) { return true; }
-            }
-            return false;
+            return definition.textureSets.Contains(m => m.name == val));
         }
 
         /// <summary>

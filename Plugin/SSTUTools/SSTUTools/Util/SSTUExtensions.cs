@@ -711,6 +711,23 @@ namespace SSTUTools
 
         #region Generic extension and Utiltiy methods
 
+        /// <summary>
+        /// Return true/false if the input array contains at least one element that satsifies the input predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array"></param>
+        /// <param name="predicate"></param>
+        /// <returns></returns>
+        public static bool Contains<T>(this T[] array, Func<T,bool> predicate)
+        {
+            int len = array.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (predicate(array[i])) { return true; }
+            }
+            return false;
+        }
+
         public static String Print(this FloatCurve curve)
         {
             String output = "";
