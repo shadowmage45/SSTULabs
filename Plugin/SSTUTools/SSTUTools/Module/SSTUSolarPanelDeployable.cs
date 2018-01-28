@@ -164,7 +164,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(extendEvent)], Events[nameof(retractEvent)]);
+            animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(extendEvent), nameof(retractEvent));
             animationModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);//TODO -- set animation layer for solar panel deploy animation from part/module config value
 

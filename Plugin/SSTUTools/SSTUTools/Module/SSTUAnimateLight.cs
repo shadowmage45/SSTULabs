@@ -138,7 +138,7 @@ namespace SSTUTools
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
             //setup animation control module.  limit/deploy/retract events passed as null, as UI visibility/updating handled externally to ensure syncing to light animation state
-            animationController = new AnimationModule(part, this, Fields[nameof(animationPersistentData)], null, Events[nameof(enableLightsEvent)], Events[nameof(disableLightsEvent)]);
+            animationController = new AnimationModule(part, this, nameof(animationPersistentData), null, nameof(enableLightsEvent), nameof(disableLightsEvent));
             animationController.getSymmetryModule = m => ((SSTUAnimateLight)m).animationController;
             animationController.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
         }

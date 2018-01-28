@@ -147,7 +147,7 @@ namespace SSTUTools
             
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], Fields[nameof(animationMaxDeploy)], Events[nameof(enableAnimationEvent)], Events[nameof(disableAnimationEvent)]);
+            animationModule = new AnimationModule(part, this, nameof(persistentState), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             animationModule.getSymmetryModule = m => ((SSTUAnimateControlled)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
             animationModule.onAnimStateChangeCallback = onAnimStateChange;

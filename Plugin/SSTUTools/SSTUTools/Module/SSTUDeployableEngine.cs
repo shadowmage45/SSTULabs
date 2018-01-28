@@ -119,7 +119,7 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
-            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(deployEngineEvent)], Events[nameof(retractEngineEvent)]);
+            animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(deployEngineEvent), nameof(retractEngineEvent));
             animationModule.getSymmetryModule = m => ((SSTUDeployableEngine)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
             animationModule.onAnimStateChangeCallback = onAnimationStateChange;

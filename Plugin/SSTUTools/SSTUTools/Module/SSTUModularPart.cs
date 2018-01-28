@@ -787,6 +787,14 @@ namespace SSTUTools
             ModelDefinition[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
             ModelDefinition[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
             ModelDefinition[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
+            MonoBehaviour.print("noses: " + noseDefs.Length);
+            MonoBehaviour.print("uppers: " + upperDefs.Length);
+            MonoBehaviour.print("cores: " + coreDefs.Length);
+            MonoBehaviour.print("lowers: " + lowerDefs.Length);
+            MonoBehaviour.print("mounts: " + mountDefs.Length);
+            MonoBehaviour.print("solars: " + solarDefs.Length);
+            MonoBehaviour.print("rcsUp: " + rcsUpDefs.Length);
+            MonoBehaviour.print("rcsdn: " + rcsDnDefs.Length);
 
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.getSymmetryModule = m => m.noseModule;
@@ -1453,7 +1461,10 @@ namespace SSTUTools
 
         public void addModels(ModelDefinition[] defs)
         {
-            definitions.AddUniqueRange(defs);
+            List<ModelDefinition> allDefs = new List<ModelDefinition>();
+            allDefs.AddRange(definitions);
+            allDefs.AddUniqueRange(defs);
+            definitions = allDefs.ToArray();
         }
 
         public int indexOf(ModelDefinition def)

@@ -154,7 +154,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
 
-            animationModule = new AnimationModule(part, this, Fields[nameof(persistentState)], null, Events[nameof(inflateEvent)], Events[nameof(deflateEvent)]);
+            animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(inflateEvent), nameof(deflateEvent));
             animationModule.getSymmetryModule = m => ((SSTUInflatable)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
 

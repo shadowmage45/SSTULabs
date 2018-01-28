@@ -281,7 +281,7 @@ namespace SSTUTools
             this.modelField = partModule.Fields[modelPersistenceFieldName];
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
-            this.animationModule = new AnimationModule(part, partModule, partModule.Fields[animationPersistenceFieldName], partModule.Fields[deployLimitField], partModule.Events[deployEventName], partModule.Events[retractEventName]);
+            this.animationModule = new AnimationModule(part, partModule, animationPersistenceFieldName, deployLimitField, deployEventName, retractEventName);
             currentLayout = new ModelLayoutData("default", new ModelPositionData[] { new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero)});
             loadColors(persistentData);
         }
@@ -293,6 +293,10 @@ namespace SSTUTools
         public void setupModelList(ModelDefinition[] modelDefs)
         {
             optionsCache = modelDefs;
+            if (modelDefs.Length <= 0)
+            {
+                MonoBehaviour.print("ERROR: No models found for part: " + part);
+            }
             if (!Array.Exists(optionsCache, m => m.name == modelName))
             {
                 modelName = optionsCache[0].name;
@@ -336,7 +340,7 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: RCS data is null for model definition: " + definition.name);
                 return;
             }
-            definition.rcsData.renameTransforms(root, destinationName);
+            definition.rcsModuleData.renameTransforms(root, destinationName);
         }
 
         /// <summary>
@@ -894,7 +898,7 @@ namespace SSTUTools
             {
                 return val == "none" || val == "default";
             }
-            return definition.textureSets.Contains(m => m.name == val));
+            return definition.textureSets.Contains(m => m.name == val);
         }
 
         /// <summary>

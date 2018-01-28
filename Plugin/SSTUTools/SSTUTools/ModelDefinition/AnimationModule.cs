@@ -111,20 +111,23 @@ namespace SSTUTools
             get { return animationData.Count > 0; }
         }
         
-        public AnimationModule(Part part, PartModule module, BaseField persistence, BaseField deployLimit, BaseEvent deploy, BaseEvent retract)
+        public AnimationModule(Part part, PartModule module, string persistence, string deployLimit, string deploy, string retract)
         {
             this.part = part;
             this.module = module;
-            this.persistentDataField = persistence;
-            this.deployLimitField = deployLimit;
+            this.persistentDataField = string.IsNullOrEmpty(persistence) ? null : module.Fields[persistence];
+            this.deployLimitField = string.IsNullOrEmpty(deployLimit) ? null : module.Fields[deployLimit];
             if (deployLimitField != null)
             {
                 deployLimitField.uiControlEditor.onFieldChanged = onDeployLimitUpdated;
                 deployLimitField.uiControlFlight.onFieldChanged = onDeployLimitUpdated;
             }
-            this.deployEvent = deploy;
-            this.retractEvent = retract;
-            loadAnimationState(persistentData);
+            this.deployEvent = string.IsNullOrEmpty(deploy)? null : module.Events[deploy];
+            this.retractEvent = string.IsNullOrEmpty(retract)? null : module.Events[retract];
+            if (persistentDataField != null)
+            {
+                loadAnimationState(persistentData);
+            }            
         }
         
         /// <summary>
