@@ -718,7 +718,7 @@ namespace SSTUTools
         /// <param name="array"></param>
         /// <param name="predicate"></param>
         /// <returns></returns>
-        public static bool Contains<T>(this T[] array, Func<T,bool> predicate)
+        public static bool Exists<T>(this T[] array, Func<T,bool> predicate)
         {
             int len = array.Length;
             for (int i = 0; i < len; i++)

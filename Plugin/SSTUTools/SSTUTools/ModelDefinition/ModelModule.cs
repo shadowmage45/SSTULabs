@@ -893,12 +893,11 @@ namespace SSTUTools
         /// <returns></returns>
         private bool isValidTextureSet(String val)
         {
-            bool noTextures = definition.textureSets.Length == 0;
-            if (noTextures)
+            if (definition.textureSets.Length == 0)
             {
                 return val == "none" || val == "default";
             }
-            return definition.textureSets.Contains(m => m.name == val);
+            return definition.textureSets.Exists(m => m.name == val);
         }
 
         /// <summary>
