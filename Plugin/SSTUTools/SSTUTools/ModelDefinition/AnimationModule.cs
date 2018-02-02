@@ -257,14 +257,29 @@ namespace SSTUTools
         /// <param name="anims"></param>
         public void setupAnimations(AnimationData anims, Transform root, int startLayer)
         {
+            if (anims == null)
+            {
+                disableAnimations();
+                MonoBehaviour.print("AnimationData was null -- Disabling animations!");
+                return;
+            }
             modelAnimationData = anims;
             animationData.Clear();
             if (anims != null)
             {
                 animationData.AddUniqueRange(anims.getAnimationData(root, startLayer));
-            }            
+            }
             setAnimState(animationData.Count <= 0 ? AnimState.STOPPED_END : animationState);
             setAnimTime(animationPosition);
+            updateUIState();
+            updateModuleInfo();
+        }
+
+        /// <summary>
+        /// Disable the animation module -- hides UI fields and clears module display information.
+        /// </summary>
+        public void disableAnimations()
+        {
             updateUIState();
             updateModuleInfo();
         }
@@ -314,6 +329,10 @@ namespace SSTUTools
                 {
                     moduleInfo += "Looping";
                 }
+            }
+            else
+            {
+                moduleInfo = "";
             }
         }
 
@@ -370,12 +389,12 @@ namespace SSTUTools
         /// </summary>
         private void updateUIState()
         {
-            bool moduleEnabled = animationData.Count > 0;
+            bool moduleEnabled = animationData.Count > 0 && modelAnimationData!=null;
             bool deployEnabled = moduleEnabled && (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD);
             bool retractEnabled = moduleEnabled && (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD);
-            bool deployLimitEnabled = moduleEnabled && modelAnimationData.deployLimitActive;
+            bool deployLimitEnabled = moduleEnabled ? modelAnimationData.deployLimitActive : false;
 
-            if (deployEvent != null)
+            if (deployEvent != null && moduleEnabled)
             {
                 deployEvent.guiActive = deployEnabled && modelAnimationData.activeFlight;
                 deployEvent.guiActiveEditor = deployEnabled && modelAnimationData.activeEditor;
@@ -385,7 +404,7 @@ namespace SSTUTools
                 deployEvent.guiName = modelAnimationData.deployLabel;
             }
 
-            if (retractEvent != null)
+            if (retractEvent != null && moduleEnabled)
             {
                 retractEvent.guiActive = retractEnabled && modelAnimationData.activeFlight;
                 retractEvent.guiActiveEditor = retractEnabled && modelAnimationData.activeEditor;
@@ -395,7 +414,7 @@ namespace SSTUTools
                 retractEvent.guiName = modelAnimationData.retractLabel;
             }
             
-            if (deployLimitField != null)
+            if (deployLimitField != null && moduleEnabled)
             {
                 deployLimitField.guiActive = deployLimitEnabled;
                 deployLimitField.guiActiveEditor = deployLimitEnabled;
