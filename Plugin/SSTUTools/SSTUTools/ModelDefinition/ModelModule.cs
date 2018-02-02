@@ -63,6 +63,8 @@ namespace SSTUTools
 
         #region REGION - Private working data
 
+        private string moduleName = "ModelModule";
+
         private Transform[] models;
 
         private ModelLayoutData currentLayout;
@@ -120,6 +122,12 @@ namespace SSTUTools
         #endregion ENDREGION - BaseField wrappers
 
         #region REGION - Convenience wrappers for accessing model definition data for external use
+
+        public string name
+        {
+            get { return moduleName; }
+            set { moduleName = value; }
+        }
 
         /// <summary>
         /// Return true/false if fairings are enabled for this module in its current configuration.
@@ -295,11 +303,13 @@ namespace SSTUTools
             optionsCache = modelDefs;
             if (modelDefs.Length <= 0)
             {
-                MonoBehaviour.print("ERROR: No models found for part: " + part);
+                MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
             }
             if (!Array.Exists(optionsCache, m => m.name == modelName))
             {
+                MonoBehaviour.print("ERROR: Currently configured model name: " + modelName + " was not located while setting up: "+getErrorReportModuleName());
                 modelName = optionsCache[0].name;
+                MonoBehaviour.print("Now using model: " + modelName + " for: "+getErrorReportModuleName());
             }
             setupModel();
             updateSelections();
@@ -313,10 +323,22 @@ namespace SSTUTools
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
+            modelDefinition = Array.Find(optionsCache, m => m.name == modelName);
+            if (modelDefinition == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for: "+getErrorReportModuleName());
+            }
             constructModels();
             positionModels();
             setupTextureSet();
-            animationModule.setupAnimations(definition.animationData, root, animationLayer);
+            if (animationEnabled)
+            {
+                animationModule.setupAnimations(definition.animationData, root, animationLayer);
+            }
+            else
+            {
+                animationModule.disableAnimations();
+            }
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -337,7 +359,7 @@ namespace SSTUTools
         {
             if (definition.rcsData == null)
             {
-                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + definition.name);
+                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
                 return;
             }
             definition.rcsModuleData.renameTransforms(root, destinationName);
@@ -352,7 +374,7 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name);
+                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name + " for: "+getErrorReportModuleName());
                 return;
             }
             definition.engineTransformData.renameThrustTransforms(root, destinationName);
@@ -367,7 +389,7 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name);
+                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
                 return;
             }
             definition.engineTransformData.renameGimbalTransforms(root, destinationName);
@@ -452,7 +474,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("ERROR: No model definition found for input name: " + newModel);
+                MonoBehaviour.print("ERROR: No model definition found for input name: " + newModel+ " for: "+getErrorReportModuleName());
             }
         }
 
@@ -832,7 +854,7 @@ namespace SSTUTools
                 clonedModel = SSTUUtils.cloneModel(smd.modelURL);
                 if (clonedModel == null)
                 {
-                    MonoBehaviour.print("ERROR: Could not clone model for url: " + smd.modelURL + " while constructing meshes for model definition" + definition.name);
+                    MonoBehaviour.print("ERROR: Could not clone model for url: " + smd.modelURL + " while constructing meshes for model definition" + definition.name+" for: "+getErrorReportModuleName());
                     continue;
                 }
                 clonedModel.transform.NestToParent(parent.transform);
@@ -967,6 +989,11 @@ namespace SSTUTools
                     break;
             }
             return rotation;
+        }
+
+        private string getErrorReportModuleName()
+        {
+            return "ModelModule: " + moduleName + " in module: " + partModule + " in part: " + part;
         }
 
         #endregion ENDREGION - Private/Internal methods

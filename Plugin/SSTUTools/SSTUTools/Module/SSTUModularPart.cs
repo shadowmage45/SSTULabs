@@ -797,38 +797,46 @@ namespace SSTUTools
             MonoBehaviour.print("rcsdn: " + rcsDnDefs.Length);
 
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
+            noseModule.name = "ModularPart-Nose";
             noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getValidOptions = () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation);
 
             upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
+            upperModule.name = "ModularPart-Upper";
             upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation);
 
             coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule.name = "ModularPart-Core";
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.getValidOptions = () => getVariantSet(currentVariant).definitions;
 
             lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
+            lowerModule.name = "ModularPart-Lower";
             lowerModule.getSymmetryModule = m => m.lowerModule;
             lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation);
 
             mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
+            mountModule.name = "ModularPart-Mount";
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation);
 
             solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
+            solarModule.name = "ModularPart-Solar";
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getValidOptions = () => solarDefs;
             solarModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             solarModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
             upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS"), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
+            upperRcsModule.name = "ModularPart-UpperRCS";
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
             upperRcsModule.getValidOptions = () => rcsUpDefs;
             upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
             lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS"), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
+            lowerRcsModule.name = "ModularPart-LowerRCS";
             lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
             lowerRcsModule.getValidOptions = () => rcsDnDefs;
             lowerRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
