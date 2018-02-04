@@ -896,12 +896,59 @@ namespace SSTUTools
         }
         
         /// <summary>
-        /// Return the current vertical offset applied to the model, adjusted for model scale
+        /// Return the current vertical offset applied to the model, adjusted for model scale, model orientation, and module-slot orientation.
         /// </summary>
         /// <returns></returns>
         private float getVerticalOffset()
         {
-            return definition.verticalOffset * currentVerticalScale;
+            //raw offset, unadjusted for orientation
+            float offset = 0;
+            if (orientation == ModelOrientation.TOP)
+            {
+                if (definition.orientation == ModelOrientation.TOP)
+                {
+                    offset = definition.verticalOffset * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.CENTRAL)
+                {
+                    offset = (definition.verticalOffset + definition.height * 0.5f) * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.BOTTOM)
+                {
+                    offset = -definition.verticalOffset * currentVerticalScale;
+                }
+            }
+            else if (orientation == ModelOrientation.CENTRAL)
+            {
+                if (definition.orientation == ModelOrientation.TOP)
+                {
+                    offset = (definition.verticalOffset - definition.height * 0.5f) * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.CENTRAL)
+                {
+                    offset = definition.verticalOffset * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.BOTTOM)
+                {
+                    offset = (definition.verticalOffset + definition.height * 0.5f) * currentVerticalScale;
+                }
+            }
+            else if (orientation == ModelOrientation.BOTTOM)
+            {
+                if (definition.orientation == ModelOrientation.TOP)
+                {
+                    offset = -definition.verticalOffset * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.CENTRAL)
+                {
+                    offset = (definition.verticalOffset - definition.height * 0.5f) * currentVerticalScale;
+                }
+                else if (definition.orientation == ModelOrientation.BOTTOM)
+                {
+                    offset = definition.verticalOffset * currentVerticalScale;
+                }
+            }
+            return offset;
         }
 
         /// <summary>
@@ -991,9 +1038,13 @@ namespace SSTUTools
             return rotation;
         }
 
+        /// <summary>
+        /// Return a string representing the module name and other debug related information.  Used in error logging.
+        /// </summary>
+        /// <returns></returns>
         private string getErrorReportModuleName()
         {
-            return "ModelModule: " + moduleName + " in module: " + partModule + " in part: " + part;
+            return "ModelModule: " + moduleName + " using model: " +definition+ " in orientation: " + orientation + " in module: " + partModule + " in part: " + part;
         }
 
         #endregion ENDREGION - Private/Internal methods

@@ -806,7 +806,7 @@ namespace SSTUTools
             upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation);
 
-            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.TOP, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.CENTRAL, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.name = "ModularPart-Core";
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.getValidOptions = () => getVariantSet(currentVariant).definitions;
