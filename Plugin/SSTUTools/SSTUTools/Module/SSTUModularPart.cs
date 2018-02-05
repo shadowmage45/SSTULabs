@@ -457,7 +457,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="def"></param>
         /// <returns></returns>
-        private ModelDefinitionVariantSet getVariantSet(ModelDefinition def)
+        private ModelDefinitionVariantSet getVariantSet(ModelLayoutOptions def)
         {
             //returns the first variant set out of all variants where the variants definitions contains the input definition
             return variantSets.Values.Where((a, b) => { return a.definitions.Contains(def); }).First();
@@ -766,8 +766,8 @@ namespace SSTUTools
             //but must contain no more than a single 'variant' entry.
             //if no variant is specified, they are added to the 'Default' variant.
             ConfigNode[] coreDefNodes = node.GetNodes("CORE");
-            ModelDefinition[] coreDefs;
-            List<ModelDefinition> coreDefList = new List<ModelDefinition>();
+            ModelLayoutOptions[] coreDefs;
+            List<ModelLayoutOptions> coreDefList = new List<ModelLayoutOptions>();
             int coreDefLen = coreDefNodes.Length;
             for (int i = 0; i < coreDefLen; i++)
             {
@@ -780,13 +780,13 @@ namespace SSTUTools
             coreDefs = coreDefList.ToArray();
 
             //model defs - brought here so we can capture the array rather than the config node+method call
-            ModelDefinition[] noseDefs = SSTUModelData.getModelDefinitions(node.GetNodes("NOSE"));
-            ModelDefinition[] upperDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPER"));            
-            ModelDefinition[] lowerDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWER"));
-            ModelDefinition[] mountDefs = SSTUModelData.getModelDefinitions(node.GetNodes("MOUNT"));
-            ModelDefinition[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
-            ModelDefinition[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
-            ModelDefinition[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
+            ModelLayoutOptions[] noseDefs = SSTUModelData.getModelDefinitions(node.GetNodes("NOSE"));
+            ModelLayoutOptions[] upperDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPER"));
+            ModelLayoutOptions[] lowerDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWER"));
+            ModelLayoutOptions[] mountDefs = SSTUModelData.getModelDefinitions(node.GetNodes("MOUNT"));
+            ModelLayoutOptions[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
+            ModelLayoutOptions[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
+            ModelLayoutOptions[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
             MonoBehaviour.print("noses: " + noseDefs.Length);
             MonoBehaviour.print("uppers: " + upperDefs.Length);
             MonoBehaviour.print("cores: " + coreDefs.Length);
@@ -796,46 +796,46 @@ namespace SSTUTools
             MonoBehaviour.print("rcsUp: " + rcsUpDefs.Length);
             MonoBehaviour.print("rcsdn: " + rcsDnDefs.Length);
 
-            noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
+            noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), null, nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.name = "ModularPart-Nose";
             noseModule.getSymmetryModule = m => m.noseModule;
             noseModule.getValidOptions = () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation);
 
-            upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
+            upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), null, nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
             upperModule.name = "ModularPart-Upper";
             upperModule.getSymmetryModule = m => m.upperModule;
             upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation);
 
-            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.CENTRAL, nameof(currentCore), nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
+            coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.CENTRAL, nameof(currentCore), null, nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.name = "ModularPart-Core";
             coreModule.getSymmetryModule = m => m.coreModule;
             coreModule.getValidOptions = () => getVariantSet(currentVariant).definitions;
 
-            lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
+            lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), null, nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.name = "ModularPart-Lower";
             lowerModule.getSymmetryModule = m => m.lowerModule;
             lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation);
 
-            mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
+            mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), null, nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.name = "ModularPart-Mount";
             mountModule.getSymmetryModule = m => m.mountModule;
             mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation);
 
-            solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
+            solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarLayout), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
             solarModule.name = "ModularPart-Solar";
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getValidOptions = () => solarDefs;
             solarModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             solarModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS"), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
+            upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS"), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSLayout), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
             upperRcsModule.name = "ModularPart-UpperRCS";
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
             upperRcsModule.getValidOptions = () => rcsUpDefs;
             upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
             upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
 
-            lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS"), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
+            lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS"), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSLayout), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
             lowerRcsModule.name = "ModularPart-LowerRCS";
             lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
             lowerRcsModule.getValidOptions = () => rcsDnDefs;
@@ -884,7 +884,7 @@ namespace SSTUTools
             {
                 //TODO find variant set for the currently enabled core model
                 //query the index from that variant set
-                ModelDefinitionVariantSet prevMdvs = getVariantSet(coreModule.definition);
+                ModelDefinitionVariantSet prevMdvs = getVariantSet(coreModule.definition.name);
                 //this is the index of the currently selected model within its variant set
                 int previousIndex = prevMdvs.indexOf(coreModule.definition);
                 //grab ref to the current/new variant set
@@ -1450,9 +1450,9 @@ namespace SSTUTools
     {
         public readonly string variantName;
 
-        public ModelDefinition[] definitions = new ModelDefinition[0];
+        public ModelLayoutOptions[] definitions = new ModelLayoutOptions[0];
         
-        public ModelDefinition this[int index]
+        public ModelLayoutOptions this[int index]
         {
             get
             {
@@ -1467,15 +1467,15 @@ namespace SSTUTools
             this.variantName = name;
         }
 
-        public void addModels(ModelDefinition[] defs)
+        public void addModels(ModelLayoutOptions[] defs)
         {
-            List<ModelDefinition> allDefs = new List<ModelDefinition>();
+            List<ModelLayoutOptions> allDefs = new List<ModelLayoutOptions>();
             allDefs.AddRange(definitions);
             allDefs.AddUniqueRange(defs);
             definitions = allDefs.ToArray();
         }
 
-        public int indexOf(ModelDefinition def)
+        public int indexOf(ModelLayoutOptions def)
         {
             return definitions.IndexOf(def);
         }

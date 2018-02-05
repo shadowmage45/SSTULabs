@@ -127,7 +127,9 @@ namespace SSTUTools
             if (persistentDataField != null)
             {
                 loadAnimationState(persistentData);
-            }            
+            }
+            //initialized with an empty/dummy animation data holder
+            modelAnimationData = new AnimationData();
         }
         
         /// <summary>
@@ -317,22 +319,15 @@ namespace SSTUTools
 
         public void updateModuleInfo()
         {
-            if (modelAnimationData != null)
+            moduleInfo = "Animation\n";
+            moduleInfo += modelAnimationData.deployLabel + "\n";
+            if (modelAnimationData.oneShot)
             {
-                moduleInfo = "Animation\n";
-                moduleInfo += modelAnimationData.deployLabel + "\n";
-                if (modelAnimationData.oneShot)
-                {
-                    moduleInfo += "Single Use Only";
-                }
-                if (modelAnimationData.looping)
-                {
-                    moduleInfo += "Looping";
-                }
+                moduleInfo += "Single Use Only";
             }
-            else
+            if (modelAnimationData.looping)
             {
-                moduleInfo = "";
+                moduleInfo += "Looping";
             }
         }
 
@@ -389,12 +384,12 @@ namespace SSTUTools
         /// </summary>
         private void updateUIState()
         {
-            bool moduleEnabled = animationData.Count > 0 && modelAnimationData!=null;
+            bool moduleEnabled = animationData.Count > 0;
             bool deployEnabled = moduleEnabled && (animationState == AnimState.STOPPED_START || animationState == AnimState.PLAYING_BACKWARD);
             bool retractEnabled = moduleEnabled && (animationState == AnimState.STOPPED_END || animationState == AnimState.PLAYING_FORWARD);
-            bool deployLimitEnabled = moduleEnabled ? modelAnimationData.deployLimitActive : false;
+            bool deployLimitEnabled = moduleEnabled && modelAnimationData.deployLimitActive;
 
-            if (deployEvent != null && moduleEnabled)
+            if (deployEvent != null)
             {
                 deployEvent.guiActive = deployEnabled && modelAnimationData.activeFlight;
                 deployEvent.guiActiveEditor = deployEnabled && modelAnimationData.activeEditor;
@@ -404,7 +399,7 @@ namespace SSTUTools
                 deployEvent.guiName = modelAnimationData.deployLabel;
             }
 
-            if (retractEvent != null && moduleEnabled)
+            if (retractEvent != null)
             {
                 retractEvent.guiActive = retractEnabled && modelAnimationData.activeFlight;
                 retractEvent.guiActiveEditor = retractEnabled && modelAnimationData.activeEditor;
@@ -414,7 +409,7 @@ namespace SSTUTools
                 retractEvent.guiName = modelAnimationData.retractLabel;
             }
             
-            if (deployLimitField != null && moduleEnabled)
+            if (deployLimitField != null)
             {
                 deployLimitField.guiActive = deployLimitEnabled;
                 deployLimitField.guiActiveEditor = deployLimitEnabled;

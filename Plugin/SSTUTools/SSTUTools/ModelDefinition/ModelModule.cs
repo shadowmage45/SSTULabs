@@ -25,7 +25,7 @@ namespace SSTUTools
 
         #region REGION - Delegate Signatures
         public delegate ModelModule<U> SymmetryModule(U m);
-        public delegate ModelDefinition[] ValidOptions();
+        public delegate ModelLayoutOptions[] ValidOptions();
         #endregion ENDREGION - Delegate Signatures
 
         #region REGION - Immutable fields
@@ -34,7 +34,7 @@ namespace SSTUTools
         public readonly Transform root;
         public readonly ModelOrientation orientation;
         public readonly int animationLayer = 0;
-        public AnimationModule animationModule;
+        public readonly AnimationModule animationModule;
         #endregion ENDREGION - Immutable fields
 
         #region REGION - Public Delegate Stubs
@@ -67,17 +67,32 @@ namespace SSTUTools
 
         private Transform[] models;
 
-        private ModelLayoutData currentLayout;
-
         private RecoloringData[] customColors = new RecoloringData[] { new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1) };
 
+        /// <summary>
+        /// The -current- model definition.  Pulled from the array of all defs.
+        /// </summary>
         private ModelDefinition modelDefinition;
 
-        private ModelDefinition[] optionsCache;
+        /// <summary>
+        /// Array containing all possible model definitions for this module.
+        /// </summary>
+        private ModelLayoutOptions[] optionsCache;
+
+        /// <summary>
+        /// The -current- model layout in use.  Set to 'default' during constructor, reloaded during 'load persistent data' method call...
+        /// </summary>
+        private ModelLayoutData currentLayout;
+
+        /// <summary>
+        /// Managing wrapper around layout data for the model defs in this module.  Each def can have its own supported list of layouts.
+        /// </summary>
+        private ModuleLayoutOptions layoutOptions;
 
         private BaseField dataField;
         private BaseField textureField;
         private BaseField modelField;
+        private BaseField layoutField;
 
         private float currentHorizontalScale = 1f;
         private float currentVerticalScale = 1f;
@@ -117,6 +132,15 @@ namespace SSTUTools
         {
             get { return dataField == null ? string.Empty : dataField.GetValue<string>(partModule); }
             set { if (dataField != null) { dataField.SetValue(value, partModule); } }
+        }
+
+        /// <summary>
+        /// Wrapper for the BaseField in the PartModule.  Uses reflection, so a bit dirty, but functional and reliable.
+        /// </summary>
+        private string layoutName
+        {
+            get { return layoutField == null ? string.Empty : layoutField.GetValue<string>(partModule); }
+            set { if (layoutField != null) { layoutField.SetValue(value, partModule); } }
         }
 
         #endregion ENDREGION - BaseField wrappers
@@ -279,7 +303,7 @@ namespace SSTUTools
         /// <param name="modelFieldName"></param>
         /// <param name="textureFieldName"></param>
         public ModelModule(Part part, U partModule, Transform root, ModelOrientation orientation,
-            string modelPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName,
+            string modelPersistenceFieldName, string layoutPersistenceFieldName, string texturePersistenceFieldName, string recolorPersistenceFieldName,
             string animationPersistenceFieldName, string deployLimitField, string deployEventName, string retractEventName)
         {
             this.part = part;
@@ -287,10 +311,12 @@ namespace SSTUTools
             this.root = root;
             this.orientation = orientation;
             this.modelField = partModule.Fields[modelPersistenceFieldName];
+            this.layoutField = partModule.Fields[layoutPersistenceFieldName];
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
             this.animationModule = new AnimationModule(part, partModule, animationPersistenceFieldName, deployLimitField, deployEventName, retractEventName);
-            currentLayout = new ModelLayoutData("default", new ModelPositionData[] { new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero)});
+            this.layoutOptions = new ModuleLayoutOptions();
+            this.currentLayout = ModelLayout.getDefaultLayout();
             loadColors(persistentData);
         }
 
@@ -298,17 +324,17 @@ namespace SSTUTools
         /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.
         /// </summary>
         /// <param name="models"></param>
-        public void setupModelList(ModelDefinition[] modelDefs)
+        public void setupModelList(ModelLayoutOptions[] modelDefs)
         {
             optionsCache = modelDefs;
             if (modelDefs.Length <= 0)
             {
                 MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
             }
-            if (!Array.Exists(optionsCache, m => m.name == modelName))
+            if (!Array.Exists(optionsCache, m => m.definition.name == modelName))
             {
                 MonoBehaviour.print("ERROR: Currently configured model name: " + modelName + " was not located while setting up: "+getErrorReportModuleName());
-                modelName = optionsCache[0].name;
+                modelName = optionsCache[0].definition.name;
                 MonoBehaviour.print("Now using model: " + modelName + " for: "+getErrorReportModuleName());
             }
             setupModel();
@@ -323,7 +349,7 @@ namespace SSTUTools
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
-            modelDefinition = Array.Find(optionsCache, m => m.name == modelName);
+            modelDefinition = Array.Find(optionsCache, m => m.definition.name == modelName).definition;
             if (modelDefinition == null)
             {
                 MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for: "+getErrorReportModuleName());
@@ -345,6 +371,9 @@ namespace SSTUTools
 
         #region REGION - Update Methods
 
+        /// <summary>
+        /// Unity lifecycle per-frame 'Update' method.  Used to update animation handling.
+        /// </summary>
         public void Update()
         {
             animationModule.Update();
@@ -446,6 +475,20 @@ namespace SSTUTools
         }
 
         /// <summary>
+        /// Symmetry-enabled method.  Should only be called when symmetry updates are desired.
+        /// </summary>
+        /// <param name="field"></param>
+        /// <param name="oldValue"></param>
+        public void layoutSelected(BaseField field, System.Object oldValue)
+        {
+            actionWithSymmetry(m =>
+            {
+                if (m != this) { m.layoutName = layoutName; }
+                m.layoutSelected(m.layoutName);
+            });
+        }
+
+        /// <summary>
         /// Symmetry enabled.  Updates the current persistent color data, and reapplies the textures/color data to the models materials.
         /// </summary>
         /// <param name="colors"></param>
@@ -467,7 +510,7 @@ namespace SSTUTools
         /// <param name="newModel"></param>
         public void modelSelected(string newModel)
         {
-            if (Array.Exists(optionsCache, m => m.name == newModel))
+            if (Array.Exists(optionsCache, m => m.definition.name == newModel))
             {
                 modelName = newModel;
                 setupModel();
@@ -479,14 +522,25 @@ namespace SSTUTools
         }
 
         /// <summary>
+        /// NON-Symmetry enabled method.  Sets the current layout and updates models for current layout.  Uses current vertical position/all other current position data.
+        /// </summary>
+        /// <param name="newLayout"></param>
+        public void layoutSelected(string newLayout)
+        {
+            layoutName = newLayout;
+            setupModel();
+            updateSelections();
+        }
+
+        /// <summary>
         /// NON-Symmetry enabled method.<para/>
         /// Updates the UI controls for the currently available models specified through setupModelList.<para/>
         /// Also updates the texture-set selection widget options and visibility (only if texture set backing field is not null)
         /// </summary>
         public void updateSelections()
         {
-            string[] names = SSTUUtils.getNames(optionsCache, s => s.name);
-            string[] displays = SSTUUtils.getNames(optionsCache, s => s.title);
+            string[] names = SSTUUtils.getNames(optionsCache, s => s.definition.name);
+            string[] displays = SSTUUtils.getNames(optionsCache, s => s.definition.title);
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
             //updates the texture set selection for the currently configured model definition, including disabling of the texture-set selection UI when needed
@@ -494,17 +548,13 @@ namespace SSTUTools
             {
                 partModule.updateUIChooseOptionControl(textureField.name, definition.getTextureSetNames(), definition.getTextureSetTitles(), true, textureSetName);
             }
-        }
-
-        /// <summary>
-        /// NON-symmetry enabled method.
-        /// Set the current model layout.  Should only be called after model list is populated, as it will (attempt to) re-setup the models for the new layout.
-        /// </summary>
-        /// <param name="mld"></param>
-        public void setModelLayout(ModelLayoutData mld)
-        {
-            this.currentLayout = mld;
-            this.setupModel();
+            if (layoutField != null)
+            {
+                string[] layoutNames = null;
+                string[] layoutTitles = null;
+                layoutOptions.getLayoutInfo(definition.name, out layoutNames, out layoutTitles);
+                partModule.updateUIChooseOptionControl(layoutField.name, layoutNames, layoutTitles, true, layoutName);
+            }
         }
         
         /// <summary>
@@ -1055,17 +1105,17 @@ namespace SSTUTools
         /// Return an array with containing the models that are valid options for use as upper-adapters for the currently
         /// selected/enabled model definition.
         /// </summary>
-        /// <param name="defs"></param>
+        /// <param name="inputOptions"></param>
         /// <returns></returns>
-        public ModelDefinition[] getValidUpperModels(ModelDefinition[] defs, ModelOrientation otherModelOrientation)
+        public ModelLayoutOptions[] getValidUpperModels(ModelLayoutOptions[] inputOptions, ModelOrientation otherModelOrientation)
         {
-            List<ModelDefinition> validDefs = new List<ModelDefinition>();
-            ModelDefinition def;
-            int len = defs.Length;
+            List<ModelLayoutOptions> validDefs = new List<ModelLayoutOptions>();
+            ModelLayoutOptions def;
+            int len = inputOptions.Length;
             for (int i = 0; i < len; i++)
             {
-                def = defs[i];
-                if (definition.isValidUpperProfile(def.getLowerProfiles(otherModelOrientation), orientation))
+                def = inputOptions[i];
+                if (definition.isValidUpperProfile(def.definition.getLowerProfiles(otherModelOrientation), orientation))
                 {
                     validDefs.Add(def);
                 }
@@ -1079,15 +1129,15 @@ namespace SSTUTools
         /// </summary>
         /// <param name="defs"></param>
         /// <returns></returns>
-        public ModelDefinition[] getValidLowerModels(ModelDefinition[] defs, ModelOrientation otherModelOrientation)
+        public ModelLayoutOptions[] getValidLowerModels(ModelLayoutOptions[] defs, ModelOrientation otherModelOrientation)
         {
-            List<ModelDefinition> validDefs = new List<ModelDefinition>();
-            ModelDefinition def;
+            List<ModelLayoutOptions> validDefs = new List<ModelLayoutOptions>();
+            ModelLayoutOptions def;
             int len = defs.Length;
             for (int i = 0; i < len; i++)
             {
                 def = defs[i];
-                if (definition.isValidLowerProfile(def.getUpperProfiles(otherModelOrientation), orientation))
+                if (definition.isValidLowerProfile(def.definition.getUpperProfiles(otherModelOrientation), orientation))
                 {
                     validDefs.Add(def);
                 }
@@ -1147,9 +1197,9 @@ namespace SSTUTools
             int len = module.optionsCache.Length;
             for (int i = 0; i < len; i++)
             {
-                if (isValidUpper(module.optionsCache[i], module.orientation))
+                if (isValidUpper(module.optionsCache[i].definition, module.orientation))
                 {
-                    return module.optionsCache[i];
+                    return module.optionsCache[i].definition;
                 }
             }
             return null;
@@ -1165,9 +1215,9 @@ namespace SSTUTools
             int len = module.optionsCache.Length;
             for (int i = 0; i < len; i++)
             {
-                if (isValidLower(module.optionsCache[i], module.orientation))
+                if (isValidLower(module.optionsCache[i].definition, module.orientation))
                 {
-                    return module.optionsCache[i];
+                    return module.optionsCache[i].definition;
                 }
             }
             return null;

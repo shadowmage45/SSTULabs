@@ -38,6 +38,27 @@ namespace SSTUTools
             return mld;
         }
 
+        public static ModelLayoutData[] findLayouts(string[] names)
+        {
+            int len = names.Length;
+            ModelLayoutData[] mlds = new ModelLayoutData[len];
+            for (int i = 0; i < len; i++)
+            {
+                mlds[i] = findLayout(names[i]);
+            }
+            return mlds;
+        }
+
+        public static ModelLayoutData getDefaultLayout()
+        {
+            if (!layouts.ContainsKey("default"))
+            {
+                ModelLayoutData d = new ModelLayoutData("default", new ModelPositionData[] { new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero) });
+                layouts.Add("default", d);
+            }
+            return layouts["default"];
+        }
+
     }
 
     /// <summary>
@@ -129,4 +150,133 @@ namespace SSTUTools
         }
 
     }
+
+    /// <summary>
+    /// Container class for ModelModule that manages the layout options for each definition within that module.
+    /// </summary>
+    public class ModuleLayoutOptions
+    {
+        private Dictionary<string, ModelLayoutOptions> modelLayouts = new Dictionary<string, ModelLayoutOptions>();
+
+        public ModuleLayoutOptions()
+        {
+
+        }
+
+        public void setDefinitionLayouts(string defName, string[] layoutNames)
+        {
+            if (modelLayouts.ContainsKey(defName))
+            {
+                MonoBehaviour.print("ERROR: Layout data already exists for definition: " + defName + ".  Clearing existing data in favor of new incoming data.");
+                modelLayouts.Remove(defName);
+            }
+            int len = layoutNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ModelLayoutOptions mlo = new ModelLayoutOptions(layoutNames);
+                modelLayouts.Add(defName, mlo);
+            }
+        }
+
+        /// <summary>
+        /// Return string array contianing the unique registry names of the layouts for the input model definition.
+        /// </summary>
+        /// <param name="defName"></param>
+        /// <returns></returns>
+        public string[] getLayoutNames(string defName)
+        {
+            return modelLayouts[defName].getLayoutNames();
+        }
+
+        /// <summary>
+        /// Return string array containing the display titles of the layouts for the input model definition.<para/>
+        /// The returned array will be of the same length and ordering as the array returned by 'getLayoutNames()'
+        /// </summary>
+        /// <param name="defName"></param>
+        /// <returns></returns>
+        public string[] getLayoutTitles(string defName)
+        {
+            return modelLayouts[defName].getLayoutTitles();
+        }
+
+        /// <summary>
+        /// Get both layout names and layout titles for the input model definition name.
+        /// </summary>
+        /// <param name="defName"></param>
+        /// <param name="names"></param>
+        /// <param name="titles"></param>
+        public void getLayoutInfo(string defName, out string[] names, out string[] titles)
+        {
+            ModelLayoutOptions mlo = modelLayouts[defName];
+            names = mlo.getLayoutNames();
+            titles = mlo.getLayoutTitles();
+        }
+
+        /// <summary>
+        /// Returns the input layout if valid, else returns the first (default) layout for the input model definition.
+        /// </summary>
+        /// <param name="defName"></param>
+        /// <param name="current"></param>
+        /// <returns></returns>
+        public ModelLayoutData getInitialLayout(string defName, ModelLayoutData current)
+        {
+            ModelLayoutOptions mlo = modelLayouts[defName];
+            ModelLayoutData mld = current;
+            if (!mlo.isValidLayout(current.name))
+            {
+                return ModelLayout.findLayout(mlo.getDefaultLayout());
+            }
+            return mld;
+        }
+
+    }
+
+    public class ModelLayoutOptions
+    {
+
+        public readonly ModelDefinition definition;
+        public readonly ModelLayoutData[] layouts;
+
+        public ModelLayoutOptions(string modelDef, string[] layoutNames)
+        {
+            this.definition = SSTUModelData.getModelDefinition(modelDef);
+            this.layouts = ModelLayout.
+            this.layoutNames = layouts;
+            if (this.layoutNames == null || this.layoutNames.Length < 1)
+            {
+                throw new InvalidOperationException("ERROR: No valid layout data specified.");
+            }
+        }
+
+        public string getDefaultLayout()
+        {
+            return layoutNames[0];
+        }
+
+        public bool isValidLayout(string name)
+        {
+            return layoutNames.Exists(m => m == name);
+        }
+
+        public string[] getLayoutNames()
+        {
+            return layoutNames;
+        }
+
+        public string[] getLayoutTitles()
+        {
+            if (layoutTitles == null)
+            {
+                int len = layoutNames.Length;
+                layoutTitles = new string[len];
+                for (int i = 0; i < len; i++)
+                {
+                    layoutTitles[i] = ModelLayout.findLayout(layoutNames[i]).title;
+                }
+            }
+            return layoutTitles;
+        }
+
+    }
+
 }

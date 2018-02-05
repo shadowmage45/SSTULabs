@@ -60,15 +60,29 @@ namespace SSTUTools
             loadDefs();
         }
 
-        public static ModelDefinition[] getModelDefinitions(ConfigNode[] nodes)
+        public static ModelLayoutOptions[] getModelDefinitions(ConfigNode[] nodes)
         {
             int len = nodes.Length;
             List<string> names = new List<string>();
+            List<string> layouts = new List<string>();
+
+            List<ModelLayoutOptions> options = new List<ModelLayoutOptions>();
+
+            string[] groupedNames;
+            string[] groupedLayouts;
+            int len2;
+
             for (int i = 0; i < len; i++)
             {
-                names.AddUniqueRange(nodes[i].GetStringValues("model"));
+                groupedNames = nodes[i].GetStringValues("model");
+                groupedLayouts = nodes[i].GetStringValues("layout", new string[] { "default" });
+                len2 = groupedNames.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    options.Add(new ModelLayoutOptions(groupedNames[k], groupedLayouts));
+                }
             }
-            return getModelDefinitions(names.ToArray());
+            return options.ToArray();
         }
     }
 

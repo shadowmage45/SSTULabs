@@ -15,6 +15,12 @@ namespace SSTUTools
             return values == null ? new String[0] : values;
         }
 
+        public static string[] GetStringValues(this ConfigNode node, string name, string[] defaults)
+        {
+            if (node.HasValue(name)) { return node.GetValues(name); }
+            return defaults;
+        }
+
         public static string GetStringValue(this ConfigNode node, String name, String defaultValue)
         {
             String value = node.GetValue(name);
