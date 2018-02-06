@@ -231,7 +231,7 @@ namespace SSTUTools
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
+            models = new ModelModule<SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             models.getSymmetryModule = m => m.models;
             models.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("MODEL")));
             models.setupModel();

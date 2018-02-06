@@ -457,7 +457,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="def"></param>
         /// <returns></returns>
-        private ModelDefinitionVariantSet getVariantSet(ModelLayoutOptions def)
+        private ModelDefinitionVariantSet getVariantSet(ModelDefinitionLayoutOptions def)
         {
             //returns the first variant set out of all variants where the variants definitions contains the input definition
             return variantSets.Values.Where((a, b) => { return a.definitions.Contains(def); }).First();
@@ -766,13 +766,13 @@ namespace SSTUTools
             //but must contain no more than a single 'variant' entry.
             //if no variant is specified, they are added to the 'Default' variant.
             ConfigNode[] coreDefNodes = node.GetNodes("CORE");
-            ModelLayoutOptions[] coreDefs;
-            List<ModelLayoutOptions> coreDefList = new List<ModelLayoutOptions>();
+            ModelDefinitionLayoutOptions[] coreDefs;
+            List<ModelDefinitionLayoutOptions> coreDefList = new List<ModelDefinitionLayoutOptions>();
             int coreDefLen = coreDefNodes.Length;
             for (int i = 0; i < coreDefLen; i++)
             {
                 string variantName = coreDefNodes[i].GetStringValue("variant", "Default");
-                coreDefs = SSTUModelData.getModelDefinitions(coreDefNodes[i].GetStringValues("model"));
+                coreDefs = SSTUModelData.getModelDefinitionLayouts(coreDefNodes[i].GetStringValues("model"));
                 coreDefList.AddUniqueRange(coreDefs);
                 ModelDefinitionVariantSet mdvs = getVariantSet(variantName);
                 mdvs.addModels(coreDefs);
@@ -780,13 +780,13 @@ namespace SSTUTools
             coreDefs = coreDefList.ToArray();
 
             //model defs - brought here so we can capture the array rather than the config node+method call
-            ModelLayoutOptions[] noseDefs = SSTUModelData.getModelDefinitions(node.GetNodes("NOSE"));
-            ModelLayoutOptions[] upperDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPER"));
-            ModelLayoutOptions[] lowerDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWER"));
-            ModelLayoutOptions[] mountDefs = SSTUModelData.getModelDefinitions(node.GetNodes("MOUNT"));
-            ModelLayoutOptions[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
-            ModelLayoutOptions[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
-            ModelLayoutOptions[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
+            ModelDefinitionLayoutOptions[] noseDefs = SSTUModelData.getModelDefinitions(node.GetNodes("NOSE"));
+            ModelDefinitionLayoutOptions[] upperDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPER"));
+            ModelDefinitionLayoutOptions[] lowerDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWER"));
+            ModelDefinitionLayoutOptions[] mountDefs = SSTUModelData.getModelDefinitions(node.GetNodes("MOUNT"));
+            ModelDefinitionLayoutOptions[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
+            ModelDefinitionLayoutOptions[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
+            ModelDefinitionLayoutOptions[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
             MonoBehaviour.print("noses: " + noseDefs.Length);
             MonoBehaviour.print("uppers: " + upperDefs.Length);
             MonoBehaviour.print("cores: " + coreDefs.Length);
@@ -886,16 +886,16 @@ namespace SSTUTools
                 //query the index from that variant set
                 ModelDefinitionVariantSet prevMdvs = getVariantSet(coreModule.definition.name);
                 //this is the index of the currently selected model within its variant set
-                int previousIndex = prevMdvs.indexOf(coreModule.definition);
+                int previousIndex = prevMdvs.indexOf(coreModule.layoutOptions);
                 //grab ref to the current/new variant set
                 ModelDefinitionVariantSet mdvs = getVariantSet(currentVariant);
                 //and a reference to the model from same index out of the new set ([] call does validation internally for IAOOBE)
-                ModelDefinition newCoreDef = mdvs[previousIndex];
+                ModelDefinitionLayoutOptions newCoreDef = mdvs[previousIndex];
                 //now, call model-selected on the core model to update for the changes, including symmetry counterpart updating.
                 this.actionWithSymmetry(m => 
                 {
                     m.currentVariant = currentVariant;
-                    m.coreModule.modelSelected(newCoreDef.name);
+                    m.coreModule.modelSelected(newCoreDef.definition.name);
                 });
             };
 
@@ -1450,9 +1450,9 @@ namespace SSTUTools
     {
         public readonly string variantName;
 
-        public ModelLayoutOptions[] definitions = new ModelLayoutOptions[0];
+        public ModelDefinitionLayoutOptions[] definitions = new ModelDefinitionLayoutOptions[0];
         
-        public ModelLayoutOptions this[int index]
+        public ModelDefinitionLayoutOptions this[int index]
         {
             get
             {
@@ -1467,15 +1467,15 @@ namespace SSTUTools
             this.variantName = name;
         }
 
-        public void addModels(ModelLayoutOptions[] defs)
+        public void addModels(ModelDefinitionLayoutOptions[] defs)
         {
-            List<ModelLayoutOptions> allDefs = new List<ModelLayoutOptions>();
+            List<ModelDefinitionLayoutOptions> allDefs = new List<ModelDefinitionLayoutOptions>();
             allDefs.AddRange(definitions);
             allDefs.AddUniqueRange(defs);
             definitions = allDefs.ToArray();
         }
 
-        public int indexOf(ModelLayoutOptions def)
+        public int indexOf(ModelDefinitionLayoutOptions def)
         {
             return definitions.IndexOf(def);
         }

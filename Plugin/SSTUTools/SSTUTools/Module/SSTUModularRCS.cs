@@ -147,7 +147,7 @@ namespace SSTUTools
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
             standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
-            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(structurePersistentData), nameof(currentStructureTexture), null, null, null, null);
+            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), null, nameof(structurePersistentData), nameof(currentStructureTexture), null, null, null, null);
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("STRUCTURE")));
             standoffModule.setupModel();

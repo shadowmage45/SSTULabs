@@ -540,7 +540,7 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
+            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), null, nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
             mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }
@@ -947,6 +947,7 @@ namespace SSTUTools
         }
 
         #endregion ENDREGION - Utility Methods
+
     }
 
     public class EngineClusterLayoutData

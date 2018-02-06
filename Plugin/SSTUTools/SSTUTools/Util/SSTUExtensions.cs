@@ -734,6 +734,21 @@ namespace SSTUTools
             return false;
         }
 
+        public static T Find<T>(this T[] array, Func<T, bool> predicate)
+        {
+            int len = array.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (predicate(array[i]))
+                {
+                    return array[i];
+                }
+            }
+            //return default in order to properly handle value types (structs)
+            //should return either null for reference types or default value for structs
+            return default(T);
+        }
+
         public static String Print(this FloatCurve curve)
         {
             String output = "";

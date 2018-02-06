@@ -33,6 +33,18 @@ namespace SSTUTools
             }
         }
 
+        public static void loadConfigData()
+        {
+            defsLoaded = false;
+            baseModelData.Clear();
+            loadDefs();
+        }
+
+        /// <summary>
+        /// Find a single model definition by name.  Returns null if not found.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static ModelDefinition getModelDefinition(String name)
         {
             if (!defsLoaded) { loadDefs(); }
@@ -41,6 +53,11 @@ namespace SSTUTools
             return data;
         }
 
+        /// <summary>
+        /// Return a group of model definition layout options by model definition name.
+        /// </summary>
+        /// <param name="names"></param>
+        /// <returns></returns>
         public static ModelDefinition[] getModelDefinitions(string[] names)
         {
             List<ModelDefinition> defs = new List<ModelDefinition>();
@@ -48,25 +65,54 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 ModelDefinition def = getModelDefinition(names[i]);
-                if (def != null) { defs.AddUnique(def); }
+                if (def != null)
+                {
+                    defs.AddUnique(def);
+                }
+                else
+                {
+                    MonoBehaviour.print("ERROR: Could not locate model defintion for name: " + names[i]);
+                }
             }
             return defs.ToArray();
         }
 
-        public static void loadConfigData()
+        /// <summary>
+        /// Create a group of model definition layout options by model definition name, with default (single position) layouts.
+        /// </summary>
+        /// <param name="names"></param>
+        /// <returns></returns>
+        public static ModelDefinitionLayoutOptions[] getModelDefinitionLayouts(string[] names)
         {
-            defsLoaded = false;
-            baseModelData.Clear();
-            loadDefs();
+            List<ModelDefinitionLayoutOptions> defs = new List<ModelDefinitionLayoutOptions>();
+            int len = names.Length;
+            for (int i = 0; i < len; i++)
+            {
+                ModelDefinition def = getModelDefinition(names[i]);
+                if (def != null)
+                {
+                    defs.Add(new ModelDefinitionLayoutOptions(def));
+                }
+                else
+                {
+                    MonoBehaviour.print("ERROR: Could not locate model defintion for name: " + names[i]);
+                }
+            }
+            return defs.ToArray();
         }
 
-        public static ModelLayoutOptions[] getModelDefinitions(ConfigNode[] nodes)
+        /// <summary>
+        /// Create a group of model definition layout sets.  Loads the model definitions + their supported layout configurations.
+        /// </summary>
+        /// <param name="nodes"></param>
+        /// <returns></returns>
+        public static ModelDefinitionLayoutOptions[] getModelDefinitions(ConfigNode[] nodes)
         {
             int len = nodes.Length;
             List<string> names = new List<string>();
             List<string> layouts = new List<string>();
 
-            List<ModelLayoutOptions> options = new List<ModelLayoutOptions>();
+            List<ModelDefinitionLayoutOptions> options = new List<ModelDefinitionLayoutOptions>();
 
             string[] groupedNames;
             string[] groupedLayouts;
@@ -79,11 +125,12 @@ namespace SSTUTools
                 len2 = groupedNames.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    options.Add(new ModelLayoutOptions(groupedNames[k], groupedLayouts));
+                    options.Add(new ModelDefinitionLayoutOptions(groupedNames[k], groupedLayouts));
                 }
             }
             return options.ToArray();
         }
+
     }
 
     /// <summary>

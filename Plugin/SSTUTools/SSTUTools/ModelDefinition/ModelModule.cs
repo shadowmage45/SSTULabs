@@ -25,7 +25,7 @@ namespace SSTUTools
 
         #region REGION - Delegate Signatures
         public delegate ModelModule<U> SymmetryModule(U m);
-        public delegate ModelLayoutOptions[] ValidOptions();
+        public delegate ModelDefinitionLayoutOptions[] ValidOptions();
         #endregion ENDREGION - Delegate Signatures
 
         #region REGION - Immutable fields
@@ -63,37 +63,65 @@ namespace SSTUTools
 
         #region REGION - Private working data
 
+        /// <summary>
+        /// Internal cached 'name' for this model-module.  Used in error-reporting to more easily tell the difference between various modules in any given part.
+        /// </summary>
         private string moduleName = "ModelModule";
 
+        /// <summary>
+        /// Local cache to the root transforms of the models used for the layout.  If only a single position in layout, this will be a length=1 array.
+        /// Will contain one transform for each position in the layout, with identical ordering to the specification in the layout.
+        /// </summary>
         private Transform[] models;
 
+        /// <summary>
+        /// Local cache of the recoloring data to use for this module.  Loaded from persistence data if the recoloring persistence field is present.  Auto-saved out to persistence field on color updates.
+        /// </summary>
         private RecoloringData[] customColors = new RecoloringData[] { new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1) };
 
         /// <summary>
         /// The -current- model definition.  Pulled from the array of all defs.
         /// </summary>
-        private ModelDefinition modelDefinition;
+        private ModelDefinitionLayoutOptions currentLayoutOptions;
 
         /// <summary>
-        /// Array containing all possible model definitions for this module.
+        /// The -current- model definition.  Cached local access to the def stored in the current layout option.
         /// </summary>
-        private ModelLayoutOptions[] optionsCache;
+        private ModelDefinition currentDefinition;
 
         /// <summary>
-        /// The -current- model layout in use.  Set to 'default' during constructor, reloaded during 'load persistent data' method call...
+        /// The -current- model layout in use.  Initialized during setupModels() call, and should always be valid after that point.
         /// </summary>
         private ModelLayoutData currentLayout;
 
         /// <summary>
-        /// Managing wrapper around layout data for the model defs in this module.  Each def can have its own supported list of layouts.
+        /// Array containing all possible model definitions for this module.
         /// </summary>
-        private ModuleLayoutOptions layoutOptions;
+        private ModelDefinitionLayoutOptions[] optionsCache;
 
+        /// <summary>
+        /// Local reference to the persistent data field used to store custom coloring data for this module.  May be null when recoloring is not used.
+        /// </summary>
         private BaseField dataField;
+
+        /// <summary>
+        /// Local reference to the persistent data field used to store texture set names for this module.  May be null when texture switching is not used.
+        /// </summary>
         private BaseField textureField;
+
+        /// <summary>
+        /// Local reference to the persistent data field used to store the current model name for this module.  Must not be null.
+        /// </summary>
         private BaseField modelField;
+
+        /// <summary>
+        /// Local referenec to the persistent data field used to store the current layout name for this module.  May be null if layouts are unsupported, in which case it will always return 'defualt'.
+        /// </summary>
         private BaseField layoutField;
 
+        /// <summary>
+        /// Local cached working variables for scale, sizing, mass, and cost.
+        /// </summary>
         private float currentHorizontalScale = 1f;
         private float currentVerticalScale = 1f;
         private float currentDiameter;
@@ -139,7 +167,7 @@ namespace SSTUTools
         /// </summary>
         private string layoutName
         {
-            get { return layoutField == null ? string.Empty : layoutField.GetValue<string>(partModule); }
+            get { return layoutField == null ? "default" : layoutField.GetValue<string>(partModule); }
             set { if (layoutField != null) { layoutField.SetValue(value, partModule); } }
         }
 
@@ -156,53 +184,58 @@ namespace SSTUTools
         /// <summary>
         /// Return true/false if fairings are enabled for this module in its current configuration.
         /// </summary>
-        public bool fairingEnabled { get { return modelDefinition.fairingData == null ? false : modelDefinition.fairingData.fairingsSupported; } }
+        public bool fairingEnabled { get { return definition.fairingData == null ? false : definition.fairingData.fairingsSupported; } }
 
         /// <summary>
         /// Return true/false if animations are enabled for this module in its current configuration.
         /// </summary>
-        public bool animationEnabled { get { return modelDefinition.animationData != null; } }
+        public bool animationEnabled { get { return definition.animationData != null; } }
 
         /// <summary>
         /// Return true/false if this part can be the parent of an RCS module/model.
         /// </summary>
-        public bool rcsParentEnabled { get { return modelDefinition.rcsData != null; } }
+        public bool rcsParentEnabled { get { return definition.rcsData != null; } }
 
         /// <summary>
         /// Return true/false if this module has engine transform data for its current configuration.
         /// </summary>
-        public bool engineTransformEnabled { get { return modelDefinition.engineTransformData != null; } }
+        public bool engineTransformEnabled { get { return definition.engineTransformData != null; } }
 
         /// <summary>
         /// Return true/false if this module has engine thrust data for its current configuration.
         /// </summary>
-        public bool engineThrustEnabled { get { return modelDefinition.engineThrustData != null; } }
+        public bool engineThrustEnabled { get { return definition.engineThrustData != null; } }
 
         //TODO -- create specific gimbal transform data holder class
         /// <summary>
         /// Return true/false if this module has gimbal transform data for its current configuration.
         /// </summary>
-        public bool engineGimalEnabled { get { return modelDefinition.engineTransformData != null; } }
+        public bool engineGimalEnabled { get { return definition.engineTransformData != null; } }
 
         /// <summary>
         /// Return true/false if this module has solar panel data for its current configuration.
         /// </summary>
-        public bool solarEnabled { get { return modelDefinition.solarData != null; } }
+        public bool solarEnabled { get { return definition.solarData != null; } }
 
         /// <summary>
         /// Return the currently 'active' model definition.
         /// </summary>
-        public ModelDefinition definition { get { return modelDefinition; } }
+        public ModelDefinition definition { get { return currentDefinition; } }
 
         /// <summary>
         /// Return the currently active texture set from the currently active model definition.
         /// </summary>
-        public TextureSet textureSet { get { return modelDefinition.findTextureSet(textureSetName); } }
+        public TextureSet textureSet { get { return definition.findTextureSet(textureSetName); } }
 
         /// <summary>
         /// Return the currently active model layout.
         /// </summary>
-        public ModelLayoutData layout { get { return layout; } }
+        public ModelLayoutData layout { get { return currentLayoutOptions.layouts.Find(m=>m.name==layoutName); } }
+
+        /// <summary>
+        /// Return the currently active layout options for the current model definition.
+        /// </summary>
+        public ModelDefinitionLayoutOptions layoutOptions { get { return currentLayoutOptions; } }
 
         /// <summary>
         /// Return the current mass for this module slot.  Includes adjustments from the definition mass based on the current scale.
@@ -276,7 +309,7 @@ namespace SSTUTools
         /// The returned offset will be correct for the currently configured orientation,
         /// such that you can always use 'module.modulePosition + module.moduleFairingOffset' to attain the proper Y coordinate for fairing attachment.
         /// </summary>
-        public float moduleFairingOffset { get { return modelDefinition.fairingData == null ? 0 : modelDefinition.fairingData.fairingOffsetFromOrigin; } }
+        public float moduleFairingOffset { get { return definition.fairingData == null ? 0 : definition.fairingData.fairingOffsetFromOrigin; } }
 
         /// <summary>
         /// Return the currently configured custom color data for this module slot.
@@ -315,16 +348,34 @@ namespace SSTUTools
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
             this.animationModule = new AnimationModule(part, partModule, animationPersistenceFieldName, deployLimitField, deployEventName, retractEventName);
-            this.layoutOptions = new ModuleLayoutOptions();
-            this.currentLayout = ModelLayout.getDefaultLayout();
             loadColors(persistentData);
+        }
+
+        /// <summary>
+        /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.<para/>
+        /// Wraps the input array of model defs with a default layout option wrapper.
+        /// </summary>
+        /// <param name="models"></param>
+        public void setupModelList(ModelDefinition[] modelDefs)
+        {
+            if (modelDefs.Length <= 0)
+            {
+                MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
+            }
+            int len = modelDefs.Length;
+            optionsCache = new ModelDefinitionLayoutOptions[len];
+            for (int i = 0; i < len; i++)
+            {
+                optionsCache[i] = new ModelDefinitionLayoutOptions(modelDefs[i]);
+            }
+            setupModelList(optionsCache);
         }
 
         /// <summary>
         /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.
         /// </summary>
         /// <param name="models"></param>
-        public void setupModelList(ModelLayoutOptions[] modelDefs)
+        public void setupModelList(ModelDefinitionLayoutOptions[] modelDefs)
         {
             optionsCache = modelDefs;
             if (modelDefs.Length <= 0)
@@ -349,11 +400,13 @@ namespace SSTUTools
         public void setupModel()
         {
             SSTUUtils.destroyChildrenImmediate(root);
-            modelDefinition = Array.Find(optionsCache, m => m.definition.name == modelName).definition;
-            if (modelDefinition == null)
+            currentLayoutOptions = Array.Find(optionsCache, m => m.definition.name == modelName);
+            if (currentLayoutOptions == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for: "+getErrorReportModuleName());
+                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for: " + getErrorReportModuleName());
             }
+            currentDefinition = currentLayoutOptions.definition;
+            currentLayout = currentLayoutOptions.getLayout(layoutName);
             constructModels();
             positionModels();
             setupTextureSet();
@@ -430,7 +483,7 @@ namespace SSTUTools
         /// <returns></returns>
         public ModelSolarData[] getSolarData()
         {
-            int len = currentLayout.positions.Length;
+            int len = layout.positions.Length;
             ModelSolarData[] msds = new ModelSolarData[len];
             for (int i = 0; i < len; i++)
             {
@@ -527,7 +580,13 @@ namespace SSTUTools
         /// <param name="newLayout"></param>
         public void layoutSelected(string newLayout)
         {
+            if (!currentLayoutOptions.isValidLayout(newLayout))
+            {
+                newLayout = currentLayoutOptions.getDefaultLayout().name;
+                MonoBehaviour.print("ERROR: Could not find layout definition by name: " + newLayout + " using default layout for model: " + getErrorReportModuleName());
+            }
             layoutName = newLayout;
+            currentLayout = currentLayoutOptions.getLayout(newLayout);
             setupModel();
             updateSelections();
         }
@@ -550,9 +609,9 @@ namespace SSTUTools
             }
             if (layoutField != null)
             {
-                string[] layoutNames = null;
-                string[] layoutTitles = null;
-                layoutOptions.getLayoutInfo(definition.name, out layoutNames, out layoutTitles);
+                ModelDefinitionLayoutOptions mdlo = optionsCache.Find(m => m.definition == definition);
+                string[] layoutNames = mdlo.getLayoutNames();
+                string[] layoutTitles = mdlo.getLayoutTitles();
                 partModule.updateUIChooseOptionControl(layoutField.name, layoutNames, layoutTitles, true, layoutName);
             }
         }
@@ -842,7 +901,7 @@ namespace SSTUTools
         /// </summary>
         private void positionModels()
         {
-            int len = currentLayout.positions.Length;
+            int len = layout.positions.Length;
             float posScalar = getLayoutPositionScalar();
             float scaleScalar = getLayoutScaleScalar();
             float rotation = getFacingRotation();
@@ -855,7 +914,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 Transform model = models[i];
-                ModelPositionData mpd = currentLayout.positions[i];
+                ModelPositionData mpd = layout.positions[i];
                 model.transform.localPosition = mpd.localPosition * posScalar;
                 model.transform.localRotation = Quaternion.Euler(mpd.localRotation + Vector3.up * rotation);
                 model.transform.localScale = mpd.localScale * scaleScalar;
@@ -870,7 +929,7 @@ namespace SSTUTools
             //reset the orientation on the root transform, in case it was rotated by previous invert/etc
             root.transform.localRotation = Quaternion.identity;
             //create model array with length based on the positions defined in the ModelLayoutData
-            int len = currentLayout.positions.Length;
+            int len = layout.positions.Length;
             models = new Transform[len];
             for (int i = 0; i < len; i++)
             {
@@ -1107,10 +1166,10 @@ namespace SSTUTools
         /// </summary>
         /// <param name="inputOptions"></param>
         /// <returns></returns>
-        public ModelLayoutOptions[] getValidUpperModels(ModelLayoutOptions[] inputOptions, ModelOrientation otherModelOrientation)
+        public ModelDefinitionLayoutOptions[] getValidUpperModels(ModelDefinitionLayoutOptions[] inputOptions, ModelOrientation otherModelOrientation)
         {
-            List<ModelLayoutOptions> validDefs = new List<ModelLayoutOptions>();
-            ModelLayoutOptions def;
+            List<ModelDefinitionLayoutOptions> validDefs = new List<ModelDefinitionLayoutOptions>();
+            ModelDefinitionLayoutOptions def;
             int len = inputOptions.Length;
             for (int i = 0; i < len; i++)
             {
@@ -1129,10 +1188,10 @@ namespace SSTUTools
         /// </summary>
         /// <param name="defs"></param>
         /// <returns></returns>
-        public ModelLayoutOptions[] getValidLowerModels(ModelLayoutOptions[] defs, ModelOrientation otherModelOrientation)
+        public ModelDefinitionLayoutOptions[] getValidLowerModels(ModelDefinitionLayoutOptions[] defs, ModelOrientation otherModelOrientation)
         {
-            List<ModelLayoutOptions> validDefs = new List<ModelLayoutOptions>();
-            ModelLayoutOptions def;
+            List<ModelDefinitionLayoutOptions> validDefs = new List<ModelDefinitionLayoutOptions>();
+            ModelDefinitionLayoutOptions def;
             int len = defs.Length;
             for (int i = 0; i < len; i++)
             {

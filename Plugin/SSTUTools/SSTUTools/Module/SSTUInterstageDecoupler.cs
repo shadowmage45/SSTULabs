@@ -525,7 +525,7 @@ namespace SSTUTools
             ConfigNode[] modelNodes = baseNode.GetNodes("MODEL");
             Transform engineRoot = modelBase.FindOrCreate("SSTU-ISDC-EngineRoot");
 
-            engineModels = new ModelModule<SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(currentEngineModel), nameof(customEngineColorData), nameof(currentEngineTextureSet), null, null, null, null);            engineModels.getSymmetryModule = m => m.engineModels;
+            engineModels = new ModelModule<SSTUInterstageDecoupler>(part, this, engineRoot, ModelOrientation.TOP, nameof(currentEngineModel), null, nameof(customEngineColorData), nameof(currentEngineTextureSet), null, null, null, null);            engineModels.getSymmetryModule = m => m.engineModels;
             engineModels.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
             updateEnginePositionAndScale();
         }
