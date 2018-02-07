@@ -403,10 +403,15 @@ namespace SSTUTools
             currentLayoutOptions = Array.Find(optionsCache, m => m.definition.name == modelName);
             if (currentLayoutOptions == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for: " + getErrorReportModuleName());
+                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for " + getErrorReportModuleName());
             }
             currentDefinition = currentLayoutOptions.definition;
             currentLayout = currentLayoutOptions.getLayout(layoutName);
+            if (!currentLayoutOptions.isValidLayout(layoutName))
+            {
+                MonoBehaviour.print("Existing layout: "+layoutName+" for " + getErrorReportModuleName() + " was null.  Assigning default layout: " + currentLayoutOptions.getDefaultLayout().name);
+                layoutName = currentLayoutOptions.getDefaultLayout().name;
+            }
             constructModels();
             positionModels();
             setupTextureSet();
@@ -418,6 +423,7 @@ namespace SSTUTools
             {
                 animationModule.disableAnimations();
             }
+            updateModuleStats();
         }
 
         #endregion ENDREGION - Constructors and Init Methods
@@ -689,11 +695,23 @@ namespace SSTUTools
             currentVerticalScale = newVerticalScale;
             currentHeight = newVerticalScale * definition.height;
             currentDiameter = newHorizontalScale * definition.diameter;
+            updateModuleStats();
         }
 
         #endregion ENDREGION - GUI Interaction Methods
 
         #region REGION - Private/Internal methods
+
+        /// <summary>
+        /// Update the cached volume, mass, and cost values for the currently configured model setup.  Must be called anytime that model definition or scales are changed.
+        /// </summary>
+        private void updateModuleStats()
+        {
+            float scalar = moduleHorizontalScale * moduleHorizontalScale * moduleVerticalScale;
+            currentMass = definition.mass * scalar;
+            currentCost = definition.cost * scalar;
+            currentVolume = definition.volume * scalar;
+        }
 
         /// <summary>
         /// Load custom colors from persistent color data.  Creates default array of colors if no data is present persistence.
@@ -928,6 +946,8 @@ namespace SSTUTools
         {
             //reset the orientation on the root transform, in case it was rotated by previous invert/etc
             root.transform.localRotation = Quaternion.identity;
+            MonoBehaviour.print("Creating models for layout: " + currentLayoutOptions);
+            MonoBehaviour.print("layout: " + layoutName);
             //create model array with length based on the positions defined in the ModelLayoutData
             int len = layout.positions.Length;
             models = new Transform[len];
@@ -988,7 +1008,7 @@ namespace SSTUTools
         }
         
         /// <summary>
-        /// Applies the current module position and scale values to the root transform of the ModelModule.  Does not adjust rotation.
+        /// Applies the current module position and scale values to the root transform of the ModelModule.  Does not adjust rotation or handle multi-model positioning setup for layouts.
         /// </summary>
         private void updateModelScaleAndPosition()
         {

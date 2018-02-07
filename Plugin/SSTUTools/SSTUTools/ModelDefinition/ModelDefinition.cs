@@ -511,6 +511,11 @@ namespace SSTUTools
             return shouldInvert(orientation) ? canAttach(compatibleLowerProfiles, profiles) : canAttach(compatibleUpperProfiles, profiles);
         }
 
+        public override string ToString()
+        {
+            return "ModelDef[ " + name + " ]";
+        }
+
     }
 
     //TODO
