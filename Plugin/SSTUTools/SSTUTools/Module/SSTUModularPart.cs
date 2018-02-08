@@ -223,7 +223,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true, guiName = "Solar Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentSolarLayout = "Solar-None";
+        public string currentSolarLayout = "default";
 
         [KSPField(isPersistant = true, guiName = "Solar Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -235,7 +235,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true, guiName = "Upper RCS Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentUpperRCSLayout = "MUS-RCS1";
+        public string currentUpperRCSLayout = "default";
 
         [KSPField(isPersistant = true, guiName = "Upper RCS Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -251,7 +251,7 @@ namespace SSTUTools
 
         [KSPField(isPersistant = true, guiName = "Lower RCS Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentLowerRCSLayout = "MUS-RCS1";
+        public string currentLowerRCSLayout = "default";
 
         [KSPField(isPersistant = true, guiName = "Lower RCS Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
