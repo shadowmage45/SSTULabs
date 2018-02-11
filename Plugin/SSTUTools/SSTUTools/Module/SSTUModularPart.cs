@@ -1148,9 +1148,9 @@ namespace SSTUTools
             
             //scale and position of RCS and solar models handled a bit differently
             float coreScale = coreModule.moduleHorizontalScale;
-            solarModule.setScale(coreScale);
-            upperRcsModule.setScale(coreScale);
-            lowerRcsModule.setScale(coreScale);
+            solarModule.setScale(1);
+            upperRcsModule.setScale(1);
+            lowerRcsModule.setScale(1);
 
             //TODO -- these positions need to depend on what the current 'parent' module is for the add-on
             // as well as, at least for RCS, the currently configured 'offset'
