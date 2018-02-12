@@ -1005,6 +1005,15 @@ namespace SSTUTools
                     smd.setupSubmodel(clonedModel);
                 }
             }
+            if (definition.mergeData != null)
+            {
+                MeshMergeData[] md = definition.mergeData;
+                len = md.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    md[i].mergeMeshes(parent);
+                }
+            }
         }
         
         /// <summary>
@@ -1306,6 +1315,9 @@ namespace SSTUTools
 
     }
 
+    //TODO -- these classes really belong alongside the ModelDefintion class
+    //TODO -- move these all somewhere more logical
+
     /// <summary>
     /// Class denoting a the transforms to use from a single database model.  Allows for combining multiple entire models, and/or transforms from models, all into a single active/usable Model
     /// </summary>
@@ -1403,6 +1415,99 @@ namespace SSTUTools
             }
             return false;
         }
+    }
+
+    /// <summary>
+    /// Data class for specifying which meshes should be merged into singular mesh instances.
+    /// For use in game-object reduction for models composited from many sub-meshes.
+    /// </summary>
+    public class MeshMergeData
+    {
+
+        /// <summary>
+        /// The name of the transform to parent the merged meshes into.
+        /// </summary>
+        public readonly string parentTransform;
+
+        /// <summary>
+        /// The name of the transform to merge the specified meshes into.  If this transform is not present, it will be created.  
+        /// Will be parented to 'parentTransform' if that field is populated, else it will become the 'root' transform in the model.
+        /// </summary>
+        public readonly string targetTransform;
+
+        /// <summary>
+        /// The names of the meshes to merge into the target transform.
+        /// </summary>
+        public readonly string[] meshNames;
+
+        public MeshMergeData(ConfigNode node)
+        {
+            parentTransform = node.GetStringValue("parent", string.Empty);
+            targetTransform = node.GetStringValue("target", "MergedMesh");
+            meshNames = node.GetStringValues("mesh");
+        }
+
+        /// <summary>
+        /// Given the input root transform for a fully assembled model (e.g. from sub-model-data),
+        /// locate any transforms that should be merged, merge them into the specified target transform,
+        /// and parent them to the specified parent transform (or root if NA).
+        /// </summary>
+        /// <param name="root"></param>
+        public void mergeMeshes(Transform root)
+        {
+            //find target transform
+            //create if it doesn't exist
+            Transform target = root.FindRecursive(targetTransform);
+            if (target == null)
+            {
+                target = new GameObject(targetTransform).transform;
+                target.NestToParent(root);
+            }
+
+            MeshFilter mf = target.GetComponent<MeshFilter>();
+            if (mf == null)
+            {
+                mf = target.gameObject.AddComponent<MeshFilter>();
+                mf.mesh = new Mesh();
+            }
+
+
+            //merge meshes into singular mesh object
+            //copy material/rendering settings from one of the original meshes
+            List<CombineInstance> cis = new List<CombineInstance>();
+            CombineInstance ci;
+            Transform[] trs;
+            int len = meshNames.Length;
+            int trsLen;
+            MeshFilter mm;
+            for (int i = 0; i < len; i++)
+            {
+                trs = root.FindChildren(meshNames[i]);
+                trsLen = trs.Length;
+                for (int k = 0; k < trsLen; k++)
+                {
+                    mm = trs[k].GetComponent<MeshFilter>();
+                    if (mm == null) { continue; }
+                    ci = new CombineInstance();
+                    ci.mesh = mm.sharedMesh;
+                    ci.transform = trs[k].localToWorldMatrix;
+                    cis.Add(ci);
+                }
+            }
+            mf.mesh.CombineMeshes(cis.ToArray());
+
+            //parent the new output GO to the specified parent
+            //or parent target transform to the input root if on parent is specified
+            if (!string.IsNullOrEmpty(parentTransform))
+            {
+                Transform parent = root.FindRecursive(parentTransform);
+            }
+            else
+            {
+                target.parent = root;
+            }
+        }
+
     }
 
     /// <summary>

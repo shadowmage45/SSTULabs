@@ -129,6 +129,13 @@ namespace SSTUTools
         public readonly CompoundModelData compoundModelData;
 
         /// <summary>
+        /// Data defining what meshes in the model will be merged into joined meshes.  For cases of compound models that will all share
+        /// the same materials, makes for more efficient use of material/rendering and cuts down on the number of GOs in the model tree.<para/>
+        /// These meshes are merged whenever the model from this definition is constructed.
+        /// </summary>
+        public readonly MeshMergeData[] mergeData;
+
+        /// <summary>
         /// Data defining the potential stack attach nodes that can be created/setup by this model definition.  If undefined, the model will have no attach nodes.
         /// </summary>
         public readonly AttachNodeBaseData[] attachNodeData;
@@ -268,6 +275,17 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     subModelData[i] = new SubModelData(subModelNodes[i]);
+                }
+            }
+
+            if (node.HasNode("MERGEDMODELS"))
+            {
+                ConfigNode[] mergeNodes = node.GetNodes("MERGEDMODELS");
+                len = mergeNodes.Length;
+                mergeData = new MeshMergeData[len];
+                for (int i = 0; i < len; i++)
+                {
+                    mergeData[i] = new MeshMergeData(mergeNodes[i]);
                 }
             }
 
