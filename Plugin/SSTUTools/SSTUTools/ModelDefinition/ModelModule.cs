@@ -1464,6 +1464,8 @@ namespace SSTUTools
                 target.NestToParent(root);
             }
 
+            //locate mesh filter on target transform
+            //add a new one if not already present
             MeshFilter mf = target.GetComponent<MeshFilter>();
             if (mf == null)
             {
@@ -1471,6 +1473,7 @@ namespace SSTUTools
                 mf.mesh = new Mesh();
             }
 
+            Material material = null;
 
             //merge meshes into singular mesh object
             //copy material/rendering settings from one of the original meshes
@@ -1486,18 +1489,37 @@ namespace SSTUTools
                 trsLen = trs.Length;
                 for (int k = 0; k < trsLen; k++)
                 {
+                    //locate mesh filter from specified mesh(es)
                     mm = trs[k].GetComponent<MeshFilter>();
+                    //if mesh did not exist, skip it 
+                    //TODO log error on missing mesh on specified transform
                     if (mm == null) { continue; }
                     ci = new CombineInstance();
                     ci.mesh = mm.sharedMesh;
                     ci.transform = trs[k].localToWorldMatrix;
                     cis.Add(ci);
+                    //if we don't currently have a reference to a material, grab a ref to/copy of the shared material
+                    //for the current mesh(es).  These must all use the same materials
+                    if (material == null)
+                    {
+                        Renderer mr = trs[k].GetComponent<Renderer>();
+                        material = mr.material;//grab a NON-shared material reference
+                    }
                 }
             }
             mf.mesh.CombineMeshes(cis.ToArray());
 
+            //update the material for the newly combined mesh
+            //add mesh-renderer component if necessary
+            Renderer renderer = target.GetComponent<Renderer>();
+            if (renderer == null)
+            {
+                renderer = target.gameObject.AddComponent<MeshRenderer>();
+            }
+            renderer.sharedMaterial = material;
+
             //parent the new output GO to the specified parent
-            //or parent target transform to the input root if on parent is specified
+            //or parent target transform to the input root if no parent is specified
             if (!string.IsNullOrEmpty(parentTransform))
             {
                 Transform parent = root.FindRecursive(parentTransform);
