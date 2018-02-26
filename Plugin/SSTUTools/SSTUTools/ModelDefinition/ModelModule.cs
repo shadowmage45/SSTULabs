@@ -1000,10 +1000,7 @@ namespace SSTUTools
                 }
                 //de-activate any non-active sub-model transforms
                 //iterate through all transforms for the model and deactivate(destroy?) any not on the active mesh list
-                if (smd.modelMeshes.Length > 0)
-                {
-                    smd.setupSubmodel(clonedModel);
-                }
+                smd.setupSubmodel(clonedModel);
             }
             if (definition.mergeData != null)
             {
@@ -1326,6 +1323,7 @@ namespace SSTUTools
 
         public readonly string modelURL;
         public readonly string[] modelMeshes;
+        public readonly string[] renameMeshes;
         public readonly string parent;
         public readonly Vector3 rotation;
         public readonly Vector3 position;
@@ -1335,6 +1333,7 @@ namespace SSTUTools
         {
             modelURL = node.GetStringValue("modelName");
             modelMeshes = node.GetStringValues("transform");
+            renameMeshes = node.GetStringValues("rename");
             parent = node.GetStringValue("parent", string.Empty);
             position = node.GetVector3("position", Vector3.zero);
             rotation = node.GetVector3("rotation", Vector3.zero);
@@ -1345,6 +1344,7 @@ namespace SSTUTools
         {
             this.modelURL = modelURL;
             this.modelMeshes = meshNames;
+            this.renameMeshes = new string[0];
             this.parent = parent;
             this.position = pos;
             this.rotation = rot;
@@ -1387,6 +1387,29 @@ namespace SSTUTools
                 for (int i = 0; i < len; i++)
                 {
                     GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
+                }
+            }
+            if (renameMeshes.Length > 0)
+            {
+                string[] split;
+                string oldName, newName;
+                int len = renameMeshes.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    split = renameMeshes[i].Split(',');
+                    if (split.Length < 2)
+                    {
+                        MonoBehaviour.print("ERROR: Mesh rename format invalid, must specify <oldName>,<newName>");
+                        continue;
+                    }
+                    oldName = split[0].Trim();
+                    newName = split[1].Trim();
+                    Transform[] trs = modelRoot.transform.FindChildren(oldName);
+                    int len2 = trs.Length;
+                    for (int k = 0; k < len2; k++)
+                    {
+                        trs[k].name = newName;
+                    }
                 }
             }
         }
