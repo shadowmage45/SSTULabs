@@ -557,19 +557,24 @@ namespace SSTUTools
         {
             if (display.Length == 0 && options.Length > 0) { display = new string[] { "NONE" }; }
             if (options.Length == 0) { options = new string[] { "NONE" }; }
+            module.Fields[fieldName].guiActive = module.Fields[fieldName].guiActiveEditor = options.Length > 1;
             UI_ChooseOption widget = null;
             if (HighLogic.LoadedSceneIsEditor)
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlEditor;
-                module.Fields[fieldName].guiActiveEditor = options.Length > 1;
             }
             else if (HighLogic.LoadedSceneIsFlight)
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlFlight;
-                module.Fields[fieldName].guiActive = options.Length > 1;
             }
-            else { return; }
-            if (widget == null) { return; }
+            else
+            {
+                return;
+            }
+            if (widget == null)
+            {
+                return;
+            }
             widget.display = display;
             widget.options = options;
             if (forceUpdate && widget.partActionItem != null)

@@ -762,7 +762,8 @@ namespace SSTUTools
         {
             if (textureField == null) { return; }
             string[] names = definition.getTextureSetNames();
-            partModule.updateUIChooseOptionControl(textureField.name, names, definition.getTextureSetTitles(), true, textureSetName);
+            string[] titles = definition.getTextureSetTitles();
+            partModule.updateUIChooseOptionControl(textureField.name, names, titles, true, textureSetName);
             textureField.guiActiveEditor = names.Length > 1;
         }
 
