@@ -178,7 +178,7 @@ namespace SSTUTools
         /// If left blank in config file, initialized to the default texture set for the current mount.
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
+         UI_ChooseOption(display = new string[] { "default" }, options = new string[] { "default" }, suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
         #endregion ENDREGION - KSP Editor Adjust Fields (Float Sliders)
@@ -453,6 +453,7 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
+
             ConfigNode[] layoutNodes = SSTUConfigNodeUtils.parseConfigNode(configNodeData).GetNodes("LAYOUT");
             loadEngineLayouts(layoutNodes);
             if (String.IsNullOrEmpty(currentEngineLayoutName))
@@ -540,7 +541,7 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), null, nameof(mountModuleData), nameof(currentMountTexture), null, null, null, null);
+            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), null, nameof(currentMountTexture), nameof(mountModuleData), null, null, null, null);
             mountModule.getSymmetryModule = m => m.mountModule; 
             //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
         }
