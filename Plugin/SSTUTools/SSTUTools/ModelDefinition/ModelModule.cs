@@ -17,7 +17,13 @@ namespace SSTUTools
     /// <summary>
     /// ModelModule is a 'standard class' that can be used from within PartModule code to manage a single active model, as well as any potential alternate model selections.<para/>
     /// Uses ModelDefinition configs to define how the models are setup.<para/>
-    /// Includes support for all features that are supported by ModelDefinition (animation, solar, rcs, engine, gimbal, constraints)
+    /// Includes support for all features that are supported by ModelDefinition (animation, solar, rcs, engine, gimbal, constraints)<para/>
+    /// Creation consists of the following setup sequence:<para/>
+    /// 1.) Call constructor
+    /// 2.) Setup Delegate methods
+    /// 3.) Call setupModelList
+    /// 4.) Call setupModel
+    /// 5.) Call updateSelections
     /// </summary>
     /// <typeparam name="U"></typeparam>
     public class ModelModule<U> where U : PartModule
@@ -353,7 +359,7 @@ namespace SSTUTools
 
         /// <summary>
         /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.<para/>
-        /// Wraps the input array of model defs with a default layout option wrapper.
+        /// Wraps the input array of model defs with a default single-position layout option wrapper.
         /// </summary>
         /// <param name="models"></param>
         public void setupModelList(ModelDefinition[] modelDefs)
@@ -363,12 +369,12 @@ namespace SSTUTools
                 MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
             }
             int len = modelDefs.Length;
-            optionsCache = new ModelDefinitionLayoutOptions[len];
+            ModelDefinitionLayoutOptions[] models = new ModelDefinitionLayoutOptions[len];
             for (int i = 0; i < len; i++)
             {
-                optionsCache[i] = new ModelDefinitionLayoutOptions(modelDefs[i]);
+                models[i] = new ModelDefinitionLayoutOptions(modelDefs[i]);
             }
-            setupModelList(optionsCache);
+            setupModelList(models);
         }
 
         /// <summary>
@@ -388,8 +394,6 @@ namespace SSTUTools
                 modelName = optionsCache[0].definition.name;
                 MonoBehaviour.print("Now using model: " + modelName + " for: "+getErrorReportModuleName());
             }
-            setupModel();
-            updateSelections();
         }
 
         /// <summary>
@@ -604,8 +608,9 @@ namespace SSTUTools
         /// </summary>
         public void updateSelections()
         {
-            string[] names = SSTUUtils.getNames(optionsCache, s => s.definition.name);
-            string[] displays = SSTUUtils.getNames(optionsCache, s => s.definition.title);
+            ModelDefinitionLayoutOptions[] availableOptions = getValidOptions();
+            string[] names = SSTUUtils.getNames(availableOptions, s => s.definition.name);
+            string[] displays = SSTUUtils.getNames(availableOptions, s => s.definition.title);
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
             modelField.guiActiveEditor = names.Length > 1;
             //updates the texture set selection for the currently configured model definition, including disabling of the texture-set selection UI when needed
@@ -619,6 +624,7 @@ namespace SSTUTools
                 string[] layoutNames = mdlo.getLayoutNames();
                 string[] layoutTitles = mdlo.getLayoutTitles();
                 partModule.updateUIChooseOptionControl(layoutField.name, layoutNames, layoutTitles, true, layoutName);
+                layoutField.guiActiveEditor = layoutField.guiActiveEditor && currentLayout.positions.Length > 1;
             }
         }
         

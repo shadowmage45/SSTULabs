@@ -151,6 +151,9 @@ namespace SSTUTools
 
     }
 
+    /// <summary>
+    /// Container class to wrap a global model definition and its part-specific layout options.
+    /// </summary>
     public class ModelDefinitionLayoutOptions
     {
 
