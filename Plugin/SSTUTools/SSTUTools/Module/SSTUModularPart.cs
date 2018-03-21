@@ -579,6 +579,7 @@ namespace SSTUTools
         //standard Unity lifecyle override
         public void Update()
         {
+            //the model-module update function handles updating of animations
             noseModule.Update();
             upperModule.Update();
             coreModule.Update();
@@ -593,6 +594,7 @@ namespace SSTUTools
         //standard Unity lifecyle override
         public void FixedUpdate()
         {
+            //the solar module fixed update function handles solar panel resource manipulation
             solarFunctionsModule.FixedUpdate();
         }
 
@@ -772,7 +774,14 @@ namespace SSTUTools
             for (int i = 0; i < coreDefLen; i++)
             {
                 string variantName = coreDefNodes[i].GetStringValue("variant", "Default");
+                MonoBehaviour.print("Loading models for variant: " + variantName);
                 coreDefs = SSTUModelData.getModelDefinitionLayouts(coreDefNodes[i].GetStringValues("model"));
+                int l2 = coreDefs.Length;
+                for (int k = 0; k < l2; k++)
+                {
+                    //coreDefList.AddUnique(coreDefs[l2]);
+                    MonoBehaviour.print("Loading model: " + coreDefs[k]);
+                }
                 coreDefList.AddUniqueRange(coreDefs);
                 ModelDefinitionVariantSet mdvs = getVariantSet(variantName);
                 mdvs.addModels(coreDefs);
@@ -851,6 +860,14 @@ namespace SSTUTools
             upperRcsModule.setupModelList(rcsUpDefs);
             lowerRcsModule.setupModelList(rcsDnDefs);
             solarModule.setupModelList(solarDefs);
+            coreModule.setupModel();
+            upperModule.setupModel();
+            noseModule.setupModel();
+            lowerModule.setupModel();
+            mountModule.setupModel();
+            upperRcsModule.setupModel();
+            lowerRcsModule.setupModel();
+            solarModule.setupModel();
             
             //initialize RCS thrust transforms
             upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
@@ -867,6 +884,7 @@ namespace SSTUTools
             updateModulePositions();
             updateMassAndCost();
             updateAttachNodes(false);
+            updateAvailableVariants();
             SSTUStockInterop.updatePartHighlighting(part);
         }
         
@@ -1384,6 +1402,9 @@ namespace SSTUTools
             solarModule.updateSelections();
             upperRcsModule.updateSelections();
             lowerRcsModule.updateSelections();
+            Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRcsModule.layout.positions.Length >= 1;
+            Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRcsModule.layout.positions.Length >= 1;
+            Fields[nameof(currentSolarParent)].guiActiveEditor = solarModule.layout.positions.Length >= 1;
         }
 
         /// <summary>
@@ -1435,7 +1456,7 @@ namespace SSTUTools
                 case "NONE":
                     return null;
                 default:
-                    return coreModule;
+                    return null;
             }
         }
 
