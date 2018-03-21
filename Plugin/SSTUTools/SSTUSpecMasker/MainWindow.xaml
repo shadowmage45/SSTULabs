@@ -10,7 +10,9 @@
         <Button x:Name="BaseButton" Content="Load Base" HorizontalAlignment="Left" Margin="10,24,0,0" VerticalAlignment="Top" Width="75" Click="BaseButton_Click"/>
         <Button x:Name="AlphaButton" Content="Load Alpha" HorizontalAlignment="Left" Margin="10,68,0,0" VerticalAlignment="Top" Width="75" Click="AlphaButton_Click"/>
         <Button x:Name="ProcessButton" Content="Process" HorizontalAlignment="Left" Margin="10,116,0,0" VerticalAlignment="Top" Width="75" Click="ProcessButton_Click"/>
-        <Label x:Name="BaseLabel" Content="Label" HorizontalAlignment="Left" Margin="90,24,0,0" VerticalAlignment="Top" Width="381"/>
-        <Label x:Name="AlphaLabel" Content="Label" HorizontalAlignment="Left" Margin="90,68,0,0" VerticalAlignment="Top" Width="381"/>
+        <Label x:Name="BaseLabel" Content="" HorizontalAlignment="Left" Margin="90,24,0,0" VerticalAlignment="Top" Width="381"/>
+        <Label x:Name="AlphaLabel" Content="" HorizontalAlignment="Left" Margin="90,68,0,0" VerticalAlignment="Top" Width="381"/>
+        <ProgressBar x:Name="progressBar" HorizontalAlignment="Left" Height="23" Margin="10,185,0,0" VerticalAlignment="Top" Width="382"/>
+        <Label  Content="Conversion Progress:" HorizontalAlignment="Left" Margin="11,159,0,0" VerticalAlignment="Top" Width="381"/>
     </Grid>
 </Window>
