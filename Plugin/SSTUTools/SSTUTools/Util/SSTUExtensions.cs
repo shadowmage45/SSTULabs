@@ -9,10 +9,17 @@ namespace SSTUTools
     {
         #region ConfigNode extension methods
 
-        public static String[] GetStringValues(this ConfigNode node, String name)
+        public static String[] GetStringValues(this ConfigNode node, String name, bool reverse = false)
         {
             String[] values = node.GetValues(name);
-            return values == null ? new String[0] : values;
+            if (reverse) { return values; }
+            int len = values.Length;
+            string[] returnValues = new string[len];
+            for (int i = 0, k = len-1; i < len; i++, k--)
+            {
+                returnValues[i] = values[k];
+            }
+            return returnValues;
         }
 
         public static string[] GetStringValues(this ConfigNode node, string name, string[] defaults)

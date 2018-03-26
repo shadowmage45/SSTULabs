@@ -762,7 +762,7 @@ namespace SSTUTools
 
             //model-module setup/initialization
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-                        
+
             //list of CORE model nodes from config
             //each one may contain multiple 'model=modelDefinitionName' entries
             //but must contain no more than a single 'variant' entry.
@@ -774,14 +774,7 @@ namespace SSTUTools
             for (int i = 0; i < coreDefLen; i++)
             {
                 string variantName = coreDefNodes[i].GetStringValue("variant", "Default");
-                MonoBehaviour.print("Loading models for variant: " + variantName);
                 coreDefs = SSTUModelData.getModelDefinitionLayouts(coreDefNodes[i].GetStringValues("model"));
-                int l2 = coreDefs.Length;
-                for (int k = 0; k < l2; k++)
-                {
-                    //coreDefList.AddUnique(coreDefs[l2]);
-                    MonoBehaviour.print("Loading model: " + coreDefs[k]);
-                }
                 coreDefList.AddUniqueRange(coreDefs);
                 ModelDefinitionVariantSet mdvs = getVariantSet(variantName);
                 mdvs.addModels(coreDefs);
