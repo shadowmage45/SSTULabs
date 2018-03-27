@@ -886,6 +886,19 @@ namespace SSTUTools
         private void initializeUI()
         {
 
+            Action<SSTUModularPart> modelChangedAction = (m) =>
+            {
+                m.validateModules();
+                m.updateModulePositions();
+                m.updateMassAndCost();
+                m.updateAttachNodes(true);
+                m.updateDragCubes();
+                m.updateResourceVolume();
+                m.updateFairing(true);
+                m.updateAvailableVariants();
+                SSTUModInterop.onPartGeometryUpdate(m.part, true);
+            };
+
             //set up the core variant UI control
             string[] variantNames = SSTUUtils.getNames(variantSets.Values, m => m.variantName);
             this.updateUIChooseOptionControl(nameof(currentVariant), variantNames, variantNames, true, currentVariant);
@@ -907,20 +920,8 @@ namespace SSTUTools
                 {
                     m.currentVariant = currentVariant;
                     m.coreModule.modelSelected(newCoreDef.definition.name);
+                    modelChangedAction(m);
                 });
-            };
-
-            Action<SSTUModularPart> modelChangedAction = (m) =>
-            {
-                m.validateModules();
-                m.updateModulePositions();
-                m.updateMassAndCost();
-                m.updateAttachNodes(true);
-                m.updateDragCubes();
-                m.updateResourceVolume();
-                m.updateFairing(true);
-                m.updateAvailableVariants();
-                SSTUModInterop.onPartGeometryUpdate(m.part, true);
             };
 
             Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = (a, b) =>
@@ -1387,6 +1388,7 @@ namespace SSTUTools
         /// </summary>
         private void updateAvailableVariants()
         {
+            MonoBehaviour.print("Updating UI active status.");
             noseModule.updateSelections();
             upperModule.updateSelections();
             coreModule.updateSelections();

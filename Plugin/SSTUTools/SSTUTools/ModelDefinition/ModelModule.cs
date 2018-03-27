@@ -609,6 +609,8 @@ namespace SSTUTools
         public void updateSelections()
         {
             ModelDefinitionLayoutOptions[] availableOptions = getValidOptions();
+            MonoBehaviour.print("Updating selections for: " + getErrorReportModuleName() + " found: " + availableOptions.Length + " options.");
+            MonoBehaviour.print(SSTUUtils.printArray(SSTUUtils.getNames(availableOptions, m => m.definition.name), ","));
             string[] names = SSTUUtils.getNames(availableOptions, s => s.definition.name);
             string[] displays = SSTUUtils.getNames(availableOptions, s => s.definition.title);
             partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
