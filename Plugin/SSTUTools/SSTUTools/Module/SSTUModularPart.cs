@@ -1285,9 +1285,11 @@ namespace SSTUTools
         /// <param name="userInput"></param>
         private void updateAttachNodes(bool userInput)
         {
-            upperModule.updateAttachNodes(topNodeNames, userInput);
-            lowerModule.updateAttachNodes( bottomNodeNames, userInput);
+            //update the standard top and bottom attach nodes, using the node position(s) defined in the nose and mount modules
+            noseModule.updateAttachNodes(topNodeNames, userInput);
+            mountModule.updateAttachNodes(bottomNodeNames, userInput);
 
+            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
             Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
             SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
             AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
@@ -1296,13 +1298,23 @@ namespace SSTUTools
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
             }
 
-            float bottomFairingTopY = getBottomFairingTopY();
-            pos = new Vector3(0, bottomFairingTopY, 0);
+            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
+            pos = new Vector3(0, getBottomFairingTopY(), 0);
             SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
             AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
             if (mountInterstage != null)
             {
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
+            }
+
+            //update surface attach node position, part position, and any surface attached children
+            //TODO -- how to determine how far to offset/move surface attached children?
+            AttachNode surfaceNode = part.srfAttachNode;
+            if (surfaceNode != null)
+            {
+                //TODO -- update surface attach node position
+                //TODO -- update this parts position on diameter change if is srf attached to another part
+                //TODO -- update any surface attached children (diameter scale/adjust only)
             }
         }
 
