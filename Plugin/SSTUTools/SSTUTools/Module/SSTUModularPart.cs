@@ -7,7 +7,7 @@ using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier
+    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
     {
 
         /**
