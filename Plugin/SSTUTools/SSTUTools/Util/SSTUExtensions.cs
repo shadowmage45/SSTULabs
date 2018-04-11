@@ -11,20 +11,24 @@ namespace SSTUTools
 
         public static String[] GetStringValues(this ConfigNode node, String name, bool reverse = false)
         {
-            String[] values = node.GetValues(name);
-            if (reverse) { return values; }
-            int len = values.Length;
-            string[] returnValues = new string[len];
-            for (int i = 0, k = len-1; i < len; i++, k--)
+            string[] values = node.GetValues(name);
+            int l = values.Length;
+            if (reverse)
             {
-                returnValues[i] = values[k];
+                int len = values.Length;
+                string[] returnValues = new string[len];
+                for (int i = 0, k = len - 1; i < len; i++, k--)
+                {
+                    returnValues[i] = values[k];
+                }
+                return returnValues;
             }
-            return returnValues;
+            return values;
         }
 
-        public static string[] GetStringValues(this ConfigNode node, string name, string[] defaults)
+        public static string[] GetStringValues(this ConfigNode node, string name, string[] defaults, bool reverse = false)
         {
-            if (node.HasValue(name)) { return node.GetValues(name); }
+            if (node.HasValue(name)) { return node.GetStringValues(name, reverse); }
             return defaults;
         }
 

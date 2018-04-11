@@ -109,8 +109,6 @@ namespace SSTUTools
         public static ModelDefinitionLayoutOptions[] getModelDefinitions(ConfigNode[] nodes)
         {
             int len = nodes.Length;
-            List<string> names = new List<string>();
-            List<string> layouts = new List<string>();
 
             List<ModelDefinitionLayoutOptions> options = new List<ModelDefinitionLayoutOptions>();
 
@@ -120,8 +118,10 @@ namespace SSTUTools
 
             for (int i = 0; i < len; i++)
             {
-                groupedNames = nodes[i].GetStringValues("model");
-                groupedLayouts = nodes[i].GetStringValues("layout", new string[] { "default" });
+                //because configNode.ToString() reverses the order of values, and model def layouts are always loaded from string-cached config nodes
+                //we need to reverse the order of the model and layout names during parsing
+                groupedNames = nodes[i].GetStringValues("model", true);
+                groupedLayouts = nodes[i].GetStringValues("layout", new string[] { "default" }, true);
                 len2 = groupedNames.Length;
                 for (int k = 0; k < len2; k++)
                 {

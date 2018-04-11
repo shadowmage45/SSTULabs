@@ -774,7 +774,7 @@ namespace SSTUTools
             for (int i = 0; i < coreDefLen; i++)
             {
                 string variantName = coreDefNodes[i].GetStringValue("variant", "Default");
-                coreDefs = SSTUModelData.getModelDefinitionLayouts(coreDefNodes[i].GetStringValues("model"));
+                coreDefs = SSTUModelData.getModelDefinitionLayouts(coreDefNodes[i].GetStringValues("model", true));
                 coreDefList.AddUniqueRange(coreDefs);
                 ModelDefinitionVariantSet mdvs = getVariantSet(variantName);
                 mdvs.addModels(coreDefs);
