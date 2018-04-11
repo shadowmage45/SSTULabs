@@ -542,8 +542,8 @@ namespace SSTUTools
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
             mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), null, nameof(currentMountTexture), nameof(mountModuleData), null, null, null, null);
-            mountModule.getSymmetryModule = m => m.mountModule; 
-            //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
+            mountModule.getSymmetryModule = m => m.mountModule;
+            mountModule.getValidOptions = () => currentEngineLayout.getMountModelDefinitions();
         }
 
         private void outputMountInfo()
@@ -588,6 +588,7 @@ namespace SSTUTools
             if (currentMountDiameter > mountData.maxDiameter) { currentMountDiameter = mountData.maxDiameter; }
             if (currentMountDiameter < mountData.minDiameter) { currentMountDiameter = mountData.minDiameter; }
             mountModule.setupModel();
+            mountModule.updateSelections();
         }
 
         /// <summary>
@@ -963,7 +964,9 @@ namespace SSTUTools
         private readonly SSTUEngineLayout layoutData;
 
         //available mounts for this layout
-        public EngineClusterLayoutMountData[] mountData;
+        public readonly EngineClusterLayoutMountData[] mountData;
+
+        private ModelDefinitionLayoutOptions[] mountDefCache;
 
         public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float engineScale, float moduleEngineSpacing, float moduleMountSize, float increment, bool upperMounts, bool lowerMounts)
         {
@@ -1157,9 +1160,14 @@ namespace SSTUTools
             return Array.Find(mountData, m => m.name == mountName) != null;
         }
 
-        public ModelDefinition[] getMountModelDefinitions()
+        public ModelDefinitionLayoutOptions[] getMountModelDefinitions()
         {
-            return SSTUModelData.getModelDefinitions(SSTUUtils.getNames(mountData, m => m.name));
+            if (mountDefCache == null)
+            {
+                string[] names = SSTUUtils.getNames(mountData, m => m.name);
+                mountDefCache = SSTUModelData.getModelDefinitionLayouts(names);
+            }
+            return mountDefCache;
         }
 
         public EngineClusterLayoutMountData getMountData(String mountName)
