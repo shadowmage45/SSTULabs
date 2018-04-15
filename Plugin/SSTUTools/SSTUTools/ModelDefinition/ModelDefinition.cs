@@ -652,6 +652,7 @@ namespace SSTUTools
 
             public ModelSolarDataPivot(ConfigNode node)
             {
+                transformName = node.GetStringValue("pivot");
                 pivotIndex = node.GetIntValue("pivotIndex", 0);
                 pivotSpeed = node.GetFloatValue("pivotSpeed", 1);
                 rotAxis = node.getAxis("rotAxis", Axis.YPlus);
