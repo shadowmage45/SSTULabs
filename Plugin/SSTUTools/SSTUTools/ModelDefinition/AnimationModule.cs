@@ -65,7 +65,7 @@ namespace SSTUTools
         /// <summary>
         /// Internal cache of the current list of animation data blocks.
         /// </summary>
-        private List<SSTUAnimData> animationData = new List<SSTUAnimData>();
+        private List<ModelAnimationDataControl> animationData = new List<ModelAnimationDataControl>();
 
         /// <summary>
         /// Internal cache of the current animation position.
@@ -500,7 +500,9 @@ namespace SSTUTools
     }
 
     /// <summary>
-    /// Container class for managing all of the AnimationData corresponding to a single ModelDefinition.<para/>
+    /// Container class for managing all of the AnimationData corresponding to a single animation control.<para/>
+    /// Used by ModelDefinition (which only supports a single animation control set), and AnimateControlled<para/>
+    /// Wraps one or more Animation components.  May control only -some- of the animations on a part.<para/>
     /// Includes UI label, deploy limit, and flight/editor/unfocused/uncommanded/eva active control specifications.
     /// </summary>
     public class AnimationData
@@ -555,13 +557,13 @@ namespace SSTUTools
             mads = new ModelAnimationData[0];
         }
 
-        public SSTUAnimData[] getAnimationData(Transform transform, int startLayer)
+        public ModelAnimationDataControl[] getAnimationData(Transform transform, int startLayer)
         {
             int len = mads.Length;
-            SSTUAnimData[] data = new SSTUAnimData[len];
+            ModelAnimationDataControl[] data = new ModelAnimationDataControl[len];
             for (int i = 0; i < len; i++, startLayer++)
             {
-                data[i] = new SSTUAnimData(mads[i].animationName, mads[i].speed, startLayer, transform, mads[i].isLoop);
+                data[i] = new ModelAnimationDataControl(mads[i].animationName, mads[i].speed, startLayer, transform, mads[i].isLoop);
             }
             return data;
         }
@@ -569,9 +571,57 @@ namespace SSTUTools
     }
 
     /// <summary>
-    /// Wrapper class for the data to manage a single animation, including animation speed and layers, and min/max time handling (default to 0-1 normalized time)
+    /// Stores the data defining a single animation
+    /// Should include animation name, default speed
     /// </summary>
-    public class SSTUAnimData
+    public class ModelAnimationData
+    {
+
+        /// <summary>
+        /// The name of the AnimationClip.
+        /// </summary>
+        public readonly string animationName;
+
+        /// <summary>
+        /// A multiplier applied to the speed of the animation as it was compiled.
+        /// </summary>
+        public readonly float speed;
+
+        /// <summary>
+        /// Is this animation of type LOOP?  Used in compound animation setups to determine what is the 'intro' and what are the 'loop' animation types.
+        /// </summary>
+        public readonly bool isLoop;
+
+        /// <summary>
+        /// Used to increment the base animation layer that is passed into the ModelModule animation handling, in the case of a single model-definition requiring multiple layers.
+        /// This must also be accounted for in the PartModule setup itself, or the layers might overrun into values used by other model slots.
+        /// </summary>
+        public readonly int layerOffset;//offset applied to the 'base' layer
+
+        public ModelAnimationData(ConfigNode node)
+        {
+            animationName = node.GetStringValue("name");
+            speed = node.GetFloatValue("speed", 1f);
+            isLoop = node.GetBoolValue("loop", false);
+        }
+
+        public static ModelAnimationData[] parseAnimationData(ConfigNode[] nodes)
+        {
+            int len = nodes.Length;
+            ModelAnimationData[] data = new ModelAnimationData[len];
+            for (int i = 0; i < len; i++)
+            {
+                data[i] = new ModelAnimationData(nodes[i]);
+            }
+            return data;
+        }
+    }
+
+    /// <summary>
+    /// Runtime wrapper class for the data to manage a single animation, including animation speed and layers, and min/max time handling (default to 0-1 normalized time)<para/>
+    /// This is the class that would be used internally to manage the start/stopped state of an animation.  Directly interfaces with the Unity Animation class.
+    /// </summary>
+    public class ModelAnimationDataControl
     {
         private Animation[] animations;
         public readonly String animationName;
@@ -580,7 +630,7 @@ namespace SSTUTools
         public float maxDeployTime = 1f;
         public bool isLoop;//TODO -- support looping animation
 
-        public SSTUAnimData(ConfigNode node, Transform transform)
+        public ModelAnimationDataControl(ConfigNode node, Transform transform)
         {
             animationName = node.GetStringValue("name");
             animationSpeed = node.GetFloatValue("speed", animationSpeed);
@@ -589,7 +639,7 @@ namespace SSTUTools
             setupController(animationName, animationSpeed, animationLayer, transform);
         }
 
-        public SSTUAnimData(String name, float speed, int layer, Transform transform, bool loop)
+        public ModelAnimationDataControl(String name, float speed, int layer, Transform transform, bool loop)
         {
             animationName = name;
             animationSpeed = speed;
@@ -781,5 +831,6 @@ namespace SSTUTools
         }
 
     }
+
 
 }

@@ -21,6 +21,9 @@ namespace SSTUTools
         [KSPField]
         public FloatCurve temperatureEfficCurve;
 
+        [KSPField]
+        public int animationLayer = 1;
+
         //[KSPField]
         //public bool canLockPanels = true;
 
@@ -161,17 +164,38 @@ namespace SSTUTools
             }
             if (initialized) { return; }
             initialized = true;
+            AnimationData animData = null;
+            ModelSolarData msd = null;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+            if (node.HasValue("modelDefinition"))
+            {
+                ModelDefinition def = SSTUModelData.getModelDefinition(node.GetStringValue("modelDefinition"));
+                if (def == null)
+                {
+                    MonoBehaviour.print("Could not locate model definition: " + node.GetStringValue("modelDefinition") + " for solar data");
+                }
+                else
+                {
+                    animData = def.animationData;
+                    msd = def.solarData;
+                }
+            }
+            //allow local override of animation data
+            if (node.HasNode("ANIMATIONDATA"))
+            {
+                animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+            }
+            if (node.HasNode("SOLARDATA"))
+            {
+                msd = new ModelSolarData(node.GetNode("SOLARDATA"));
+            }
 
             animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(extendEvent), nameof(retractEvent));
             animationModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).animationModule;
-            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);//TODO -- set animation layer for solar panel deploy animation from part/module config value
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
 
             solarModule = new SolarModule(part, this, animationModule, Fields[nameof(solarPersistentData)], Fields[nameof(guiStatus)]);
             solarModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).solarModule;
-            ModelSolarData msd = null;
-            MonoBehaviour.print("TODO -- setup model solar data for stand-alone solar panel.  Can parse from config node?");
             solarModule.setupSolarPanelData(new ModelSolarData[] { msd }, new Transform[] { part.transform.FindRecursive("model") });
         }
         

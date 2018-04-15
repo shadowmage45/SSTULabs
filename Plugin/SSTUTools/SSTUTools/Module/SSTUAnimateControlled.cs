@@ -22,6 +22,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float animationMaxDeploy = 1;
 
+        [KSPField]
+        public int animationLayer = 1;
+
         [KSPField(isPersistant = true)]
         public String persistentState = AnimState.STOPPED_START.ToString();
 
@@ -149,7 +152,7 @@ namespace SSTUTools
 
             animationModule = new AnimationModule(part, this, nameof(persistentState), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             animationModule.getSymmetryModule = m => ((SSTUAnimateControlled)m).animationModule;
-            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
             animationModule.onAnimStateChangeCallback = onAnimStateChange;
         }
 
