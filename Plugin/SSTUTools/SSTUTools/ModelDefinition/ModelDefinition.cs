@@ -675,7 +675,7 @@ namespace SSTUTools
                 transformName = node.GetStringValue("suncatcher");
                 suncatcherIndex = node.GetIntValue("suncatcherIndex", 0);
                 rate = node.GetFloatValue("rate", 0);
-                sunAxis = node.getAxis("suncatcherAxis");
+                sunAxis = node.getAxis("suncatcherAxis", Axis.ZPlus);
             }
 
         }
