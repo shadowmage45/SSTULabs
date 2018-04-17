@@ -86,22 +86,15 @@ namespace SSTUTools
         {
             if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
-                List<IPartTextureUpdated> iptu = part.FindModulesImplementing<IPartTextureUpdated>();
-                int len = iptu.Count;
-                for (int i = 0; i < len; i++)
-                {
-                    iptu[i].textureUpdated(part);
-                }
+                TextureCallbacks.onTextureSetChanged(part);
             }
         }
 
         private static void partGeometryUpdate(Part part)
         {
-            List<IPartGeometryUpdated> ipgu = part.FindModulesImplementing<IPartGeometryUpdated>();
-            int len = ipgu.Count;
-            for (int i = 0; i < len; i++)
+            if (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight)
             {
-                ipgu[i].geometryUpdated(part);
+                TextureCallbacks.onPartModelChanged(part);
             }
         }
 

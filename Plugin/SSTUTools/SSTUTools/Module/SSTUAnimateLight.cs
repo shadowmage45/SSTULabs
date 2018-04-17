@@ -5,10 +5,8 @@ using UnityEngine;
 namespace SSTUTools
 {
     /// <summary>
-    /// Responsible for config-based simple lighting animation.
-    /// Cannot/does not move transforms (hanlded through link to SSTUAnimateControlled).
-    /// Intended handle float-curve based animations for emissive and light-transform setups.
-    /// Loop animation will play from front-back-front-back, etc; front (start) should be the same state as the end as the on animation (not enforced...)
+    /// Responsible for config-based lighting animations.
+    /// Can be linked into existing animations on the part to force simultaneous playing
     /// </summary>
     public class SSTUAnimateLight : PartModule
     {
@@ -24,40 +22,7 @@ namespace SSTUTools
         }
 
         [KSPField]
-        public FloatCurve emissiveOnRedCurve;
-        [KSPField]
-        public FloatCurve emissiveOnBlueCurve;
-        [KSPField]
-        public FloatCurve emissiveOnGreenCurve;
-        [KSPField]
-        public FloatCurve emissiveLoopRedCurve;
-        [KSPField]
-        public FloatCurve emissiveLoopBlueCurve;
-        [KSPField]
-        public FloatCurve emissiveLoopGreenCurve;
-        [KSPField]
-        public FloatCurve lightOnRedCurve;
-        [KSPField]
-        public FloatCurve lightOnBlueCurve;
-        [KSPField]
-        public FloatCurve lightOnGreenCurve;
-        [KSPField]
-        public FloatCurve lightLoopRedCurve;
-        [KSPField]
-        public FloatCurve lightLoopBlueCurve;
-        [KSPField]
-        public FloatCurve lightLoopGreenCurve;
-
-        //length of the 'lights-on' animation
-        [KSPField]
-        public float animationOnTime = 1;
-
-        //length of the 'loop' animation, 0 for non-looping (will play last frame of 'on' animation)
-        [KSPField]
-        public float animationLoopTime = 0;
-
-        [KSPField]
-        public String actionName = "Lights";
+        public int animationLayer = 0;
 
         [KSPField]
         public String resourceToUse = "ElectricCharge";
@@ -66,64 +31,41 @@ namespace SSTUTools
         public float resourceUse = 0f;
 
         [KSPField(isPersistant = true)]
-        public float progress = 0;
-
-        [KSPField(isPersistant = true)]
-        public String statePersistence = LightAnimationState.OFF.ToString();
-
-        [KSPField]
-        public string animationID = string.Empty;
+        public string animationPersistentData = AnimState.STOPPED_START.ToString();
 
         [Persistent]
         public string configNodeData = string.Empty;
 
-        private bool initialized = false;
-        private LightAnimationState state = LightAnimationState.OFF;
-        private SSTUAnimateControlled animationController;
-        private List<Renderer> emissiveRenderers = new List<Renderer>();
-        private LightData[] lightTransforms;
-        private int shaderEmissiveID;
+        [Persistent]
+        public bool prefabSetup = false;
 
-        private Color color = new Color(0, 0, 0);
-        private MaterialPropertyBlock matProps;
+        private bool initialized = false;
+
+        private AnimationModule animationController;
+
+        #region REGION - UI interaction methods
 
         [KSPAction("Toggle Lights", KSPActionGroup.Light)]
-        public void enableLightsAction(KSPActionParam param)
+        public void toggleLightsAction(KSPActionParam param)
         {
-            if ((param.type == KSPActionType.Deactivate && state == LightAnimationState.OFF) || (param.type==KSPActionType.Activate && state!=LightAnimationState.OFF)) { return; }
-            enableLightsEvent();
+            animationController.onToggleAction(param);
         }
 
         [KSPEvent(guiName = "Enable Lights", guiActive = true, guiActiveEditor = true)]
         public void enableLightsEvent()
         {
-            switch (state)
-            {
-                case LightAnimationState.OFF:
-                    setState(LightAnimationState.TURNING_ON);
-                    break;
-                case LightAnimationState.TURNING_ON:
-                    setState(LightAnimationState.TURNING_OFF);
-                    break;
-                case LightAnimationState.ON:
-                    setState(LightAnimationState.TURNING_OFF);
-                    break;
-                case LightAnimationState.LOOPING_FORWARD:
-                    setState(LightAnimationState.TURNING_OFF_LOOP);
-                    break;
-                case LightAnimationState.LOOPING_BACKWARD:
-                    setState(LightAnimationState.TURNING_OFF_LOOP);
-                    break;
-                case LightAnimationState.TURNING_OFF_LOOP:
-                    setState(LightAnimationState.LOOPING_FORWARD);
-                    break;
-                case LightAnimationState.TURNING_OFF:
-                    setState(LightAnimationState.TURNING_ON);
-                    break;
-                default:
-                    break;
-            }
+            animationController.onDeployEvent();
         }
+
+        [KSPEvent(guiName = "Disable Lights", guiActive = true, guiActiveEditor = true)]
+        public void disableLightsEvent()
+        {
+            animationController.onRetractEvent();
+        }
+
+        #endregion ENDREGION - UI interaction methods
+
+        #region REGION - KSP Overrides
 
         public override void OnLoad(ConfigNode node)
         {
@@ -138,371 +80,202 @@ namespace SSTUTools
             initialize();
         }
 
-        public void Start()
+        public void Update()
         {
-            if (!string.IsNullOrEmpty(animationID))
-            {
-                animationController = SSTUAnimateControlled.locateAnimationController(part, animationID);
-            }
-            updateAnimationControllerState();
-        }
-
-        public override void OnAwake()
-        {
-            base.OnAwake();
-            //set up the default curves, for if none are specified in the config
-            emissiveOnRedCurve = new FloatCurve();
-            emissiveOnRedCurve.Add(0, 0);
-            emissiveOnRedCurve.Add(1, 1);
-            emissiveOnBlueCurve = new FloatCurve();
-            emissiveOnBlueCurve.Add(0, 0);
-            emissiveOnBlueCurve.Add(1, 1);
-            emissiveOnGreenCurve = new FloatCurve();
-            emissiveOnGreenCurve.Add(0, 0);
-            emissiveOnGreenCurve.Add(1, 1);
-
-            lightOnRedCurve = new FloatCurve();
-            lightOnRedCurve.Add(0, 0);
-            lightOnRedCurve.Add(1, 1);
-            lightOnBlueCurve = new FloatCurve();
-            lightOnBlueCurve.Add(0, 0);
-            lightOnBlueCurve.Add(1, 1);
-            lightOnGreenCurve = new FloatCurve();
-            lightOnGreenCurve.Add(0, 0);
-            lightOnGreenCurve.Add(1, 1);
-
-            emissiveLoopRedCurve = new FloatCurve();
-            emissiveLoopRedCurve.Add(0, 0);
-            emissiveLoopRedCurve.Add(1, 1);
-            emissiveLoopBlueCurve = new FloatCurve();
-            emissiveLoopBlueCurve.Add(0, 0);
-            emissiveLoopBlueCurve.Add(1, 1);
-            emissiveLoopGreenCurve = new FloatCurve();
-            emissiveLoopGreenCurve.Add(0, 0);
-            emissiveLoopGreenCurve.Add(1, 1);
-
-            lightLoopRedCurve = new FloatCurve();
-            lightLoopRedCurve.Add(0, 0);
-            lightLoopRedCurve.Add(1, 1);
-            lightLoopBlueCurve = new FloatCurve();
-            lightLoopBlueCurve.Add(0, 0);
-            lightLoopBlueCurve.Add(1, 1);
-            lightLoopGreenCurve = new FloatCurve();
-            lightLoopGreenCurve.Add(0, 0);
-            lightLoopGreenCurve.Add(1, 1);
-
-            shaderEmissiveID = Shader.PropertyToID("_EmissiveColor");
-            matProps = new MaterialPropertyBlock();
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//only operate flight/editor scenes
+            animationController.Update();
         }
 
         public void FixedUpdate()
         {
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//only operate flight/editor scenes
-            switch (state)
+            if (resourceUse > 0 && animationController.animState != AnimState.STOPPED_START)
             {
-                case LightAnimationState.OFF:
-                    break;
-                case LightAnimationState.TURNING_ON:
-                    progress += TimeWarp.fixedDeltaTime;
-                    if (progress >= animationOnTime)
-                    {
-                        if (animationLoopTime > 0)
-                        {
-                            progress = 0;
-                            setState(LightAnimationState.LOOPING_FORWARD);
-                        }
-                        else
-                        {
-                            progress = 1;
-                            setState(LightAnimationState.ON);
-                        }
-                    }
-                    else
-                    {
-                        updateLights(progress, false);
-                    }
-                    break;
-                case LightAnimationState.ON:
-                    break;
-                case LightAnimationState.LOOPING_FORWARD:
-                    progress += TimeWarp.fixedDeltaTime;
-                    if (progress >= animationLoopTime)
-                    {
-                        progress = animationLoopTime;
-                        setState(LightAnimationState.LOOPING_BACKWARD);
-                    }
-                    else
-                    {
-                        updateLights(progress, true);
-                    }
-                    break;
-                case LightAnimationState.LOOPING_BACKWARD:
-                    progress -= TimeWarp.fixedDeltaTime;
-                    if (progress <= 0)
-                    {
-                        progress = 0;
-                        setState(LightAnimationState.LOOPING_FORWARD);
-                    }
-                    else
-                    {
-                        updateLights(progress, true);
-                    }
-                    break;
-                case LightAnimationState.TURNING_OFF_LOOP:
-                    if (animationLoopTime > 0)
-                    {
-                        progress -= TimeWarp.fixedDeltaTime;
-                        if (progress <= 0)
-                        {
-                            progress = 0;
-                            setState(LightAnimationState.TURNING_OFF);
-                        }
-                        else
-                        {
-                            updateLights(progress, true);
-                        }
-                    }
-                    break;
-                case LightAnimationState.TURNING_OFF:
-                    progress -= TimeWarp.fixedDeltaTime;
-                    if (progress <= 0)
-                    {
-                        progress = 0;
-                        setState(LightAnimationState.OFF);
-                    }
-                    else
-                    {
-                        updateLights(progress, false);
-                    }
-                    break;
+
             }
         }
 
-        public void Update()
-        {
-            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }//only operate flight/editor scenes
-            if (!initialized) { return; }
-            updateMeshEmissives(progress, state == LightAnimationState.LOOPING_BACKWARD || state==LightAnimationState.LOOPING_FORWARD);
-        }
+        #endregion ENDREGION - KSP Overrides
 
         private void initialize()
         {
             if (initialized) { return; }
             initialized = true;
             loadConfigData(SSTUConfigNodeUtils.parseConfigNode(configNodeData));
-            setState(state);
         }
 
         private void loadConfigData(ConfigNode node)
         {
-            ConfigNode[] emissiveNodes = node.GetNodes("EMISSIVE");
-            ConfigNode[] lightNodes = node.GetNodes("LIGHT");
-            emissiveRenderers.Clear();
-            Renderer render;
-            foreach(ConfigNode enode in emissiveNodes)
+            //should only run the first time the part-module is initialized, 
+            // which had better be on the prefab part (or bad things will happen)
+            // only tracked so as to not add duplicate animations/clips
+            if (!prefabSetup)
             {
-                Transform[] trs1 = part.transform.FindChildren(enode.GetStringValue("name"));
-                foreach (Transform tr in trs1)
+                prefabSetup = true;
+                Transform root = part.transform.FindRecursive("model");
+
+                ConfigNode[] emissiveNodes = node.GetNodes("EMISSIVE");
+                int len = emissiveNodes.Length;
+                EmissiveData[] emissiveDatas = new EmissiveData[len];
+                for (int i = 0; i < len; i++)
                 {
-                    render = tr.GetComponent<Renderer>();
-                    if (render != null)
-                    {
-                        emissiveRenderers.Add(render);
-                    }
+                    emissiveDatas[i] = new EmissiveData(emissiveNodes[i]);
+                    emissiveDatas[i].createAnimationClips(root);
+                }
+                
+                ConfigNode[] lightNodes = node.GetNodes("LIGHT");
+                len = lightNodes.Length;
+                LightData[] lightDatas = new LightData[lightNodes.Length];
+                for (int i = 0; i < len; i++)
+                {
+                    lightDatas[i] = new LightData(lightNodes[i]);
+                    lightDatas[i].createAnimationClips(root);
                 }
             }
-            lightTransforms = new LightData[lightNodes.Length];
-            for (int i = 0; i < lightNodes.Length; i++)
-            {
-                lightTransforms[i] = new LightData(lightNodes[i], part);
-            }            
-            state = (LightAnimationState)Enum.Parse(typeof(LightAnimationState), statePersistence);
+
+            //will not function without animation data being loaded/present
+            // the EMISSIVE and LIGHT blocks -build- new animations that can be
+            // referenced inside of the ANIMATION data blocks
+            AnimationData animData = new AnimationData(node.GetNode("ANIMATIONDATA"));
+
+            //setup animation control module.  limit/deploy/retract events passed as null, as UI visibility/updating handled externally to ensure syncing to light animation state
+            animationController = new AnimationModule(part, this, nameof(animationPersistentData), null, nameof(enableLightsEvent), nameof(disableLightsEvent));
+            animationController.getSymmetryModule = m => ((SSTUAnimateLight)m).animationController;
+            animationController.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
         }
 
-        private void setState(LightAnimationState state)
+        public static void createEmissiveAnimation(string clipName, Transform transform, FloatCurve r, FloatCurve g, FloatCurve b)
         {
-            this.state = state;
-            this.statePersistence = state.ToString();
-            String guiPrefix = String.Empty;
-            switch (state)
+            Type type = typeof(Material);
+            string propName = "_EmissiveColor";
+            Animation animationComponent = transform.GetComponent<Animation>();
+            if (animationComponent == null)
             {
-                case LightAnimationState.OFF:
-                    progress = 0;
-                    updateMeshEmissives(progress, false);
-                    updateLights(progress, false);
-                    enableLights(false);
-                    guiPrefix = "Enable";
-                    break;
-                case LightAnimationState.TURNING_ON:
-                    progress = 0;
-                    updateMeshEmissives(progress, false);
-                    updateLights(progress, false);
-                    enableLights(true);
-                    guiPrefix = "Disable";
-                    break;
-                case LightAnimationState.ON:
-                    progress = animationOnTime;
-                    updateMeshEmissives(progress, false);
-                    updateLights(progress, false);
-                    enableLights(true);
-                    guiPrefix = "Disable";
-                    break;
-                case LightAnimationState.LOOPING_FORWARD:
-                    progress = 0;
-                    updateMeshEmissives(progress, true);
-                    updateLights(progress, true);
-                    enableLights(true);
-                    guiPrefix = "Disable";
-                    break;
-                case LightAnimationState.LOOPING_BACKWARD:
-                    progress = animationLoopTime;
-                    updateMeshEmissives(progress, true);
-                    updateLights(progress, true);
-                    enableLights(true);
-                    guiPrefix = "Disable";
-                    break;
-                case LightAnimationState.TURNING_OFF_LOOP:
-                    updateMeshEmissives(progress, true);
-                    updateLights(progress, true);
-                    enableLights(true);
-                    guiPrefix = "Enable";
-                    break;
-                case LightAnimationState.TURNING_OFF:                    
-                    updateMeshEmissives(progress, false);
-                    updateLights(progress, false);
-                    enableLights(true);
-                    guiPrefix = "Enable";
-                    break;
-                default:
-                    break;
+                animationComponent = transform.gameObject.AddComponent<Animation>();
+                animationComponent.playAutomatically = false;
             }
-            updateAnimationControllerState();
-            Events["enableLightsEvent"].guiName = guiPrefix+ " " + actionName;
+
+            AnimationClip clip = new AnimationClip();
+            clip.name = clipName;
+            clip.legacy = true;
+            clip.SetCurve("", type, propName + ".r", r.Curve);
+            clip.SetCurve("", type, propName + ".g", g.Curve);
+            clip.SetCurve("", type, propName + ".b", b.Curve);
+            clip.SetCurve("", type, propName + ".a", AnimationCurve.Linear(0, 1, 1, 1));
+            animationComponent.AddClip(clip, clip.name);
         }
 
-        private void updateMeshEmissives(float progress, bool useLoop)
+        public static void createLightAnimation(string clipName, Transform transform, FloatCurve r, FloatCurve g, FloatCurve b)
         {
-            float p = progress / (useLoop ? animationLoopTime : animationOnTime);
-            FloatCurve rCurve = useLoop?emissiveOnRedCurve : emissiveLoopRedCurve, bCurve = useLoop?emissiveOnBlueCurve:emissiveLoopBlueCurve, gCurve=useLoop?emissiveOnGreenCurve:emissiveOnBlueCurve;
-            color.r = rCurve.Evaluate(p);
-            color.b = bCurve.Evaluate(p);
-            color.g = gCurve.Evaluate(p);
-            int len = emissiveRenderers.Count;
+            Type type = typeof(Light);
+            string propName = "m_color";
+
+            Animation animationComponent = transform.GetComponent<Animation>();
+            if (animationComponent == null)
+            {
+                animationComponent = transform.gameObject.AddComponent<Animation>();
+                animationComponent.playAutomatically = false;
+            }
+
+            AnimationClip clip = new AnimationClip();
+            clip.name = clipName;
+            clip.legacy = true;
+            clip.SetCurve("", type, propName + ".r", r.Curve);
+            clip.SetCurve("", type, propName + ".g", g.Curve);
+            clip.SetCurve("", type, propName + ".b", b.Curve);
+            clip.SetCurve("", type, "m_Enabled", AnimationCurve.Linear(0, 0, 0.001f, 1));
+            animationComponent.AddClip(clip, clip.name);
+        }
+        
+        public static FloatCurve createDefaultCurve()
+        {
+            FloatCurve fc = new FloatCurve();
+            fc.Add(0, 0);
+            fc.Add(1, 1);
+            return fc;
+        }
+
+    }
+
+    public class EmissiveData
+    {
+        public readonly string name;
+        public readonly string transformName;
+        public readonly FloatCurve redCurve;
+        public readonly FloatCurve greenCurve;
+        public readonly FloatCurve blueCurve;
+        
+        public EmissiveData(ConfigNode node)
+        {
+            this.name = node.GetStringValue("name", "emissiveAnimation");
+            this.transformName = node.GetStringValue("transformName");
+            redCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
+            greenCurve = node.HasNode("greenCurve") ? node.GetFloatCurve("greenCurve") : SSTUAnimateLight.createDefaultCurve();
+            blueCurve = node.HasNode("blueCurve") ? node.GetFloatCurve("blueCurve") : SSTUAnimateLight.createDefaultCurve();
+        }
+
+        public void createAnimationClips(Transform root)
+        {
+            Transform[] transforms = root.FindChildren(transformName);
+            int len = transforms.Length;
             for (int i = 0; i < len; i++)
             {
-                if (emissiveRenderers[i] != null)
-                {
-                    emissiveRenderers[i].GetPropertyBlock(matProps);
-                    matProps.SetColor(shaderEmissiveID, color);
-                    emissiveRenderers[i].SetPropertyBlock(matProps);
-                }
-            }
-        }
-
-        private void updateLights(float progress, bool useLoop)
-        {
-            float p = progress / (useLoop ? animationLoopTime : animationOnTime);
-            if (float.IsNaN(p)) { p = 0; }
-            FloatCurve rCurve = useLoop ? lightLoopRedCurve : lightOnRedCurve, bCurve = useLoop ? lightLoopBlueCurve : lightOnBlueCurve, gCurve = useLoop ? lightLoopGreenCurve : lightOnGreenCurve;
-            color.r = rCurve.Evaluate(p);
-            color.b = bCurve.Evaluate(p);
-            color.g = gCurve.Evaluate(p);
-            foreach (LightData tr in lightTransforms)
-            {
-                tr.setColor(color);
-            }
-        }
-
-        private void enableLights(bool enable)
-        {
-            foreach (LightData data in lightTransforms)
-            {
-                if (enable) { data.enableLight(); }
-                else { data.disableLight(); }
-            }
-        }
-
-        private void updateAnimationControllerState()
-        {
-            if (animationController == null) { return; }
-            AnimState newState = AnimState.STOPPED_START;
-            switch (state)
-            {
-                case LightAnimationState.OFF:
-                    newState = AnimState.STOPPED_START;
-                    break;
-                case LightAnimationState.TURNING_ON:
-                    newState = AnimState.PLAYING_FORWARD;
-                    break;
-                case LightAnimationState.ON:
-                    newState = AnimState.STOPPED_END;
-                    break;
-                case LightAnimationState.LOOPING_FORWARD:
-                    newState = AnimState.STOPPED_END;
-                    break;
-                case LightAnimationState.LOOPING_BACKWARD:
-                    newState = AnimState.STOPPED_END;
-                    break;
-                case LightAnimationState.TURNING_OFF_LOOP:
-                    newState = AnimState.STOPPED_END;
-                    break;
-                case LightAnimationState.TURNING_OFF:
-                    newState = AnimState.PLAYING_BACKWARD;
-                    break;
-                default:
-                    break;
-            }
-            animationController.setToState(newState);
+                SSTUAnimateLight.createEmissiveAnimation(name, transforms[i], redCurve, greenCurve, blueCurve);
+            }            
         }
 
     }
 
     public class LightData
     {
-        public String name;//read
+        public string name;//read
+        public string transformName;
         public float intensity;//read
         public float range;//read
         public float angle;//read
         public LightType type;//read
+        public readonly FloatCurve redCurve;
+        public readonly FloatCurve greenCurve;
+        public readonly FloatCurve blueCurve;
 
-        public Transform transform;
-        public Light light;
-
-        public LightData(ConfigNode node, Part part)
+        public LightData(ConfigNode node)
         {
-            name = node.GetStringValue("name");
+            name = node.GetStringValue("name", "lightAnimation");
+            transformName = node.GetStringValue("transformName");
             intensity = node.GetFloatValue("intensity");
             range = node.GetFloatValue("range");
             angle = node.GetFloatValue("angle");
             type = (LightType)Enum.Parse(typeof(LightType), node.GetStringValue("type", LightType.Point.ToString()));
+            redCurve = node.HasNode("redCurve") ? node.GetFloatCurve("redCurve") : SSTUAnimateLight.createDefaultCurve();
+            greenCurve = node.HasNode("greenCurve") ? node.GetFloatCurve("greenCurve") : SSTUAnimateLight.createDefaultCurve();
+            blueCurve = node.HasNode("blueCurve") ? node.GetFloatCurve("blueCurve") : SSTUAnimateLight.createDefaultCurve();
+        }
 
-            transform = part.transform.FindRecursive(name);
-            light = transform.GetComponent<Light>();
-            if (light == null)
+        public void createAnimationClips(Transform root)
+        {
+            Transform[] transforms = root.FindChildren(transformName);
+            int len = transforms.Length;
+            
+            Transform transform;
+            Light light;
+            for (int i = 0; i < len; i++)
             {
-                light = transform.gameObject.AddComponent<Light>();//add it if it does not exist                
+                transform = transforms[i];
+                light = transform.GetComponent<Light>();
+                if (light == null)
+                {
+                    light = transform.gameObject.AddComponent<Light>();//add it if it does not exist                
+                }
+
+                //set light params to the config specified parameters
+                light.intensity = intensity;
+                light.range = range;
+                light.spotAngle = angle;
+                light.type = type;
+                light.cullingMask = light.cullingMask & ~(1 << 10);//flip the layer 10 bit to ignore scaled scenery, keep existing mask except for layer 10
+                SSTUAnimateLight.createLightAnimation(name, transforms[i], redCurve, greenCurve, blueCurve);
             }
-
-            light.intensity = intensity;
-            light.range = range;
-            light.spotAngle = angle;
-            light.type = type;
-            light.cullingMask = light.cullingMask & ~(1<<10);//flip the layer 10 bit to ignore scaled scenery, keep existing mask except for layer 10
         }
 
-        public void setColor(Color color)
-        {
-            light.color = color;
-        }
-
-        public void enableLight()
-        {
-            light.enabled = true;
-        }
-
-        public void disableLight()
-        {
-            light.enabled = false;
-        }
     }
+
 }

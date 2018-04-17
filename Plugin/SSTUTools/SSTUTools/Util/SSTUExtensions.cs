@@ -9,10 +9,27 @@ namespace SSTUTools
     {
         #region ConfigNode extension methods
 
-        public static String[] GetStringValues(this ConfigNode node, String name)
+        public static String[] GetStringValues(this ConfigNode node, String name, bool reverse = false)
         {
-            String[] values = node.GetValues(name);
-            return values == null ? new String[0] : values;
+            string[] values = node.GetValues(name);
+            int l = values.Length;
+            if (reverse)
+            {
+                int len = values.Length;
+                string[] returnValues = new string[len];
+                for (int i = 0, k = len - 1; i < len; i++, k--)
+                {
+                    returnValues[i] = values[k];
+                }
+                return returnValues;
+            }
+            return values;
+        }
+
+        public static string[] GetStringValues(this ConfigNode node, string name, string[] defaults, bool reverse = false)
+        {
+            if (node.HasValue(name)) { return node.GetStringValues(name, reverse); }
+            return defaults;
         }
 
         public static string GetStringValue(this ConfigNode node, String name, String defaultValue)
@@ -270,6 +287,13 @@ namespace SSTUTools
             return color;
         }
 
+        public static Axis getAxis(this ConfigNode node, string name, Axis def = Axis.ZPlus)
+        {
+            string val = node.GetStringValue(name, def.ToString());
+            Axis axis = (Axis)Enum.Parse(typeof(Axis), val);
+            return axis;
+        }
+
         #endregion
 
         #region Transform extensionMethods
@@ -419,6 +443,48 @@ namespace SSTUTools
             return false;
         }
 
+        public static Vector3 getTransformAxis(this Transform transform, Axis axis)
+        {
+            switch (axis)
+            {
+                case Axis.XPlus:
+                    return transform.right;
+                case Axis.XNeg:
+                    return -transform.right;
+                case Axis.YPlus:
+                    return transform.up;
+                case Axis.YNeg:
+                    return -transform.up;
+                case Axis.ZPlus:
+                    return transform.forward;
+                case Axis.ZNeg:
+                    return -transform.forward;
+                default:
+                    return transform.forward;
+            }
+        }
+
+        public static Vector3 getLocalAxis(this Transform transform, Axis axis)
+        {
+            switch (axis)
+            {
+                case Axis.XPlus:
+                    return Vector3.right;
+                case Axis.XNeg:
+                    return Vector3.left;
+                case Axis.YPlus:
+                    return Vector3.up;
+                case Axis.YNeg:
+                    return Vector3.down;
+                case Axis.ZPlus:
+                    return Vector3.forward;
+                case Axis.ZNeg:
+                    return Vector3.back;
+                default:
+                    return Vector3.forward;
+            }
+        }
+
         #endregion
 
         #region PartModule extensionMethods
@@ -502,6 +568,7 @@ namespace SSTUTools
         {
             if (display.Length == 0 && options.Length > 0) { display = new string[] { "NONE" }; }
             if (options.Length == 0) { options = new string[] { "NONE" }; }
+            module.Fields[fieldName].guiActive = module.Fields[fieldName].guiActiveEditor = options.Length > 1;
             UI_ChooseOption widget = null;
             if (HighLogic.LoadedSceneIsEditor)
             {
@@ -511,8 +578,14 @@ namespace SSTUTools
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlFlight;
             }
-            else { return; }
-            if (widget == null) { return; }
+            else
+            {
+                return;
+            }
+            if (widget == null)
+            {
+                return;
+            }
             widget.display = display;
             widget.options = options;
             if (forceUpdate && widget.partActionItem != null)
@@ -659,6 +732,38 @@ namespace SSTUTools
         #endregion
 
         #region Generic extension and Utiltiy methods
+
+        /// <summary>
+        /// Return true/false if the input array contains at least one element that satsifies the input predicate.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array"></param>
+        /// <param name="predicate"></param>
+        /// <returns></returns>
+        public static bool Exists<T>(this T[] array, Func<T,bool> predicate)
+        {
+            int len = array.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (predicate(array[i])) { return true; }
+            }
+            return false;
+        }
+
+        public static T Find<T>(this T[] array, Func<T, bool> predicate)
+        {
+            int len = array.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (predicate(array[i]))
+                {
+                    return array[i];
+                }
+            }
+            //return default in order to properly handle value types (structs)
+            //should return either null for reference types or default value for structs
+            return default(T);
+        }
 
         public static String Print(this FloatCurve curve)
         {

@@ -8,7 +8,6 @@ namespace SSTUTools
     {
         public String rootName = "PModel";
         public GameObject root;
-        protected Material currentMaterial;
 
         protected bool meshColliderEnabled = false;
         protected bool meshColliderConvex = false;
@@ -27,41 +26,25 @@ namespace SSTUTools
         {
             root = new GameObject(rootName);
             generateModel(root);
-            updateModelMaterial();
         }
         
         public void recreateModel()
         {
             destroyModel();
             generateModel(root);
-            updateModelMaterial();
         }
         
         public void destroyModel()
         {
             SSTUUtils.destroyChildren(root.transform);
         }
-        
-        public void setMaterial(Material mat)
-        {
-            currentMaterial = mat;
-            updateModelMaterial();
-        }
 
         public void enableTextureSet(string name, RecoloringData[] userColors)
         {
-            TextureSet s = KSPShaderLoader.getTextureSet(name);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(name);
             if (s != null)
             {
-                s.enable(root, userColors);
-            }
-        }
-        
-        protected void updateModelMaterial()
-        {
-            if (root != null)
-            {
-                SSTUUtils.setMaterialRecursive(root.transform, currentMaterial);
+                s.enable(root.transform, userColors);
             }
         }
     }

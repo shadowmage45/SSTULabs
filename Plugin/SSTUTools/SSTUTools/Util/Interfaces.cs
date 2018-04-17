@@ -12,5 +12,12 @@ namespace SSTUTools
         int[] getContainerIndices();
         float[] getContainerVolumes();
     }
+    
+    public interface ISSTUAnimatedModule
+    {
+        AnimState getAnimationState();
+        void setAnimationState(AnimState newState);
+    }
+
 
 }

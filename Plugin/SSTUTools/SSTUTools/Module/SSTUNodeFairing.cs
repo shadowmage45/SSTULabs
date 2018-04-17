@@ -203,10 +203,7 @@ namespace SSTUTools
         //private vars set from examining the individual fairing sections; these basically control gui enabled/disabled status
         private bool enableBottomDiameterControls;
         private bool enableTopDiameterControls;
-        
-        //material used for procedural fairing, created from the texture references in the texture set definitions
-        private Material fairingMaterial;
-        
+
         /// <summary>
         /// Used as part of attach-node detection.  Set to a part when a part is attached to the 'watchedNode'. 
         /// Used to monitor when the part is detached in flight, to trigger jettison/reparenting of the fairing panels.
@@ -515,7 +512,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentTextureSet);
+            return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
         }
 
         #endregion
@@ -655,11 +652,11 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = TextureSet.getTextureSetNames(textureNodes);
             string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
                 currentTextureSet = names[0];
-                t = KSPShaderLoader.getTextureSet(currentTextureSet);
+                t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -668,7 +665,6 @@ namespace SSTUTools
                 recolorHandler.setColorData(t.maskColors);
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
         }
 
         /// <summary>
@@ -848,7 +844,7 @@ namespace SSTUTools
                 fairingParts[i].generateColliders = this.generateColliders;
                 fairingParts[i].facesPerCollider = 1;
                 fairingParts[i].numOfSections = (int)Math.Round(numOfSections);
-                fairingParts[i].createFairing(fairingMaterial, editorTransparency ? 0.25f : 1f);
+                fairingParts[i].createFairing(editorTransparency ? 0.25f : 1f);
             }
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
@@ -878,7 +874,7 @@ namespace SSTUTools
         
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             int len = fairingParts.Length;
             for (int i = 0; i < len; i++)

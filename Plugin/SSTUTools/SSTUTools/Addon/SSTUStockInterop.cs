@@ -20,7 +20,7 @@ namespace SSTUTools
         public void Start()
         {
             INSTANCE = this;
-            KSPShaderTools.KSPShaderLoader.addPostLoadCallback(KSPShaderToolsPostLoad);
+            KSPShaderTools.TexturesUnlimitedLoader.addPostLoadCallback(KSPShaderToolsPostLoad);
             GameObject.DontDestroyOnLoad(this);
             MonoBehaviour.print("SSTUStockInterop Start");
             GameEvents.OnGameSettingsApplied.Add(new EventVoid.OnEvent(gameSettingsApplied));
@@ -124,6 +124,7 @@ namespace SSTUTools
             FuelTypes.INSTANCE.loadConfigData();
             VolumeContainerLoader.loadConfigData();//needs to be loaded after fuel types
             SSTUDatabase.loadConfigData();//loads heat-shield types
+            ModelLayout.load();
             SSTUModelData.loadConfigData();
         }
 

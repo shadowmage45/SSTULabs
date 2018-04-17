@@ -61,7 +61,7 @@ namespace SSTUTools
             enabled = false;
         }
 
-        public void createFairing(Material material, float editorOpacity)
+        public void createFairing(float editorOpacity)
         {
             fairingBase.generateColliders = this.generateColliders;
             fairingBase.facesPerCollider = this.facesPerCollider;
@@ -70,7 +70,6 @@ namespace SSTUTools
             fairingBase.addRing(bottomY, bottomRadius);
             fairingBase.addRing(topY, topRadius);
             fairingBase.generateFairing();
-            fairingBase.setMaterial(material);
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor ? editorOpacity : 1.0f);
             enabled = true;
         }
@@ -86,11 +85,6 @@ namespace SSTUTools
         {
             fairingBase.destroyFairing();
             enabled = false;
-        }
-
-        public void setMaterial(Material mat)
-        {
-            fairingBase.setMaterial(mat);
         }
 
     }

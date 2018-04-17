@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUTools", "SSTUTools\SSTUTools.csproj", "{0BCB8074-A14F-42BA-BDCF-8A28765479B6}"
 EndProject
@@ -12,6 +12,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUBuildTools", "SSTUBuildTools\SSTUBuildTools.csproj", "{DE980447-BC1D-4B7D-BA31-1FAA4E9FB88D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TexturesUnlimited", "..\..\..\TexturesUnlimited\Plugin\SSTUTools\KSPShaderTools\TexturesUnlimited.csproj", "{90C22D61-2261-4B94-844C-59536357B09D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUModelCombinations", "SSTUModelCombinations\SSTUModelCombinations.csproj", "{535BC447-E712-41DF-86B5-E18B37132703}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseMapCreation", "..\..\..\TexturesUnlimited\Plugin\BaseMapCreation\BaseMapCreation.csproj", "{9767E50D-A2C8-4050-8AC4-6DC6482977F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUSpecMasker", "SSTUSpecMasker\SSTUSpecMasker.csproj", "{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,8 +67,35 @@ Global
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|x86.ActiveCfg = Release|Any CPU
 		{90C22D61-2261-4B94-844C-59536357B09D}.Release|x86.Build.0 = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Debug|x86.Build.0 = Debug|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|x86.ActiveCfg = Release|Any CPU
+		{535BC447-E712-41DF-86B5-E18B37132703}.Release|x86.Build.0 = Release|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Debug|x86.Build.0 = Debug|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Release|x86.ActiveCfg = Release|Any CPU
+		{9767E50D-A2C8-4050-8AC4-6DC6482977F6}.Release|x86.Build.0 = Release|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Debug|x86.Build.0 = Debug|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|x86.ActiveCfg = Release|Any CPU
+		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AA294959-317A-4418-9ADC-433533655BD7}
 	EndGlobalSection
 EndGlobal

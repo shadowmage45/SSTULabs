@@ -200,10 +200,7 @@ namespace SSTUTools
 
         private bool initialized;
 
-        private InterstageFairingContainer fairingBase;        
-
-        //material used for procedural fairing, created from the texture references above
-        private Material fairingMaterial;
+        private InterstageFairingContainer fairingBase; 
 
         private RecoloringHandler recolorHandler;
 
@@ -508,7 +505,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentTextureSet);
+            return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
         }
 
         #endregion
@@ -676,7 +673,6 @@ namespace SSTUTools
                 fairingBase.addRing(currentHeight, topDiameter * 0.5f);
                 fairingBase.generateColliders = this.generateColliders;
                 fairingBase.generateFairing();
-                fairingBase.setMaterial(fairingMaterial);
                 if (HighLogic.LoadedSceneIsEditor && editorTransparency) { setPanelOpacity(0.25f); }
                 else { setPanelOpacity(1.0f); }
                 updateTextureSet(false);
@@ -732,11 +728,11 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] names = TextureSet.getTextureSetNames(textureNodes);
             string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet t = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
                 currentTextureSet = names[0];
-                t = KSPShaderLoader.getTextureSet(currentTextureSet);
+                t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -745,7 +741,6 @@ namespace SSTUTools
                 recolorHandler.setColorData(t.maskColors);
             }
             this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
-            fairingMaterial = t.textureData[0].createMaterial("SSTUFairingMaterial");
             
             Transform tr = part.transform.FindRecursive("model").FindOrCreate("PetalAdapterRoot");
             fairingBase = new InterstageFairingContainer(tr.gameObject, cylinderSides, numberOfPanels, wallThickness);
@@ -842,7 +837,7 @@ namespace SSTUTools
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             fairingBase.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

@@ -83,7 +83,6 @@ namespace SSTUTools
         private float volume = 0;
 
         private ProceduralCylinderModel model;
-        private Material fairingMaterial;
         private RecoloringHandler recolorHandler;
         
         private float prevDiameter;
@@ -260,11 +259,11 @@ namespace SSTUTools
             ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
             string[] textureSetNames = TextureSet.getTextureSetNames(textureNodes);
             string[] titles = TextureSet.getTextureSetTitles(textureNodes);
-            TextureSet currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
                 currentTextureSet = textureSetNames[0];
-                currentTextureSetData = KSPShaderLoader.getTextureSet(currentTextureSet);
+                currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
             if (!initializedColors)
@@ -272,7 +271,6 @@ namespace SSTUTools
                 initializedColors = true;
                 recolorHandler.setColorData(currentTextureSetData.maskColors);
             }
-            fairingMaterial = currentTextureSetData.textureData[0].createMaterial("SSTUFairingMaterial");
             Fields["currentTextureSet"].guiActiveEditor = textureNodes.Length > 1;
             this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, titles, true, currentTextureSet);
         }
@@ -314,7 +312,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return KSPShaderLoader.getTextureSet(currentTextureSet);
+            return TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
         }
 
         #endregion
@@ -351,12 +349,12 @@ namespace SSTUTools
             model.insideUV = uvs.getArea("inside");
             model.topUV = uvs.getArea("top");
             model.bottomUV = uvs.getArea("bottom");
-            setModelParameters();
-            model.setMaterial(fairingMaterial);
+            setModelParameters();            
             model.createModel();
             model.setParent(modelBase);
             updatePhysicalAttributes();
             updateDecouplerForce();
+            updateTextureSet(false);
             SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
@@ -422,7 +420,7 @@ namespace SSTUTools
 
         private void updateTextureSet(bool useDefaults)
         {
-            TextureSet s = KSPShaderLoader.getTextureSet(currentTextureSet);
+            TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             model.enableTextureSet(currentTextureSet, colors);
             if (useDefaults)

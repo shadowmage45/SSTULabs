@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using KSPShaderTools;
 
@@ -177,7 +178,7 @@ namespace SSTUTools
         /// If left blank in config file, initialized to the default texture set for the current mount.
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Texture"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
+         UI_ChooseOption(display = new string[] { "default" }, options = new string[] { "default" }, suppressEditorShipModified = true)]
         public String currentMountTexture = String.Empty;
 
         #endregion ENDREGION - KSP Editor Adjust Fields (Float Sliders)
@@ -207,9 +208,13 @@ namespace SSTUTools
 
         #region REGION - Private working variables
 
-        private ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster> mountModule;
-        private EngineClusterLayoutData[] engineLayouts;     
+        private ModelModule<SSTUModularEngineCluster> mountModule;
+        private EngineClusterLayoutData[] engineLayouts;
         private EngineClusterLayoutData currentEngineLayout = null;
+        private EngineClusterLayoutMountData mountData
+        {
+            get { return currentEngineLayout.getMountData(currentMountName); }
+        }
 
         private bool initialized = false;
 
@@ -243,17 +248,13 @@ namespace SSTUTools
         [KSPEvent(guiName = "Clear Mount Type", guiActive = false, guiActiveEditor = true, active = true)]
         public void clearMountEvent()
         {
-            if (mountModule.models.Find(m => m.name == "Mount-None") != null)
+            this.actionWithSymmetry(m => 
             {
-                currentMountName = "Mount-None";
-                mountModule.modelSelected(Fields[nameof(currentMountName)], currentMountName);
-                this.actionWithSymmetry(m =>
-                {
-                    m.updateEditorStats(true);
-                    m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
-                    MonoUtilities.RefreshContextWindows(m.part);
-                });
-            }
+                m.mountModule.modelSelected("Mount-None");
+                m.updateEditorStats(true);
+                m.updateMountSizeGuiControl(true, m.mountData.initialDiameter);
+                MonoUtilities.RefreshContextWindows(m.part);
+            });
         }
 
         #endregion ENDREGION - GUI Interaction Methods
@@ -275,8 +276,8 @@ namespace SSTUTools
                 mountModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    if (m.currentMountDiameter < m.mountModule.model.minDiameter) { m.currentMountDiameter = m.mountModule.model.minDiameter; }
-                    if (m.currentMountDiameter > m.mountModule.model.maxDiameter) { m.currentMountDiameter = m.mountModule.model.maxDiameter; }
+                    if (m.currentMountDiameter < mountData.minDiameter) { m.currentMountDiameter = mountData.minDiameter; }
+                    if (m.currentMountDiameter > mountData.maxDiameter) { m.currentMountDiameter = mountData.maxDiameter; }
                     m.updateMountSizeGuiControl(true, m.currentMountDiameter);
                     m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
@@ -288,9 +289,9 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m =>
                 {
-                    if (m.currentMountDiameter < m.mountModule.model.minDiameter) { m.currentMountDiameter = m.mountModule.model.minDiameter; }
-                    if (m.currentMountDiameter > m.mountModule.model.maxDiameter) { m.currentMountDiameter = m.mountModule.model.maxDiameter; }
                     m.currentMountDiameter = currentMountDiameter;
+                    if (m.currentMountDiameter < m.mountData.minDiameter) { m.currentMountDiameter = m.mountData.minDiameter; }
+                    if (m.currentMountDiameter > m.mountData.maxDiameter) { m.currentMountDiameter = m.mountData.maxDiameter; }
                     m.updateEditorStats(true);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -325,11 +326,11 @@ namespace SSTUTools
                     }
                     m.Fields[nameof(currentMountName)].guiActiveEditor = m.currentEngineLayout.mountData.Length > 1;                  
                     m.setupMountModel();
-                    m.currentMountDiameter = m.mountModule.model.initialDiameter;
+                    m.currentMountDiameter = m.mountData.initialDiameter;
                     m.setupEngineModels();
                     m.updateEditorStats(true);
                     m.reInitEngineModule();
-                    m.updateMountSizeGuiControl(true, m.mountModule.model.initialDiameter);
+                    m.updateMountSizeGuiControl(true, m.mountData.initialDiameter);
                     m.updateGuiState();
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
@@ -431,7 +432,7 @@ namespace SSTUTools
 
         public RecoloringData[] getSectionColors(string section)
         {
-            return mountModule.customColors;
+            return mountModule.recoloringData;
         }
 
         public void setSectionColors(string section, RecoloringData[] colors)
@@ -442,7 +443,7 @@ namespace SSTUTools
         //IRecolorable override
         public TextureSet getSectionTexture(string section)
         {
-            return mountModule.currentTextureSet;
+            return mountModule.textureSet;
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -452,6 +453,7 @@ namespace SSTUTools
         private void initialize()
         {
             if (initialized) { return; }
+
             ConfigNode[] layoutNodes = SSTUConfigNodeUtils.parseConfigNode(configNodeData).GetNodes("LAYOUT");
             loadEngineLayouts(layoutNodes);
             if (String.IsNullOrEmpty(currentEngineLayoutName))
@@ -539,9 +541,9 @@ namespace SSTUTools
                 mountTransform = new GameObject(mountTransformName).transform;
                 mountTransform.NestToParent(part.transform.FindRecursive("model"));
             }
-            mountModule = new ModelModule<EngineClusterLayoutMountData, SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(mountModuleData), nameof(currentMountName), nameof(currentMountTexture));
-            mountModule.getSymmetryModule = m => m.mountModule; 
-            //mountModule.setupOptionalFields(nameof(currentMountDiameter), string.Empty);
+            mountModule = new ModelModule<SSTUModularEngineCluster>(part, this, mountTransform, ModelOrientation.BOTTOM, nameof(currentMountName), null, nameof(currentMountTexture), nameof(mountModuleData), null, null, null, null);
+            mountModule.getSymmetryModule = m => m.mountModule;
+            mountModule.getValidOptions = () => currentEngineLayout.getMountModelDefinitions();
         }
 
         private void outputMountInfo()
@@ -561,7 +563,7 @@ namespace SSTUTools
                 {
                     EngineClusterLayoutMountData eclmd = ecld.mountData[k];
                     float bse = eclmd.modelDefinition.diameter;
-                    float bmd = eclmd.modelDefinition.configNode.GetFloatValue("mountingDiameter");
+                    float bmd = eclmd.modelDefinition.lowerDiameter;
                     float min = eclmd.minDiameter;
                     float max = eclmd.maxDiameter;
                     float def = eclmd.initialDiameter;
@@ -581,11 +583,12 @@ namespace SSTUTools
         /// </summary>
         private void setupMountModel()
         {
-            mountModule.setupModelList(currentEngineLayout.mountData);
+            mountModule.setupModelList(currentEngineLayout.getMountModelDefinitions());
             updateMountSizeGuiControl(false);
-            if (currentMountDiameter > mountModule.model.maxDiameter) { currentMountDiameter = mountModule.model.maxDiameter; }
-            if (currentMountDiameter < mountModule.model.minDiameter) { currentMountDiameter = mountModule.model.minDiameter; }
+            if (currentMountDiameter > mountData.maxDiameter) { currentMountDiameter = mountData.maxDiameter; }
+            if (currentMountDiameter < mountData.minDiameter) { currentMountDiameter = mountData.minDiameter; }
             mountModule.setupModel();
+            mountModule.updateSelections();
         }
 
         /// <summary>
@@ -594,15 +597,12 @@ namespace SSTUTools
         /// </summary>
         private void positionMountModel()
         {
-            EngineClusterLayoutMountData currentMountData = mountModule.model;
-            float currentMountScale = getCurrentMountScale();
-            float mountY = partTopY + (currentMountScale * currentMountData.modelDefinition.verticalOffset);
-            currentMountData.currentVerticalPosition = mountY;
-            currentMountData.updateScaleForDiameter(currentMountDiameter);
-            currentMountData.updateModel();
+            mountModule.setPosition(partTopY);
+            mountModule.setScaleForDiameter(currentMountDiameter);
+            mountModule.updateModelMeshes();
             //set up fairing/engine/node positions
-            float mountScaledHeight = currentMountData.modelDefinition.height * currentMountScale;
-            fairingTopY = partTopY + (currentMountData.modelDefinition.fairingTopOffset * currentMountScale);
+            float mountScaledHeight = mountModule.moduleHeight;
+            fairingTopY = partTopY + mountModule.moduleFairingOffset;
             engineMountingY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + currentEngineVerticalOffset;
             fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + currentEngineVerticalOffset;          
         }
@@ -660,7 +660,7 @@ namespace SSTUTools
 
             float engineRotation;
             Transform[] models = part.transform.FindRecursive(engineTransformName).FindChildren(engineModelName);
-            float currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, mountModule.model) + this.currentEngineSpacing;
+            float currentEngineSpacing = currentEngineLayout.getEngineSpacing(engineScale, mountData) + this.currentEngineSpacing;
             for (int i = 0; i < length; i++)
             {
                 position = layout.positions[i];
@@ -668,7 +668,7 @@ namespace SSTUTools
                 posX = position.scaledX(currentEngineSpacing);
                 posZ = position.scaledZ(currentEngineSpacing);
                 rot = position.rotation;
-                engineRotation = currentEngineLayout.getEngineRotation(mountModule.model, i);
+                engineRotation = currentEngineLayout.getEngineRotation(mountData, i);
                 rot += engineRotation + (currentEngineRotation * position.rotationDirection);
                 model.transform.localPosition = new Vector3(posX, engineMountingY, posZ);
                 model.transform.localRotation = Quaternion.AngleAxis(rot, Vector3.up);
@@ -702,8 +702,8 @@ namespace SSTUTools
         private void updatePartCostAndMass()
         {
             positions = currentEngineLayout.getLayoutData().positions.Count;
-            modifiedMass = mountModule.model.getModuleMass();
-            modifiedCost = mountModule.model.getModuleCost();
+            modifiedMass = mountModule.moduleMass;
+            modifiedCost = mountModule.moduleCost;
         }
 
         /// <summary>
@@ -713,11 +713,11 @@ namespace SSTUTools
         /// <param name="forceVal"></param>
         private void updateMountSizeGuiControl(bool forceUpdate, float forceVal = 0)
         {
-            bool active = mountModule.model.minDiameter < mountModule.model.maxDiameter;
+            bool active = mountData.minDiameter < mountData.maxDiameter;
             Fields[nameof(currentMountDiameter)].guiActiveEditor = active;
             if (active)
             {
-                this.updateUIFloatEditControl(nameof(currentMountDiameter), mountModule.model.minDiameter, mountModule.model.maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, forceUpdate, forceVal);
+                this.updateUIFloatEditControl(nameof(currentMountDiameter), mountData.minDiameter, mountData.maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, forceUpdate, forceVal);
             }
         }
 
@@ -737,7 +737,7 @@ namespace SSTUTools
         {
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }            
-            bool enable = !mountModule.model.modelDefinition.fairingDisabled;
+            bool enable = mountModule.fairingEnabled;
             AttachNode node = part.FindAttachNode("top");
             fairing.canDisableInEditor = enable;
             FairingUpdateData data = new FairingUpdateData();
@@ -756,6 +756,12 @@ namespace SSTUTools
         /// </summary>
         private void updateNodePositions(bool userInput)
         {
+            AttachNode topNode = part.FindAttachNode("top");
+            if (topNode != null)
+            {
+                mountModule.updateAttachNodes(new string[] { "top" }, userInput);
+            }
+
             AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
             {
@@ -766,7 +772,7 @@ namespace SSTUTools
                    
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
-                float y = partTopY + (mountModule.model.modelDefinition.fairingTopOffset * getCurrentMountScale());
+                float y = mountModule.modulePosition + mountModule.moduleFairingOffset;
                 Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
                 AttachNode interstage = part.FindAttachNode(interstageNodeName);
@@ -805,14 +811,14 @@ namespace SSTUTools
             }
 
             //animations need to be updated to find the new animations for the updated models
-            SSTUAnimateControlled[] anims = part.GetComponents<SSTUAnimateControlled>();
-            foreach (SSTUAnimateControlled controlled in anims)
+            SSTUDeployableEngine deployable = part.GetComponent<SSTUDeployableEngine>();
+            if (deployable != null)
             {
-                controlled.reInitialize();
+                deployable.reInitialize();
             }
 
-            SSTUAnimateEngineHeat[] heatAnims = part.GetComponents<SSTUAnimateEngineHeat>();
-            foreach (SSTUAnimateEngineHeat heatAnim in heatAnims)
+            SSTUAnimateEngineHeat heatAnim = part.GetComponent<SSTUAnimateEngineHeat>();
+            if (heatAnim != null)
             {
                 heatAnim.reInitialize();
             }
@@ -939,10 +945,11 @@ namespace SSTUTools
         /// <returns></returns>
         private float getCurrentMountScale()
         {
-            return currentMountDiameter / mountModule.model.modelDefinition.diameter;
+            return currentMountDiameter / mountModule.definition.diameter;
         }
 
         #endregion ENDREGION - Utility Methods
+
     }
 
     public class EngineClusterLayoutData
@@ -957,7 +964,9 @@ namespace SSTUTools
         private readonly SSTUEngineLayout layoutData;
 
         //available mounts for this layout
-        public EngineClusterLayoutMountData[] mountData;
+        public readonly EngineClusterLayoutMountData[] mountData;
+
+        private ModelDefinitionLayoutOptions[] mountDefCache;
 
         public EngineClusterLayoutData(SSTUEngineLayout layoutData, ConfigNode node, float engineScale, float moduleEngineSpacing, float moduleMountSize, float increment, bool upperMounts, bool lowerMounts)
         {
@@ -1046,7 +1055,7 @@ namespace SSTUTools
         private ConfigNode getAutoSizeNode(SSTUEngineLayoutMountOption option, float engineSpacing, float engineMountSize, float increment)
         {
             ModelDefinition mdf = SSTUModelData.getModelDefinition(option.mountName);
-            float modelMountArea = mdf.configNode.GetFloatValue("mountingDiameter");//TODO clean up the need to cache the config node for a simple use
+            float modelMountArea = mdf.lowerDiameter;
             float minSize = 2.5f, maxSize = 10f, size = 2.5f;
             calcAutoMountSize(engineSpacing, engineMountSize, mdf.diameter, modelMountArea, layoutData.mountSizeMult, increment, out size, out minSize, out maxSize);
             ConfigNode node = new ConfigNode("MOUNT");
@@ -1151,6 +1160,16 @@ namespace SSTUTools
             return Array.Find(mountData, m => m.name == mountName) != null;
         }
 
+        public ModelDefinitionLayoutOptions[] getMountModelDefinitions()
+        {
+            if (mountDefCache == null)
+            {
+                string[] names = SSTUUtils.getNames(mountData, m => m.name);
+                mountDefCache = SSTUModelData.getModelDefinitionLayouts(names);
+            }
+            return mountDefCache;
+        }
+
         public EngineClusterLayoutMountData getMountData(String mountName)
         {
             return Array.Find(mountData, m => m.name == mountName);
@@ -1163,24 +1182,27 @@ namespace SSTUTools
 
     }
 
-    public class EngineClusterLayoutMountData : SingleModelData
+    public class EngineClusterLayoutMountData
     {
+        public readonly string name;
         public readonly bool canAdjustSize = true;
         public readonly float initialDiameter = 1.25f;
         public readonly float minDiameter;
         public readonly float maxDiameter;
         public readonly float engineSpacing = -1;
         public readonly float[] rotateEngines;
+
+        public ModelDefinition modelDefinition { get { return SSTUModelData.getModelDefinition(name); } }
         
-        public EngineClusterLayoutMountData(ConfigNode node) : base(node)
+        public EngineClusterLayoutMountData(ConfigNode node)
         {
+            name = node.GetStringValue("name");
             canAdjustSize = node.GetBoolValue("canAdjustSize", canAdjustSize);
             initialDiameter = node.GetFloatValue("size", initialDiameter);
             minDiameter = node.GetFloatValue("minSize", initialDiameter);
             maxDiameter = node.GetFloatValue("maxSize", initialDiameter);
             rotateEngines = node.GetFloatValuesCSV("rotateEngines", new float[] {});
             engineSpacing = node.GetFloatValue("engineSpacing", engineSpacing);
-            if (String.IsNullOrEmpty(modelDefinition.modelName)) { canAdjustSize = false; }
         }
     }
 

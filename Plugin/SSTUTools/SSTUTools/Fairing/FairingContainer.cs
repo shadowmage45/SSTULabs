@@ -17,7 +17,6 @@ namespace SSTUTools
         private float endAngle;
         private float thickness;
 
-        private Material material;
         private float opacity;
         private float rotation;
 
@@ -88,15 +87,8 @@ namespace SSTUTools
         public void recreateModels()
         {
             generateFairing();
-            setMaterial(material);
             setOpacity(opacity);
             setPanelRotations(rotation);
-        }
-
-        public void setMaterial(Material mat)
-        {
-            material = mat;
-            SSTUUtils.setMaterialRecursive(rootObject.transform, mat);
         }
 
         public void setOpacity(float value)
@@ -194,10 +186,10 @@ namespace SSTUTools
 
         public void enableTextureSet(string name, RecoloringData[] userColors)
         {
-            TextureSet set = KSPShaderLoader.getTextureSet(name);
+            TextureSet set = TexturesUnlimitedLoader.getTextureSet(name);
             if (set != null)
             {
-                set.enable(rootObject, userColors);
+                set.enable(rootObject.transform, userColors);
             }
             else
             {

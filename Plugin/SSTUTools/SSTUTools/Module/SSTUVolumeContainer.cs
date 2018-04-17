@@ -59,6 +59,9 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true, display =new string[]{"custom"}, options = new string[] { "custom"})]
         public string guiFuelType = "custom";
 
+        [KSPField(isPersistant = false, guiActiveEditor = false, guiActive = false)]
+        public float inflationMultiplier;
+
         /// <summary>
         /// Track whether resources have had a first-time init or not; could likely just check if the part has any resources??
         /// </summary>
@@ -342,7 +345,7 @@ namespace SSTUTools
             {
                 containers[i].getResources(list);
             }
-            list.setResourcesToPart(part);
+            list.setResourcesToPart(part, inflationMultiplier, HighLogic.LoadedSceneIsFlight);
             updateMassAndCost();
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onContainerUpdated(this);
