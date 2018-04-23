@@ -955,8 +955,6 @@ namespace SSTUTools
         {
             //reset the orientation on the root transform, in case it was rotated by previous invert/etc
             root.transform.localRotation = Quaternion.identity;
-            MonoBehaviour.print("Creating models for layout: " + currentLayoutOptions);
-            MonoBehaviour.print("layout: " + layoutName);
             //create model array with length based on the positions defined in the ModelLayoutData
             int len = layout.positions.Length;
             models = new Transform[len];

@@ -274,7 +274,7 @@ namespace SSTUTools
             if (standAlonePart)
             {
                 ConfigNode[] modelNodes = node.GetNodes("MODEL");
-                model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(modelPersistentData), nameof(currentShieldTexture), null, null, null, null);                
+                model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(currentShieldTexture), nameof(modelPersistentData), null, null, null, null);                
                 model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
                 model.setupModel();
                 model.setScaleForDiameter(currentDiameter);
