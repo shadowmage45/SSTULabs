@@ -30,6 +30,12 @@ namespace SSTUTools
 
         public static void removeContainerUpdatedCallback(Action<SSTUVolumeContainer> cb) { containerUpdatedCallbacks.Remove(cb); }
 
+        public static void recalcContainerVolume(Part part)
+        {
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            vc.recalcVolume();
+        }
+
         //RealFuels ModuleEngineConfigs compatibility for updating the 'scale' value of an engine
         public static void onEngineConfigChange(Part part, String config, float scale)
         {

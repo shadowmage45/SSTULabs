@@ -141,12 +141,15 @@ namespace SSTUTools
 
             BaseField fuelSelection = Fields[nameof(guiFuelType)];
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
+        }
 
+        public override void OnStartFinished(StartState state)
+        {
+            base.OnStartFinished(state);
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
                 initializedResources = true;
-                updateTankResources();
-                SSTUStockInterop.fireEditorUpdate();//update cost
+                recalcVolume();
             }
         }
 
@@ -247,7 +250,6 @@ namespace SSTUTools
             {
                 percents[i] = volumes[i] / totalVolume;
             }
-            //TODO -- is this proper?  forget which method should be used.... (sign of class being too complex)
             setContainerPercents(percents, totalVolume);
         }
 

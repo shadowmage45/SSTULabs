@@ -7,7 +7,7 @@ using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
+    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable, IContainerVolumeContributor
     {
 
         /**
@@ -107,6 +107,21 @@ namespace SSTUTools
 
         [KSPField]
         public int mountAnimationLayer = 11;
+
+        [KSPField]
+        public int noseContainerIndex = 0;
+
+        [KSPField]
+        public int upperContainerIndex = 0;
+
+        [KSPField]
+        public int coreContainerIndex = 0;
+
+        [KSPField]
+        public int lowerContainerIndex = 0;
+
+        [KSPField]
+        public int mountContainerIndex = 0;
 
         [KSPField]
         public string upperRCSThrustTransform = "RCSThrustTransform";
@@ -216,6 +231,10 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiName = "Mount"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentMount = "Mount-None";
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Solar V.Offset"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
+        public float currentSolarOffset = 0f;
 
         [KSPField(isPersistant = true, guiName = "Solar"),
          UI_ChooseOption(suppressEditorShipModified = true)]
@@ -559,7 +578,6 @@ namespace SSTUTools
         {
             if (!initializedDefaults)
             {
-                updateResourceVolume();
                 updateFairing(false);
             }
             initializedDefaults = true;
@@ -743,6 +761,41 @@ namespace SSTUTools
             return coreModule.textureSet;
         }
 
+        //IContainerVolumeContributor override
+        public int[] getContainerIndices()
+        {
+            int[] indices = new int[5];
+            indices[0] = noseContainerIndex;
+            indices[1] = upperContainerIndex;
+            indices[2] = coreContainerIndex;
+            indices[3] = lowerContainerIndex;
+            indices[4] = mountContainerIndex;
+            return indices;
+        }
+
+        //IContainerVolumeContributor override
+        public float[] getContainerVolumes()
+        {
+            float[] volumes = new float[5];
+            if (useAdapterVolume)
+            {
+                volumes[0] = noseModule.moduleVolume;
+                volumes[1] = upperModule.moduleVolume;
+                volumes[2] = coreModule.moduleVolume;
+                volumes[3] = lowerModule.moduleVolume;
+                volumes[4] = mountModule.moduleVolume;
+            }
+            else
+            {
+                volumes[0] = 0;
+                volumes[1] = 0;
+                volumes[2] = coreModule.moduleVolume;
+                volumes[3] = 0;
+                volumes[4] = 0;
+            }
+            return volumes;
+        }
+
         #endregion ENDREGION - Standard KSP Overrides
 
         #region REGION - Custom Update Methods
@@ -789,14 +842,6 @@ namespace SSTUTools
             ModelDefinitionLayoutOptions[] solarDefs = SSTUModelData.getModelDefinitions(node.GetNodes("SOLAR"));
             ModelDefinitionLayoutOptions[] rcsUpDefs = SSTUModelData.getModelDefinitions(node.GetNodes("UPPERRCS"));
             ModelDefinitionLayoutOptions[] rcsDnDefs = SSTUModelData.getModelDefinitions(node.GetNodes("LOWERRCS"));
-            MonoBehaviour.print("noses: " + noseDefs.Length);
-            MonoBehaviour.print("uppers: " + upperDefs.Length);
-            MonoBehaviour.print("cores: " + coreDefs.Length);
-            MonoBehaviour.print("lowers: " + lowerDefs.Length);
-            MonoBehaviour.print("mounts: " + mountDefs.Length);
-            MonoBehaviour.print("solars: " + solarDefs.Length);
-            MonoBehaviour.print("rcsUp: " + rcsUpDefs.Length);
-            MonoBehaviour.print("rcsdn: " + rcsDnDefs.Length);
 
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), null, nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.name = "ModularPart-Nose";
@@ -885,7 +930,6 @@ namespace SSTUTools
         //TODO - controls for layout change functions
         private void initializeUI()
         {
-
             Action<SSTUModularPart> modelChangedAction = (m) =>
             {
                 m.validateModules();
@@ -1164,12 +1208,10 @@ namespace SSTUTools
             upperRcsModule.setScale(1);
             lowerRcsModule.setScale(1);
 
-            //TODO -- these positions need to depend on what the current 'parent' module is for the add-on
-            // as well as, at least for RCS, the currently configured 'offset'
-            // -- need an easy way to track what the parent module is for each of these
-            solarModule.setPosition(getModuleByName(currentSolarParent).modulePosition);
-            upperRcsModule.setPosition(getModuleByName(currentUpperRCSParent).modulePosition);
-            lowerRcsModule.setPosition(getModuleByName(currentLowerRCSParent).modulePosition);
+            //TODO -- offsets need to be adjusted by the offset range for the currently selected model/module.
+            solarModule.setPosition(getModuleByName(currentSolarParent).modulePosition + currentSolarOffset);
+            upperRcsModule.setPosition(getModuleByName(currentUpperRCSParent).modulePosition + currentUpperRCSOffset);
+            lowerRcsModule.setPosition(getModuleByName(currentLowerRCSParent).modulePosition + currentLowerRCSOffset);
 
             solarModule.updateModelMeshes();
             upperRcsModule.updateModelMeshes();
@@ -1182,15 +1224,17 @@ namespace SSTUTools
         /// </summary>
         private void updateResourceVolume()
         {
-            float volume = coreModule.moduleVolume;
-            if (useAdapterVolume)
-            {
-                volume += noseModule.moduleVolume;
-                volume += upperModule.moduleVolume;
-                volume += lowerModule.moduleVolume;
-                volume += mountModule.moduleVolume;
-            }
-            SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 1000f);
+            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
+            if (vc != null) { vc.recalcVolume(); }
+            //float volume = coreModule.moduleVolume;
+            //if (useAdapterVolume)
+            //{
+            //    volume += noseModule.moduleVolume;
+            //    volume += upperModule.moduleVolume;
+            //    volume += lowerModule.moduleVolume;
+            //    volume += mountModule.moduleVolume;
+            //}
+            //SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 1000f);
         }
 
         /// <summary>
