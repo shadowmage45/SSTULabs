@@ -386,7 +386,8 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.
+        /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.<para/>
+        /// Does not update current model, but does update model name.  setupModel() should be subsequently called after setupModelList().
         /// </summary>
         /// <param name="models"></param>
         public void setupModelList(ModelDefinitionLayoutOptions[] modelDefs)

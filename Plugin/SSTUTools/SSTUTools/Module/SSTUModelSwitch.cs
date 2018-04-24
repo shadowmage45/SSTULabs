@@ -143,6 +143,7 @@ namespace SSTUTools
                 {
                     m.models.setScale(currentScale);
                     m.models.updateModelMeshes();
+                    m.models.updateSelections();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
                     SSTUModInterop.recalcContainerVolume(m.part);
@@ -232,6 +233,7 @@ namespace SSTUTools
             models.setupModel();
             models.setScale(currentScale);
             models.updateModelMeshes();
+            models.updateSelections();
             updateMassAndCost();
             updateAttachNodes(false);
         }
