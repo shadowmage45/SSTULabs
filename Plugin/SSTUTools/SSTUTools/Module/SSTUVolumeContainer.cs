@@ -229,6 +229,14 @@ namespace SSTUTools
             float[] volumes = new float[numberOfContainers];
             float[] percents = new float[numberOfContainers];
             float totalVolume = 0;
+            for (int i = 0; i < numberOfContainers; i++)
+            {
+                if (containers[i].useStaticVolume)
+                {
+                    volumes[i] += containers[i].rawVolume;
+                    totalVolume += volumes[i];
+                }
+            }
 
             IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
             int len = contributors.Length;

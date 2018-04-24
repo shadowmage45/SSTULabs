@@ -17,6 +17,7 @@ namespace SSTUTools
         public readonly string[] availableResources;// user config specified resources; resource=XXX
         public readonly string[] resourceSets;// user config specified resource sets; resourceSet=XXX
         public readonly string[] tankModifierNames;// user config specified tank mods; modifer=XXX
+        public readonly float staticVolume;
         public readonly float tankageVolume;// percent of volume lost to tankage
         public readonly float tankageMass;// percent of resource mass or volume to compute as dry mass
         public readonly float costPerDryTon;// default cost per dry ton for this tank; modified by the tank modifier
@@ -27,6 +28,7 @@ namespace SSTUTools
         public readonly bool ecHasMass = true;
         public readonly bool ecHasCost = true;
         public readonly bool guiAvailable = true;
+        public readonly bool useStaticVolume = true;
         public readonly SSTUVolumeContainer module;
         //runtime accessible data
         public readonly string[] applicableResources;
@@ -71,6 +73,7 @@ namespace SSTUTools
             ecHasMass = node.GetBoolValue("ecHasMass", ecHasMass);
             ecHasCost = node.GetBoolValue("ecHasCost", ecHasCost);
             guiAvailable = node.GetBoolValue("guiAvailable", guiAvailable);
+            useStaticVolume = node.GetBoolValue("useStaticVolume", useStaticVolume);
 
             if (availableResources.Length == 0 && resourceSets.Length == 0) { resourceSets = new string[] { "generic" }; }//validate that there is some sort of resource reference; generic is a special type for all pumpable resources
             if (tankModifierNames == null || tankModifierNames.Length == 0) { tankModifierNames = VolumeContainerLoader.getAllModifierNames(); }//validate that there is at least one modifier type            
@@ -153,6 +156,7 @@ namespace SSTUTools
             fuelPresets = usablePresets.ToArray();
             currentModifierName = defaultModifier;
             currentRawVolume = tankTotalVolume * percentOfTankVolume;
+            staticVolume = node.GetFloatValue("staticVolume", currentRawVolume);
             internalInitializeDefaults();
         }
 
