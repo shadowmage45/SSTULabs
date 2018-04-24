@@ -660,6 +660,18 @@ namespace SSTUTools
                 suncatcherOcclusionIndex = node.GetIntValue("suncatcherIndex");
             }
 
+            public string debugOutput()
+            {
+                string val = "Created MSDP:" +
+                    "\n       pivot: " + transformName +
+                    "\n       index: " + pivotIndex +
+                    "\n       speed: " + pivotSpeed +
+                    "\n       rAxis: " + rotAxis +
+                    "\n       sAxis: " + sunAxis +
+                    "\n       ocIdx: " + suncatcherOcclusionIndex;
+                return val;
+            }
+
         }
 
         public class ModelSolarDataSuncatcher
@@ -674,8 +686,18 @@ namespace SSTUTools
             {
                 transformName = node.GetStringValue("suncatcher");
                 suncatcherIndex = node.GetIntValue("suncatcherIndex", 0);
-                rate = node.GetFloatValue("rate", 0);
+                rate = node.GetFloatValue("chargeRate", 0);
                 sunAxis = node.getAxis("suncatcherAxis", Axis.ZPlus);
+            }
+
+            public string debugOutput()
+            {
+                string val = "Created MSDS:" +
+                    "\n       pivot: " + transformName +
+                    "\n       index: " + suncatcherIndex +
+                    "\n       charg: " + rate +
+                    "\n       sAxis: " + sunAxis;
+                return val;
             }
 
         }

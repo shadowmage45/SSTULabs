@@ -481,6 +481,15 @@ namespace SSTUTools
             resourceRate = data.rate;
         }
 
+        public string debugOutput()
+        {
+            string val = "Created SCD:" +
+                "\n       pivot: " + suncatcher +
+                "\n       charg: " + resourceRate +
+                "\n       sAxis: " + suncatcherAxis;
+            return val;
+        }
+
         /// <summary>
         /// Return the raw output based on transform orientation.  Is not adjusted for distance or temperature.  Checks part occlusion, does not check for body occlusion.
         /// </summary>
@@ -611,6 +620,17 @@ namespace SSTUTools
                 }
                 //implicit else YPlus = 0f
             }
+        }
+
+        public string debugOutput()
+        {
+            string val = "Created SPD:" +
+                "\n       pivot: " + pivot +
+                "\n       speed: " + trackingSpeed +
+                "\n       rAxis: " + pivotRotationAxis +
+                "\n       sAxis: " + pivotSunAxis +
+                "\n       rotOf: " + rotationOffset;
+            return val;
         }
 
         /// <summary>
