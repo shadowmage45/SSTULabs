@@ -4,7 +4,7 @@ using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModelSwitch2 : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor, IRecolorable
+    public class SSTUModelSwitch : PartModule, IPartCostModifier, IPartMassModifier, IContainerVolumeContributor, IRecolorable
     {
         /// <summary>
         /// If populated, the model-switch added mesh will be parented, in model-local space, to the transform specified in this field.
@@ -102,7 +102,7 @@ namespace SSTUTools
         private float modifiedVolume;
         private float modifiedCost;
         private float modifiedMass;
-        private ModelModule<SSTUModelSwitch2> models;
+        private ModelModule<SSTUModelSwitch> models;
         private bool initialized = false;
 
         [KSPAction("Toggle")]
@@ -145,6 +145,7 @@ namespace SSTUTools
                     m.models.updateModelMeshes();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
+                    SSTUModInterop.recalcContainerVolume(m.part);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -168,6 +169,7 @@ namespace SSTUTools
                     m.models.updateModelMeshes();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
+                    SSTUModInterop.recalcContainerVolume(m.part);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -183,16 +185,6 @@ namespace SSTUTools
         public override string GetInfo()
         {
             return "This part may have multiple model variants.  Check in the editor for more details.";
-        }
-
-        public void Start()
-        {
-            //TODO update resource volume for current setup
-            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
-            if (vc != null)
-            {
-
-            }
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
@@ -230,11 +222,13 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+            ModelDefinitionLayoutOptions[] defs = SSTUModelData.getModelDefinitions(node.GetNodes("MODEL"));
             Transform root = part.transform.FindRecursive("model").FindOrCreate(rootTransformName);
-            models = new ModelModule<SSTUModelSwitch2>(part, this, root, ModelOrientation.TOP, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
+            models = new ModelModule<SSTUModelSwitch>(part, this, root, ModelOrientation.TOP, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), nameof(animationPersistentData), nameof(animationMaxDeploy), nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             models.name = "ModelSwitch";
             models.getSymmetryModule = m => m.models;
-            models.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("MODEL")));
+            models.getValidOptions = () => defs;
+            models.setupModelList(defs);
             models.setupModel();
             models.setScale(currentScale);
             models.updateModelMeshes();

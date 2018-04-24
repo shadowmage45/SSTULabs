@@ -107,7 +107,7 @@
     <Compile Include="Util\Interfaces.cs" />
     <Compile Include="ModelDefinition\ModelModule.cs" />
     <Compile Include="ModelDefinition\SolarModule.cs" />
-    <Compile Include="Module\SSTUModelSwitch2.cs" />
+    <Compile Include="Module\SSTUModelSwitch.cs" />
     <Compile Include="Module\SSTUDecalSwitch.cs" />
     <Compile Include="Module\SSTUFieldManipulator.cs" />
     <Compile Include="Module\SSTUAnimateRotation.cs" />
