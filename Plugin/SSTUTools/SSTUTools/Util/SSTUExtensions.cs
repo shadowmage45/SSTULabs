@@ -755,6 +755,10 @@ namespace SSTUTools
             int len = array.Length;
             for (int i = 0; i < len; i++)
             {
+                if (array[i] == null)
+                {
+                    MonoBehaviour.print("ERROR: Null value in array in Find method, at index: " + i);
+                }
                 if (predicate(array[i]))
                 {
                     return array[i];

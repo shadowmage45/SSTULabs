@@ -33,11 +33,6 @@ namespace SSTUTools
         private PanelData[] panelData;
 
         /// <summary>
-        /// Live suncatcher data, including refernces to suncatcher transforms.
-        /// </summary>
-        private SuncatcherData[] suncatcherData;
-
-        /// <summary>
         /// Internal flag tracking if the solar panel should be doing the 'pre-retract' rotation back towards default orientation.  Not tracked persistently -- if part is saved out while close-lerp is in action, it will actually save out as if it were deployed
         /// </summary>
         private bool closingLerp;

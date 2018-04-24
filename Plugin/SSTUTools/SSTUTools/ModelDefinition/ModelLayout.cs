@@ -34,7 +34,10 @@ namespace SSTUTools
                 load();
             }
             ModelLayoutData mld;
-            layouts.TryGetValue(name, out mld);
+            if (!layouts.TryGetValue(name, out mld))
+            {
+                MonoBehaviour.print("ERROR: Could not find layout by name: " + name);
+            }
             return mld;
         }
 
@@ -170,10 +173,10 @@ namespace SSTUTools
             }
         }
 
-        public ModelDefinitionLayoutOptions(ModelDefinition modelDef)
+        public ModelDefinitionLayoutOptions(ModelDefinition def)
         {
-            definition = modelDef;
-            layouts = new ModelLayoutData[] { ModelLayout.getDefaultLayout() };
+            definition = def;
+            layouts = ModelLayout.findLayouts(new string[] { "default" });
             if (this.layouts == null || this.layouts.Length < 1)
             {
                 throw new InvalidOperationException("ERROR: No valid layout data specified.");
@@ -182,7 +185,12 @@ namespace SSTUTools
 
         public ModelLayoutData getLayout(string name)
         {
-            return layouts.Find(m => m.name == name);
+            ModelLayoutData mld = layouts.Find(m => m.name == name);
+            if (mld == null)
+            {
+                MonoBehaviour.print("ERROR: Could not locate layout for name: " + name);
+            }
+            return mld;
         }
 
         public ModelLayoutData getDefaultLayout()
