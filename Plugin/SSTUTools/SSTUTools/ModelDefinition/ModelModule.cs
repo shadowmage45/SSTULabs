@@ -294,11 +294,19 @@ namespace SSTUTools
         /// </summary>
         public float modulePosition { get { return currentVerticalPosition; } }
 
-        //TODO -- currently returns 0 -- needs to return a value based on current model orienation and specified 'position'
         /// <summary>
         /// Return the Y coordinate of the top-most point in the model in part-centric space, as defined by model-height in the model definition and modified by current model scale, 
         /// </summary>
-        public float moduleTop { get { return 0f; } }
+        public float moduleTop
+        {
+            get
+            {
+                float offset = getVerticalOffset();
+                if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
+                else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
+                return currentVerticalPosition - offset;
+            }
+        }
 
         /// <summary>
         /// Return the Y coordinate of the physical 'center' of this model in part-centric space.

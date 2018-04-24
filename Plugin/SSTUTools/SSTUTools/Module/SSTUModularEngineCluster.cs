@@ -759,7 +759,10 @@ namespace SSTUTools
             AttachNode topNode = part.FindAttachNode("top");
             if (topNode != null)
             {
-                mountModule.updateAttachNodes(new string[] { "top" }, userInput);
+                Vector3 pos = new Vector3(0, mountModule.moduleTop, 0);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, pos, topNode.orientation, userInput);
+                //mountModule.updateAttachNodes(new string[] { "top" }, userInput);//won't work because mounts are defined with two attach nodes.... and we're only using one of them
+                //it might be incorrectly grabbing the 2nd one due to KSPs current config node value order problems
             }
 
             AttachNode bottomNode = part.FindAttachNode("bottom");
