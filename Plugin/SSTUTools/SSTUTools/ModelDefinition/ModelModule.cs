@@ -323,7 +323,14 @@ namespace SSTUTools
         /// The returned offset will be correct for the currently configured orientation,
         /// such that you can always use 'module.modulePosition + module.moduleFairingOffset' to attain the proper Y coordinate for fairing attachment.
         /// </summary>
-        public float moduleFairingOffset { get { return definition.fairingData == null ? 0 : definition.fairingData.fairingOffsetFromOrigin; } }
+        public float moduleFairingOffset
+        {
+            get
+            {
+                if (definition.fairingData == null) { return 0; }
+                return definition.fairingData.getOffset(currentVerticalScale, definition.shouldInvert(orientation));
+            }
+        }
 
         /// <summary>
         /// Return the currently configured custom color data for this module slot.
