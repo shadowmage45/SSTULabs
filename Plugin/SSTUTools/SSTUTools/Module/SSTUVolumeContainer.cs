@@ -10,10 +10,10 @@ namespace SSTUTools
     {
 
         /// <summary>
-        /// Current volume in liters, determines sub-container volumes<para/>
+        /// Current volume in liters, summed from sub-container volumes
         /// DO NOT UPDATE MANUALLY -- call container.onVolumeUpdated(float volume)
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Total Volume", guiUnits = "l")]
+        [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Total Volume", guiUnits = "l")]
         public float volume;
 
         /// <summary>
@@ -133,11 +133,14 @@ namespace SSTUTools
         {
             base.OnStart(state);
             loadConfigData();//initialize the container instances, including initializing default values if needed
-            updateMassAndCost();//update cached part mass and cost values
-            updatePersistentData();//update persistent data in case tank was just initialized
-            updateFuelSelections();//update the selections for the 'FuelType' UI slider, this adds or removes the 'custom' option as needed
-            updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
-            updateGUIControls();
+            if (initializedResources)
+            {
+                updateMassAndCost();//update cached part mass and cost values
+                updatePersistentData();//update persistent data in case tank was just initialized
+                updateFuelSelections();//update the selections for the 'FuelType' UI slider, this adds or removes the 'custom' option as needed
+                updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
+                updateGUIControls();
+            }
 
             BaseField fuelSelection = Fields[nameof(guiFuelType)];
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
@@ -148,6 +151,7 @@ namespace SSTUTools
             base.OnStartFinished(state);
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
+                MonoBehaviour.print("Initializing resources");
                 initializedResources = true;
                 recalcVolume();
             }
@@ -176,7 +180,7 @@ namespace SSTUTools
             containers = new ContainerDefinition[len];
             for (int i = 0; i < len; i++)
             {
-                containers[i] = new ContainerDefinition(this, containerNodes[i], volume);
+                containers[i] = new ContainerDefinition(this, containerNodes[i]);
             }
             if (!string.IsNullOrEmpty(persistentData))
             {
@@ -209,7 +213,6 @@ namespace SSTUTools
             if (newVolume != volume)
             {
                 volume = newVolume;
-                updateContainerVolumes();
                 updateMassAndCost();
                 updateTankResources();
                 updateFuelSelections();
@@ -222,12 +225,10 @@ namespace SSTUTools
         /// <summary>
         /// Recalculates volume for all containers by finding all IContainerVolumeContributor implementors, and summing the volume for each container from the returned values.
         /// Removes the need to manually calculate new % values for each container.
-        /// TODO -- this needs to be called from somewhere.
         /// </summary>
         public void recalcVolume()
         {
             float[] volumes = new float[numberOfContainers];
-            float[] percents = new float[numberOfContainers];
             float totalVolume = 0;
             for (int i = 0; i < numberOfContainers; i++)
             {
@@ -235,6 +236,10 @@ namespace SSTUTools
                 {
                     volumes[i] += containers[i].rawVolume;
                     totalVolume += volumes[i];
+                }
+                else
+                {
+                    volumes[i] = 0;
                 }
             }
 
@@ -253,36 +258,23 @@ namespace SSTUTools
                     totalVolume += contVols[k];
                 }
             }
-            len = volumes.Length;
+            len = containers.Length;
             for (int i = 0; i < len; i++)
             {
-                percents[i] = volumes[i] / totalVolume;
+                containers[i].setContainerVolume(volumes[i]);
             }
-            setContainerPercents(percents, totalVolume);
+            updateMassAndCost();//update cached part mass and cost values
+            updatePersistentData();//update persistent data in case tank was just initialized
+            updateFuelSelections();//update the selections for the 'FuelType' UI slider, this adds or removes the 'custom' option as needed
+            updatePartStats();//update part stats for crash tolerance and heat, as determined by the container modifiers
+            updateGUIControls();
+            updateTankResources();
+
+            SSTUStockInterop.fireEditorUpdate();
+            MonoBehaviour.print("total volume: " + totalVolume);
         }
 
         public int numberOfContainers { get { return containers.Length; } }
-
-        public void setContainerPercents(float[] percents, float totalVolume)
-        {
-            int len = containers.Length;
-            if (len != percents.Length) { throw new IndexOutOfRangeException("Input container percents length does not match containers length: "+percents.Length+" : "+len); }
-            float total = 0;
-            for (int i = 0; i < len-1; i++)
-            {
-                total += percents[i];
-                containers[i].setContainerPercent(percents[i]);
-            }
-            if (total > 1) { throw new InvalidOperationException("Input percents total > 1"); }
-            containers[len - 1].setContainerPercent(1.0f - total);
-            volume = totalVolume;
-            updateContainerVolumes();
-            updateMassAndCost();
-            updateTankResources();
-            updateFuelSelections();
-            updatePersistentData();
-            SSTUStockInterop.fireEditorUpdate();
-        }
 
         public ContainerDefinition highestVolumeContainer(string resourceName)
         {
@@ -362,22 +354,11 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Update sub-containers volume data for the current total part volume
-        /// </summary>
-        private void updateContainerVolumes()
-        {
-            int len = containers.Length;
-            for (int i = 0; i < len; i++)
-            {
-                containers[i].setContainerVolume(volume);
-            }
-        }
-
-        /// <summary>
         /// Update cached mass and cost values from container calculated data
         /// </summary>
         private void updateMassAndCost()
         {
+            float totalVolume = getTotalVolume();
             modifiedCost = 0;
             modifiedMass = 0;
             float tankageVolume = 0;
@@ -391,16 +372,35 @@ namespace SSTUTools
                 tankageVolume += (container.rawVolume - container.usableVolume);
             }
             tankageMass = modifiedMass;
-            usableVolume = volume - tankageVolume;
+            usableVolume = totalVolume - tankageVolume;
         }
 
+        /// <summary>
+        /// Updates GUI controls.
+        /// </summary>
         private void updateGUIControls()
         {
+            volume = getTotalVolume();
+            //TODO -- sum subcontainer volumes
             Events[nameof(openGUIEvent)].guiActiveEditor = volume > 0 && enableContainerEdit;
             Fields[nameof(guiFuelType)].guiActiveEditor = volume > 0 && enableFuelTypeChange && getBaseContainer().fuelPresets.Length > 1;
             Fields[nameof(volume)].guiActiveEditor = volume > 0;
             Fields[nameof(usableVolume)].guiActiveEditor = volume > 0;
             Fields[nameof(tankageMass)].guiActiveEditor = volume > 0;
+        }
+
+        /// <summary>
+        /// Summs container current volumes and returns value.
+        /// </summary>
+        private float getTotalVolume()
+        {
+            float vol = 0f;
+            int len = containers.Length;
+            for (int i = 0; i < len; i++)
+            {
+                vol += containers[i].rawVolume;
+            }
+            return vol;
         }
 
         #region GUI update methods with symmetry counterpart handling

@@ -779,17 +779,17 @@ namespace SSTUTools
             float[] volumes = new float[5];
             if (useAdapterVolume)
             {
-                volumes[0] = noseModule.moduleVolume;
-                volumes[1] = upperModule.moduleVolume;
-                volumes[2] = coreModule.moduleVolume;
-                volumes[3] = lowerModule.moduleVolume;
-                volumes[4] = mountModule.moduleVolume;
+                volumes[0] = noseModule.moduleVolume * 1000f;
+                volumes[1] = upperModule.moduleVolume * 1000f;
+                volumes[2] = coreModule.moduleVolume * 1000f;
+                volumes[3] = lowerModule.moduleVolume * 1000f;
+                volumes[4] = mountModule.moduleVolume * 1000f;
             }
             else
             {
                 volumes[0] = 0;
                 volumes[1] = 0;
-                volumes[2] = coreModule.moduleVolume;
+                volumes[2] = coreModule.moduleVolume * 1000f;
                 volumes[3] = 0;
                 volumes[4] = 0;
             }
@@ -1362,6 +1362,7 @@ namespace SSTUTools
             }
         }
 
+        // TODO -- unknown if any of the fairing update code works
         /// <summary>
         /// Update the current fairing modules (top and bottom) for the current model-module configuration (diameters, positions).
         /// </summary>

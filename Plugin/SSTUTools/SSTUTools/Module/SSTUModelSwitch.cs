@@ -215,7 +215,7 @@ namespace SSTUTools
 
         public float[] getContainerVolumes()
         {
-            return new float[] { models.moduleVolume };
+            return new float[] { models.moduleVolume * 1000f };
         }
 
         private void initialize()

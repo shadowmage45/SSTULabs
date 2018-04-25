@@ -190,7 +190,7 @@ namespace SSTUTools
         {
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
             vc.inflationMultiplier = mult;
-            vc.onVolumeUpdated(vc.volume);
+            vc.recalcVolume();
         }
 
         private void consumeResources()

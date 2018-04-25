@@ -17,7 +17,6 @@ namespace SSTUTools
         public readonly string[] availableResources;// user config specified resources; resource=XXX
         public readonly string[] resourceSets;// user config specified resource sets; resourceSet=XXX
         public readonly string[] tankModifierNames;// user config specified tank mods; modifer=XXX
-        public readonly float staticVolume;
         public readonly float tankageVolume;// percent of volume lost to tankage
         public readonly float tankageMass;// percent of resource mass or volume to compute as dry mass
         public readonly float costPerDryTon;// default cost per dry ton for this tank; modified by the tank modifier
@@ -41,9 +40,8 @@ namespace SSTUTools
         
         //cached values
         private ContainerModifier cachedModifier;
-        private float percentOfTankVolume;//default value loaded from config, but var is private for better encapsulation
         private string currentFuelPreset;
-        private float currentRawVolume;
+        private float volume; // volume of this container; may be adjusted by other modules
         private float currentUsableVolume;
         private string currentModifierName;
         private float currentResourceMass;
@@ -53,16 +51,15 @@ namespace SSTUTools
         private int currentTotalUnitRatio;
         private float currentTotalVolumeRatio;
         private bool resourcesDirty = false;
-        
 
-        public ContainerDefinition(SSTUVolumeContainer module, ConfigNode node, float tankTotalVolume)
+        public ContainerDefinition(SSTUVolumeContainer module, ConfigNode node)
         {
             this.module = module;
             name = node.GetStringValue("name", name);
             availableResources = node.GetStringValues("resource");
             resourceSets = node.GetStringValues("resourceSet");
             tankModifierNames = node.GetStringValues("modifier");
-            setContainerPercent(node.GetFloatValue("percent", 1));
+            volume = node.GetFloatValue("volume", 0);
             tankageVolume = node.GetFloatValue("tankageVolume");
             tankageMass = node.GetFloatValue("tankageMass");
             costPerDryTon = node.GetFloatValue("dryCost", 700f);
@@ -155,8 +152,6 @@ namespace SSTUTools
             }
             fuelPresets = usablePresets.ToArray();
             currentModifierName = defaultModifier;
-            currentRawVolume = tankTotalVolume * percentOfTankVolume;
-            staticVolume = node.GetFloatValue("staticVolume", currentRawVolume);
             internalInitializeDefaults();
         }
 
@@ -171,7 +166,7 @@ namespace SSTUTools
             string[] vals = data.Split(',');
             currentModifierName = vals[0];
             currentFuelPreset = vals[1];
-            setContainerPercent(float.Parse(vals[2]));
+            volume = float.Parse(vals[2]);
             len = subContainerData.Length;
             int len2 = vals.Length;
             int testVal;
@@ -203,7 +198,7 @@ namespace SSTUTools
 
         public string getPersistentData()
         {
-            string data = currentModifierName + "," + currentFuelPreset + ","+percentOfTankVolume;
+            string data = currentModifierName + "," + currentFuelPreset + ","+volume;
             int len = subContainerData.Length;
             for (int i = 0; i < len; i++)
             {
@@ -223,8 +218,6 @@ namespace SSTUTools
         
         public float containerCost{ get { return currentContainerCost; } }
 
-        public float containerPercent { get { return percentOfTankVolume; } }
-
         public float resourceMass { get { return currentResourceMass; } }
 
         public float resourceCost { get { return currentResourceCost; } }
@@ -243,7 +236,7 @@ namespace SSTUTools
 
         public float getResourceFillPercent(string name) { return internalGetVolumeData(name).fillPercentage; }
 
-        public float rawVolume { get { return currentRawVolume; } }
+        public float rawVolume { get { return volume; } }
 
         public float usableVolume { get { return currentUsableVolume; } }
 
@@ -318,22 +311,12 @@ namespace SSTUTools
             resourcesDirty = true;
         }
 
-        public void setContainerVolume(float partRawVolume)
+        public void setContainerVolume(float containerRawVolume)
         {
-            currentRawVolume = partRawVolume * percentOfTankVolume;
+            volume = containerRawVolume;
             internalUpdateVolumeUnits();
             internalUpdateMassAndCost();
             resourcesDirty = true;
-        }
-
-        /// <summary>
-        /// UNSAFE - Must manually update container parameters for all containers after calling this method on any container.
-        /// </summary>
-        /// <param name="newPercent"></param>
-        internal void setContainerPercent(float newPercent)
-        {
-            if (newPercent > 1) { newPercent *= 0.01f; }
-            percentOfTankVolume = newPercent;
         }
 
         /// <summary>
@@ -400,7 +383,7 @@ namespace SSTUTools
             currentContainerMass = 0;
             if (currentModifier.useVolumeForMass)//should most notably be used for structural tank types; any resource-containing tank should use the max resource mass * mass fraction
             {
-                tempMass = currentRawVolume * 0.001f;//based on volume in m^3
+                tempMass = volume * 0.001f;//based on volume in m^3
                 currentContainerMass = tempMass * currentModifier.dryMassModifier * tankageMass;
             }
             else if (totalUnitRatio == 0)//empty tank, use config specified empty tank mass
@@ -433,9 +416,9 @@ namespace SSTUTools
 
         private void internalUpdateVolumeUnits()
         {
-            currentUsableVolume = currentRawVolume - (currentRawVolume * tankageVolume * currentModifier.tankageVolumeModifier);
+            currentUsableVolume = volume - (volume * tankageVolume * currentModifier.tankageVolumeModifier);
             currentUsableVolume *= currentModifier.volumeModifier;//basically used only for structural type to zero out avaialble volume
-            if (currentUsableVolume > rawVolume) { currentUsableVolume = rawVolume; }
+            if (currentUsableVolume > volume) { currentUsableVolume = volume; }
             float total = currentTotalVolumeRatio;
             int len = subContainerData.Length;
             float vol;

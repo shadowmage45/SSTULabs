@@ -25,7 +25,7 @@ namespace SSTUTools
             List<ContainerDefinition> availContainers = new List<ContainerDefinition>();
             for (int i = 0; i < len; i++)
             {
-                if (modContainers[i].guiAvailable && modContainers[i].containerPercent > 0)
+                if (modContainers[i].guiAvailable && modContainers[i].rawVolume > 0)
                 {
                     availContainers.Add(modContainers[i]);
                 }
