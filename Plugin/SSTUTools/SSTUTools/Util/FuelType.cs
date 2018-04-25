@@ -309,6 +309,15 @@ namespace SSTUTools
             return resourceList.Keys.Contains(pr.resourceName);
         }
 
+        public static void partResourceDebug(Part part)
+        {
+            int len = part.Resources.Count;
+            for (int i = 0; i < len; i++)
+            {
+                MonoBehaviour.print(part.Resources[i].resourceName + " : " + part.Resources[i].amount+"/"+part.Resources[i].maxAmount);
+            }
+        }
+
     }
 
     public class ResourceListEntry
@@ -350,6 +359,11 @@ namespace SSTUTools
         }
 
         public bool equals(string resource) { return name == resource; }
+
+        public override string ToString()
+        {
+            return "ResourceListEntry: " + name + "-" + fill + "/" + max;
+        }
 
     }
 

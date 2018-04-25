@@ -60,7 +60,7 @@ namespace SSTUTools
         public string guiFuelType = "custom";
 
         [KSPField(isPersistant = false, guiActiveEditor = false, guiActive = false)]
-        public float inflationMultiplier;
+        public float inflationMultiplier = 1;
 
         /// <summary>
         /// Track whether resources have had a first-time init or not; could likely just check if the part has any resources??
