@@ -540,6 +540,7 @@ namespace SSTUTools
                         needsRebuilt = fairingCreated;
                     }
                     data.topY = eData.topY;
+                    //MonoBehaviour.print("Set top pos: " + eData.topY);
                 }
                 if (eData.hasBottomY && data.canAdjustBottom)
                 {
@@ -548,6 +549,7 @@ namespace SSTUTools
                         needsRebuilt = fairingCreated;
                     }
                     data.bottomY = eData.bottomY;
+                    //MonoBehaviour.print("Set bot pos: " + eData.bottomY);
                 }
                 if (eData.hasTopRad && data.canAdjustTop)
                 {
@@ -567,12 +569,13 @@ namespace SSTUTools
                     }
                     data.bottomRadius = eData.bottomRadius;
                     guiBottomDiameter = data.bottomRadius * 2f;
-                   // MonoBehaviour.print("Set bot rad: " + eData.bottomRadius);
+                    //MonoBehaviour.print("Set bot rad: " + eData.bottomRadius);
                 }
             }
             if (eData.hasEnable)
             {
                 fairingForceDisabled = !eData.enable;
+                //MonoBehaviour.print("Set enable: " + eData.enable);
             }
             else
             {

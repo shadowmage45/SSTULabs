@@ -271,7 +271,6 @@ namespace SSTUTools
             updateTankResources();
 
             SSTUStockInterop.fireEditorUpdate();
-            MonoBehaviour.print("total volume: " + totalVolume);
         }
 
         public int numberOfContainers { get { return containers.Length; } }

@@ -738,7 +738,6 @@ namespace SSTUTools
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }            
             bool enable = mountModule.fairingEnabled;
-            AttachNode node = part.FindAttachNode("top");
             fairing.canDisableInEditor = enable;
             FairingUpdateData data = new FairingUpdateData();
             data.setTopY(fairingTopY);
