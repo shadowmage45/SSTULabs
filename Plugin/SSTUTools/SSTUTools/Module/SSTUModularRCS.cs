@@ -13,6 +13,14 @@ namespace SSTUTools
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.05f, maxValue = 5f, incrementSmall = 0.25f, incrementLarge = 1f, incrementSlide = 0.05f)]
         public float currentScale = 1f;
 
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Block"),
+            UI_ChooseOption(suppressEditorShipModified =true)]
+        public string currentModel;
+
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Block Texture"),
+            UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentTexture = string.Empty;
+
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Structure"),
             UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructure = string.Empty;
@@ -21,27 +29,14 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructureTexture = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Fuel Type"),
-         UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentFuelType = string.Empty;
-
-        [KSPField]
-        public string modelName = string.Empty;
-
-        [KSPField]
-        public float structureScale = 1f;
-
         [KSPField]
         public float thrustScalePower = 2f;
 
         [KSPField]
-        public float structureOffset = 0f;
+        public bool allowRescale = true;
 
-        [KSPField]
-        public bool updateFuel = true;
-
-        [KSPField]
-        public bool scaleGUIActive = true;
+        [KSPField(isPersistant = true)]
+        public string modelPersistentData;
 
         [KSPField(isPersistant = true)]
         public string structurePersistentData;
@@ -49,9 +44,20 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData;
 
+        /// <summary>
+        /// Container for the RCS block model -- only supports a single selection
+        /// </summary>
+        private ModelModule<SSTUModularRCS> rcsBlockModule;
+
+        /// <summary>
+        /// Container for the structural standoff model(s) - must contain at least one entry
+        /// </summary>
         private ModelModule<SSTUModularRCS> standoffModule;
-        private ContainerFuelPreset[] fuelTypes;
-        private ContainerFuelPreset fuelType;
+        
+        /// <summary>
+        /// The cached/base thrust of the ModuleRCS, used to determine proper run-time thrust when part is scaled.<para/>
+        /// Public in order to support serialization.
+        /// </summary>
         public float rcsThrust = -1;
         private float modifiedCost = -1;
         private float modifiedMass = -1;
@@ -62,7 +68,7 @@ namespace SSTUTools
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            if (node.HasNode("STRUCTURE")) { configNodeData = node.ToString(); }
+            if (string.IsNullOrEmpty(configNodeData)) { configNodeData = node.ToString(); }
             init();
         }
 
@@ -70,15 +76,31 @@ namespace SSTUTools
         {
             base.OnStart(state);
             init();
+
+            void modelChangeAction(SSTUModularRCS m)
+            {
+                m.updateModelScale();
+                m.updateRCSThrust();
+                m.updateAttachNodes(true);
+                m.updateMassAndCost();
+                SSTUModInterop.onPartGeometryUpdate(m.part, true);                
+            };
+
+            Fields[nameof(currentModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                standoffModule.modelSelected(a, b);                
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangeAction(m);
+                });
+            };
+
             Fields[nameof(currentStructure)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 standoffModule.modelSelected(a, b);
                 this.actionWithSymmetry(m =>
                 {
-                    m.updateModelScale();
-                    m.updateAttachNodes(true);
-                    m.updateMassAndCost();
-                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                    modelChangeAction(m);
                 });
             };
 
@@ -87,34 +109,15 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     if (m != this) { m.currentScale = currentScale; }
-                    m.updateModelScale();
-                    m.updateRCSThrust();
-                    m.updateAttachNodes(true);
-                    m.updateMassAndCost();
-                    SSTUModInterop.onPartGeometryUpdate(m.part, true);
+                    modelChangeAction(m);
                 });
             };
 
-            Fields[nameof(currentFuelType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                this.actionWithSymmetry(m =>
-                {
-                    if (m != this) { m.currentFuelType = currentFuelType; }
-                    m.fuelType = Array.Find(m.fuelTypes, s => s.name == m.currentFuelType);
-                    m.updateRCSFuelType();
-                });
-            };
-
-            Fields[nameof(currentFuelType)].guiActiveEditor = updateFuel && fuelTypes.Length > 1;
-            string[] names = SSTUUtils.getNames(fuelTypes, m => m.name);
-            this.updateUIChooseOptionControl(nameof(currentFuelType), names, names, true, currentFuelType);
-
-            Fields[nameof(currentScale)].guiActiveEditor = scaleGUIActive;
+            Fields[nameof(currentScale)].guiActiveEditor = allowRescale;
         }
 
         public void Start()
         {
-            updateRCSFuelType();
             updateRCSThrust();
         }
 
@@ -145,44 +148,25 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
+
+            modelTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSModel");
+            rcsBlockModule = new ModelModule<SSTUModularRCS>(part, this, modelTransform, ModelOrientation.CENTRAL, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), null, null, null, null);
+            rcsBlockModule.getSymmetryModule = m => m.rcsBlockModule;
+            rcsBlockModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("MODEL")));
+            rcsBlockModule.setupModel();
+
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
             standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
             standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), null, nameof(structurePersistentData), nameof(currentStructureTexture), null, null, null, null);
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(SSTUModelData.getModelDefinitions(node.GetNodes("STRUCTURE")));
             standoffModule.setupModel();
-
-            if (string.IsNullOrEmpty(modelName))
-            {
-                MonoBehaviour.print("ERROR: SSTUModularRCS - null/empty modelName in module config.");
-            }
-            modelTransform = part.transform.FindModel(modelName);
+                       
 
             updateModelScale();
             updateMassAndCost();
 
             updateAttachNodes(false);
-
-            ConfigNode[] fuelTypeNodes = node.GetNodes("FUELTYPE");
-            int len = fuelTypeNodes.Length;
-            fuelTypes = new ContainerFuelPreset[len];
-            for (int i = 0; i < len; i++)
-            {
-                fuelTypes[i] = VolumeContainerLoader.getPreset(fuelTypeNodes[i].GetValue("name"));
-            }
-            fuelType = Array.Find(fuelTypes, m => m.name == currentFuelType);
-            if (fuelType == null && (fuelTypes != null && fuelTypes.Length > 0))
-            {
-                MonoBehaviour.print("ERROR: SSTUModularRCS - currentFuelType was null for value: " + currentFuelType);
-                fuelType = fuelTypes[0];
-                currentFuelType = fuelType.name;
-                MonoBehaviour.print("Assigned default fuel type of: " + currentFuelType + ".  This is likely a config error that needs to be corrected.");
-            }
-            else if (fuelTypes == null || fuelTypes.Length < 1)
-            {
-                //TODO -- handle cases of disabled fuel switching
-                MonoBehaviour.print("ERROR: SSTUModularRCS - No fuel type definitions found.");
-            }
         }
 
         private void updateModelScale()
@@ -206,12 +190,6 @@ namespace SSTUTools
                 if (rcsThrust < 0) { rcsThrust = rcsModule.thrusterPower; }
                 rcsModule.thrusterPower = Mathf.Pow(currentScale, thrustScalePower) * rcsThrust;
             }
-        }
-
-        private void updateRCSFuelType()
-        {
-            if (!updateFuel) { return; }
-            updateRCSFuelType(fuelType, part);
         }
 
         private void updateAttachNodes(bool userInput)
