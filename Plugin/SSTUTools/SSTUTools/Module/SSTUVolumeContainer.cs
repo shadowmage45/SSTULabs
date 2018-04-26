@@ -208,20 +208,6 @@ namespace SSTUTools
             }
         }
 
-        public void onVolumeUpdated(float newVolume)
-        {
-            if (newVolume != volume)
-            {
-                volume = newVolume;
-                updateMassAndCost();
-                updateTankResources();
-                updateFuelSelections();
-                updatePersistentData();
-                SSTUStockInterop.fireEditorUpdate();
-            }
-            updateGUIControls();
-        }
-
         /// <summary>
         /// Recalculates volume for all containers by finding all IContainerVolumeContributor implementors, and summing the volume for each container from the returned values.
         /// Removes the need to manually calculate new % values for each container.

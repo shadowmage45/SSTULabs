@@ -146,7 +146,7 @@ namespace SSTUTools
                     m.models.updateSelections();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
-                    SSTUModInterop.recalcContainerVolume(m.part);
+                    SSTUModInterop.updateResourceVolume(m.part);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -170,7 +170,7 @@ namespace SSTUTools
                     m.models.updateModelMeshes();
                     m.updateMassAndCost();
                     m.updateAttachNodes(true);
-                    SSTUModInterop.recalcContainerVolume(m.part);
+                    SSTUModInterop.updateResourceVolume(m.part);
                     SSTUModInterop.onPartGeometryUpdate(m.part, true);
                 });
                 SSTUStockInterop.fireEditorUpdate();

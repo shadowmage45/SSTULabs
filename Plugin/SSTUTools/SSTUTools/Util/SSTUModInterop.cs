@@ -30,10 +30,32 @@ namespace SSTUTools
 
         public static void removeContainerUpdatedCallback(Action<SSTUVolumeContainer> cb) { containerUpdatedCallbacks.Remove(cb); }
 
-        public static void recalcContainerVolume(Part part)
+        public static void updateResourceVolume(Part part)
         {
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
-            vc.recalcVolume();
+            if (vc != null)
+            {
+                vc.recalcVolume();
+            }
+            else
+            {
+                IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
+                int len = contributors.Length;
+                float[] contVols;
+                int[] contIndices;
+                float totalVolume = 0;
+                for (int i = 0; i < len; i++)
+                {
+                    contIndices = contributors[i].getContainerIndices();
+                    contVols = contributors[i].getContainerVolumes();
+                    int len2 = contIndices.Length;
+                    for (int k = 0; k < len2; k++)
+                    {
+                        totalVolume += contVols[k];
+                    }
+                }
+                realFuelsVolumeUpdate(part, totalVolume);
+            }
         }
 
         //RealFuels ModuleEngineConfigs compatibility for updating the 'scale' value of an engine
@@ -138,14 +160,8 @@ namespace SSTUTools
             MonoBehaviour.print("-------------------------------------------------------------------------");
         }
 
-        public static bool onPartFuelVolumeUpdate(Part part, float liters)
+        private static bool realFuelsVolumeUpdate(Part part, float liters)
         {
-            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
-            if (vc != null)
-            {
-                vc.onVolumeUpdated(liters);
-                return true;
-            }
             Type moduleFuelTank = null;
             if (isRFInstalled())
             {

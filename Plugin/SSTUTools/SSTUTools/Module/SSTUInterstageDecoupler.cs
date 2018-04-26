@@ -574,12 +574,12 @@ namespace SSTUTools
         {
             float scale = Mathf.Pow(getEngineScale(), thrustScalePower);
             float volume = resourceVolume * scale * engineModels.layout.positions.Length;
-            if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
-            {
-                SSTUResourceList resources = new SSTUResourceList();
-                fuelType.addResources(resources, volume);
-                resources.setResourcesToPart(part, 1, false);
-            }
+            //if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
+            //{
+            //    SSTUResourceList resources = new SSTUResourceList();
+            //    fuelType.addResources(resources, volume);
+            //    resources.setResourcesToPart(part, 1, false);
+            //}
         }
 
         private void updatePartMass()

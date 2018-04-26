@@ -189,8 +189,11 @@ namespace SSTUTools
         private void updateResourceAmounts(float mult)
         {
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
-            vc.inflationMultiplier = mult;
-            vc.recalcVolume();
+            if (vc != null)
+            {
+                vc.inflationMultiplier = mult;
+                vc.recalcVolume();
+            }
         }
 
         private void consumeResources()

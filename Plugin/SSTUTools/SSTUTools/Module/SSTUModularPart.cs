@@ -937,9 +937,9 @@ namespace SSTUTools
                 m.updateMassAndCost();
                 m.updateAttachNodes(true);
                 m.updateDragCubes();
-                m.updateResourceVolume();
                 m.updateFairing(true);
                 m.updateAvailableVariants();
+                SSTUModInterop.updateResourceVolume(part);
                 SSTUModInterop.onPartGeometryUpdate(m.part, true);
             };
 
@@ -1216,25 +1216,6 @@ namespace SSTUTools
             solarModule.updateModelMeshes();
             upperRcsModule.updateModelMeshes();
             lowerRcsModule.updateModelMeshes();
-        }
-
-        /// <summary>
-        /// Update VolumeContainer resource volume from the currently configured model selections.<para/>
-        /// Optionally includes volume from adapters if specified in config.
-        /// </summary>
-        private void updateResourceVolume()
-        {
-            SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
-            if (vc != null) { vc.recalcVolume(); }
-            //float volume = coreModule.moduleVolume;
-            //if (useAdapterVolume)
-            //{
-            //    volume += noseModule.moduleVolume;
-            //    volume += upperModule.moduleVolume;
-            //    volume += lowerModule.moduleVolume;
-            //    volume += mountModule.moduleVolume;
-            //}
-            //SSTUModInterop.onPartFuelVolumeUpdate(part, volume * 1000f);
         }
 
         /// <summary>
