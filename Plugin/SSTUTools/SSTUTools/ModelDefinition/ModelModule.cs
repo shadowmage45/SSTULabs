@@ -465,9 +465,10 @@ namespace SSTUTools
         /// <param name="destinationName"></param>
         public void renameRCSThrustTransforms(string destinationName)
         {
-            if (definition.rcsData == null)
+            if (definition.rcsModuleData == null)
             {
-                MonoBehaviour.print("ERROR: RCS data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
+                MonoBehaviour.print("ERROR: RCS module data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
+                MonoBehaviour.print("Could not update RCS transform names");
                 return;
             }
             definition.rcsModuleData.renameTransforms(root, destinationName);
