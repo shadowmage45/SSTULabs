@@ -624,13 +624,16 @@ namespace SSTUTools
         /// </summary>
         public void updateSelections()
         {
-            ModelDefinitionLayoutOptions[] availableOptions = getValidOptions();
-            //MonoBehaviour.print("Updating selections for: " + getErrorReportModuleName() + " found: " + availableOptions.Length + " options.");
-            //MonoBehaviour.print(SSTUUtils.printArray(SSTUUtils.getNames(availableOptions, m => m.definition.name), ","));
-            string[] names = SSTUUtils.getNames(availableOptions, s => s.definition.name);
-            string[] displays = SSTUUtils.getNames(availableOptions, s => s.definition.title);
-            partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
-            modelField.guiActiveEditor = names.Length > 1;
+            if (modelField != null)
+            {
+                if (getValidOptions == null) { MonoBehaviour.print("ERROR: ModelModule delegate 'getValidOptions' is not populated for: " + getErrorReportModuleName()); }
+                ModelDefinitionLayoutOptions[] availableOptions = getValidOptions();
+                if (availableOptions == null || availableOptions.Length < 1) { MonoBehaviour.print("ERROR: No valid models found for: " + getErrorReportModuleName()); }
+                string[] names = SSTUUtils.getNames(availableOptions, s => s.definition.name);
+                string[] displays = SSTUUtils.getNames(availableOptions, s => s.definition.title);
+                partModule.updateUIChooseOptionControl(modelField.name, names, displays, true, modelName);
+                modelField.guiActiveEditor = names.Length > 1;
+            }
             //updates the texture set selection for the currently configured model definition, including disabling of the texture-set selection UI when needed
             if (textureField != null)
             {
