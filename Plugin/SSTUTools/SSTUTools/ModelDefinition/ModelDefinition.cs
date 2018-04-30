@@ -105,6 +105,11 @@ namespace SSTUTools
         public readonly Axis facing = Axis.ZPlus;
 
         /// <summary>
+        /// The local-space axis of the meshes that is 'upwards'.  Combined with 'facing' determines the models local space orientation.  Used to properly position models for specific uses.
+        /// </summary>
+        public readonly Axis up = Axis.YPlus;
+
+        /// <summary>
         /// Axis to use when inverting a model when a 'TOP' model is used for slot marked as 'BOTTOM' or 'BOTTOM' models used for a slot marked as 'TOP'.
         /// </summary>
         public readonly Vector3 invertAxis = Vector3.forward;
@@ -247,6 +252,7 @@ namespace SSTUTools
             verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
             orientation = (ModelOrientation)Enum.Parse(typeof(ModelOrientation), node.GetStringValue("orientation", ModelOrientation.TOP.ToString()));
             facing = node.getAxis("facing", Axis.ZPlus);
+            up = node.getAxis("upAxis", Axis.YPlus);
             invertAxis = node.GetVector3("invertAxis", invertAxis);
 
             upperProfiles = node.GetStringValues("upperProfile");

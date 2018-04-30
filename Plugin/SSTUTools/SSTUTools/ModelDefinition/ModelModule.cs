@@ -106,6 +106,16 @@ namespace SSTUTools
         private ModelDefinitionLayoutOptions[] optionsCache;
 
         /// <summary>
+        /// Models for this module will be oriented thus.  Combined with 'moduleUp' determines local coordinate space.
+        /// </summary>
+        private Axis moduleForward = Axis.ZPlus;
+
+        /// <summary>
+        /// Models for this module will be oriented thus.  Combined with 'moduleForward' determines local coordinate space.
+        /// </summary>
+        private Axis moduleUp = Axis.YPlus;
+
+        /// <summary>
         /// Local reference to the persistent data field used to store custom coloring data for this module.  May be null when recoloring is not used.
         /// </summary>
         private BaseField dataField;
@@ -301,10 +311,20 @@ namespace SSTUTools
         {
             get
             {
-                float offset = getVerticalOffset();
-                if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
-                else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
-                return currentVerticalPosition - offset;
+                float p = currentVerticalPosition - getPlacementOffset();
+                if (orientation == ModelOrientation.TOP)
+                {
+
+                }
+                else if (orientation == ModelOrientation.CENTRAL)
+                {
+
+                }
+                else if (orientation == ModelOrientation.BOTTOM)
+                {
+
+                }
+                return p;
             }
         }
 
@@ -373,6 +393,17 @@ namespace SSTUTools
         }
 
         /// <summary>
+        /// Sets the orientation used to position the models used by this module.  Validation of coordinate space is responsibility of the caller.
+        /// </summary>
+        /// <param name="forward"></param>
+        /// <param name="up"></param>
+        public void setModuleOrientation(Axis forward, Axis up)
+        {
+            moduleForward = forward;
+            moduleUp = up;
+        }
+
+        /// <summary>
         /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.<para/>
         /// Wraps the input array of model defs with a default single-position layout option wrapper.
         /// </summary>
@@ -433,7 +464,8 @@ namespace SSTUTools
                 layoutName = currentLayoutOptions.getDefaultLayout().name;
             }
             constructModels();
-            positionModels();
+            positionModelsForLayout();
+            updateModelMeshes();
             setupTextureSet();
             if (animationEnabled)
             {
@@ -794,20 +826,15 @@ namespace SSTUTools
             partModule.updateUIChooseOptionControl(textureField.name, names, titles, true, textureSetName);
             textureField.guiActiveEditor = names.Length > 1;
         }
-
-        //TODO rewrite for new offset handling
+        
         /// <summary>
-        /// Updates the internal position reference for the input position
-        /// Includes offsetting for the models offset; the input position should be the desired location
-        /// of the bottom of the model.
+        /// Updates the position of the model.
         /// </summary>
-        /// <param name="positionOfBottomOfModel"></param>
-        public virtual void setPosition(float positionOfBottomOfModel, ModelOrientation orientation = ModelOrientation.TOP)
+        /// <param name="originPos"></param>
+        public virtual void setPosition(float originPos)
         {
-            float offset = getVerticalOffset();
-            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
-            else if (orientation == ModelOrientation.CENTRAL) { offset += currentHeight * 0.5f; }
-            currentVerticalPosition = positionOfBottomOfModel + offset;
+            currentVerticalPosition = originPos;
+            MonoBehaviour.print("Setting module position to: " + originPos+ " with height of: "+currentHeight+" and offset of: "+getPlacementOffset()+" for: "+getErrorReportModuleName());
         }
 
         //TODO rewrite for new offset handling
@@ -822,9 +849,6 @@ namespace SSTUTools
             if (nodeNames == null || nodeNames.Length < 1) { return; }
             if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0] == "none")) { return; }
             float currentVerticalPosition = this.currentVerticalPosition;
-            float offset = getVerticalOffset();
-            if (orientation == ModelOrientation.BOTTOM) { offset = -offset; }
-            currentVerticalPosition -= offset;
 
             AttachNode node = null;
             AttachNodeBaseData data;
@@ -944,14 +968,14 @@ namespace SSTUTools
         }
         
         /// <summary>
-        /// Loops through the individual model instances and updates their position, rotation, and scale, for the currently configured ModelLayoutData
+        /// Loops through the individual model instances and updates their position, rotation, and scale, for the currently configured ModelLayoutData.  Does not update 'root' transform for module position.
         /// </summary>
-        private void positionModels()
+        private void positionModelsForLayout()
         {
             int len = layout.positions.Length;
             float posScalar = getLayoutPositionScalar();
             float scaleScalar = getLayoutScaleScalar();
-            float rotation = getFacingRotation();
+            Vector3 rotation = getFacingRotation();
             //TODO -- might not need this
             //invert the rotation around Y-axis when model itself is inverted
             if (definition.shouldInvert(orientation))
@@ -963,7 +987,7 @@ namespace SSTUTools
                 Transform model = models[i];
                 ModelPositionData mpd = layout.positions[i];
                 model.transform.localPosition = mpd.localPosition * posScalar;
-                model.transform.localRotation = Quaternion.Euler(mpd.localRotation + Vector3.up * rotation);
+                model.transform.localRotation = Quaternion.Euler(mpd.localRotation + rotation);
                 model.transform.localScale = mpd.localScale * scaleScalar;
             }
         }
@@ -973,8 +997,6 @@ namespace SSTUTools
         /// </summary>
         private void constructModels()
         {
-            //reset the orientation on the root transform, in case it was rotated by previous invert/etc
-            root.transform.localRotation = Quaternion.identity;
             //create model array with length based on the positions defined in the ModelLayoutData
             int len = layout.positions.Length;
             models = new Transform[len];
@@ -1054,61 +1076,70 @@ namespace SSTUTools
             {
                 root.transform.localScale = new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale);
             }
-            root.transform.localPosition = new Vector3(0, currentVerticalPosition, 0);
+            float h = moduleHeight;            
+            root.transform.localPosition = new Vector3(0, currentVerticalPosition + getPlacementOffset(), 0);
         }
-        
+
         /// <summary>
-        /// Return the current vertical offset applied to the model, adjusted for model scale, model orientation, and module-slot orientation.
+        /// Returns an offset to 'currentPosition' that is applied based on the Module orientation vs. the model-definition orientation.
         /// </summary>
         /// <returns></returns>
-        private float getVerticalOffset()
+        private float getPlacementOffset()
         {
-            //raw offset, unadjusted for orientation
             float offset = 0;
-            if (orientation == ModelOrientation.TOP)
+            MonoBehaviour.print("Or: " + orientation + " :: " + definition.orientation);
+            switch (orientation)
             {
-                if (definition.orientation == ModelOrientation.TOP)
-                {
-                    offset = definition.verticalOffset * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.CENTRAL)
-                {
-                    offset = (definition.verticalOffset + definition.height * 0.5f) * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.BOTTOM)
-                {
-                    offset = -definition.verticalOffset * currentVerticalScale;
-                }
-            }
-            else if (orientation == ModelOrientation.CENTRAL)
-            {
-                if (definition.orientation == ModelOrientation.TOP)
-                {
-                    offset = (definition.verticalOffset - definition.height * 0.5f) * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.CENTRAL)
-                {
-                    offset = definition.verticalOffset * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.BOTTOM)
-                {
-                    offset = (definition.verticalOffset + definition.height * 0.5f) * currentVerticalScale;
-                }
-            }
-            else if (orientation == ModelOrientation.BOTTOM)
-            {
-                if (definition.orientation == ModelOrientation.TOP)
-                {
-                    offset = -definition.verticalOffset * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.CENTRAL)
-                {
-                    offset = (definition.verticalOffset - definition.height * 0.5f) * currentVerticalScale;
-                }
-                else if (definition.orientation == ModelOrientation.BOTTOM)
-                {
-                    offset = definition.verticalOffset * currentVerticalScale;
-                }
+                case ModelOrientation.TOP:
+                    switch (definition.orientation)
+                    {
+                        case ModelOrientation.TOP:
+                            //noop
+                            break;
+                        case ModelOrientation.CENTRAL:
+                            offset = currentHeight * 0.5f;
+                            break;
+                        case ModelOrientation.BOTTOM:
+                            //noop
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case ModelOrientation.CENTRAL:
+                    switch (definition.orientation)
+                    {
+                        case ModelOrientation.TOP:
+                            offset = -currentHeight * 0.5f;
+                            break;
+                        case ModelOrientation.CENTRAL:
+                            //noop
+                            break;
+                        case ModelOrientation.BOTTOM:
+                            offset = currentHeight * 0.5f;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case ModelOrientation.BOTTOM:
+                    switch (definition.orientation)
+                    {
+                        case ModelOrientation.TOP:
+                            //noop
+                            break;
+                        case ModelOrientation.CENTRAL:
+                            offset = -currentHeight * 0.5f;
+                            break;
+                        case ModelOrientation.BOTTOM:
+                            //noop
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
             }
             return offset;
         }
@@ -1171,16 +1202,16 @@ namespace SSTUTools
         /// Return the number of degrees that the model needs to be rotated around the Y axis to conform to the Z+ = forward standard
         /// </summary>
         /// <returns></returns>
-        private float getFacingRotation()
+        private Vector3 getFacingRotation()
         {
-            float rotation = 0f;
+            Vector3 rotation = Vector3.zero;
             switch (definition.facing)
             {
                 case Axis.XPlus:
-                    rotation -= 90f;//TODO might be +90
+                    rotation.y -= 90f;//TODO might be +90
                     break;
                 case Axis.XNeg:
-                    rotation += 90f;//TODO might be -90
+                    rotation.y += 90f;//TODO might be -90
                     break;
                 case Axis.YPlus:
                     //undefined
@@ -1192,7 +1223,7 @@ namespace SSTUTools
                     //noop
                     break;
                 case Axis.ZNeg:
-                    rotation += 180f;
+                    rotation.y += 180f;
                     break;
                 default:
                     break;
@@ -1206,7 +1237,7 @@ namespace SSTUTools
         /// <returns></returns>
         private string getErrorReportModuleName()
         {
-            return "ModelModule: " + moduleName + " using model: " +definition+ " in orientation: " + orientation + " in module: " + partModule + " in part: " + part;
+            return "ModelModule: [" + moduleName + "] model: [" +definition+ "] in orientation: [" + orientation + "] in module: " + partModule + " in part: " + part;
         }
 
         #endregion ENDREGION - Private/Internal methods

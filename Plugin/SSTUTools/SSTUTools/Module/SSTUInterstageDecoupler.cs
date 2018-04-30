@@ -565,7 +565,7 @@ namespace SSTUTools
             engineModels.setScaleForDiameter(currentBottomDiameter);
             //engineModels.engineScale = this.currentEngineScale;
             engineModels.root.localRotation = this.invertEngines ? Quaternion.Euler(180, 0, 0) : Quaternion.identity;
-            engineModels.setPosition(-currentHeight * 0.5f, ModelOrientation.TOP);
+            engineModels.setPosition(-currentHeight * 0.5f);
             engineModels.updateModelMeshes();
             engineModels.renameEngineThrustTransforms(engineModuleThrustTransform);
         }

@@ -290,7 +290,7 @@ namespace SSTUTools
         public static Axis getAxis(this ConfigNode node, string name, Axis def = Axis.ZPlus)
         {
             string val = node.GetStringValue(name, def.ToString());
-            Axis axis = (Axis)Enum.Parse(typeof(Axis), val);
+            Axis axis = (Axis)Enum.Parse(typeof(Axis), val, true);
             return axis;
         }
 

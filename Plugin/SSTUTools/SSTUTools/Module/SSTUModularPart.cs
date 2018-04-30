@@ -1183,16 +1183,16 @@ namespace SSTUTools
             totalHeight += mountModule.moduleHeight;
 
             //position of each module is set such that the vertical center of the models is at part origin/COM
-            float pos = totalHeight * 0.5f;
-            pos -= noseModule.moduleHeight;
+            float pos = totalHeight * 0.5f;//abs top of model
+            pos -= noseModule.moduleHeight;//bottom of nose model
             noseModule.setPosition(pos);
-            pos -= upperModule.moduleHeight;
+            pos -= upperModule.moduleHeight;//bottom of upper model
             upperModule.setPosition(pos);
-            pos -= coreModule.moduleHeight * 0.5f;
+            pos -= coreModule.moduleHeight * 0.5f;//center of 'core' model
             coreModule.setPosition(pos);
-            pos -= coreModule.moduleHeight * 0.5f;
+            pos -= coreModule.moduleHeight * 0.5f;//bottom of 'core' model
             lowerModule.setPosition(pos);
-            pos -= lowerModule.moduleHeight;
+            pos -= lowerModule.moduleHeight;//bottom of 'lower' model
             mountModule.setPosition(pos);
 
             //update actual model positions and scales

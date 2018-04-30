@@ -175,7 +175,7 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentDiameter = currentDiameter; }
                     m.model.setScaleForDiameter(currentDiameter);
-                    m.model.setPosition(0, ModelOrientation.CENTRAL);
+                    m.model.setPosition(0);
                     m.model.updateModelMeshes();
                     m.updateFairing(true);
                     m.updateModuleStats();
@@ -278,7 +278,7 @@ namespace SSTUTools
                 model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
                 model.setupModel();
                 model.setScaleForDiameter(currentDiameter);
-                model.setPosition(0, ModelOrientation.CENTRAL);
+                model.setPosition(0);
                 model.updateModelMeshes();
                 updateAttachNodes(false);
                 updateDragCube();

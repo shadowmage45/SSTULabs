@@ -30,6 +30,10 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructureTexture = string.Empty;
 
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiName = "Structure Layout"),
+         UI_ChooseOption(suppressEditorShipModified = true)]
+        public string currentStructureLayout;
+
         [KSPField]
         public string rcsThrustTransformName = string.Empty;
 
@@ -195,6 +199,8 @@ namespace SSTUTools
 
             modelTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSModel");
             rcsBlockModule = new ModelModule<SSTUModularRCS>(part, this, modelTransform, ModelOrientation.CENTRAL, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), null, null, null, null);
+            rcsBlockModule.name = "RCSBlock";
+            standoffModule.setModuleOrientation(Axis.YPlus, Axis.ZPlus);
             rcsBlockModule.getSymmetryModule = m => m.rcsBlockModule;
             rcsBlockModule.setupModelList(blocks);
             rcsBlockModule.getValidOptions = () => blocks;
@@ -202,8 +208,9 @@ namespace SSTUTools
             rcsBlockModule.updateSelections();
 
             standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
-            standoffTransform.localRotation = Quaternion.Euler(0, 0, 90);//rotate 90' on z-axis, to face along x+/-; this should put the 'top' of the model at 0,0,0
-            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), null, nameof(currentStructureTexture), nameof(structurePersistentData), null, null, null, null);
+            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(currentStructureLayout), nameof(currentStructureTexture), nameof(structurePersistentData), null, null, null, null);
+            standoffModule.name = "Standoff";
+            standoffModule.setModuleOrientation(Axis.YPlus, Axis.ZPlus);
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(structs);
             standoffModule.getValidOptions = () => structs;
@@ -222,7 +229,7 @@ namespace SSTUTools
             rcsBlockModule.setScale(currentScale);
             rcsBlockModule.updateModelMeshes();
             standoffModule.setDiameterFromAbove(rcsBlockModule.moduleDiameter);
-            standoffModule.setPosition(rcsBlockModule.moduleBottom - standoffModule.moduleHeight, ModelOrientation.TOP);
+            //standoffModule.setPosition(rcsBlockModule.moduleBottom - standoffModule.moduleHeight, ModelOrientation.TOP);
             standoffModule.updateModelMeshes();
         }
 
