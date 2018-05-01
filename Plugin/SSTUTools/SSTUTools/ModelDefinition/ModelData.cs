@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using KSPShaderTools;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -23,10 +24,10 @@ namespace SSTUTools
             foreach (ConfigNode node in modelDatas)
             {
                 data = new ModelDefinition(node);
-                MonoBehaviour.print("Loading model definition data for name: " + data.name + " with model URL: " + data.modelName);
+                log("Loading model definition data for name: " + data.name + " with model URL: " + data.modelName);
                 if (baseModelData.ContainsKey(data.name))
                 {
-                    MonoBehaviour.print("ERROR: Model defs already contains def for name: " + data.name + ".  Please check your configs as this is an error.  The duplicate entry was found in the config node of:\n"+node);
+                    error("Model defs already contains def for name: " + data.name + ".  Please check your configs as this is an error.  The duplicate entry was found in the config node of:\n"+node);
                     continue;
                 }
                 baseModelData.Add(data.name, data);
@@ -71,7 +72,7 @@ namespace SSTUTools
                 }
                 else
                 {
-                    MonoBehaviour.print("ERROR: Could not locate model defintion for name: " + names[i]);
+                    error("Could not locate model defintion for name: " + names[i]);
                 }
             }
             return defs.ToArray();
@@ -95,7 +96,7 @@ namespace SSTUTools
                 }
                 else
                 {
-                    MonoBehaviour.print("ERROR: Could not locate model defintion for name: " + names[i]);
+                    error("Could not locate model defintion for name: " + names[i]);
                 }
             }
             return defs.ToArray();
@@ -111,6 +112,8 @@ namespace SSTUTools
             int len = nodes.Length;
 
             List<ModelDefinitionLayoutOptions> options = new List<ModelDefinitionLayoutOptions>();
+            List<ModelLayoutData> layoutDataList = new List<ModelLayoutData>();
+            ModelDefinition def;
 
             string[] groupedNames;
             string[] groupedLayouts;
@@ -125,7 +128,24 @@ namespace SSTUTools
                 len2 = groupedNames.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    options.Add(new ModelDefinitionLayoutOptions(groupedNames[k], groupedLayouts));
+                    def = SSTUModelData.getModelDefinition(groupedNames[k]);
+                    layoutDataList.AddRange(ModelLayout.findLayouts(groupedLayouts));
+                    if (nodes[i].HasValue("position") || nodes[i].HasValue("rotation") || nodes[i].HasValue("scale"))
+                    {
+                        Vector3 pos = nodes[i].GetVector3("position", Vector3.zero);
+                        Vector3 scale = nodes[i].GetVector3("scale", Vector3.one);
+                        Vector3 rot = nodes[i].GetVector3("rotation", Vector3.zero);
+                        ModelPositionData mpd = new ModelPositionData(pos, scale, rot);
+                        ModelLayoutData custom = new ModelLayoutData("default", new ModelPositionData[] { mpd });
+                        if (layoutDataList.Exists(m => m.name == "default"))
+                        {
+                            ModelLayoutData del = layoutDataList.Find(m => m.name == "default");
+                            layoutDataList.Remove(del);
+                        }
+                        layoutDataList.Add(custom);
+                    }
+                    options.Add(new ModelDefinitionLayoutOptions(def, layoutDataList.ToArray()));
+                    layoutDataList.Clear();
                 }
             }
             return options.ToArray();

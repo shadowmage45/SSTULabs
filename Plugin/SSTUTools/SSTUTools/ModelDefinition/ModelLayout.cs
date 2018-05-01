@@ -156,16 +156,6 @@ namespace SSTUTools
         public readonly ModelDefinition definition;
         public readonly ModelLayoutData[] layouts;
 
-        public ModelDefinitionLayoutOptions(string modelDef, string[] layoutNames)
-        {
-            definition = SSTUModelData.getModelDefinition(modelDef);
-            layouts = ModelLayout.findLayouts(layoutNames);
-            if (this.layouts == null || this.layouts.Length < 1)
-            {
-                throw new InvalidOperationException("ERROR: No valid layout data specified.");
-            }
-        }
-
         public ModelDefinitionLayoutOptions(ModelDefinition def)
         {
             definition = def;
@@ -174,6 +164,12 @@ namespace SSTUTools
             {
                 throw new InvalidOperationException("ERROR: No valid layout data specified.");
             }
+        }
+
+        public ModelDefinitionLayoutOptions(ModelDefinition def, ModelLayoutData[] layouts)
+        {
+            this.definition = def;
+            this.layouts = layouts;
         }
 
         public ModelLayoutData getLayout(string name)
