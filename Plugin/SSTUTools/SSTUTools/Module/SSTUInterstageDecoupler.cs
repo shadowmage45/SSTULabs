@@ -462,9 +462,8 @@ namespace SSTUTools
             initialized = true;
             recolorHandler = new RecoloringHandler(Fields[nameof(customColorData)]);
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] names = TextureSet.getTextureSetNames(textureNodes);
-            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            string[] names = node.GetStringValues("textureSet");
+            string[] titles = SSTUUtils.getNames(TexturesUnlimitedLoader.getTextureSets(names), m => m.title);
             TextureSet currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
@@ -477,8 +476,8 @@ namespace SSTUTools
                 initializedColors = true;
                 recolorHandler.setColorData(currentTextureSetData.maskColors);
             }
-            this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
-            Fields[nameof(currentTextureSet)].guiActiveEditor = textureNodes.Length > 1;
+            this.updateUIChooseOptionControl(nameof(currentTextureSet), names, titles, true, currentTextureSet);
+            Fields[nameof(currentTextureSet)].guiActiveEditor = names.Length > 1;
 
             fuelType = VolumeContainerLoader.getPreset(fuelPreset);
 

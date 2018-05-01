@@ -118,9 +118,9 @@ namespace SSTUTools
             updateModelScale();
             updateTextureSet(false);
             updateNodePositions(false);
-            this.updateUIFloatEditControl("currentDiameter", minDiameter, maxDiameter, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
-            Fields["currentDiameter"].uiControlEditor.onFieldChanged = onDiameterUpdated;
-            Fields["currentTextureSet"].uiControlEditor.onFieldChanged = onTextureUpdated;
+            this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement*2f, diameterIncrement, diameterIncrement*0.05f, true, currentDiameter);
+            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = onDiameterUpdated;
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = onTextureUpdated;
             updateEditorFields();
         }
 
@@ -166,7 +166,7 @@ namespace SSTUTools
 
         public string[] getSectionNames()
         {
-            return new string[] { "Decoupler" };
+            return new string[] { "Fairing" };
         }
 
         public RecoloringData[] getSectionColors(string name)
@@ -195,10 +195,8 @@ namespace SSTUTools
 
             mpf = part.GetComponent<ModuleProceduralFairing>();
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-
-            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] names = TextureSet.getTextureSetNames(textureNodes);
-            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            string[] names = node.GetStringValues("textureSet");
+            string[] titles = SSTUUtils.getNames(TexturesUnlimitedLoader.getTextureSets(names), m => m.title);
             TextureSet t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
