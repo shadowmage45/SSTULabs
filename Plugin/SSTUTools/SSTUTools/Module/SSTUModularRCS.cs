@@ -63,7 +63,7 @@ namespace SSTUTools
         private float modifiedCost = -1;
         private float modifiedMass = -1;
 
-        private Transform sharedRoot;//TODO
+        private Transform sharedRoot;
         private Transform standoffTransform;
         private Transform modelTransform;
         private bool initialized = false;
@@ -209,7 +209,7 @@ namespace SSTUTools
                 debug("Creating MRCS Root Transform");
                 sharedRoot = new GameObject("SSTUModularRCSRoot").transform;
                 sharedRoot.NestToParent(part.transform.FindRecursive("model"));
-                sharedRoot.Rotate(90, 180, 0);
+                sharedRoot.Rotate(90, 90, 0);
             }
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ModelDefinitionLayoutOptions[] blocks = SSTUModelData.getModelDefinitions(node.GetNodes("MODEL"));
