@@ -30,9 +30,9 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructureTexture = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = false, guiName = "Structure Layout"),
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiName = "Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentStructureLayout;
+        public string currentLayout = "default";
 
         [KSPField]
         public string rcsThrustTransformName = string.Empty;
@@ -62,6 +62,7 @@ namespace SSTUTools
         private float modifiedCost = -1;
         private float modifiedMass = -1;
 
+        private Transform sharedRoot;//TODO
         private Transform standoffTransform;
         private Transform modelTransform;
         private bool initialized = false;
@@ -193,24 +194,30 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
+            sharedRoot = part.transform.FindRecursive("SSTUModularRCSRoot");
+            if (sharedRoot == null)
+            {
+                SSTULog.debug("Creating MRCS Root Transform");
+                sharedRoot = new GameObject("SSTUModularRCSRoot").transform;
+                sharedRoot.NestToParent(part.transform.FindRecursive("model"));
+                //sharedRoot.Rotate(90, 180, 0);
+            }
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ModelDefinitionLayoutOptions[] blocks = SSTUModelData.getModelDefinitions(node.GetNodes("MODEL"));
             ModelDefinitionLayoutOptions[] structs = SSTUModelData.getModelDefinitions(node.GetNodes("STRUCTURE"));
 
-            modelTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSModel");
-            rcsBlockModule = new ModelModule<SSTUModularRCS>(part, this, modelTransform, ModelOrientation.CENTRAL, nameof(currentModel), null, nameof(currentTexture), nameof(modelPersistentData), null, null, null, null);
+            modelTransform = sharedRoot.FindOrCreate("ModularRCSModel");
+            rcsBlockModule = new ModelModule<SSTUModularRCS>(part, this, modelTransform, ModelOrientation.CENTRAL, nameof(currentModel), nameof(currentLayout), nameof(currentTexture), nameof(modelPersistentData), null, null, null, null);
             rcsBlockModule.name = "RCSBlock";
-            standoffModule.setModuleOrientation(Axis.YPlus, Axis.ZPlus);
             rcsBlockModule.getSymmetryModule = m => m.rcsBlockModule;
             rcsBlockModule.setupModelList(blocks);
             rcsBlockModule.getValidOptions = () => blocks;
             rcsBlockModule.setupModel();
             rcsBlockModule.updateSelections();
 
-            standoffTransform = part.transform.FindRecursive("model").FindOrCreate("ModularRCSStandoff");
-            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(currentStructureLayout), nameof(currentStructureTexture), nameof(structurePersistentData), null, null, null, null);
+            standoffTransform = sharedRoot.FindOrCreate("ModularRCSStandoff");
+            standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(currentLayout), nameof(currentStructureTexture), nameof(structurePersistentData), null, null, null, null);
             standoffModule.name = "Standoff";
-            standoffModule.setModuleOrientation(Axis.YPlus, Axis.ZPlus);
             standoffModule.getSymmetryModule = m => m.standoffModule;
             standoffModule.setupModelList(structs);
             standoffModule.getValidOptions = () => structs;
@@ -229,7 +236,7 @@ namespace SSTUTools
             rcsBlockModule.setScale(currentScale);
             rcsBlockModule.updateModelMeshes();
             standoffModule.setDiameterFromAbove(rcsBlockModule.moduleDiameter);
-            //standoffModule.setPosition(rcsBlockModule.moduleBottom - standoffModule.moduleHeight, ModelOrientation.TOP);
+            standoffModule.setPosition(rcsBlockModule.moduleBottom - standoffModule.moduleHeight);
             standoffModule.updateModelMeshes();
         }
 
