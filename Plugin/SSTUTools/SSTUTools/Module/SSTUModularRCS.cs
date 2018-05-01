@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using KSPShaderTools;
 using UnityEngine;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -67,6 +68,8 @@ namespace SSTUTools
         private Transform modelTransform;
         private bool initialized = false;
 
+        #region REGION - Standard KSP Lifecycle
+
         //----------------------------------------------------Standard lifecycle methods--------------------------------------------
         public override void OnLoad(ConfigNode node)
         {
@@ -123,6 +126,10 @@ namespace SSTUTools
         {
             updateRCSThrust();
         }
+
+        #endregion ENDREGION - Standard KSP Lifecycle
+
+        #region REGION - Interface methods
 
         //----------------------------------------------------IPartXModifier interface methos--------------------------------------------
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
@@ -190,6 +197,8 @@ namespace SSTUTools
             }
         }
 
+        #endregion ENDREGION - Interface methods
+
         private void init()
         {
             if (initialized) { return; }
@@ -197,10 +206,10 @@ namespace SSTUTools
             sharedRoot = part.transform.FindRecursive("SSTUModularRCSRoot");
             if (sharedRoot == null)
             {
-                SSTULog.debug("Creating MRCS Root Transform");
+                debug("Creating MRCS Root Transform");
                 sharedRoot = new GameObject("SSTUModularRCSRoot").transform;
                 sharedRoot.NestToParent(part.transform.FindRecursive("model"));
-                //sharedRoot.Rotate(90, 180, 0);
+                sharedRoot.Rotate(90, 180, 0);
             }
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ModelDefinitionLayoutOptions[] blocks = SSTUModelData.getModelDefinitions(node.GetNodes("MODEL"));
@@ -233,6 +242,7 @@ namespace SSTUTools
 
         private void updateModelScale()
         {
+            rcsBlockModule.setPosition(0);
             rcsBlockModule.setScale(currentScale);
             rcsBlockModule.updateModelMeshes();
             standoffModule.setDiameterFromAbove(rcsBlockModule.moduleDiameter);
@@ -255,11 +265,13 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             float standoffBottomZ = standoffModule.moduleBottom;
+            debug("pos: " + standoffBottomZ);
+            debug("height: " + standoffModule.moduleHeight);
             Vector3 pos = new Vector3(standoffBottomZ, 0, 0);
             AttachNode srfNode = part.srfAttachNode;
             if (srfNode != null)
             {
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, srfNode, pos, srfNode.orientation, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, srfNode, pos, Vector3.left, userInput);
             }
             AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
@@ -316,5 +328,6 @@ namespace SSTUTools
             //    });
             //}
         }
+
     }
 }
