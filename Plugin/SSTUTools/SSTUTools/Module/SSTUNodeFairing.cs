@@ -652,9 +652,8 @@ namespace SSTUTools
                     fairingParts[i].loadPersistence(datas[i]);
                 }
             }
-            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] names = TextureSet.getTextureSetNames(textureNodes);
-            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            string[] names = node.GetStringValues("textureSet");
+            string[] titles = SSTUUtils.getNames(TexturesUnlimitedLoader.getTextureSets(names), m => m.title);
             TextureSet t = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (t == null)
             {
