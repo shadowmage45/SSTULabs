@@ -302,20 +302,27 @@ namespace SSTUTools
         {
             get
             {
-                float p = currentVerticalPosition - getPlacementOffset();
+                //the current 'origin' of the model
+                float pos = currentVerticalPosition;
+                //adjust the 'top' value based on the orientation
                 if (orientation == ModelOrientation.TOP)
                 {
-
+                    //the current 'origin' is at the bottom of the model
+                    //offset for current height
+                    pos += moduleHeight;
                 }
                 else if (orientation == ModelOrientation.CENTRAL)
                 {
-
+                    //the current 'origin' is in the center of the model
+                    //offset for half of current height
+                    pos += moduleHeight * 0.5f;
                 }
                 else if (orientation == ModelOrientation.BOTTOM)
                 {
-
+                    //the current 'origin' is at the top of the model
+                    //return unadjusted position
                 }
-                return p;
+                return pos;
             }
         }
 
@@ -434,13 +441,13 @@ namespace SSTUTools
             currentLayoutOptions = Array.Find(optionsCache, m => m.definition.name == modelName);
             if (currentLayoutOptions == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate model definition for: " + modelName + " for " + getErrorReportModuleName());
+                error("Could not locate model definition for: " + modelName + " for " + getErrorReportModuleName());
             }
             currentDefinition = currentLayoutOptions.definition;
             currentLayout = currentLayoutOptions.getLayout(layoutName);
             if (!currentLayoutOptions.isValidLayout(layoutName))
             {
-                MonoBehaviour.print("Existing layout: "+layoutName+" for " + getErrorReportModuleName() + " was null.  Assigning default layout: " + currentLayoutOptions.getDefaultLayout().name);
+                log("Existing layout: "+layoutName+" for " + getErrorReportModuleName() + " was null.  Assigning default layout: " + currentLayoutOptions.getDefaultLayout().name);
                 layoutName = currentLayoutOptions.getDefaultLayout().name;
             }
             constructModels();
@@ -479,8 +486,7 @@ namespace SSTUTools
         {
             if (definition.rcsModuleData == null)
             {
-                MonoBehaviour.print("ERROR: RCS module data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
-                MonoBehaviour.print("Could not update RCS transform names");
+                error("RCS module data (transformNames,thrust) is null for model definition: " + definition.name+" for: "+getErrorReportModuleName()+"\nCould not update RCS transform names.");
                 return;
             }
             definition.rcsModuleData.renameTransforms(root, destinationName);
@@ -495,7 +501,7 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name + " for: "+getErrorReportModuleName());
+                error("Engine transform data is null for model definition: " + definition.name + " for: "+getErrorReportModuleName() + "\nCould not update engine thrust transform names.");
                 return;
             }
             definition.engineTransformData.renameThrustTransforms(root, destinationName);
@@ -510,7 +516,7 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                MonoBehaviour.print("ERROR: Engine transform data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
+                error("Engine transform data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
                 return;
             }
             definition.engineTransformData.renameGimbalTransforms(root, destinationName);
@@ -609,7 +615,7 @@ namespace SSTUTools
             }
             else
             {
-                MonoBehaviour.print("ERROR: No model definition found for input name: " + newModel+ " for: "+getErrorReportModuleName());
+                error("No model definition found for input name: " + newModel+ " for: "+getErrorReportModuleName());
             }
         }
 
@@ -622,7 +628,7 @@ namespace SSTUTools
             if (!currentLayoutOptions.isValidLayout(newLayout))
             {
                 newLayout = currentLayoutOptions.getDefaultLayout().name;
-                MonoBehaviour.print("ERROR: Could not find layout definition by name: " + newLayout + " using default layout for model: " + getErrorReportModuleName());
+                error("Could not find layout definition by name: " + newLayout + " using default layout for model: " + getErrorReportModuleName());
             }
             layoutName = newLayout;
             currentLayout = currentLayoutOptions.getLayout(newLayout);
@@ -639,7 +645,7 @@ namespace SSTUTools
         {
             if (modelField != null)
             {
-                if (getValidOptions == null) { MonoBehaviour.print("ERROR: ModelModule delegate 'getValidOptions' is not populated for: " + getErrorReportModuleName()); }
+                if (getValidOptions == null) { error("ModelModule delegate 'getValidOptions' is not populated for: " + getErrorReportModuleName()); }
                 ModelDefinitionLayoutOptions[] availableOptions = getValidOptions();
                 if (availableOptions == null || availableOptions.Length < 1) { MonoBehaviour.print("ERROR: No valid models found for: " + getErrorReportModuleName()); }
                 string[] names = SSTUUtils.getNames(availableOptions, s => s.definition.name);
@@ -814,7 +820,7 @@ namespace SSTUTools
         public virtual void setPosition(float originPos)
         {
             currentVerticalPosition = originPos;
-            MonoBehaviour.print("Setting module position to: " + originPos+ " with height of: "+currentHeight+" and offset of: "+getPlacementOffset()+" for: "+getErrorReportModuleName());
+            debug("Setting module position to: " + originPos+ " with height of: "+currentHeight+" and offset of: "+getPlacementOffset()+" for: "+getErrorReportModuleName());
         }
 
         //TODO rewrite for new offset handling
@@ -905,7 +911,7 @@ namespace SSTUTools
                 textureSetName = def == null ? "none" : def.name;
                 if (!isValidTextureSet(textureSetName))
                 {
-                    MonoBehaviour.print("ERROR: Default texture set: " + textureSetName + " set for model: " + definition.name + " is invalid.  This is a configuration level error in the model definition that needs to be corrected.  Bad things are about to happen....");
+                    error("Default texture set: " + textureSetName + " set for model: " + definition.name + " is invalid.  This is a configuration level error in the model definition that needs to be corrected.  Bad things are about to happen....");
                 }
                 useDefaultTextureColors = true;
             }
@@ -1003,7 +1009,7 @@ namespace SSTUTools
                 clonedModel = SSTUUtils.cloneModel(smd.modelURL);
                 if (clonedModel == null)
                 {
-                    MonoBehaviour.print("ERROR: Could not clone model for url: " + smd.modelURL + " while constructing meshes for model definition" + definition.name+" for: "+getErrorReportModuleName());
+                    error("Could not clone model for url: " + smd.modelURL + " while constructing meshes for model definition" + definition.name+" for: "+getErrorReportModuleName());
                     continue;
                 }
                 clonedModel.transform.NestToParent(parent.transform);
@@ -1058,7 +1064,6 @@ namespace SSTUTools
         private float getPlacementOffset()
         {
             float offset = 0;
-            MonoBehaviour.print("Or: " + orientation + " :: " + definition.orientation);
             switch (orientation)
             {
                 case ModelOrientation.TOP:
