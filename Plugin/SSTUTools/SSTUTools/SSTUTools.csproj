@@ -115,6 +115,7 @@
     <Compile Include="Module\SSTUResourceBoiloff.cs" />
     <Compile Include="Module\SSTUVolumeContainer.cs" />
     <Compile Include="Util\SSTUEngineLayout.cs" />
+    <Compile Include="Util\SSTULog.cs" />
     <Compile Include="Util\VolumeContainer.cs" />
     <Compile Include="Module\SSTUModularEngineCluster.cs" />
     <Compile Include="Module\SSTUFlagDecal.cs" />
