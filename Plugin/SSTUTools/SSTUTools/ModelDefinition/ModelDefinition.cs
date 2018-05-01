@@ -73,8 +73,21 @@ namespace SSTUTools
         /// The vertical offset applied to the meshes in the model to make the model conform with its specified orientation setup.<para/>
         /// Applied internally during model setup, should not be needed beyond when the model is first created.<para/>
         /// Should not be needed when COMPOUND_MODEL setups are used (transforms should be positioned properly in their defs).
+        /// Only used when SUBMODEL is not defined, otherwise submodel data overrides.
         /// </summary>
-        public readonly float verticalOffset = 0;
+        public readonly Vector3 positionOffset = Vector3.zero;
+
+        /// <summary>
+        /// The Euler XYZ rotation that should be applied to this model to make it conform to Y+=UP / Z+=FWD conventions.
+        /// Only used when SUBMODEL is not defined, otherwise submodel data overrides.
+        /// </summary>
+        public readonly Vector3 rotationOffset = Vector3.zero;
+
+        /// <summary>
+        /// The XYZ scale that should be applied to the model.
+        /// Only used when SUBMODEL is not defined, otherwise submodel data overrides.
+        /// </summary>
+        public readonly Vector3 scaleOffset = Vector3.one;
 
         /// <summary>
         /// The resource volume that this model definition contains at default scale.  Used to determine the total volume available for resource containers.
@@ -92,22 +105,10 @@ namespace SSTUTools
         public readonly float cost = 0;
 
         /// <summary>
-        /// The orientation that this model is defined in.  The model setup/origin MUST be setup properly to match the orientation as specified in the model definition.<para/>
-        /// Use the 'verticalOffset' function to fix any model positioning to ensure model conforms to specified orientation.
+        /// The orientation that this model module is defined in.  Calls to 'setPosition' take this into account to position the model properly.  The model setup/origin MUST be setup properly to match the orientation as specified in the model definition.<para/>
+        /// Use the 'verticalOffset' function of the ModelDefinition to fix any model positioning to ensure model conforms to specified orientation.
         /// </summary>
         public readonly ModelOrientation orientation = ModelOrientation.CENTRAL;
-
-        /// <summary>
-        /// The orientation of the model about the Y axis.  Determines what direction is 'forward' in the compiled model.  Used to 
-        /// properly rotate models using the ModelLayout system in cases where not all models are compiled/exported with the same
-        /// default orientation.
-        /// </summary>
-        public readonly Axis facing = Axis.ZPlus;
-
-        /// <summary>
-        /// The local-space axis of the meshes that is 'upwards'.  Combined with 'facing' determines the models local space orientation.  Used to properly position models for specific uses.
-        /// </summary>
-        public readonly Axis up = Axis.YPlus;
 
         /// <summary>
         /// Axis to use when inverting a model when a 'TOP' model is used for slot marked as 'BOTTOM' or 'BOTTOM' models used for a slot marked as 'TOP'.
@@ -249,10 +250,18 @@ namespace SSTUTools
             diameter = node.GetFloatValue("diameter", diameter);
             upperDiameter = node.GetFloatValue("upperDiameter", diameter);
             lowerDiameter = node.GetFloatValue("lowerDiameter", diameter);
-            verticalOffset = node.GetFloatValue("verticalOffset", verticalOffset);
+            if (node.HasValue("verticalOffset"))
+            {
+                positionOffset = new Vector3(0, node.GetFloatValue("verticalOffset"), 0);
+            }
+            else
+            {
+                positionOffset = node.GetVector3("positionOffset", Vector3.zero);
+            }
+            rotationOffset = node.GetVector3("rotationOffset", rotationOffset);
+            scaleOffset = node.GetVector3("scaleOffset", Vector3.one);
+
             orientation = (ModelOrientation)Enum.Parse(typeof(ModelOrientation), node.GetStringValue("orientation", ModelOrientation.TOP.ToString()));
-            facing = node.getAxis("facing", Axis.ZPlus);
-            up = node.getAxis("upAxis", Axis.YPlus);
             invertAxis = node.GetVector3("invertAxis", invertAxis);
 
             upperProfiles = node.GetStringValues("upperProfile");
@@ -267,7 +276,7 @@ namespace SSTUTools
             {
                 if (!string.IsNullOrEmpty(modelName))
                 {
-                    SubModelData smd = new SubModelData(modelName, new string[0], string.Empty, new Vector3(0, verticalOffset, 0), Vector3.zero, Vector3.one);
+                    SubModelData smd = new SubModelData(modelName, new string[0], string.Empty, positionOffset, rotationOffset, scaleOffset);
                     subModelData = new SubModelData[] { smd };
                 }
                 else//is an empty proxy model with no meshes

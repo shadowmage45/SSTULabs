@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -16,6 +17,7 @@ namespace SSTUTools
 
         public static void load()
         {
+            log("Loading Model Layouts");
             layouts.Clear();
             ConfigNode[] layoutNodes = GameDatabase.Instance.GetConfigNodes("MODEL_LAYOUT");
             int len = layoutNodes.Length;
@@ -25,6 +27,7 @@ namespace SSTUTools
                 layouts.Add(mld.name, mld);
             }
             loaded = true;
+            log("Finished loading Model Layouts");
         }
 
         public static ModelLayoutData findLayout(string name)
@@ -36,7 +39,7 @@ namespace SSTUTools
             ModelLayoutData mld;
             if (!layouts.TryGetValue(name, out mld))
             {
-                MonoBehaviour.print("ERROR: Could not find layout by name: " + name);
+                error("Could not find layout by name: " + name);
             }
             return mld;
         }
@@ -50,16 +53,6 @@ namespace SSTUTools
                 mlds[i] = findLayout(names[i]);
             }
             return mlds;
-        }
-
-        public static ModelLayoutData getDefaultLayout()
-        {
-            if (!layouts.ContainsKey("default"))
-            {
-                ModelLayoutData d = new ModelLayoutData("default", new ModelPositionData[] { new ModelPositionData(Vector3.zero, Vector3.one, Vector3.zero) });
-                layouts.Add("default", d);
-            }
-            return layouts["default"];
         }
 
     }
@@ -188,7 +181,7 @@ namespace SSTUTools
             ModelLayoutData mld = layouts.Find(m => m.name == name);
             if (mld == null)
             {
-                MonoBehaviour.print("ERROR: Could not locate layout for name: " + name);
+                error("ERROR: Could not locate layout for name: " + name);
             }
             return mld;
         }

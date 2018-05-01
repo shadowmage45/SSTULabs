@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using KSPShaderTools;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -104,16 +105,6 @@ namespace SSTUTools
         /// Array containing all possible model definitions for this module.
         /// </summary>
         private ModelDefinitionLayoutOptions[] optionsCache;
-
-        /// <summary>
-        /// Models for this module will be oriented thus.  Combined with 'moduleUp' determines local coordinate space.
-        /// </summary>
-        private Axis moduleForward = Axis.ZPlus;
-
-        /// <summary>
-        /// Models for this module will be oriented thus.  Combined with 'moduleForward' determines local coordinate space.
-        /// </summary>
-        private Axis moduleUp = Axis.YPlus;
 
         /// <summary>
         /// Local reference to the persistent data field used to store custom coloring data for this module.  May be null when recoloring is not used.
@@ -393,17 +384,6 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Sets the orientation used to position the models used by this module.  Validation of coordinate space is responsibility of the caller.
-        /// </summary>
-        /// <param name="forward"></param>
-        /// <param name="up"></param>
-        public void setModuleOrientation(Axis forward, Axis up)
-        {
-            moduleForward = forward;
-            moduleUp = up;
-        }
-
-        /// <summary>
         /// Initialization method.  May be called to update the available model list later; if the currently selected model is invalid, it will be set to the first model in the list.<para/>
         /// Wraps the input array of model defs with a default single-position layout option wrapper.
         /// </summary>
@@ -412,7 +392,7 @@ namespace SSTUTools
         {
             if (modelDefs.Length <= 0)
             {
-                MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
+                error("No models found for: " + getErrorReportModuleName());
             }
             int len = modelDefs.Length;
             ModelDefinitionLayoutOptions[] models = new ModelDefinitionLayoutOptions[len];
@@ -433,13 +413,13 @@ namespace SSTUTools
             optionsCache = modelDefs;
             if (modelDefs.Length <= 0)
             {
-                MonoBehaviour.print("ERROR: No models found for: " + getErrorReportModuleName());
+                error("No models found for: " + getErrorReportModuleName());
             }
             if (!Array.Exists(optionsCache, m => m.definition.name == modelName))
             {
-                MonoBehaviour.print("ERROR: Currently configured model name: " + modelName + " was not located while setting up: "+getErrorReportModuleName());
+                error("Currently configured model name: " + modelName + " was not located while setting up: "+getErrorReportModuleName());
                 modelName = optionsCache[0].definition.name;
-                MonoBehaviour.print("Now using model: " + modelName + " for: "+getErrorReportModuleName());
+                error("Now using model: " + modelName + " for: "+getErrorReportModuleName());
             }
         }
 
@@ -975,19 +955,12 @@ namespace SSTUTools
             int len = layout.positions.Length;
             float posScalar = getLayoutPositionScalar();
             float scaleScalar = getLayoutScaleScalar();
-            Vector3 rotation = getFacingRotation();
-            //TODO -- might not need this
-            //invert the rotation around Y-axis when model itself is inverted
-            if (definition.shouldInvert(orientation))
-            {
-                rotation = -rotation;
-            }
             for (int i = 0; i < len; i++)
             {
                 Transform model = models[i];
                 ModelPositionData mpd = layout.positions[i];
                 model.transform.localPosition = mpd.localPosition * posScalar;
-                model.transform.localRotation = Quaternion.Euler(mpd.localRotation + rotation);
+                model.transform.localRotation = Quaternion.Euler(mpd.localRotation);
                 model.transform.localScale = mpd.localScale * scaleScalar;
             }
         }
@@ -1006,8 +979,6 @@ namespace SSTUTools
                 models[i].NestToParent(root);
                 constructSubModels(models[i]);
             }
-            //figure out the rotation needed in order to make this model conform to the Z-Plus = Forward standard
-            //as well as its currently used orientation in cases where it is used on top or bottom.
             bool shouldInvert = definition.shouldInvert(orientation);
             Vector3 rotation = shouldInvert ? definition.invertAxis * 180f : Vector3.zero;            
             root.transform.localRotation = Quaternion.Euler(rotation);
@@ -1196,39 +1167,6 @@ namespace SSTUTools
             {
                 action(getSymmetryModule((U)p.Modules[index]));
             }
-        }
-
-        /// <summary>
-        /// Return the number of degrees that the model needs to be rotated around the Y axis to conform to the Z+ = forward standard
-        /// </summary>
-        /// <returns></returns>
-        private Vector3 getFacingRotation()
-        {
-            Vector3 rotation = Vector3.zero;
-            switch (definition.facing)
-            {
-                case Axis.XPlus:
-                    rotation.y -= 90f;//TODO might be +90
-                    break;
-                case Axis.XNeg:
-                    rotation.y += 90f;//TODO might be -90
-                    break;
-                case Axis.YPlus:
-                    //undefined
-                    break;
-                case Axis.YNeg:
-                    //undefined
-                    break;
-                case Axis.ZPlus:
-                    //noop
-                    break;
-                case Axis.ZNeg:
-                    rotation.y += 180f;
-                    break;
-                default:
-                    break;
-            }
-            return rotation;
         }
 
         /// <summary>
