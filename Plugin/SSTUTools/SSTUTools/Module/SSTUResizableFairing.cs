@@ -252,6 +252,7 @@ namespace SSTUTools
             TextureSet s = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             Material fm = mpf.FairingMaterial;
+            s.textureData[0].apply(fm);//TODO -- bit of an ugly hack; should at least pull a ref to whatever index that slot goes to
             List<Transform> trs = new List<Transform>();
             foreach (ProceduralFairings.FairingPanel fp in mpf.Panels)
             {
