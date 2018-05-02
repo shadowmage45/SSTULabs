@@ -256,13 +256,12 @@ namespace SSTUTools
         {
             recolorHandler = new RecoloringHandler(Fields[nameof(customColorData)]);
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
-            ConfigNode[] textureNodes = node.GetNodes("TEXTURESET");
-            string[] textureSetNames = TextureSet.getTextureSetNames(textureNodes);
-            string[] titles = TextureSet.getTextureSetTitles(textureNodes);
+            string[] names = node.GetStringValues("textureSet");
+            string[] titles = SSTUUtils.getNames(TexturesUnlimitedLoader.getTextureSets(names), m => m.title);
             TextureSet currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
             if (currentTextureSetData == null)
             {
-                currentTextureSet = textureSetNames[0];
+                currentTextureSet = names[0];
                 currentTextureSetData = TexturesUnlimitedLoader.getTextureSet(currentTextureSet);
                 initializedColors = false;
             }
@@ -271,8 +270,8 @@ namespace SSTUTools
                 initializedColors = true;
                 recolorHandler.setColorData(currentTextureSetData.maskColors);
             }
-            Fields["currentTextureSet"].guiActiveEditor = textureNodes.Length > 1;
-            this.updateUIChooseOptionControl("currentTextureSet", textureSetNames, titles, true, currentTextureSet);
+            Fields["currentTextureSet"].guiActiveEditor = names.Length > 1;
+            this.updateUIChooseOptionControl("currentTextureSet", names, titles, true, currentTextureSet);
         }
 
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
