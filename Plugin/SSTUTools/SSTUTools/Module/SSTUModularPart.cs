@@ -91,6 +91,18 @@ namespace SSTUTools
         public bool useAdapterCost = true;
 
         [KSPField]
+        public bool validateNose = true;
+
+        [KSPField]
+        public bool validateUpper = true;
+
+        [KSPField]
+        public bool validateLower = true;
+
+        [KSPField]
+        public bool validateMount = true;
+
+        [KSPField]
         public int solarAnimationLayer = 1;
 
         [KSPField]
@@ -846,12 +858,14 @@ namespace SSTUTools
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), null, nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.name = "ModularPart-Nose";
             noseModule.getSymmetryModule = m => m.noseModule;
-            noseModule.getValidOptions = () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation);
+            if (validateNose) { noseModule.getValidOptions =  () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation); }
+            else { noseModule.getValidOptions = () => noseDefs; }
 
             upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), null, nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
             upperModule.name = "ModularPart-Upper";
             upperModule.getSymmetryModule = m => m.upperModule;
-            upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation);
+            if (validateUpper) { upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation); }
+            else { upperModule.getValidOptions = () => upperDefs; }
 
             coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.CENTRAL, nameof(currentCore), null, nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
             coreModule.name = "ModularPart-Core";
@@ -861,12 +875,14 @@ namespace SSTUTools
             lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), null, nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.name = "ModularPart-Lower";
             lowerModule.getSymmetryModule = m => m.lowerModule;
-            lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation);
+            if (validateLower) { lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation); }
+            else { lowerModule.getValidOptions = () => lowerDefs; }
 
             mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), null, nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.name = "ModularPart-Mount";
             mountModule.getSymmetryModule = m => m.mountModule;
-            mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation);
+            if (validateLower) { mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation); }
+            else { mountModule.getValidOptions = () => mountDefs; }
 
             solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarLayout), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
             solarModule.name = "ModularPart-Solar";
@@ -1107,7 +1123,7 @@ namespace SSTUTools
             //as well as validating the solar/RCS (parent position + enabled/disbled status)
 
             //validate upper model
-            if (!coreModule.isValidUpper(upperModule))
+            if (validateUpper && !coreModule.isValidUpper(upperModule))
             {
                 ModelDefinition def = coreModule.findFirstValidUpper(upperModule);
                 if (def == null) { }//TODO throw error...
@@ -1115,7 +1131,7 @@ namespace SSTUTools
             }
 
             //validate nose model regardless of if upper changed or not
-            if (!upperModule.isValidUpper(noseModule))
+            if (validateNose && !upperModule.isValidUpper(noseModule))
             {
                 ModelDefinition def = upperModule.findFirstValidUpper(noseModule);
                 if (def == null) { }//TODO throw error...
@@ -1123,7 +1139,7 @@ namespace SSTUTools
             }
 
             //validate lower model
-            if (!coreModule.isValidLower(lowerModule))
+            if (validateLower && !coreModule.isValidLower(lowerModule))
             {
                 ModelDefinition def = coreModule.findFirstValidLower(lowerModule);
                 if (def == null) { }//TODO throw error...
@@ -1131,7 +1147,7 @@ namespace SSTUTools
             }
 
             //validate mount model
-            if (!lowerModule.isValidLower(mountModule))
+            if (validateMount && !lowerModule.isValidLower(mountModule))
             {
                 ModelDefinition def = lowerModule.findFirstValidLower(mountModule);
                 if (def == null) { }//TODO throw error...
