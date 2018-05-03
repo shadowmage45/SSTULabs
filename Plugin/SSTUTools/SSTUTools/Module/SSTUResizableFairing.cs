@@ -253,6 +253,10 @@ namespace SSTUTools
             RecoloringData[] colors = useDefaults ? s.maskColors : getSectionColors(string.Empty);
             Material fm = mpf.FairingMaterial;
             s.textureData[0].apply(fm);//TODO -- bit of an ugly hack; should at least pull a ref to whatever index that slot goes to
+            s.textureData[0].apply(mpf.FairingMaterial);
+            s.textureData[0].applyRecoloring(mpf.FairingMaterial, colors);
+            s.textureData[0].apply(mpf.FairingConeMaterial);
+            s.textureData[0].applyRecoloring(mpf.FairingConeMaterial, colors);
             List<Transform> trs = new List<Transform>();
             foreach (ProceduralFairings.FairingPanel fp in mpf.Panels)
             {
