@@ -635,6 +635,7 @@ namespace SSTUTools
 
         public readonly ModelSolarDataPivot[] pivotDefinitions;
         public readonly ModelSolarDataSuncatcher[] suncatcherDefinitions;
+        public readonly bool enabled = true;
 
         public ModelSolarData(ConfigNode node)
         {
@@ -653,6 +654,13 @@ namespace SSTUTools
             {
                 suncatcherDefinitions[i] = new ModelSolarDataSuncatcher(suncatcherNodes[i]);
             }
+        }
+
+        public ModelSolarData()
+        {
+            pivotDefinitions = new ModelSolarDataPivot[0];
+            suncatcherDefinitions = new ModelSolarDataSuncatcher[0];
+            enabled = false;
         }
 
         public class ModelSolarDataPivot

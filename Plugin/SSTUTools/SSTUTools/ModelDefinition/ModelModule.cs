@@ -530,9 +530,19 @@ namespace SSTUTools
         {
             int len = layout.positions.Length;
             ModelSolarData[] msds = new ModelSolarData[len];
-            for (int i = 0; i < len; i++)
+            if (definition.solarData != null)//supports solar panels....
             {
-                msds[i] = definition.solarData;
+                for (int i = 0; i < len; i++)
+                {
+                    msds[i] = definition.solarData;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < len; i++)
+                {
+                    msds[i] = new ModelSolarData();
+                }
             }
             return msds;
         }

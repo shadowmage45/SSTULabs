@@ -1451,9 +1451,15 @@ namespace SSTUTools
             solarModule.updateSelections();
             upperRcsModule.updateSelections();
             lowerRcsModule.updateSelections();
-            Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRcsModule.layout.positions.Length >= 1;
-            Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRcsModule.layout.positions.Length >= 1;
-            Fields[nameof(currentSolarParent)].guiActiveEditor = solarModule.layout.positions.Length >= 1;
+            bool lowerRCSControlsEnabled = lowerRcsModule.layout.positions.Length >= 1 && lowerRcsModule.definition.rcsModuleData != null;
+            bool upperRCSControlsEnabled = upperRcsModule.layout.positions.Length >= 1 && upperRcsModule.definition.rcsModuleData != null;
+            bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.definition.solarData != null;
+            Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled;
+            Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled;
+            Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRCSControlsEnabled;
+            Fields[nameof(currentUpperRCSOffset)].guiActiveEditor = upperRCSControlsEnabled;
+            Fields[nameof(currentSolarParent)].guiActiveEditor = solarControlsEnabled;
+            Fields[nameof(currentSolarOffset)].guiActiveEditor = solarControlsEnabled;
         }
 
         /// <summary>
