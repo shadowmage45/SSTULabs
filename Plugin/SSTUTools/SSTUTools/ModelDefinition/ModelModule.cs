@@ -892,6 +892,26 @@ namespace SSTUTools
             }
         }
 
+        public void updateAttachNodeTop(string nodeName, bool userInput)
+        {
+
+        }
+
+        public void updateAttachNodeBottom(string nodeName, bool userInput)
+        {
+
+        }
+
+        public void updateAttachNodeBody(string[] nodeNames, bool userInput)
+        {
+
+        }
+
+        public void updateSurfaceAttachNode(AttachNode node, bool userInput)
+        {
+
+        }
+
         /// <summary>
         /// Applies the currently selected texture set.  Does not validate anything.
         /// </summary>

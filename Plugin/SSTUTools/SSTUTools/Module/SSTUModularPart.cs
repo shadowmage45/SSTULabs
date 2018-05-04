@@ -160,10 +160,19 @@ namespace SSTUTools
         public string engineGimbalModule = "NONE";
 
         [KSPField]
-        public string topManagedNodes = "top1, top2";
+        public string noseManagedNodes = string.Empty;
 
         [KSPField]
-        public string bottomManagedNodes = "bottom1, bottom2";
+        public string upperManagedNodes = string.Empty;
+
+        [KSPField]
+        public string coreManagedNodes = string.Empty;
+
+        [KSPField]
+        public string lowerManagedNodes = string.Empty;
+
+        [KSPField]
+        public string mountManagedNodes = string.Empty;
 
         /// <summary>
         /// Name of the 'interstage' node; positioned depending on mount interstage location (CB) / bottom of the upper tank (ST).
@@ -431,15 +440,11 @@ namespace SSTUTools
         /// </summary>
         private float modifiedCost = 0;
 
-        /// <summary>
-        /// The list of attach node names that the 'nose' module is responsible for.
-        /// </summary>
-        private string[] topNodeNames;
-
-        /// <summary>
-        /// The list of attach node names that the 'mount' module is responsible for
-        /// </summary>
-        private string[] bottomNodeNames;
+        private string[] noseNodeNames;
+        private string[] upperNodeNames;
+        private string[] coreNodeNames;
+        private string[] lowerNodeNames;
+        private string[] mountNodeNames;
 
         //Main module slots for nose/upper/core/lower/mount
         private ModelModule<SSTUModularPart> noseModule;
@@ -821,9 +826,11 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
 
-            //attach node names, parsed from CSVs in config into standard arrays
-            topNodeNames = SSTUUtils.parseCSV(topManagedNodes);
-            bottomNodeNames = SSTUUtils.parseCSV(bottomManagedNodes);
+            noseNodeNames = SSTUUtils.parseCSV(noseManagedNodes);
+            upperNodeNames = SSTUUtils.parseCSV(upperManagedNodes);
+            coreNodeNames = SSTUUtils.parseCSV(coreManagedNodes);
+            lowerNodeNames = SSTUUtils.parseCSV(lowerManagedNodes);
+            mountNodeNames = SSTUUtils.parseCSV(mountManagedNodes);
 
             //model-module setup/initialization
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
@@ -1327,8 +1334,15 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             //update the standard top and bottom attach nodes, using the node position(s) defined in the nose and mount modules
-            noseModule.updateAttachNodes(topNodeNames, userInput);
-            mountModule.updateAttachNodes(bottomNodeNames, userInput);
+            noseModule.updateAttachNodeTop("top", userInput);
+            mountModule.updateAttachNodeBottom("bottom", userInput);
+
+            //update the model-module specific attach nodes, using the per-module node definitions from the part
+            noseModule.updateAttachNodeBody(noseNodeNames, userInput);
+            upperModule.updateAttachNodeBody(upperNodeNames, userInput);
+            coreModule.updateAttachNodeBody(coreNodeNames, userInput);
+            lowerModule.updateAttachNodeBody(lowerNodeNames, userInput);
+            mountModule.updateAttachNodeBody(mountNodeNames, userInput);
 
             //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
             Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
@@ -1353,6 +1367,7 @@ namespace SSTUTools
             AttachNode surfaceNode = part.srfAttachNode;
             if (surfaceNode != null)
             {
+                coreModule.updateSurfaceAttachNode(surfaceNode, userInput);
                 //TODO -- update surface attach node position
                 //TODO -- update this parts position on diameter change if is srf attached to another part
                 //TODO -- update any surface attached children (diameter scale/adjust only)

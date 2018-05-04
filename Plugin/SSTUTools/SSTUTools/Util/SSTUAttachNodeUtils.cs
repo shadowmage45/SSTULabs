@@ -131,6 +131,7 @@ namespace SSTUTools
         public readonly Vector3 position;
         public readonly Vector3 orientation;
         public readonly int size;
+        public readonly int end;//0=none, 1=top, -1=bottom//determines if this node should be omitted and handled by child model-module
 
         public AttachNodeBaseData(String nodeData)
         {
@@ -138,6 +139,7 @@ namespace SSTUTools
             position = new Vector3(SSTUUtils.safeParseFloat(dataVals[0].Trim()), SSTUUtils.safeParseFloat(dataVals[1].Trim()), SSTUUtils.safeParseFloat(dataVals[2].Trim()));
             orientation = new Vector3(SSTUUtils.safeParseFloat(dataVals[3].Trim()), SSTUUtils.safeParseFloat(dataVals[4].Trim()), SSTUUtils.safeParseFloat(dataVals[5].Trim()));
             size = dataVals.Length > 6 ? SSTUUtils.safeParseInt(dataVals[6]) : 4;
+            end = dataVals.Length > 7 ? SSTUUtils.safeParseInt(dataVals[7]) : 0;
         }
     }
 }

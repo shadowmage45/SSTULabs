@@ -344,7 +344,7 @@ namespace SSTUTools
                 attachNodeData[i] = new AttachNodeBaseData(attachNodeStrings[i]);
             }
 
-            //load the surface attach node specifactions, or create default if none are defined.
+            //load the surface attach node specifications, or create default if none are defined.
             if (node.HasValue("surface"))
             {
                 surfaceNode = new AttachNodeBaseData(node.GetStringValue("surface"));
