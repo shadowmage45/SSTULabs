@@ -397,15 +397,15 @@ namespace SSTUTools
             }
 
             //load model engine thrust data, if present
-            if (node.HasNode("ENGINETHRUSTDATA"))
+            if (node.HasNode("ENGINE_THRUST"))
             {
-                engineThrustData = new ModelEngineThrustData(node.GetNode("ENGINETHRUSTDATA"));
+                engineThrustData = new ModelEngineThrustData(node.GetNode("ENGINE_THRUST"));
             }
 
             //load the engine transform data, if present
-            if (node.HasNode("ENGINETRANSFORMDATA"))
+            if (node.HasNode("ENGINE_TRANSFORM"))
             {
-                engineTransformData = new ModelEngineTransformData(node.GetNode("ENGINETRANSFORMDATA"));
+                engineTransformData = new ModelEngineTransformData(node.GetNode("ENGINE_TRANSFORM"));
             }
 
             //load the fairing data, if present
