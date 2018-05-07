@@ -204,6 +204,11 @@ namespace SSTUTools
         public bool rcsParentEnabled { get { return definition.rcsData != null; } }
 
         /// <summary>
+        /// Return true/false if thhe current definition supports RCS module functions (thrust, transform names)
+        /// </summary>
+        public bool rcsModuleEnabled {get { return definition.rcsModuleData == null ? false : definition.rcsModuleData.rcsThrust > 0; }}
+
+        /// <summary>
         /// Return true/false if this module has engine transform data for its current configuration.
         /// </summary>
         public bool engineTransformEnabled { get { return definition.engineTransformData != null; } }
@@ -222,7 +227,7 @@ namespace SSTUTools
         /// <summary>
         /// Return true/false if this module has solar panel data for its current configuration.
         /// </summary>
-        public bool solarEnabled { get { return definition.solarData != null; } }
+        public bool solarEnabled { get { return definition.solarData == null ? false : definition.solarData.enabled; } }
 
         /// <summary>
         /// Return the currently 'active' model definition.

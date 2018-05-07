@@ -1457,7 +1457,6 @@ namespace SSTUTools
         /// </summary>
         private void updateAvailableVariants()
         {
-            MonoBehaviour.print("Updating UI active status.");
             noseModule.updateSelections();
             upperModule.updateSelections();
             coreModule.updateSelections();
@@ -1466,9 +1465,9 @@ namespace SSTUTools
             solarModule.updateSelections();
             upperRcsModule.updateSelections();
             lowerRcsModule.updateSelections();
-            bool lowerRCSControlsEnabled = lowerRcsModule.layout.positions.Length >= 1 && lowerRcsModule.definition.rcsModuleData != null;
-            bool upperRCSControlsEnabled = upperRcsModule.layout.positions.Length >= 1 && upperRcsModule.definition.rcsModuleData != null;
-            bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.definition.solarData != null;
+            bool lowerRCSControlsEnabled = lowerRcsModule.layout.positions.Length >= 1 && lowerRcsModule.rcsModuleEnabled;
+            bool upperRCSControlsEnabled = upperRcsModule.layout.positions.Length >= 1 && upperRcsModule.rcsModuleEnabled;
+            bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.solarEnabled;
             Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRCSControlsEnabled;
