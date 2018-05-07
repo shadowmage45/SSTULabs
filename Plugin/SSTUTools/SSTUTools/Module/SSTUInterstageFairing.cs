@@ -440,6 +440,14 @@ namespace SSTUTools
             }
         }
 
+        public void LateUpdate()
+        {
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                fairingBase.setOpacity(editorTransparency ? 0.25f : 1);
+            }
+        }
+
         //IMultipleDragCube override
         public string[] GetDragCubeNames()
         {
