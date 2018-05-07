@@ -1227,9 +1227,9 @@ namespace SSTUTools
             
             //scale and position of RCS and solar models handled a bit differently
             float coreScale = coreModule.moduleHorizontalScale;
-            solarModule.setScale(1);
-            upperRcsModule.setScale(1);
-            lowerRcsModule.setScale(1);
+            solarModule.setScale(coreScale);
+            upperRcsModule.setScale(coreScale);
+            lowerRcsModule.setScale(coreScale);
 
             //TODO -- offsets need to be adjusted by the offset range for the currently selected model/module.
             solarModule.setPosition(getModuleByName(currentSolarParent).modulePosition + currentSolarOffset);
@@ -1470,10 +1470,13 @@ namespace SSTUTools
             bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.solarEnabled;
             Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled;
+            Fields[nameof(currentLowerRCSLayout)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRCSControlsEnabled;
             Fields[nameof(currentUpperRCSOffset)].guiActiveEditor = upperRCSControlsEnabled;
+            Fields[nameof(currentUpperRCSLayout)].guiActiveEditor = upperRCSControlsEnabled;
             Fields[nameof(currentSolarParent)].guiActiveEditor = solarControlsEnabled;
             Fields[nameof(currentSolarOffset)].guiActiveEditor = solarControlsEnabled;
+            Fields[nameof(currentSolarLayout)].guiActiveEditor = solarControlsEnabled;
         }
 
         /// <summary>
