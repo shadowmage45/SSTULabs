@@ -159,6 +159,7 @@ namespace SSTUTools
         public ModelDefinitionLayoutOptions(ModelDefinition def)
         {
             definition = def;
+            if (definition == null) { error("Model definition was null when creating model layout options!"); }
             layouts = ModelLayout.findLayouts(new string[] { "default" });
             if (this.layouts == null || this.layouts.Length < 1)
             {
@@ -169,7 +170,12 @@ namespace SSTUTools
         public ModelDefinitionLayoutOptions(ModelDefinition def, ModelLayoutData[] layouts)
         {
             this.definition = def;
+            if (definition == null) { error("Model definition was null when creating model layout options!"); }
             this.layouts = layouts;
+            if (this.layouts == null || this.layouts.Length < 1)
+            {
+                throw new InvalidOperationException("ERROR: No valid layout data specified.");
+            }
         }
 
         public ModelLayoutData getLayout(string name)
