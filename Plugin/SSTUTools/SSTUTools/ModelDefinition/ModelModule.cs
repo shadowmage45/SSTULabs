@@ -431,7 +431,7 @@ namespace SSTUTools
                 layoutName = currentLayoutOptions.getDefaultLayout().name;
             }
             constructModels();
-            positionModelsForLayout();
+            updateModelScalesAndLayoutPositions();
             updateModelMeshes();
             setupTextureSet();
             if (animationEnabled)
@@ -660,11 +660,11 @@ namespace SSTUTools
         
         /// <summary>
         /// NON-symmetry enabled method.
-        /// Updates the current models with the current scale and position data.
+        /// Updates the current models with the current scale and position data.  Includes setup of current layout and its internal scale factors.
         /// </summary>
         public void updateModelMeshes()
         {
-            updateModelScaleAndPosition();
+            updateModelScalesAndLayoutPositions();
         }
 
         /// <summary>
@@ -811,7 +811,6 @@ namespace SSTUTools
         public virtual void setPosition(float originPos)
         {
             currentVerticalPosition = originPos;
-            debug("Setting module position to: " + originPos+ " with height of: "+currentHeight+" and offset of: "+getPlacementOffset()+" for: "+getErrorReportModuleName());
         }
 
         //TODO rewrite for new offset handling
@@ -963,12 +962,14 @@ namespace SSTUTools
             updateTextureUIControl();
             SSTUModInterop.onPartTextureUpdated(part);
         }
-        
+
         /// <summary>
+        /// Applies the current module position to the root transform of the ModelModule.  Does not adjust rotation or handle multi-model positioning setup for layouts.  Does not update scales.
         /// Loops through the individual model instances and updates their position, rotation, and scale, for the currently configured ModelLayoutData.  Does not update 'root' transform for module position.
         /// </summary>
-        private void positionModelsForLayout()
+        private void updateModelScalesAndLayoutPositions()
         {
+            root.transform.localPosition = new Vector3(0, currentVerticalPosition + getPlacementOffset(), 0);
             int len = layout.positions.Length;
             float posScalar = getLayoutPositionScalar();
             float scaleScalar = getLayoutScaleScalar();
@@ -978,8 +979,25 @@ namespace SSTUTools
                 ModelPositionData mpd = layout.positions[i];
                 model.transform.localPosition = mpd.localPosition * posScalar;
                 model.transform.localRotation = Quaternion.Euler(mpd.localRotation);
-                model.transform.localScale = mpd.localScale * scaleScalar;
+                model.transform.localScale = mult(mpd.localScale, new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale)) * scaleScalar;
+                if (definition.compoundModelData != null)
+                {
+                    //on compound model setups, only adjust for the position scalar and mpd scale
+                    //the model internal scale will be setup by the compound model data
+                    model.transform.localScale = mpd.localScale * scaleScalar;
+                    definition.compoundModelData.setHeightFromScale(definition, model.gameObject, currentHorizontalScale, currentVerticalScale, orientation);
+                }
+                else
+                {
+                    //normal models, apply all scales to the model root transform
+                    model.transform.localScale = mult(mpd.localScale, new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale)) * scaleScalar;
+                }
             }
+        }
+
+        private Vector3 mult(Vector3 a, Vector3 b)
+        {
+            return new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
         }
 
         /// <summary>
@@ -1048,24 +1066,6 @@ namespace SSTUTools
                     md[i].mergeMeshes(parent);
                 }
             }
-        }
-        
-        /// <summary>
-        /// Applies the current module position and scale values to the root transform of the ModelModule.  Does not adjust rotation or handle multi-model positioning setup for layouts.
-        /// </summary>
-        private void updateModelScaleAndPosition()
-        {
-            int len = models.Length;
-            if (definition.compoundModelData != null)
-            {
-                definition.compoundModelData.setHeightFromScale(definition, root.gameObject, currentHorizontalScale, currentVerticalScale, definition.orientation);
-            }
-            else
-            {
-                root.transform.localScale = new Vector3(currentHorizontalScale, currentVerticalScale, currentHorizontalScale);
-            }
-            float h = moduleHeight;            
-            root.transform.localPosition = new Vector3(0, currentVerticalPosition + getPlacementOffset(), 0);
         }
 
         /// <summary>
