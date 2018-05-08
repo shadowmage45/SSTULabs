@@ -968,11 +968,10 @@ namespace SSTUTools
                 m.updateModulePositions();
                 m.updateMassAndCost();
                 m.updateAttachNodes(true);
-                m.updateDragCubes();
                 m.updateFairing(true);
                 m.updateAvailableVariants();
+                m.updateDragCubes();
                 SSTUModInterop.updateResourceVolume(part);
-                SSTUModInterop.onPartGeometryUpdate(m.part, true);
             };
 
             //set up the core variant UI control
@@ -1055,7 +1054,21 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
-            Fields[nameof(currentSolarLayout)].uiControlEditor.onFieldChanged = solarModule.layoutSelected;
+            Fields[nameof(currentSolarLayout)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                solarModule.layoutSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+            };
+
+            Fields[nameof(currentSolarParent)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentSolarParent = currentSolarParent; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
+                });
+            };
 
             Fields[nameof(currentUpperRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
@@ -1069,7 +1082,22 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
-            Fields[nameof(currentUpperRCSLayout)].uiControlEditor.onFieldChanged = upperRcsModule.layoutSelected;
+            Fields[nameof(currentUpperRCSLayout)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                upperRcsModule.layoutSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
+            };
+
+            Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentUpperRCSOffset = this.currentUpperRCSOffset; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
 
             Fields[nameof(currentLowerRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
@@ -1083,22 +1111,19 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
-            Fields[nameof(currentLowerRCSLayout)].uiControlEditor.onFieldChanged = lowerRcsModule.layoutSelected;
-
-            Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
+            Fields[nameof(currentLowerRCSLayout)].uiControlEditor.onFieldChanged = (a, b) =>
             {
-                this.actionWithSymmetry(m =>
-                {
-                    modelChangedAction(m);
-                });
-                SSTUStockInterop.fireEditorUpdate();
+                lowerRcsModule.layoutSelected(a, b);
+                this.actionWithSymmetry(modelChangedAction);
             };
 
             Fields[nameof(currentLowerRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 this.actionWithSymmetry(m =>
                 {
-                    modelChangedAction(m);
+                    if (m != this) { m.currentLowerRCSOffset = this.currentLowerRCSOffset; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
