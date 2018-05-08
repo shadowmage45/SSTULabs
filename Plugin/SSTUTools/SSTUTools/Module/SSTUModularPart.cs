@@ -1046,6 +1046,8 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            Fields[nameof(currentSolarLayout)].uiControlEditor.onFieldChanged = solarModule.layoutSelected;
+
             Fields[nameof(currentUpperRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 upperRcsModule.modelSelected(a, b);
@@ -1058,6 +1060,8 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            Fields[nameof(currentUpperRCSLayout)].uiControlEditor.onFieldChanged = upperRcsModule.layoutSelected;
+
             Fields[nameof(currentLowerRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 lowerRcsModule.modelSelected(a, b);
@@ -1069,6 +1073,8 @@ namespace SSTUTools
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
+
+            Fields[nameof(currentLowerRCSLayout)].uiControlEditor.onFieldChanged = lowerRcsModule.layoutSelected;
 
             Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
             {
@@ -1119,6 +1125,7 @@ namespace SSTUTools
             }
         }
 
+        //TODO - rcs/solar validation
         /// <summary>
         /// Validate the currently selected models, and select update any that are found to be invalid by setting to the first usable option form their model list.<para/>
         /// Does not validate CORE, but updates other models from core outward.  Includes validating of solar and RCS options, setting to empty model if current parent slot cannot support RCS.
