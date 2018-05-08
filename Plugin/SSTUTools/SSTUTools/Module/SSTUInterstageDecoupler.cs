@@ -250,14 +250,6 @@ namespace SSTUTools
             this.forEachSymmetryCounterpart(module => module.autoDecouple = this.autoDecouple);
         }
 
-        public void onTextureUpdated(BaseField field, object obj)
-        {
-        }
-
-        private void dimensionsWereUpdated()
-        {
-        }
-
         private void dimensionsWereUpdatedWithEngineRecalc()
         {
             updateEditorFields();
