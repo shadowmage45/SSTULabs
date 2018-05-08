@@ -278,10 +278,12 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Disable the animation module -- hides UI fields and clears module display information.
+        /// Disable the animation module -- hides UI fields and clears module display information.  Clears any cache of animation data.
         /// </summary>
         public void disableAnimations()
         {
+            modelAnimationData = new AnimationData();
+            animationData.Clear();
             updateUIState();
             updateModuleInfo();
         }
@@ -650,17 +652,21 @@ namespace SSTUTools
 
         private void setupController(String name, float speed, int layer, Transform transform)
         {
-            Animation[] allAnimations = transform.gameObject.GetComponentsInChildren<Animation>(true);
-            List<Animation> animList = new List<Animation>();
+            int len;
             Animation anim;
-            int len = allAnimations.Length;
-            for (int i = 0; i < len; i++)
+            List<Animation> animList = new List<Animation>();
+            if (!string.IsNullOrEmpty(animationName) && "none" != animationName)
             {
-                anim = allAnimations[i];
-                AnimationClip c = anim.GetClip(animationName);
-                if (c != null)
+                Animation[] allAnimations = transform.gameObject.GetComponentsInChildren<Animation>(true);
+                len = allAnimations.Length;
+                for (int i = 0; i < len; i++)
                 {
-                    animList.Add(anim);
+                    anim = allAnimations[i];
+                    AnimationClip c = anim.GetClip(animationName);
+                    if (c != null)
+                    {
+                        animList.Add(anim);
+                    }
                 }
             }
             animations = animList.ToArray();
