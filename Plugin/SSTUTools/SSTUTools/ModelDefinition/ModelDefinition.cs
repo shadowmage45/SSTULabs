@@ -349,9 +349,23 @@ namespace SSTUTools
             {
                 topNodeData = new AttachNodeBaseData(node.GetStringValue("topNode"));
             }
+            else
+            {
+                float y = height;
+                if (orientation == ModelOrientation.CENTRAL) { y *= 0.5f; }
+                else if (orientation == ModelOrientation.BOTTOM) { y = 0; }
+                topNodeData = new AttachNodeBaseData(0, y, 0, 0, 1, 0, diameter / 1.25f);
+            }
             if (node.HasValue("bottomNode"))
             {
                 bottomNodeData = new AttachNodeBaseData(node.GetStringValue("bottomNode"));
+            }
+            else
+            {
+                float y = -height;
+                if (orientation == ModelOrientation.CENTRAL) { y *= 0.5f; }
+                else if (orientation == ModelOrientation.TOP) { y = 0; }
+                bottomNodeData = new AttachNodeBaseData(0, y, 0, 0, -1, 0, diameter / 1.25f);
             }
             if (node.HasValue("bodyNode"))
             {
