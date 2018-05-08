@@ -1043,6 +1043,7 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            //------------------SOLAR MODULE UI INIT---------------------//
             Fields[nameof(currentSolar)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 solarModule.modelSelected(a, b);
@@ -1070,6 +1071,17 @@ namespace SSTUTools
                 });
             };
 
+            Fields[nameof(currentSolarOffset)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentSolarOffset = currentSolarOffset; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
+                });
+            };
+
+            //------------------UPPER RCS MODULE UI INIT---------------------//
             Fields[nameof(currentUpperRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 upperRcsModule.modelSelected(a, b);
@@ -1088,6 +1100,16 @@ namespace SSTUTools
                 this.actionWithSymmetry(modelChangedAction);
             };
 
+            Fields[nameof(currentUpperRCSParent)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentUpperRCSParent = currentUpperRCSParent; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
+                });
+            };
+
             Fields[nameof(currentUpperRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 this.actionWithSymmetry(m =>
@@ -1099,6 +1121,7 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            //------------------LOWER RCS MODULE UI INIT---------------------//
             Fields[nameof(currentLowerRCS)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 lowerRcsModule.modelSelected(a, b);
@@ -1115,6 +1138,16 @@ namespace SSTUTools
             {
                 lowerRcsModule.layoutSelected(a, b);
                 this.actionWithSymmetry(modelChangedAction);
+            };
+
+            Fields[nameof(currentLowerRCSParent)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentLowerRCSParent = currentLowerRCSParent; }
+                    m.updateModulePositions();
+                    m.updateDragCubes();
+                });
             };
 
             Fields[nameof(currentLowerRCSOffset)].uiControlEditor.onFieldChanged = (a, b) =>
@@ -1137,6 +1170,7 @@ namespace SSTUTools
                 this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
             }
 
+            //------------------MODULE TEXTURE SWITCH UI INIT---------------------//
             Fields[nameof(currentNoseTexture)].uiControlEditor.onFieldChanged = noseModule.textureSetSelected;
             Fields[nameof(currentUpperTexture)].uiControlEditor.onFieldChanged = upperModule.textureSetSelected;
             Fields[nameof(currentCoreTexture)].uiControlEditor.onFieldChanged = coreModule.textureSetSelected;
