@@ -433,7 +433,7 @@ namespace SSTUTools
             if (fairing == null) { return; }
             fairing.canDisableInEditor = true;
             FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(model.modulePosition + model.moduleFairingOffset);
+            data.setTopY(model.modulePosition + model.fairingTop);
             data.setTopRadius(currentDiameter * 0.5f);
             if (userInput)
             {

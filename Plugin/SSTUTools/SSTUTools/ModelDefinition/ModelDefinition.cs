@@ -142,9 +142,19 @@ namespace SSTUTools
         public readonly MeshMergeData[] mergeData;
 
         /// <summary>
-        /// Data defining the potential stack attach nodes that can be created/setup by this model definition.  If undefined, the model will have no attach nodes.
+        /// Attach node data for the 'top' attach node.  Will only be used if the top of this model is uncovered.
         /// </summary>
-        public readonly AttachNodeBaseData[] attachNodeData;
+        public readonly AttachNodeBaseData topNodeData;
+
+        /// <summary>
+        /// Attach node data for the 'bottom' attach node.  Will only be used if the bottom of this model is uncovered.
+        /// </summary>
+        public readonly AttachNodeBaseData bottomNodeData;
+
+        /// <summary>
+        /// Attach node data for the 'body' nodes. Will be used regardless of top/bottom covered status.
+        /// </summary>
+        public readonly AttachNodeBaseData[] bodyNodeData;
 
         /// <summary>
         /// Data defining the surface attach-node to use for this model definition.  If undefined, it defaults to an attach node on X axis at 'diameter' distance from model origin, with vertical position at model origin.
@@ -335,13 +345,23 @@ namespace SSTUTools
                 defaultTextureSet = textureSets[0].name;
             }
 
-            //load the stack attach node specifications
-            String[] attachNodeStrings = node.GetValues("node");
-            len = attachNodeStrings.Length;
-            attachNodeData = new AttachNodeBaseData[len];
-            for (int i = 0; i < len; i++)
+            if (node.HasValue("topNode"))
             {
-                attachNodeData[i] = new AttachNodeBaseData(attachNodeStrings[i]);
+                topNodeData = new AttachNodeBaseData(node.GetStringValue("topNode"));
+            }
+            if (node.HasValue("bottomNode"))
+            {
+                bottomNodeData = new AttachNodeBaseData(node.GetStringValue("bottomNode"));
+            }
+            if (node.HasValue("bodyNode"))
+            {
+                string[] nodeData = node.GetStringValues("bodyNode");
+                len = nodeData.Length;
+                bodyNodeData = new AttachNodeBaseData[len];
+                for (int i = 0; i < len; i++)
+                {
+                    bodyNodeData[i] = new AttachNodeBaseData(nodeData[i]);
+                }
             }
 
             //load the surface attach node specifications, or create default if none are defined.
@@ -763,19 +783,32 @@ namespace SSTUTools
         public readonly bool fairingsSupported = false;
 
         /// <summary>
-        /// An offset from the models origin point to where the fairing attaches.  Positive values denote Y+, negative values denote Y-
+        /// Position of the 'top' of the fairing, relative to model in its defined orientation and scale.
+        /// If the model is used in oposite orientation, this value is negated.
         /// </summary>
-        public readonly float fairingOffsetFromOrigin = 0f;
+        public readonly float top = 0f;
+
+        /// <summary>
+        /// Position of the 'bottom' of the fairing, relative to model in its defined orientation and scale.
+        /// If the model is used in oposite orientation, this value is negated.
+        /// </summary>
+        public readonly float bottom = 0f;
 
         public ModelFairingData(ConfigNode node)
         {
             fairingsSupported = node.GetBoolValue("enabled", false);
-            fairingOffsetFromOrigin = node.GetFloatValue("offset", 0f);
+            top = node.GetFloatValue("top", 0f);
+            bottom = node.GetFloatValue("bottom", 0f);
         }
 
-        public float getOffset(float scale, bool inverted)
+        public float getTop(float scale, bool invert)
         {
-            return scale * (inverted? -fairingOffsetFromOrigin : fairingOffsetFromOrigin);
+            return invert ? -scale * top : scale * top;
+        }
+
+        public float getBottom(float scale, bool invert)
+        {
+            return invert ? -scale * bottom : scale * bottom;
         }
 
     }

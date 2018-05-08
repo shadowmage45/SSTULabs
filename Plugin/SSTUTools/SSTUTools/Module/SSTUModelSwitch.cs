@@ -249,7 +249,7 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             string[] nodeNames = managedNodeNames.Split(',');
-            models.updateAttachNodes(nodeNames, userInput);
+            models.updateAttachNodeBody(nodeNames, userInput);
         }
 
         public string[] getSectionNames()

@@ -342,19 +342,29 @@ namespace SSTUTools
         public float moduleBottom { get { return moduleTop - moduleHeight; } }
 
         /// <summary>
-        /// Returns an offset that can be applied to the 'position' of this model that will specify the correct start point for a fairing. 
-        /// The returned offset will be correct for the currently configured orientation,
-        /// such that you can always use 'module.modulePosition + module.moduleFairingOffset' to attain the proper Y coordinate for fairing attachment.
+        /// Return the upper fairing attachment point for this module.  The returned position is relative to 'modulePosition'.
         /// </summary>
-        public float moduleFairingOffset
+        public float fairingTop
         {
             get
             {
-                if (definition.fairingData == null) { return 0; }
-                return definition.fairingData.getOffset(currentVerticalScale, definition.shouldInvert(orientation));
+                bool invert = definition.shouldInvert(orientation);
+                return definition.fairingData == null ? 0 : (invert ? definition.fairingData.getBottom(currentVerticalScale, invert) : definition.fairingData.getTop(currentVerticalScale, invert));
             }
         }
 
+        /// <summary>
+        /// Return the lower fairing attachment point for this module.  The returned position is relative to 'modulePosition'.
+        /// </summary>
+        public float fairingBottom
+        {
+            get
+            {
+                bool invert = definition.shouldInvert(orientation);
+                return definition.fairingData == null ? 0 : (invert? definition.fairingData.getTop(currentVerticalScale, invert) : definition.fairingData.getBottom(currentVerticalScale, invert));
+            }
+        }
+        
         /// <summary>
         /// Return the currently configured custom color data for this module slot.
         /// </summary>
@@ -825,7 +835,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="nodeNames"></param>
         /// <param name="userInput"></param>
-        public void updateAttachNodes(String[] nodeNames, bool userInput)
+        public void updateAttachNodeBody(String[] nodeNames, bool userInput)
         {
             if (nodeNames == null || nodeNames.Length < 1) { return; }
             if (nodeNames.Length == 1 && (nodeNames[0] == "NONE" || nodeNames[0] == "none")) { return; }
@@ -834,7 +844,7 @@ namespace SSTUTools
             AttachNode node = null;
             AttachNodeBaseData data;
 
-            int nodeCount = definition.attachNodeData.Length;
+            int nodeCount = definition.bodyNodeData.Length;
             int len = nodeNames.Length;
 
             Vector3 pos = Vector3.zero;
@@ -847,7 +857,7 @@ namespace SSTUTools
                 node = part.FindAttachNode(nodeNames[i]);
                 if (i < nodeCount)
                 {
-                    data = definition.attachNodeData[i];
+                    data = definition.bodyNodeData[i];
                     size = Mathf.RoundToInt(data.size * currentHorizontalScale);
                     pos = data.position * currentVerticalScale;
                     if (invert)
@@ -879,22 +889,48 @@ namespace SSTUTools
 
         public void updateAttachNodeTop(string nodeName, bool userInput)
         {
-
+            bool invert = definition.shouldInvert(orientation);
+            AttachNodeBaseData nodeData = invert ? definition.bottomNodeData : definition.topNodeData;
+            if (nodeData == null)
+            {
+                //TODO - disable attach node if unoccupied
+                return;
+            }
+            AttachNode node = part.FindAttachNode(nodeName);
+            updateAttachNode(nodeData, node, invert, userInput);
         }
 
         public void updateAttachNodeBottom(string nodeName, bool userInput)
         {
-
-        }
-
-        public void updateAttachNodeBody(string[] nodeNames, bool userInput)
-        {
-
+            bool invert = definition.shouldInvert(orientation);
+            AttachNodeBaseData nodeData = invert ? definition.topNodeData : definition.bottomNodeData;
+            if (nodeData == null)
+            {
+                //TODO - disable attach node if unoccupied
+                return;
+            }
+            AttachNode node = part.FindAttachNode(nodeName);
+            updateAttachNode(nodeData, node, invert, userInput);
         }
 
         public void updateSurfaceAttachNode(AttachNode node, bool userInput)
         {
 
+        }
+
+        private void updateAttachNode(AttachNodeBaseData data, AttachNode node, bool invert, bool userInput)
+        {
+            if (node == null) { return; }
+            Vector3 pos = data.position;
+            Vector3 ori = data.orientation;
+            if (invert)
+            {
+                pos.y = -pos.y;
+                ori.y = -ori.y;
+            }
+            float size = currentVerticalScale * data.size;
+            pos.y += modulePosition + getPlacementOffset();
+            SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, ori, userInput);
         }
 
         /// <summary>
@@ -1164,11 +1200,12 @@ namespace SSTUTools
         /// <returns></returns>
         private bool canSwitchTo(Part part, String[] nodeNames)
         {
+            if (definition.bodyNodeData == null) { return true; }
             AttachNode node;
             int len = nodeNames.Length;
             for (int i = 0; i < len; i++)
             {
-                if (i < definition.attachNodeData.Length) { continue; }//don't care about those nodes, they will be present
+                if (i < definition.bodyNodeData.Length) { continue; }//don't care about those nodes, they will be present
                 node = part.FindAttachNode(nodeNames[i]);//this is a node that would be disabled
                 if (node == null) { continue; }//already disabled, and that is just fine
                 else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount

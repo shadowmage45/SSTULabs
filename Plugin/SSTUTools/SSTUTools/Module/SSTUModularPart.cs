@@ -136,6 +136,15 @@ namespace SSTUTools
         public int mountContainerIndex = 0;
 
         [KSPField]
+        public int topFairingIndex = -1;
+
+        [KSPField]
+        public int centralFairingIndex = -1;
+
+        [KSPField]
+        public int bottomFairingIndex = -1;
+
+        [KSPField]
         public string upperRCSThrustTransform = "RCSThrustTransform";
 
         [KSPField]
@@ -1351,23 +1360,24 @@ namespace SSTUTools
             lowerModule.updateAttachNodeBody(lowerNodeNames, userInput);
             mountModule.updateAttachNodeBody(mountNodeNames, userInput);
 
-            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
-            Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
-            SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
-            AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
-            if (noseInterstage != null)
-            {
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
-            }
+            //TODO -- interstage node handling, for use on MUS -- needs to tie into fairing positioning code.
+            ////update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
+            //Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
+            //SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
+            //AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
+            //if (noseInterstage != null)
+            //{
+            //    SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
+            //}
 
-            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
-            pos = new Vector3(0, getBottomFairingTopY(), 0);
-            SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
-            AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
-            if (mountInterstage != null)
-            {
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
-            }
+            ////update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
+            //pos = new Vector3(0, getBottomFairingTopY(), 0);
+            //SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
+            //AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
+            //if (mountInterstage != null)
+            //{
+            //    SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
+            //}
 
             //update surface attach node position, part position, and any surface attached children
             //TODO -- how to determine how far to offset/move surface attached children?
@@ -1383,35 +1393,48 @@ namespace SSTUTools
 
         // TODO -- unknown if any of the fairing update code works
         /// <summary>
-        /// Update the current fairing modules (top and bottom) for the current model-module configuration (diameters, positions).
+        /// Update the current fairing modules (top, centra, and bottom) for the current model-module configuration (diameters, positions).
         /// </summary>
         /// <param name="userInput"></param>
         private void updateFairing(bool userInput)
         {
             SSTUNodeFairing[] modules = part.GetComponents<SSTUNodeFairing>();
-            if (modules == null || modules.Length < 2)
+            if (centralFairingIndex >= 0 && centralFairingIndex < modules.Length)
             {
-                MonoBehaviour.print("ERROR: Could not locate both fairing modules for part: " + part.name);
-                return;
+                bool enabled = coreModule.fairingEnabled;
+                SSTUNodeFairing coreFairing = modules[centralFairingIndex];
+                float top = coreModule.modulePosition + coreModule.fairingTop;
+                float bot = coreModule.modulePosition + coreModule.fairingBottom;
+                FairingUpdateData data = new FairingUpdateData();
+                data.setTopY(top);
+                data.setTopRadius(currentDiameter * 0.5f);
+                data.setBottomY(bot);
+                data.setBottomRadius(currentDiameter * 0.5f);
+                data.setEnable(enabled);
+                coreFairing.updateExternal(data);
             }
-            SSTUNodeFairing topFairing = modules[0];
-            if (topFairing != null)
+            if (topFairingIndex >= 0 && topFairingIndex < modules.Length)
             {
+                bool enabled = noseModule.fairingEnabled;
+                SSTUNodeFairing topFairing = modules[topFairingIndex];
                 float topFairingBottomY = getTopFairingBottomY();
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopY(getPartTopY());
                 data.setBottomY(topFairingBottomY);
                 data.setBottomRadius(currentDiameter * 0.5f);
+                data.setEnable(enabled);
                 if (userInput) { data.setTopRadius(currentDiameter * 0.5f); }
                 topFairing.updateExternal(data);
             }
-            SSTUNodeFairing bottomFairing = modules[1];
-            if (bottomFairing != null)
+            if (bottomFairingIndex >= 0 && bottomFairingIndex < modules.Length)
             {
+                bool enabled = mountModule.fairingEnabled;
+                SSTUNodeFairing bottomFairing = modules[bottomFairingIndex];
                 float bottomFairingTopY = getBottomFairingTopY();
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopRadius(currentDiameter * 0.5f);
                 data.setTopY(bottomFairingTopY);
+                data.setEnable(enabled);
                 if (userInput) { data.setBottomRadius(currentDiameter * 0.5f); }
                 bottomFairing.updateExternal(data);
             }
@@ -1446,7 +1469,7 @@ namespace SSTUTools
         /// <returns></returns>
         private float getTopFairingBottomY()
         {
-            return getPartTopY() + noseModule.moduleFairingOffset;
+            return noseModule.modulePosition + noseModule.fairingBottom;
         }
 
         /// <summary>
@@ -1455,7 +1478,7 @@ namespace SSTUTools
         /// <returns></returns>
         private float getBottomFairingTopY()
         {
-            return getPartTopY() - getTotalHeight() + mountModule.moduleFairingOffset; ;
+            return mountModule.modulePosition + mountModule.fairingTop;
         }
 
         /// <summary>

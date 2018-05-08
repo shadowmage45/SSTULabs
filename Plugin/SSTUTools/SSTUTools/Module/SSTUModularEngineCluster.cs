@@ -602,7 +602,7 @@ namespace SSTUTools
             mountModule.updateModelMeshes();
             //set up fairing/engine/node positions
             float mountScaledHeight = mountModule.moduleHeight;
-            fairingTopY = partTopY + mountModule.moduleFairingOffset;
+            fairingTopY = partTopY + mountModule.fairingTop;
             engineMountingY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + currentEngineVerticalOffset;
             fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + currentEngineVerticalOffset;          
         }
@@ -774,7 +774,7 @@ namespace SSTUTools
                    
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
-                float y = mountModule.modulePosition + mountModule.moduleFairingOffset;
+                float y = mountModule.modulePosition + mountModule.fairingTop;
                 Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
                 AttachNode interstage = part.FindAttachNode(interstageNodeName);
