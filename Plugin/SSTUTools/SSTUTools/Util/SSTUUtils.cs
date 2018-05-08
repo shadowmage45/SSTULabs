@@ -323,13 +323,15 @@ namespace SSTUTools
         public static void destroyChildrenImmediate(Transform tr)
         {
             if (tr == null || tr.childCount <= 0) { return; }
-            
-            foreach (Transform child in tr)
+            int len = tr.childCount;
+            for (int i = len-1; i >=0; i--)
             {
+                Transform child = tr.GetChild(i);
                 if (child == null)
                 {
                     continue;
                 }
+                child.parent = null;
                 GameObject.DestroyImmediate(child.gameObject);
             }
         }
