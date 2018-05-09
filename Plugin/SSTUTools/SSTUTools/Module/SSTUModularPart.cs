@@ -1443,10 +1443,8 @@ namespace SSTUTools
             AttachNode surfaceNode = part.srfAttachNode;
             if (surfaceNode != null)
             {
-                coreModule.updateSurfaceAttachNode(surfaceNode, userInput);
-                //TODO -- update surface attach node position
-                //TODO -- update this parts position on diameter change if is srf attached to another part
-                //TODO -- update any surface attached children (diameter scale/adjust only)
+                float prevDiameter = currentDiameter;
+                coreModule.updateSurfaceAttachNode(surfaceNode, prevDiameter, userInput);
             }
         }
 

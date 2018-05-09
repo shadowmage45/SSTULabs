@@ -144,7 +144,7 @@ namespace SSTUTools
         {
             position = new Vector3(x, y, z);
             orientation = new Vector3(rx, ry, rz);
-            this.size = size;
+            this.size = Mathf.RoundToInt(size);
         }
     }
 }

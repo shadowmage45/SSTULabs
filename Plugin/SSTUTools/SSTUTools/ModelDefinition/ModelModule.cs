@@ -844,14 +844,14 @@ namespace SSTUTools
             AttachNode node = null;
             AttachNodeBaseData data;
 
-            int nodeCount = definition.bodyNodeData.Length;
-            int len = nodeNames.Length;
-
             Vector3 pos = Vector3.zero;
             Vector3 orient = Vector3.up;
             int size = 4;
 
             bool invert = definition.shouldInvert(orientation);
+
+            int nodeCount = definition.bodyNodeData == null ? 0 : definition.bodyNodeData.Length;
+            int len = nodeNames.Length;
             for (int i = 0; i < len; i++)
             {
                 node = part.FindAttachNode(nodeNames[i]);
@@ -859,7 +859,10 @@ namespace SSTUTools
                 {
                     data = definition.bodyNodeData[i];
                     size = Mathf.RoundToInt(data.size * currentHorizontalScale);
-                    pos = data.position * currentVerticalScale;
+                    pos = data.position;
+                    pos.y *= currentVerticalScale;
+                    pos.x *= currentHorizontalScale;
+                    pos.z *= currentHorizontalScale;
                     if (invert)
                     {
                         pos.y = -pos.y;
@@ -913,7 +916,7 @@ namespace SSTUTools
             updateAttachNode(nodeData, node, invert, userInput);
         }
 
-        public void updateSurfaceAttachNode(AttachNode node, bool userInput)
+        public void updateSurfaceAttachNode(AttachNode node, float prevDiameter, bool userInput)
         {
 
         }
@@ -922,13 +925,17 @@ namespace SSTUTools
         {
             if (node == null) { return; }
             Vector3 pos = data.position;
+            pos.y *= currentVerticalScale;
+            pos.x *= currentHorizontalScale;
+            pos.z *= currentHorizontalScale;
             Vector3 ori = data.orientation;
             if (invert)
             {
                 pos.y = -pos.y;
+                pos.x = -pos.x;
                 ori.y = -ori.y;
             }
-            float size = currentVerticalScale * data.size;
+            float size = currentHorizontalScale * data.size;
             pos.y += modulePosition + getPlacementOffset();
             SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, ori, userInput);
         }
