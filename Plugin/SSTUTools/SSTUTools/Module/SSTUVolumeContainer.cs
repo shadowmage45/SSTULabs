@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -215,20 +216,6 @@ namespace SSTUTools
         public void recalcVolume()
         {
             float[] volumes = new float[numberOfContainers];
-            float totalVolume = 0;
-            for (int i = 0; i < numberOfContainers; i++)
-            {
-                if (containers[i].useStaticVolume)
-                {
-                    volumes[i] += containers[i].rawVolume;
-                    totalVolume += volumes[i];
-                }
-                else
-                {
-                    volumes[i] = 0;
-                }
-            }
-
             IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
             int len = contributors.Length;
             float[] contVols;
@@ -241,7 +228,6 @@ namespace SSTUTools
                 for (int k = 0; k < len2; k++)
                 {
                     volumes[contIndices[k]] += contVols[k];
-                    totalVolume += contVols[k];
                 }
             }
             len = containers.Length;

@@ -27,7 +27,8 @@ namespace SSTUTools
         public readonly bool ecHasMass = true;
         public readonly bool ecHasCost = true;
         public readonly bool guiAvailable = true;
-        public readonly bool useStaticVolume = true;
+        public readonly bool useStaticVolume = false; //if the config volume should always be included regardless of external module manipulation
+        public readonly float configVolume; // base/static volume from the original config
         public readonly SSTUVolumeContainer module;
         //runtime accessible data
         public readonly string[] applicableResources;
@@ -59,7 +60,7 @@ namespace SSTUTools
             availableResources = node.GetStringValues("resource");
             resourceSets = node.GetStringValues("resourceSet");
             tankModifierNames = node.GetStringValues("modifier");
-            volume = node.GetFloatValue("volume", 0);
+            configVolume = volume = node.GetFloatValue("volume", 0);
             tankageVolume = node.GetFloatValue("tankageVolume");
             tankageMass = node.GetFloatValue("tankageMass");
             costPerDryTon = node.GetFloatValue("dryCost", 700f);
@@ -314,6 +315,7 @@ namespace SSTUTools
         public void setContainerVolume(float containerRawVolume)
         {
             volume = containerRawVolume;
+            if (useStaticVolume) { volume += configVolume; }
             internalUpdateVolumeUnits();
             internalUpdateMassAndCost();
             resourcesDirty = true;
