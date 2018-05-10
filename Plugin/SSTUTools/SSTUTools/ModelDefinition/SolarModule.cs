@@ -144,9 +144,12 @@ namespace SSTUTools
             else if(HighLogic.LoadedSceneIsFlight)//sun tracking only active in flight
             {
                 Vector3 sunPos = FlightGlobals.Bodies[0].transform.position;
-                for (int i = 0; i < len; i++)
+                if (part.vessel != null && part.vessel.solarFlux > 0)
                 {
-                    panelData[i].panelUpdate(sunPos);
+                    for (int i = 0; i < len; i++)
+                    {
+                        panelData[i].panelUpdate(sunPos);
+                    }
                 }
             }
             //noop in editor if not lerping closed
@@ -352,7 +355,6 @@ namespace SSTUTools
         public void panelUpdate(Vector3 solarSource)
         {
             if (isBroken) { return; }
-            if (!string.IsNullOrEmpty(occluderName)) { return; }
             int len = pivots.Length;
             for (int i = 0; i < len; i++)
             {
