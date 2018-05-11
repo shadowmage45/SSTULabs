@@ -518,6 +518,22 @@ namespace SSTUTools
         }
 
         /// <summary>
+        /// Update the input moduleEngines min, max, and split thrust values.  Any engine thrust transforms need to have been already renamed prior to this call.
+        /// </summary>
+        /// <param name="engine"></param>
+        /// <param name="thrustScalePower"></param>
+        public void updateEngineModuleThrust(ModuleEngines engine, float thrustScalePower)
+        {
+            if (engine == null || !engineThrustEnabled) { return; }
+            float scalar = Mathf.Pow(currentHorizontalScale, thrustScalePower);
+            float min = definition.engineThrustData.minThrust * layout.positions.Count() * scalar;
+            float max = definition.engineThrustData.maxThrust * layout.positions.Count() * scalar;
+            float[] splitThrust = definition.engineThrustData.getCombinedSplitThrust(layout.positions.Count());
+            engine.thrustTransformMultipliers = splitThrust.ToList();
+            SSTUStockInterop.updateEngineThrust(engine, min, max);//calls engine.OnLoad(...);
+        }
+
+        /// <summary>
         /// Return an array populated with copies of the solar data for this model, one copy for each model position in the current layout.
         /// </summary>
         /// <returns></returns>

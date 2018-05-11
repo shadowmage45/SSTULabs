@@ -632,8 +632,7 @@ namespace SSTUTools
         }
 
     }
-
-    //TODO
+    
     /// <summary>
     /// Information for a single model definition that specifies engine thrust information<para/>
     /// Min, Max, and per-transform percentages.
@@ -652,10 +651,20 @@ namespace SSTUTools
             thrustSplit = node.GetFloatValuesCSV("thrustSplit", new float[] { 1.0f });
         }
 
-        //TODO
         public float[] getCombinedSplitThrust(int count)
         {
-            return null;
+            if (thrustSplit == null) { return null; }
+            int l1 = thrustSplit.Length;
+            int l2 = l1 * count;
+            float[] retCache = new float[l2];
+            for (int i = 0, j = 0; i < count; i++)
+            {
+                for (int k = 0; k < l1; k++, j++)
+                {
+                    retCache[j] = thrustSplit[k] / count;
+                }
+            }
+            return retCache;
         }
 
     }

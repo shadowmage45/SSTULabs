@@ -284,18 +284,6 @@ namespace SSTUTools
                 m.updateDragCubes();
                 m.updateFairingTextureSet(false);
             };
-
-            Fields[nameof(currentEngineModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
-            {
-                engineModels.modelSelected(a, b);
-                this.actionWithSymmetry(m =>
-                {
-                    //model selected action sets vars on symmetry parts
-                    rebuild(m);
-                    m.updateEngineThrust();
-                    SSTUModInterop.updateResourceVolume(m.part);
-                });
-            };
             Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m => 
@@ -349,6 +337,27 @@ namespace SSTUTools
                     }
                 });
             };
+
+            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    m.currentTextureSet = currentTextureSet;
+                    m.updateFairingTextureSet(!SSTUGameSettings.persistRecolor());
+                });
+            };
+
+            Fields[nameof(currentEngineModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            {
+                engineModels.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    //model selected action sets vars on symmetry parts
+                    rebuild(m);
+                    m.reInitEngineModule();
+                    SSTUModInterop.updateResourceVolume(m.part);
+                });
+            };
             Fields[nameof(currentEngineScale)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m =>
@@ -358,18 +367,19 @@ namespace SSTUTools
                     SSTUModInterop.updateResourceVolume(m.part);
                 });
             };
-
-            Fields[nameof(currentEngineTextureSet)].guiActiveEditor = engineModels.definition.textureSets.Length > 1;
-            Fields[nameof(currentEngineTextureSet)].uiControlEditor.onFieldChanged = engineModels.textureSetSelected;
-
-            Fields[nameof(currentTextureSet)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            Fields[nameof(currentEngineLayout)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
-                this.actionWithSymmetry(m =>
+                engineModels.layoutSelected(a, b);
+                this.actionWithSymmetry(m => 
                 {
-                    m.currentTextureSet = currentTextureSet;
-                    m.updateFairingTextureSet(!SSTUGameSettings.persistRecolor());
+                    m.reInitEngineModule();
+                    m.updatePartMass();
+                    m.updateDragCubes();
+                    SSTUModInterop.updateResourceVolume(m.part);
                 });
-            }; 
+            };
+            Fields[nameof(currentEngineTextureSet)].uiControlEditor.onFieldChanged = engineModels.textureSetSelected;
+            Fields[nameof(currentEngineTextureSet)].guiActiveEditor = engineModels.definition.textureSets.Length > 1;
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
             SSTUModInterop.onPartGeometryUpdate(part, true);
@@ -395,7 +405,7 @@ namespace SSTUTools
             {
                 if (dc != this) { decoupler = dc; break; }
             }
-            updateEngineThrust();
+            reInitEngineModule();
             updateShielding();
             Events[nameof(ToggleStaging)].advancedTweakable = false;
             decoupler.Events[nameof(ToggleStaging)].advancedTweakable = false;
@@ -436,6 +446,7 @@ namespace SSTUTools
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
+            SSTULog.debug("def: " + defaultMass + " mod: " + modifiedMass);
             return -defaultMass + modifiedMass;
         }
 
@@ -501,7 +512,7 @@ namespace SSTUTools
         //IContainerVolumeContributor override
         public ContainerContribution[] getContainerContributions()
         {
-            ContainerContribution ctBlock = new ContainerContribution(engineContainerIndex, engineModels.moduleVolume);
+            ContainerContribution ctBlock = new ContainerContribution(engineContainerIndex, engineModels.moduleVolume*1000f);
             ContainerContribution[] cts = new ContainerContribution[] { ctBlock };
             return cts;
         }
@@ -561,7 +572,6 @@ namespace SSTUTools
             updateFairingTextureSet(false);
             updateNodePositions(false);
             updatePartMass();
-            updateEngineThrust();
         }
 
         #endregion ENDREGION - Init methods
@@ -649,20 +659,19 @@ namespace SSTUTools
 
             guiFairingCost = panelCost;
             guiFairingMass = panelMass;
+            SSTULog.debug("mass: " + engineScaledMass + " + " + panelMass+" = "+modifiedMass);
         }
 
-        private void updateEngineThrust()
+        private void reInitEngineModule()
         {
+            engineModels.renameEngineThrustTransforms(engineThrustTransformName);
             ModuleEngines engine = part.GetComponent<ModuleEngines>();
             if (engine != null)
             {
-                MonoBehaviour.print("TODO - ISDC-UpdateEngineThrust()");
-                //float scale = getEngineScale();
-                //float thrustScalar = Mathf.Pow(scale, thrustScalePower);
-                //float thrustPerEngine = engineThrust * thrustScalar;
-                //float totalThrust = thrustPerEngine * engineModels.layout.positions.Length;
-                //guiEngineThrust = totalThrust;
-                //SSTUStockInterop.updateEngineThrust(engine, engine.minThrust, totalThrust);
+                engine.thrustVectorTransformName = engineThrustTransformName;
+                engineModels.updateEngineModuleThrust(engine, thrustScalePower);
+                engine.OnStart(HighLogic.LoadedSceneIsEditor ? StartState.Editor : HighLogic.LoadedSceneIsFlight ? StartState.Flying : StartState.None);
+                guiEngineThrust = engine.maxThrust;
             }
             else
             {
