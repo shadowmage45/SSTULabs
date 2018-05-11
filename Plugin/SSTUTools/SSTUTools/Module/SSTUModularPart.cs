@@ -788,38 +788,23 @@ namespace SSTUTools
         }
 
         //IContainerVolumeContributor override
-        public int[] getContainerIndices()
+        public ContainerContribution[] getContainerContributions()
         {
-            int[] indices = new int[5];
-            indices[0] = noseContainerIndex;
-            indices[1] = upperContainerIndex;
-            indices[2] = coreContainerIndex;
-            indices[3] = lowerContainerIndex;
-            indices[4] = mountContainerIndex;
-            return indices;
-        }
-
-        //IContainerVolumeContributor override
-        public float[] getContainerVolumes()
-        {
-            float[] volumes = new float[5];
+            ContainerContribution[] cts;
             if (useAdapterVolume)
             {
-                volumes[0] = noseModule.moduleVolume * 1000f;
-                volumes[1] = upperModule.moduleVolume * 1000f;
-                volumes[2] = coreModule.moduleVolume * 1000f;
-                volumes[3] = lowerModule.moduleVolume * 1000f;
-                volumes[4] = mountModule.moduleVolume * 1000f;
+                ContainerContribution ct0 = new ContainerContribution(noseContainerIndex, noseModule.moduleVolume * 1000f);
+                ContainerContribution ct1 = new ContainerContribution(upperContainerIndex, upperModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct3 = new ContainerContribution(lowerContainerIndex, lowerModule.moduleVolume * 1000f);
+                ContainerContribution ct4 = new ContainerContribution(mountContainerIndex, mountModule.moduleVolume * 1000f);
+                cts = new ContainerContribution[5] { ct0, ct1, ct2, ct3, ct4 };
             }
             else
             {
-                volumes[0] = 0;
-                volumes[1] = 0;
-                volumes[2] = coreModule.moduleVolume * 1000f;
-                volumes[3] = 0;
-                volumes[4] = 0;
+                cts = new ContainerContribution[] { new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f) };
             }
-            return volumes;
+            return cts;
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -971,7 +956,7 @@ namespace SSTUTools
                 m.updateFairing(true);
                 m.updateAvailableVariants();
                 m.updateDragCubes();
-                SSTUModInterop.updateResourceVolume(part);
+                SSTUModInterop.updateResourceVolume(m.part);
             };
 
             //set up the core variant UI control

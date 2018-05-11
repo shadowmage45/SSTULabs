@@ -217,17 +217,15 @@ namespace SSTUTools
         {
             float[] volumes = new float[numberOfContainers];
             IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
+            ContainerContribution[] cts;
             int len = contributors.Length;
-            float[] contVols;
-            int[] contIndices;
             for (int i = 0; i < len; i++)
             {
-                contIndices = contributors[i].getContainerIndices();
-                contVols = contributors[i].getContainerVolumes();
-                int len2 = contIndices.Length;
+                cts = contributors[i].getContainerContributions();
+                int len2 = cts.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    volumes[contIndices[k]] += contVols[k];
+                    volumes[cts[k].containerIndex] += cts[k].containerVolume;
                 }
             }
             len = containers.Length;

@@ -40,18 +40,16 @@ namespace SSTUTools
             else
             {
                 IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
+                ContainerContribution[] cts;
                 int len = contributors.Length;
-                float[] contVols;
-                int[] contIndices;
                 float totalVolume = 0;
                 for (int i = 0; i < len; i++)
                 {
-                    contIndices = contributors[i].getContainerIndices();
-                    contVols = contributors[i].getContainerVolumes();
-                    int len2 = contIndices.Length;
+                    cts = contributors[i].getContainerContributions();
+                    int len2 = cts.Length;
                     for (int k = 0; k < len2; k++)
                     {
-                        totalVolume += contVols[k];
+                        totalVolume += cts[k].containerVolume;
                     }
                 }
                 realFuelsVolumeUpdate(part, totalVolume);

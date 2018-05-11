@@ -8,8 +8,20 @@ using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
-    public class SSTUModularRCS : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable
+    public class SSTUModularRCS : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable, IContainerVolumeContributor
     {
+
+        [KSPField]
+        public string rcsThrustTransformName = string.Empty;
+
+        [KSPField]
+        public bool allowRescale = true;
+
+        [KSPField]
+        public int blockContainerIndex = 0;
+
+        [KSPField]
+        public int structureContainerIndex = 0;
 
         [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.05f, maxValue = 5f, incrementSmall = 0.25f, incrementLarge = 1f, incrementSlide = 0.05f)]
@@ -34,12 +46,6 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = false, guiName = "Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLayout = "default";
-
-        [KSPField]
-        public string rcsThrustTransformName = string.Empty;
-
-        [KSPField]
-        public bool allowRescale = true;
 
         [KSPField(isPersistant = true)]
         public string modelPersistentData;
@@ -88,6 +94,7 @@ namespace SSTUTools
                 m.updateModelScale();
                 m.updateAttachNodes(true);
                 m.updateMassAndCost();
+                SSTUModInterop.updateResourceVolume(m.part);
                 SSTUModInterop.onPartGeometryUpdate(m.part, true);                
             };
 
@@ -116,10 +123,17 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentScale = currentScale; }
                     modelChangeAction(m);
+                    m.updateRCSThrust();
                 });
             };
 
+            Fields[nameof(currentTexture)].uiControlEditor.onFieldChanged = rcsBlockModule.textureSetSelected;
+            Fields[nameof(currentStructureTexture)].uiControlEditor.onFieldChanged = standoffModule.textureSetSelected;
+
             Fields[nameof(currentScale)].guiActiveEditor = allowRescale;
+
+            SSTUModInterop.updateResourceVolume(part);
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public void Start()
@@ -195,6 +209,14 @@ namespace SSTUTools
                     standoffModule.setSectionColors(colors);
                     break;
             }
+        }
+
+        public ContainerContribution[] getContainerContributions()
+        {
+            ContainerContribution ctBlock = new ContainerContribution(blockContainerIndex, rcsBlockModule.moduleVolume);
+            ContainerContribution ctStruct = new ContainerContribution(structureContainerIndex, standoffModule.moduleVolume);
+            ContainerContribution[] cts = new ContainerContribution[2] { ctBlock, ctStruct };
+            return cts;
         }
 
         #endregion ENDREGION - Interface methods

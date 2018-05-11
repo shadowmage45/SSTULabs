@@ -10,18 +10,23 @@ namespace SSTUTools
     public interface IContainerVolumeContributor
     {
         /// <summary>
-        /// Return the indices of the containers that this module will adjust
+        /// Return an array of container contributions.
         /// </summary>
         /// <returns></returns>
-        int[] getContainerIndices();
-
-        /// <summary>
-        /// Return the volume of the containers in liters
-        /// </summary>
-        /// <returns></returns>
-        float[] getContainerVolumes();
+        ContainerContribution[] getContainerContributions();
     }
-    
+
+    public struct ContainerContribution
+    {
+        public readonly int containerIndex;
+        public readonly float containerVolume;
+        public ContainerContribution(int index, float volume)
+        {
+            containerIndex = index;
+            containerVolume = volume;
+        }
+    }
+
     public interface ISSTUAnimatedModule
     {
         AnimState getAnimationState();

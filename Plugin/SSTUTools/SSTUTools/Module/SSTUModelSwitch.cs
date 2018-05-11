@@ -181,6 +181,7 @@ namespace SSTUTools
             };
             Fields[nameof(currentTexture)].guiActiveEditor = models.definition.textureSets.Length > 1;
             SSTUStockInterop.fireEditorUpdate();
+            SSTUModInterop.onPartGeometryUpdate(part, true);
         }
 
         public override string GetInfo()
@@ -207,15 +208,11 @@ namespace SSTUTools
         {
             return ModifierChangeWhen.CONSTANTLY;
         }
-        
-        public int[] getContainerIndices()
-        {
-            return new int[] { containerIndex };
-        }
 
-        public float[] getContainerVolumes()
+        //IContainerVolumeContributor override
+        public ContainerContribution[] getContainerContributions()
         {
-            return new float[] { models.moduleVolume * 1000f };
+            return new ContainerContribution[] { new ContainerContribution(containerIndex, models.moduleVolume * 1000f) };
         }
 
         private void initialize()
