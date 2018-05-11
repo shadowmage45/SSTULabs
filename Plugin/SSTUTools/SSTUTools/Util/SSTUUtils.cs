@@ -357,7 +357,7 @@ namespace SSTUTools
                     MeshRenderer r = (MeshRenderer)comp;
                     Material m = r.material;
                     Shader s = m == null ? null : m.shader;
-                    MonoBehaviour.print("Found Mesh Renderer component.  Mat/shader: "+m+" : "+s);
+                    MonoBehaviour.print("Found Mesh Rend : " + prefix + "* Mat: " + m +" :: Shader: "+s);
                 }
                 else
                 {

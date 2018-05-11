@@ -446,7 +446,6 @@ namespace SSTUTools
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            SSTULog.debug("def: " + defaultMass + " mod: " + modifiedMass);
             return -defaultMass + modifiedMass;
         }
 
