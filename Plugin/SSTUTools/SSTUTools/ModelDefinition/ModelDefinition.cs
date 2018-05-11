@@ -600,6 +600,7 @@ namespace SSTUTools
         public ModelEngineTransformData(ConfigNode node)
         {
             thrustTransformName = node.GetStringValue("thrustTransform");
+            if (string.IsNullOrEmpty(thrustTransformName)) { SSTULog.error("ERROR: THrust transform name was null for model def engine transform data"); }
             gimbalTransformName = node.GetStringValue("gimbalTransformName");
             gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
             gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
