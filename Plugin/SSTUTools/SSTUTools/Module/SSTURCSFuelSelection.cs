@@ -14,7 +14,9 @@ namespace SSTUTools
         public string configNodeData = string.Empty;
         
         private ContainerFuelPreset[] fuelTypes;
+        private FuelTypeISP[] isps;
         private ContainerFuelPreset fuelType;
+        private FuelTypeISP isp;
         private bool initialized = false;
 
         public override void OnLoad(ConfigNode node)
@@ -35,6 +37,7 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentFuelType = currentFuelType; }
                     m.fuelType = Array.Find(m.fuelTypes, s => s.name == m.currentFuelType);
+                    m.isp = m.isps[m.fuelTypes.IndexOf(m.fuelType)];
                     m.updateRCSFuelType();
                 });
             };
@@ -58,9 +61,14 @@ namespace SSTUTools
             ConfigNode[] fuelTypeNodes = node.GetNodes("FUELTYPE");
             int len = fuelTypeNodes.Length;
             fuelTypes = new ContainerFuelPreset[len];
+            isps = new FuelTypeISP[len];
             for (int i = 0; i < len; i++)
             {
                 fuelTypes[i] = VolumeContainerLoader.getPreset(fuelTypeNodes[i].GetValue("name"));
+                if (fuelTypeNodes[i].HasValue("minISP"))
+                {
+                    isps[i] = new SSTURCSFuelSelection.FuelTypeISP(fuelTypeNodes[i].GetFloatValue("minISP"), fuelTypeNodes[i].GetFloatValue("maxISP"));
+                }
             }
             fuelType = Array.Find(fuelTypes, m => m.name == currentFuelType);
             if (fuelType == null && (fuelTypes != null && fuelTypes.Length > 0))
@@ -102,6 +110,20 @@ namespace SSTUTools
                 rcsModule.propellants.Clear();
                 ConfigNode pNode = fuelType.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
                 rcsModule.OnLoad(pNode);
+                
+            }
+        }
+
+        private struct FuelTypeISP
+        {
+            float min;
+            float max;
+            bool valid;
+            public FuelTypeISP(float min, float max)
+            {
+                this.min = min;
+                this.max = max;
+                this.valid = true;
             }
         }
 
