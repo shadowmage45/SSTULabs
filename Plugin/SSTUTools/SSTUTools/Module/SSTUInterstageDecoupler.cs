@@ -4,7 +4,7 @@ using KSPShaderTools;
 
 namespace SSTUTools
 {
-    class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier, IRecolorable
+    class SSTUInterstageDecoupler : ModuleDecouple, IPartMassModifier, IPartCostModifier, IRecolorable, IContainerVolumeContributor
     {
 
         #region REGION - Config Fields
@@ -21,6 +21,9 @@ namespace SSTUTools
 
         [KSPField]
         public string engineThrustTransformName = "SSTU-ISDC-ThrustTransform";
+
+        [KSPField]
+        public int engineContainerIndex = 0;
 
         //--------------------------- Fairing related fields----------------------------------//
 
@@ -250,19 +253,6 @@ namespace SSTUTools
             this.forEachSymmetryCounterpart(module => module.autoDecouple = this.autoDecouple);
         }
 
-        private void dimensionsWereUpdatedWithEngineRecalc()
-        {
-            updateEditorFields();
-            buildFairing();
-            updateNodePositions(true);
-            updateResources();
-            updatePartMass();
-            updateEngineThrust();
-            updateShielding();
-            updateDragCubes();
-            updateFairingTextureSet(false);
-        }
-
         #endregion ENDREGION - GUI Interaction
 
         #region REGION - KSP Lifecycle and Overrides
@@ -287,6 +277,7 @@ namespace SSTUTools
             {
                 m.updateEditorFields();
                 m.buildFairing();
+                m.updateEnginePositionAndScale();
                 m.updateNodePositions(true);
                 m.updatePartMass();
                 m.updateShielding();
@@ -301,6 +292,8 @@ namespace SSTUTools
                 {
                     //model selected action sets vars on symmetry parts
                     rebuild(m);
+                    m.updateEngineThrust();
+                    SSTUModInterop.updateResourceVolume(m.part);
                 });
             };
             Fields[nameof(currentTopDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
@@ -362,6 +355,7 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentEngineScale = this.currentEngineScale; }
                     rebuild(m);
+                    SSTUModInterop.updateResourceVolume(m.part);
                 });
             };
 
@@ -378,6 +372,8 @@ namespace SSTUTools
             }; 
 
             GameEvents.onEditorShipModified.Add(new EventData<ShipConstruct>.OnEvent(onEditorShipModified));
+            SSTUModInterop.onPartGeometryUpdate(part, true);
+            SSTUModInterop.updateResourceVolume(part);
         }
 
         public void OnDestroy()
@@ -502,6 +498,14 @@ namespace SSTUTools
             }
         }
 
+        //IContainerVolumeContributor override
+        public ContainerContribution[] getContainerContributions()
+        {
+            ContainerContribution ctBlock = new ContainerContribution(engineContainerIndex, engineModels.moduleVolume);
+            ContainerContribution[] cts = new ContainerContribution[] { ctBlock };
+            return cts;
+        }
+
         #endregion ENDREGION - KSP LifeCycle and overrides
 
         #region REGION - Init Methods
@@ -553,19 +557,18 @@ namespace SSTUTools
             fairingBase = new FairingContainer(fairingContainerRoot.gameObject, cylinderSides, numberOfPanels, wallThickness);
             updateEditorFields();
             buildFairing();
+            updateEnginePositionAndScale();
             updateFairingTextureSet(false);
             updateNodePositions(false);
-            if (!initializedResources && (HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor))
-            {
-                initializedResources = true;
-                updateResources();
-            }
             updatePartMass();
             updateEngineThrust();
         }
 
         #endregion ENDREGION - Init methods
 
+        /// <summary>
+        /// Updates the UI fields for taper and height, including updating for min height from engines.
+        /// </summary>
         private void updateEditorFields()
         {
             minHeight = engineModels.moduleHeight;
@@ -585,6 +588,9 @@ namespace SSTUTools
             this.updateUIFloatEditControl(nameof(currentHeight), minHeight, maxHeight, heightIncrement * 2, heightIncrement, heightIncrement * 0.05f, true, currentHeight);
         }
 
+        /// <summary>
+        /// Rebuild fairing for current parameters
+        /// </summary>
         private void buildFairing()
         {
             MonoBehaviour.print("Rebuilding fairing.  Top: " + currentTopDiameter + " bot: " + currentBottomDiameter + " taper: " + currentTaperHeight + " height: " + currentHeight);
@@ -610,11 +616,13 @@ namespace SSTUTools
             fairingBase.generateFairing();
             fairingBase.setOpacity(HighLogic.LoadedSceneIsEditor && editorTransparency ? 0.25f : 1.0f);
 
-            updateEnginePositionAndScale();
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
         }
 
+        /// <summary>
+        /// Update the engine scale and position for scale.
+        /// </summary>
         private void updateEnginePositionAndScale()
         {
             engineModels.setScale(currentEngineScale);
@@ -622,17 +630,6 @@ namespace SSTUTools
             engineModels.setPosition(-currentHeight * 0.5f + engineModels.moduleHeight * 0.5f);
             engineModels.updateModelMeshes();
             engineModels.renameEngineThrustTransforms(engineThrustTransformName);
-        }
-
-        private void updateResources()
-        {
-            float volume = engineModels.moduleVolume;
-            //if (!SSTUModInterop.onPartFuelVolumeUpdate(part, volume*1000))
-            //{
-            //    SSTUResourceList resources = new SSTUResourceList();
-            //    fuelType.addResources(resources, volume);
-            //    resources.setResourcesToPart(part, 1, false);
-            //}
         }
 
         private void updatePartMass()
