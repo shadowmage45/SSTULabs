@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using KSPShaderTools;
+using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
@@ -1193,34 +1194,30 @@ namespace SSTUTools
             if (validateUpper && !coreModule.isValidUpper(upperModule))
             {
                 ModelDefinition def = coreModule.findFirstValidUpper(upperModule);
-                if (def == null) { }//TODO throw error...
+                if (def == null) { error("Could not locate valid definition for UPPER"); }
                 upperModule.modelSelected(def.name);
             }
-
             //validate nose model regardless of if upper changed or not
             if (validateNose && !upperModule.isValidUpper(noseModule))
             {
                 ModelDefinition def = upperModule.findFirstValidUpper(noseModule);
-                if (def == null) { }//TODO throw error...
+                if (def == null) { error("Could not locate valid definition for NOSE"); }
                 noseModule.modelSelected(def.name);
             }
-
             //validate lower model
             if (validateLower && !coreModule.isValidLower(lowerModule))
             {
                 ModelDefinition def = coreModule.findFirstValidLower(lowerModule);
-                if (def == null) { }//TODO throw error...
+                if (def == null) { error("Could not locate valid definition for LOWER"); }
                 lowerModule.modelSelected(def.name);
             }
-
             //validate mount model
             if (validateMount && !lowerModule.isValidLower(mountModule))
             {
                 ModelDefinition def = lowerModule.findFirstValidLower(mountModule);
-                if (def == null) { }//TODO throw error...
+                if (def == null) { error("Could not locate valid definition for MOUNT"); }
                 mountModule.modelSelected(def.name);
             }
-
             //TODO validate solar/RCS selections (model and parent)
             //what determines valid RCS/solar options for a given module?
             //what determines valid parent options for a given configuration?
@@ -1229,13 +1226,11 @@ namespace SSTUTools
             {
                 //TODO -- disable RCS module (set to inactive model), and/or move it to a valid parent slot.
             }
-
             p = getModuleByName(currentLowerRCSParent);
             if (!p.rcsParentEnabled)
             {
                 //TODO -- disable RCS module (set to inactive model), and/or move it to a valid parent slot.
             }
-
             p = getModuleByName(currentSolarParent);
             if (!p.rcsParentEnabled)//TODO -- how to determine if a model is valid for mounting of solar panels, and -where- to mount them on the model?
             {

@@ -1364,6 +1364,7 @@ namespace SSTUTools
                     return module.optionsCache[i].definition;
                 }
             }
+            error("Could not locate any valid upper modules matching def: " + definition);
             return null;
         }
 
@@ -1382,6 +1383,7 @@ namespace SSTUTools
                     return module.optionsCache[i].definition;
                 }
             }
+            error("Could not locate any valid lower modules matching def: " + definition);
             return null;
         }
 
