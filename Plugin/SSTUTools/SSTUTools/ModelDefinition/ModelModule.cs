@@ -83,8 +83,9 @@ namespace SSTUTools
 
         /// <summary>
         /// Local cache of the recoloring data to use for this module.  Loaded from persistence data if the recoloring persistence field is present.  Auto-saved out to persistence field on color updates.
+        /// May be NULL if no coloring data has been loaded.
         /// </summary>
-        private RecoloringData[] customColors = new RecoloringData[] { new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1), new RecoloringData(Color.white, 1, 1) };
+        private RecoloringData[] customColors;
 
         /// <summary>
         /// The -current- model definition.  Pulled from the array of all defs.
@@ -797,13 +798,6 @@ namespace SSTUTools
                     customColors[i] = new RecoloringData(colorSplits[i]);
                 }
             }
-            else
-            {
-                customColors = new RecoloringData[3];
-                customColors[0] = new RecoloringData(Color.white, 1, 1);
-                customColors[1] = new RecoloringData(Color.white, 1, 1);
-                customColors[2] = new RecoloringData(Color.white, 1, 1);
-            }
         }
 
         /// <summary>
@@ -962,7 +956,7 @@ namespace SSTUTools
         /// <param name="setName"></param>
         private void enableTextureSet()
         {
-            if (string.IsNullOrEmpty(textureSetName) || textureSetName == "none" )
+            if(string.IsNullOrEmpty(textureSetName) || textureSetName == "none" )
             {
                 return;
             }
@@ -1017,6 +1011,7 @@ namespace SSTUTools
                 }
                 else//invalid colors or texture set, create default placeholder color array
                 {
+                    error("Could not use default coloring from texture set: " + textureSetName + ".  No texture set or coloring data found.  Using placeholder coloring.  Module: "+getErrorReportModuleName());
                     RecoloringData placeholder = new RecoloringData(Color.white, 1, 1);
                     customColors = new RecoloringData[] { placeholder, placeholder, placeholder };
                 }
