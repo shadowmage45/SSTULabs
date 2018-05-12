@@ -47,7 +47,7 @@ namespace SSTUTools
         #region REGION - Public Delegate Stubs
 
         /// <summary>
-        /// Delegate MUST be populated.
+        /// Delegate poplated by a default that returns the entire model list.  May optionally provide a delegate method to return a custom list of currently valid modules.  Called by 'updateSelections'
         /// </summary>
         public ValidOptions getValidOptions;
 
@@ -403,6 +403,7 @@ namespace SSTUTools
             this.textureField = partModule.Fields[texturePersistenceFieldName];
             this.dataField = partModule.Fields[recolorPersistenceFieldName];
             this.animationModule = new AnimationModule(part, partModule, animationPersistenceFieldName, deployLimitField, deployEventName, retractEventName);
+            getValidOptions = delegate () { return optionsCache; };
             loadColors(persistentData);
         }
 

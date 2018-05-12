@@ -47,12 +47,6 @@ namespace SSTUTools
         public float resourceScalePower = 3f;
 
         /// <summary>
-        /// Adjusts the specified flux values for the current model scale.  fluxMult = pow(scale, fluxScalePower)
-        /// </summary>
-        [KSPField]
-        public float fluxScalePower = 3f;
-
-        /// <summary>
         /// Adjusts the ablation rate based on model scale.  ablationMult = pow(scale, ablationScalePower)
         /// </summary>
         [KSPField]
@@ -267,7 +261,12 @@ namespace SSTUTools
 
         public ContainerContribution[] getContainerContributions()
         {
-            return new ContainerContribution[] { new ContainerContribution(containerIndex, model.moduleVolume * 1000f) };
+            float volume = model==null? 0 : model.moduleVolume * 1000f;//raw volume from model definition, adjusted for scale
+            if (currentShieldTypeData != null)
+            {
+                volume *= currentShieldTypeData.resourceMult;
+            }
+            return new ContainerContribution[] { new ContainerContribution(containerIndex, volume) };
         }
 
         #endregion
@@ -306,10 +305,12 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            ConfigNode[] modelNodes = node.GetNodes("MODEL");
-            model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(currentShieldTexture), nameof(modelPersistentData), null, null, null, null);
+            Transform mhsRoot = part.transform.FindRecursive("model").FindOrCreate("SSTU-MHS-Root");
+            ConfigNode[] modelNodes = node.GetNodes("MODELS");
+            ModelDefinitionLayoutOptions[] models = SSTUModelData.getModelDefinitions(modelNodes);
+            model = new ModelModule<SSTUModularHeatShield>(part, this, mhsRoot, ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(currentShieldTexture), nameof(modelPersistentData), null, null, null, null);
             model.getSymmetryModule = (m) => m.model;
-            model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
+            model.setupModelList(models);
             model.setupModel();
             model.setScaleForDiameter(currentDiameter);
             model.setPosition(0);
@@ -326,6 +327,8 @@ namespace SSTUTools
             currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
             updateModuleStats();
             updatePartCost();
+            SSTUModInterop.onPartGeometryUpdate(part, false);
+            SSTUModInterop.updateResourceVolume(part);
             SSTUStockInterop.fireEditorUpdate();//update for mass/cost/etc.
         }
 
