@@ -20,10 +20,10 @@ namespace SSTUTools
     {
         public readonly int containerIndex;
         public readonly float containerVolume;
-        public ContainerContribution(int index, float volume)
+        public ContainerContribution(int index, float volumeLiters)
         {
             containerIndex = index;
-            containerVolume = volume;
+            containerVolume = volumeLiters;
         }
     }
 

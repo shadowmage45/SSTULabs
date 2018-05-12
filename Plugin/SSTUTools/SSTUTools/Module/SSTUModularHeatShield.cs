@@ -5,11 +5,13 @@ using KSPShaderTools;
 
 namespace SSTUTools
 {
-    public class SSTUModularHeatShield : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable
+    public class SSTUModularHeatShield : PartModule, IPartMassModifier, IPartCostModifier, IRecolorable, IContainerVolumeContributor
     {
-        #region REGION - Base Heat Shield Parameters
+
+        #region REGION - Base Heat Shield Parameters - used on both stand-alone and internally model-switched setups
+
         [KSPField]
-        public String resourceName = "Ablator";
+        public string resourceName = "Ablator";
 
         [KSPField]
         public Vector3 heatShieldVector = Vector3.down;
@@ -30,9 +32,6 @@ namespace SSTUTools
         public float ablationEfficiency = 6000f;
 
         [KSPField]
-        public float tempSmoothing = 0.5f;
-
-        [KSPField]
         public bool heatSoak = false;
 
         [KSPField]
@@ -41,12 +40,40 @@ namespace SSTUTools
         [KSPField]
         public FloatCurve heatCurve;
 
+        /// <summary>
+        /// Used to adjust the volume scaling in the model-module
+        /// </summary>
         [KSPField]
-        public float shieldMass = 0.25f;
+        public float resourceScalePower = 3f;
+
+        /// <summary>
+        /// Adjusts the specified flux values for the current model scale.  fluxMult = pow(scale, fluxScalePower)
+        /// </summary>
+        [KSPField]
+        public float fluxScalePower = 3f;
+
+        /// <summary>
+        /// Adjusts the ablation rate based on model scale.  ablationMult = pow(scale, ablationScalePower)
+        /// </summary>
+        [KSPField]
+        public float ablationScalePower = 3f;
+
+        /// <summary>
+        /// Determines the container index within VolumeContainer to use for resource.
+        /// The actual resource is set within the VolumeContainer module config, but volume comes from this module based on model scale and heat shield type.
+        /// </summary>
+        [KSPField]
+        public int containerIndex = 0;
 
         #endregion
 
-        #region REGION - ModularHeatShield resizing data
+        #region REGION - ModularHeatShield Model Manipulation Config Fields - used on stand-alone parts
+
+        /// <summary>
+        /// Determines if the module should trigger drag cube updates.
+        /// </summary>
+        [KSPField]
+        public bool standAlonePart = false;
 
         [KSPField]
         public float diameterIncrement = 0.625f;
@@ -57,47 +84,41 @@ namespace SSTUTools
         [KSPField]
         public float maxDiameter = 10f;
 
-        [KSPField]
-        public float massScalePower = 3f;
-
-        [KSPField]
-        public float resourceScalePower = 3f;
-
-        [KSPField]
-        public float fluxScalePower = 3f;
-
-        [KSPField]
-        public float ablationScalePower = 3f;
-
-        [KSPField]
-        public float baseResourceQuantity = 200f;
-
-        [KSPField]
-        public bool standAlonePart = false;
-
         #endregion
 
-        #region REGION - persistent fields
+        #region REGION - UI and persistent fields
 
+        /// <summary>
+        /// Persistent storage and UI selection of shield type.
+        /// </summary>
         [KSPField(isPersistant = true, guiName = "Shield Type", guiActiveEditor = true, guiActive = false),
          UI_ChooseOption(options = new string[] { "Light", "Medium", "Heavy", "ExtraHeavy" }, suppressEditorShipModified = true)]
         public String currentShieldType = "Medium";
 
+        /// <summary>
+        /// Persistent storage and UI selection of model diameter
+        /// </summary>
         [KSPField(isPersistant = true, guiName = "Diameter", guiActiveEditor = true),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true)]
         public float currentDiameter = 1.25f;
 
+        /// <summary>
+        /// Persistent storage and UI selection of model
+        /// </summary>
         [KSPField(isPersistant = true, guiName = "Shield Model", guiActiveEditor = true, guiActive = false),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentShieldModel = string.Empty;
 
+        /// <summary>
+        /// Persistent storage and UI selection of texture set.
+        /// </summary>
         [KSPField(isPersistant = true, guiName = "Shield Texture", guiActiveEditor = true, guiActive = false),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public String currentShieldTexture = string.Empty;
 
-        [KSPField(isPersistant = true)]
-        public bool initializedResources = false;
-
+        /// <summary>
+        /// Persistent storage for recoloring data.
+        /// </summary>
         [KSPField(isPersistant = true)]
         public string modelPersistentData = string.Empty;
 
@@ -110,11 +131,11 @@ namespace SSTUTools
 
         [KSPField(guiActive =true, guiName ="HS Flux")]
         public double guiShieldFlux = 0;
-        [KSPField(guiActive = true, guiName = "HS Use")]
+        [KSPField(guiActive = true, guiName = "HS Use", guiUnits ="%")]
         public double guiShieldUse = 0;
-        [KSPField(guiActive = true, guiName = "HS Temp")]
+        [KSPField(guiActive = true, guiName = "HS Temp", guiUnits ="k")]
         public double guiShieldTemp = 0;
-        [KSPField(guiActive = true, guiName = "HS Eff")]
+        [KSPField(guiActive = true, guiName = "HS Eff", guiUnits ="%")]
         public double guiShieldEff = 0;
 
         #endregion
@@ -158,18 +179,20 @@ namespace SSTUTools
             string[] options = SSTUUtils.getNames(shieldTypeData, m => m.baseType.name);
             this.updateUIChooseOptionControl(nameof(currentShieldType), options, options, true, currentShieldType);
             this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2f, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
-            this.Fields[nameof(currentShieldType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
+            Fields[nameof(currentShieldType)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b) 
             {
                 this.actionWithSymmetry(m => 
                 {
                     if (m != this) { m.currentShieldType = currentShieldType; }
                     m.currentShieldTypeData = Array.Find(m.shieldTypeData, s => s.baseType.name == m.currentShieldType);
                     m.updateModuleStats();
-                    m.updatePartResources();
                     m.updatePartCost();
+                    SSTUModInterop.updateResourceVolume(part);
                 });
             };
-            this.Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+
+            //UI functions for stand-alone part
+            Fields[nameof(currentDiameter)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
                 this.actionWithSymmetry(m => 
                 {
@@ -179,19 +202,30 @@ namespace SSTUTools
                     m.model.updateModelMeshes();
                     m.updateFairing(true);
                     m.updateModuleStats();
-                    m.updatePartResources();
                     m.updatePartCost();
                     m.updateAttachNodes(true);
                     m.updateDragCube();
+                    SSTUModInterop.updateResourceVolume(part);
                 });
             };
-            this.Fields[nameof(currentDiameter)].guiActiveEditor = standAlonePart;
-            this.Fields[nameof(currentShieldModel)].guiActiveEditor = false;
-            Fields[nameof(currentShieldTexture)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
+            Fields[nameof(currentShieldModel)].uiControlEditor.onFieldChanged = delegate (BaseField a, System.Object b)
             {
-                model.textureSetSelected(a, b);
+                model.modelSelected(a, b);
+                this.actionWithSymmetry(m =>
+                {
+                    m.model.setScaleForDiameter(currentDiameter);
+                    m.model.setPosition(0);
+                    m.model.updateModelMeshes();
+                    m.updateFairing(true);
+                    m.updateModuleStats();
+                    m.updatePartCost();
+                    m.updateAttachNodes(true);
+                    m.updateDragCube();
+                    SSTUModInterop.updateResourceVolume(part);
+                });
             };
-            this.Fields[nameof(currentShieldTexture)].guiActiveEditor = standAlonePart && model.definition.textureSets.Length > 1;
+            Fields[nameof(currentShieldTexture)].uiControlEditor.onFieldChanged = model.textureSetSelected;
+            Fields[nameof(currentDiameter)].guiActiveEditor = standAlonePart;
         }
 
         public override void OnLoad(ConfigNode node)
@@ -203,14 +237,11 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (standAlonePart)
-            {
-                updateFairing(false);
-            }
+            updateFairing(false);
         }
 
-        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) {return standAlonePart ? -defaultMass + modifiedMass : modifiedMass;}
-        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) {return standAlonePart ? -defaultCost + modifiedCost : modifiedCost;}
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit) { return standAlonePart ? -defaultMass + modifiedMass : modifiedMass; }
+        public float GetModuleCost(float defaultCost, ModifierStagingSituation sit) { return standAlonePart ? -defaultCost + modifiedCost : modifiedCost; }
         public ModifierChangeWhen GetModuleMassChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
         public ModifierChangeWhen GetModuleCostChangeWhen() { return ModifierChangeWhen.CONSTANTLY; }
 
@@ -231,7 +262,12 @@ namespace SSTUTools
 
         public void setSectionColors(string name, RecoloringData[] colors)
         {
-            if (model != null) { model.setSectionColors(colors); }
+            model.setSectionColors(colors);
+        }
+
+        public ContainerContribution[] getContainerContributions()
+        {
+            return new ContainerContribution[] { new ContainerContribution(containerIndex, model.moduleVolume * 1000f) };
         }
 
         #endregion
@@ -270,29 +306,25 @@ namespace SSTUTools
 
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
-            //stand-alone modular heat-shield setup
+            ConfigNode[] modelNodes = node.GetNodes("MODEL");
+            model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(currentShieldTexture), nameof(modelPersistentData), null, null, null, null);
+            model.getSymmetryModule = (m) => m.model;
+            model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
+            model.setupModel();
+            model.setScaleForDiameter(currentDiameter);
+            model.setPosition(0);
+            model.updateModelMeshes();
+            model.updateSelections();
             if (standAlonePart)
             {
-                ConfigNode[] modelNodes = node.GetNodes("MODEL");
-                model = new ModelModule<SSTUModularHeatShield>(part, this, part.transform.FindRecursive("model"), ModelOrientation.CENTRAL, nameof(currentShieldModel), null, nameof(currentShieldTexture), nameof(modelPersistentData), null, null, null, null);                
-                model.setupModelList(SSTUModelData.getModelDefinitions(modelNodes));
-                model.setupModel();
-                model.setScaleForDiameter(currentDiameter);
-                model.setPosition(0);
-                model.updateModelMeshes();
-                updateAttachNodes(false);
                 updateDragCube();
+                updateAttachNodes(false);
             }
-
+            SSTUModInterop.updateResourceVolume(part);
             ConfigNode[] typeNodes = node.GetNodes("SHIELDTYPE");
             shieldTypeData = HeatShieldTypeData.load(typeNodes);
             currentShieldTypeData = Array.Find(shieldTypeData, m => m.baseType.name == currentShieldType);
             updateModuleStats();
-            if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
-            {
-                updatePartResources();
-                initializedResources = true;
-            }
             updatePartCost();
             SSTUStockInterop.fireEditorUpdate();//update for mass/cost/etc.
         }
@@ -429,11 +461,13 @@ namespace SSTUTools
         
         private void updateFairing(bool userInput)
         {
+            if (!standAlonePart) { return; }
             SSTUNodeFairing fairing = part.GetComponent<SSTUNodeFairing>();
             if (fairing == null) { return; }
             fairing.canDisableInEditor = true;
             FairingUpdateData data = new FairingUpdateData();
             data.setTopY(model.modulePosition + model.fairingTop);
+            //bottom-y set by 'snap to node' functionality in nodefairing
             data.setTopRadius(currentDiameter * 0.5f);
             if (userInput)
             {
@@ -445,7 +479,7 @@ namespace SSTUTools
 
         private void updateModuleStats()
         {
-            float scale = getScale();
+            float scale = model.moduleHorizontalScale;
             float ablatMult = Mathf.Pow(scale, ablationScalePower) * currentShieldTypeData.ablationMult;
             ablationMult = ablatMult;
             ablationStartTemp = currentShieldTypeData.ablationStart;
@@ -455,12 +489,10 @@ namespace SSTUTools
 
         private void updatePartCost()
         {
-            modifiedMass = shieldMass * currentShieldTypeData.massMult;
-            modifiedCost = 0;
+            modifiedMass = model.moduleMass * currentShieldTypeData.massMult;
+            modifiedCost = model.moduleCost;
             if (standAlonePart && model != null)
             {
-                modifiedMass += model.moduleMass;
-                modifiedCost += model.moduleCost;
                 PartResource res = part.Resources[resourceName];
                 modifiedCost += (float)res.maxAmount * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
             }
@@ -468,59 +500,20 @@ namespace SSTUTools
             {
                 //TODO -- need to specify a 'shieldCost' that can be increased along with the shield type multiplier and/or scale factors
             }
-            else //integrated heat-shield; non-scaling, mass adjustment handled above
-            {
-                PartResource res = part.Resources[resourceName];
-                //the shield cost currently is just the cost of the additional ablator resource
-                modifiedCost += ((float)res.maxAmount - baseResourceQuantity) * res.info.unitCost;
-                //TODO -- need to specify a 'shieldCost' that can be increased along with the shield type multiplier
-            }
-        }
-
-        private void updatePartResources()
-        {
-            if (heatSoak) { return; }//dont touch resources on heat-soak type setups
-            float scale = Mathf.Pow(getScale(), resourceScalePower);
-            float amount = baseResourceQuantity * scale * currentShieldTypeData.resourceMult;
-            PartResource res = part.Resources[resourceName];
-            if (res == null)
-            {
-                MonoBehaviour.print("SEVERE ERROR: ModularHeatShield could not set resource, as no resource was found in part for name: " + resourceName);
-            }
-            else
-            {
-                res.amount = res.maxAmount = amount;
-            }
-            SSTUModInterop.updatePartResourceDisplay(part);
         }
 
         private void updateAttachNodes(bool userInput)
         {
             if (!standAlonePart) { return; }
             float height = model.moduleHeight;
-            AttachNode topNode = part.FindAttachNode("top");
-            if (topNode != null)
-            {
-                Vector3 topNodePos = new Vector3(0, height * 0.5f, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, topNode, topNodePos, topNode.orientation, userInput);
-            }
-            AttachNode bottomNode = part.FindAttachNode("bottom");
-            if (bottomNode != null)
-            {
-                Vector3 botNodePos = new Vector3(0, -height * 0.5f, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, botNodePos, bottomNode.orientation, userInput);
-            }
+            model.updateAttachNodeTop("top", userInput);
+            model.updateAttachNodeBottom("bottom", userInput);
         }
 
         private void updateDragCube()
         {
             SSTUModInterop.onPartGeometryUpdate(part, true);
             SSTUStockInterop.fireEditorUpdate();
-        }
-
-        private float getScale()
-        {
-            return model == null ? 1.0f : model.moduleHorizontalScale;
         }
 
         #endregion
@@ -597,4 +590,5 @@ namespace SSTUTools
             massMult = node.GetFloatValue("massMult", massMult);
         }
     }
+
 }
