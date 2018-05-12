@@ -661,7 +661,8 @@ namespace SSTUTools
         /// <summary>
         /// NON-Symmetry enabled method.<para/>
         /// Updates the UI controls for the currently available models specified through setupModelList.<para/>
-        /// Also updates the texture-set selection widget options and visibility (only if texture set backing field is not null)
+        /// Also updates the texture-set selection widget options and visibility (if backing field is not null).
+        /// Also updates the layout selection widget (if backing field is not null)
         /// </summary>
         public void updateSelections()
         {
