@@ -350,7 +350,7 @@ namespace SSTUTools
             get
             {
                 bool invert = definition.shouldInvert(orientation);
-                return definition.fairingData == null ? 0 : (invert ? definition.fairingData.getBottom(currentVerticalScale, invert) : definition.fairingData.getTop(currentVerticalScale, invert));
+                return modulePosition + (definition.fairingData == null ? 0 : (invert ? definition.fairingData.getBottom(currentVerticalScale, invert) : definition.fairingData.getTop(currentVerticalScale, invert)));
             }
         }
 
@@ -362,7 +362,7 @@ namespace SSTUTools
             get
             {
                 bool invert = definition.shouldInvert(orientation);
-                return definition.fairingData == null ? 0 : (invert? definition.fairingData.getTop(currentVerticalScale, invert) : definition.fairingData.getBottom(currentVerticalScale, invert));
+                return modulePosition + (definition.fairingData == null ? 0 : (invert? definition.fairingData.getTop(currentVerticalScale, invert) : definition.fairingData.getBottom(currentVerticalScale, invert)));
             }
         }
         
@@ -1211,29 +1211,6 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Determine if the number of parts attached to the part will prevent this mount from being applied;
-        /// if any node that has a part attached would be deleted, return false.  To be used for GUI validation
-        /// to determine what modules are valid 'swap' selections for the current part setup.
-        /// </summary>
-        /// <param name="part"></param>
-        /// <param name="nodeNames"></param>
-        /// <returns></returns>
-        private bool canSwitchTo(Part part, String[] nodeNames)
-        {
-            if (definition.bodyNodeData == null) { return true; }
-            AttachNode node;
-            int len = nodeNames.Length;
-            for (int i = 0; i < len; i++)
-            {
-                if (i < definition.bodyNodeData.Length) { continue; }//don't care about those nodes, they will be present
-                node = part.FindAttachNode(nodeNames[i]);//this is a node that would be disabled
-                if (node == null) { continue; }//already disabled, and that is just fine
-                else if (node.attachedPart != null) { return false; }//drat, this node is scheduled for deletion, but has a part attached; cannot delete it, so cannot switch to this mount
-            }
-            return true;//and if all node checks go okay, return true by default...
-        }
-
-        /// <summary>
         /// Internal utility method to allow accessing of symmetry ModelModules' in symmetry parts/part-modules
         /// </summary>
         /// <param name="action"></param>
@@ -1266,7 +1243,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="inputOptions"></param>
         /// <returns></returns>
-        public ModelDefinitionLayoutOptions[] getValidUpperModels(ModelDefinitionLayoutOptions[] inputOptions, ModelOrientation otherModelOrientation)
+        public ModelDefinitionLayoutOptions[] getValidUpperModels(ModelDefinitionLayoutOptions[] inputOptions, ModelOrientation otherModelOrientation, string[] bodyNodeNames, string endNodeName)
         {
             List<ModelDefinitionLayoutOptions> validDefs = new List<ModelDefinitionLayoutOptions>();
             ModelDefinitionLayoutOptions def;
@@ -1274,7 +1251,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 def = inputOptions[i];
-                if (definition.isValidUpperProfile(def.definition.getLowerProfiles(otherModelOrientation), orientation))
+                if (definition.isValidUpperProfile(def.definition.getLowerProfiles(otherModelOrientation), orientation) && def.definition.canSwitchTo(part, bodyNodeNames, otherModelOrientation, true, endNodeName))
                 {
                     validDefs.Add(def);
                 }
@@ -1288,7 +1265,7 @@ namespace SSTUTools
         /// </summary>
         /// <param name="defs"></param>
         /// <returns></returns>
-        public ModelDefinitionLayoutOptions[] getValidLowerModels(ModelDefinitionLayoutOptions[] defs, ModelOrientation otherModelOrientation)
+        public ModelDefinitionLayoutOptions[] getValidLowerModels(ModelDefinitionLayoutOptions[] defs, ModelOrientation otherModelOrientation, string[] bodyNodeNames, string endNodeName)
         {
             List<ModelDefinitionLayoutOptions> validDefs = new List<ModelDefinitionLayoutOptions>();
             ModelDefinitionLayoutOptions def;
@@ -1296,7 +1273,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 def = defs[i];
-                if (definition.isValidLowerProfile(def.definition.getUpperProfiles(otherModelOrientation), orientation))
+                if (definition.isValidLowerProfile(def.definition.getUpperProfiles(otherModelOrientation), orientation) && def.definition.canSwitchTo(part, bodyNodeNames, otherModelOrientation, false, endNodeName))
                 {
                     validDefs.Add(def);
                 }

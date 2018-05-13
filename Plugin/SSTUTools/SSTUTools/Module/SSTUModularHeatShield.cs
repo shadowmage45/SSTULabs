@@ -469,7 +469,7 @@ namespace SSTUTools
             if (fairing == null) { return; }
             fairing.canDisableInEditor = true;
             FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(model.modulePosition + model.fairingTop);
+            data.setTopY(model.fairingTop);
             //bottom-y set by 'snap to node' functionality in nodefairing
             data.setTopRadius(currentDiameter * 0.5f);
             if (userInput)

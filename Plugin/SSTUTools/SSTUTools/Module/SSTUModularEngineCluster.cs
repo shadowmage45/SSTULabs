@@ -220,8 +220,7 @@ namespace SSTUTools
 
         //cached posiion values used to update attach nodes and fairing parameters.
         private float engineMountingY = 0;
-        private float fairingTopY = 0;
-        private float fairingBottomY = 0;
+        private float partBottomY = 0;
 
         //cached modifiedCost/modifiedMass values, updated on initialization and whenever engine layout changes
         //both of these use cubic scaling, and use the config-specified mass/cost as the base values
@@ -602,9 +601,8 @@ namespace SSTUTools
             mountModule.updateModelMeshes();
             //set up fairing/engine/node positions
             float mountScaledHeight = mountModule.moduleHeight;
-            fairingTopY = partTopY + mountModule.fairingTop;
             engineMountingY = partTopY + (engineYOffset * engineScale) - mountScaledHeight + currentEngineVerticalOffset;
-            fairingBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + currentEngineVerticalOffset;          
+            partBottomY = partTopY - (engineHeight * engineScale) - mountScaledHeight + currentEngineVerticalOffset;
         }
 
         /// <summary>
@@ -740,7 +738,7 @@ namespace SSTUTools
             bool enable = mountModule.fairingEnabled;
             fairing.canDisableInEditor = enable;
             FairingUpdateData data = new FairingUpdateData();
-            data.setTopY(fairingTopY);
+            data.setTopY(mountModule.fairingTop);
             data.setTopRadius(currentMountDiameter * 0.5f);
             if (userInput)
             {
@@ -768,13 +766,13 @@ namespace SSTUTools
             if (bottomNode != null)
             {
                 Vector3 pos = bottomNode.position;
-                pos.y = fairingBottomY;
+                pos.y = partBottomY;
                 SSTUAttachNodeUtils.updateAttachNodePosition(part, bottomNode, pos, bottomNode.orientation, userInput);
             }
                    
             if (!String.IsNullOrEmpty(interstageNodeName))
             {
-                float y = mountModule.modulePosition + mountModule.fairingTop;
+                float y = mountModule.fairingTop;
                 Vector3 pos = new Vector3(0, y, 0);
                 SSTUSelectableNodes.updateNodePosition(part, interstageNodeName, pos);
                 AttachNode interstage = part.FindAttachNode(interstageNodeName);
