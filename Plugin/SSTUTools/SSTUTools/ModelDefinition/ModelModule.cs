@@ -1046,7 +1046,7 @@ namespace SSTUTools
                     //on compound model setups, only adjust for the position scalar and mpd scale
                     //the model internal scale will be setup by the compound model data
                     model.transform.localScale = mpd.localScale * scaleScalar;
-                    definition.compoundModelData.setHeightFromScale(definition, model.gameObject, currentHorizontalScale, currentVerticalScale, orientation);
+                    definition.compoundModelData.setHeightFromScale(definition, model.gameObject, currentHorizontalScale, currentVerticalScale, definition.orientation);
                 }
                 else
                 {
