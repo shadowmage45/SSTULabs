@@ -646,6 +646,7 @@ namespace SSTUTools
         //KSP editor modified event callback
         private void onEditorVesselModified(ShipConstruct ship)
         {
+            //update available variants for attach node changes
             updateAvailableVariants();
         }
 
@@ -860,13 +861,13 @@ namespace SSTUTools
             noseModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-NOSE"), ModelOrientation.TOP, nameof(currentNose), null, nameof(currentNoseTexture), nameof(noseModulePersistentData), nameof(noseAnimationPersistentData), nameof(noseAnimationDeployLimit), nameof(noseDeployEvent), nameof(noseRetractEvent));
             noseModule.name = "ModularPart-Nose";
             noseModule.getSymmetryModule = m => m.noseModule;
-            if (validateNose) { noseModule.getValidOptions =  () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation); }
+            if (validateNose) { noseModule.getValidOptions =  () => upperModule.getValidUpperModels(noseDefs, noseModule.orientation, noseNodeNames, string.Empty); }
             else { noseModule.getValidOptions = () => noseDefs; }
 
             upperModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPER"), ModelOrientation.TOP, nameof(currentUpper), null, nameof(currentUpperTexture), nameof(upperModulePersistentData), nameof(upperAnimationPersistentData), nameof(upperAnimationDeployLimit), nameof(upperDeployEvent), nameof(upperRetractEvent));
             upperModule.name = "ModularPart-Upper";
             upperModule.getSymmetryModule = m => m.upperModule;
-            if (validateUpper) { upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation); }
+            if (validateUpper) { upperModule.getValidOptions = () => coreModule.getValidUpperModels(upperDefs, upperModule.orientation, upperNodeNames, string.Empty); }
             else { upperModule.getValidOptions = () => upperDefs; }
 
             coreModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-CORE"), ModelOrientation.CENTRAL, nameof(currentCore), null, nameof(currentCoreTexture), nameof(coreModulePersistentData), nameof(coreAnimationPersistentData), nameof(coreAnimationDeployLimit), nameof(coreDeployEvent), nameof(coreRetractEvent));
@@ -877,13 +878,13 @@ namespace SSTUTools
             lowerModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWER"), ModelOrientation.BOTTOM, nameof(currentLower), null, nameof(currentLowerTexture), nameof(lowerModulePersistentData), nameof(lowerAnimationPersistentData), nameof(lowerAnimationDeployLimit), nameof(lowerDeployEvent), nameof(lowerRetractEvent));
             lowerModule.name = "ModularPart-Lower";
             lowerModule.getSymmetryModule = m => m.lowerModule;
-            if (validateLower) { lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation); }
+            if (validateLower) { lowerModule.getValidOptions = () => coreModule.getValidLowerModels(lowerDefs, lowerModule.orientation, lowerNodeNames, string.Empty); }
             else { lowerModule.getValidOptions = () => lowerDefs; }
 
             mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), null, nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.name = "ModularPart-Mount";
             mountModule.getSymmetryModule = m => m.mountModule;
-            if (validateLower) { mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation); }
+            if (validateLower) { mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation, mountNodeNames, "bottom"); }
             else { mountModule.getValidOptions = () => mountDefs; }
 
             solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarLayout), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
@@ -1427,8 +1428,7 @@ namespace SSTUTools
                 coreModule.updateSurfaceAttachNode(surfaceNode, prevDiameter, userInput);
             }
         }
-
-        // TODO -- unknown if any of the fairing update code works
+        
         /// <summary>
         /// Update the current fairing modules (top, centra, and bottom) for the current model-module configuration (diameters, positions).
         /// </summary>
@@ -1440,8 +1440,8 @@ namespace SSTUTools
             {
                 bool enabled = coreModule.fairingEnabled;
                 SSTUNodeFairing coreFairing = modules[centralFairingIndex];
-                float top = coreModule.modulePosition + coreModule.fairingTop;
-                float bot = coreModule.modulePosition + coreModule.fairingBottom;
+                float top = coreModule.fairingTop;
+                float bot = coreModule.fairingBottom;
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopY(top);
                 data.setTopRadius(currentDiameter * 0.5f);
@@ -1452,9 +1452,10 @@ namespace SSTUTools
             }
             if (topFairingIndex >= 0 && topFairingIndex < modules.Length)
             {
-                bool enabled = noseModule.fairingEnabled;
+                ModelModule<SSTUModularPart> moduleForUpperFiaring = getUpperFairingModelModule();
+                bool enabled = moduleForUpperFiaring.fairingEnabled;
                 SSTUNodeFairing topFairing = modules[topFairingIndex];
-                float topFairingBottomY = getTopFairingBottomY();
+                float topFairingBottomY = moduleForUpperFiaring.fairingBottom;
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopY(getPartTopY());
                 data.setBottomY(topFairingBottomY);
@@ -1465,9 +1466,10 @@ namespace SSTUTools
             }
             if (bottomFairingIndex >= 0 && bottomFairingIndex < modules.Length)
             {
-                bool enabled = mountModule.fairingEnabled;
+                ModelModule<SSTUModularPart> moduleForLowerFairing = getLowerFairingModelModule();
+                bool enabled = moduleForLowerFairing.fairingEnabled;
                 SSTUNodeFairing bottomFairing = modules[bottomFairingIndex];
-                float bottomFairingTopY = getBottomFairingTopY();
+                float bottomFairingTopY = moduleForLowerFairing.fairingTop;
                 FairingUpdateData data = new FairingUpdateData();
                 data.setTopRadius(currentDiameter * 0.5f);
                 data.setTopY(bottomFairingTopY);
@@ -1499,23 +1501,17 @@ namespace SSTUTools
         {
             return getTotalHeight() * 0.5f;
         }
-        
-        /// <summary>
-        /// Return the Y position(model space) of the bottom edge of the upper fairing.  Should first check if the fairing is enabled before using this value.
-        /// </summary>
-        /// <returns></returns>
-        private float getTopFairingBottomY()
+
+        //TODO
+        private ModelModule<SSTUModularPart> getLowerFairingModelModule()
         {
-            return noseModule.modulePosition + noseModule.fairingBottom;
+            return mountModule;
         }
 
-        /// <summary>
-        /// Return the Y position(model spae) of the upper edge of the lower fairing.  Should first check if the fairing is enabled before using this value.
-        /// </summary>
-        /// <returns></returns>
-        private float getBottomFairingTopY()
+        //TODO
+        private ModelModule<SSTUModularPart> getUpperFairingModelModule()
         {
-            return mountModule.modulePosition + mountModule.fairingTop;
+            return noseModule;
         }
 
         /// <summary>

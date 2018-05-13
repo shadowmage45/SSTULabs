@@ -144,7 +144,14 @@ namespace SSTUTools
                         }
                         layoutDataList.Add(custom);
                     }
-                    options.Add(new ModelDefinitionLayoutOptions(def, layoutDataList.ToArray()));
+                    if (def == null)
+                    {
+                        error("Model definition was null for name: " + groupedNames[k]+". Skipping definition during loading of part");
+                    }
+                    else
+                    {
+                        options.Add(new ModelDefinitionLayoutOptions(def, layoutDataList.ToArray()));
+                    }
                     layoutDataList.Clear();
                 }
             }

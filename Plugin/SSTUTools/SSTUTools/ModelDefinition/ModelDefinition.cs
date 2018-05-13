@@ -578,6 +578,53 @@ namespace SSTUTools
             return shouldInvert(orientation) ? canAttach(compatibleLowerProfiles, profiles) : canAttach(compatibleUpperProfiles, profiles);
         }
 
+        /// <summary>
+        /// Checks to see if this definition can be switched to given the currently occupied attach nodes
+        /// </summary>
+        /// <param name="part"></param>
+        /// <param name="bodyNodeNames"></param>
+        /// <param name="orientation"></param>
+        /// <param name="endNodeName"></param>
+        /// <returns></returns>
+        public bool canSwitchTo(Part part, string[] bodyNodeNames, ModelOrientation orientation, bool top, string endNodeName)
+        {
+            AttachNode node;
+            bool valid = true;
+            if (!string.IsNullOrEmpty(endNodeName))//this def is responsible for top/bottom attach node
+            {
+                //attach node from the part
+                node = part.FindAttachNode(endNodeName);
+                //if attachnode==null or nothing attached, does not currently exist, so it doesn't matter what the model def has setup
+                if (node != null && node.attachedPart != null)
+                {
+                    //node is not null, and has attached part.  Check model def to make sure it has a node data, else set valid to false
+                    //determine if top or bottom from input orientation and def orientation
+                    //if node data==null, it means def does not support that end node
+                    AttachNodeBaseData nodeData = top ? (shouldInvert(orientation) ? bottomNodeData : topNodeData) : (shouldInvert(orientation) ? topNodeData : bottomNodeData);
+                    if (nodeData == null) { valid = false; }
+                }
+            }
+            //if already invalid, or has no body node names to manage, return the current 'valid' value
+            if (!valid || bodyNodeNames==null || bodyNodeNames.Length==0) { return valid; }//break
+            int len = bodyNodeNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                //attach node from the part
+                node = part.FindAttachNode(bodyNodeNames[i]);
+                //if attachnode==null or nothing attached, does not currently exist, so it doesn't matter what the model def has setup
+                if (node != null && node.attachedPart != null)
+                {
+                    //this is a node with a part attached, so we need at least one node present in model-def body node array,
+                    if (bodyNodeData == null || bodyNodeData.Length==0 || i >= bodyNodeData.Length)
+                    {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            return valid;
+        }
+
         public override string ToString()
         {
             return "ModelDef[ " + name + " ]";
