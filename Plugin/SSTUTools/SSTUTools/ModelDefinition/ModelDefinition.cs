@@ -933,54 +933,47 @@ namespace SSTUTools
     {
 
         /// <summary>
-        /// Does this model-definition support RCS model use?<para/>
-        /// If false, the RCS options will be disabled if it is linked to the slot that this model-definition occupies.
-        /// If true, and the part supports RCS options, the RCS selection and position adjustment controls will be available.
-        /// </summary>
-        public readonly bool rcsEnabled = false;
-
-        /// <summary>
         /// The horizontal offset to apply to each RCS port.  Defaults to the model 'diameter' if unspecified.
         /// </summary>
-        public readonly float rcsHorizontalPosition;
+        public readonly float posX;
 
         /// <summary>
         /// The vertical neutral position of the RCS ports, relative to the models origin.  If rcs vertical positionining is supported, this MUST be specified as the center of the offset range.
         /// </summary>
-        public readonly float rcsVerticalPosition;
+        public readonly float posY;
 
         /// <summary>
         /// The vertical +/- range that the RCS port may be moved through in the model at default model scale.
         /// </summary>
-        public readonly float rcsVerticalRange;
+        public readonly float range;
 
         /// <summary>
         /// Angle to use when offsetting the RCS block along its specified vertical range.  To be used in the case of non cylindrical models that still want to support RCS position adjustment.
         /// </summary>
-        public readonly float rcsVerticalAngle;
+        public readonly float angle;
 
         public ModelRCSPositionData(ConfigNode node)
         {
-            rcsEnabled = node.GetBoolValue("enabled", false);
-            rcsVerticalPosition = node.GetFloatValue("verticalPosition", 0);
-            rcsHorizontalPosition = node.GetFloatValue("horizontalPosition", 0);
-            rcsVerticalRange = node.GetFloatValue("verticalRange", 0);
-            rcsVerticalAngle = node.GetFloatValue("verticalAngle", 0);
+            posY = node.GetFloatValue("posY", 0);
+            posX = node.GetFloatValue("posX", 0);
+            range = node.GetFloatValue("range", 0);
+            angle = node.GetFloatValue("angle", 0);
         }
 
-        public float scaledHorizontalPosition(float hScale)
+        public void getModelPosition(float radius, float hScale, float vScale, float vRange, bool invert, out float oRadius, out float oPosY)
         {
-            return hScale * rcsHorizontalPosition;
-        }
-
-        public float scaledVerticalPosition(float vScale)
-        {
-            return vScale * rcsVerticalPosition;
-        }
-
-        public float scaledRange(float scale)
-        {
-            return scale * rcsVerticalRange;
+            float rads = Mathf.Deg2Rad * angle;
+            //position of the center of the offset
+            float outX = posX * hScale;
+            float outY = posY * vScale;
+            if (invert) { outY = -outY; }
+            float sRange = vScale * range * vRange;//scaled value to move along vector denoted by 'angle' from
+            float xoff = Mathf.Sin(rads);//scale along x axis
+            float yoff = Mathf.Cos(rads);//scale along y axis
+            outX += xoff * sRange;
+            outY += yoff * sRange;
+            oRadius = outX;
+            oPosY = outY;
         }
 
     }

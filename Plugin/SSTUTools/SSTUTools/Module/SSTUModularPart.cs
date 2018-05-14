@@ -450,6 +450,10 @@ namespace SSTUTools
         /// </summary>
         private float modifiedCost = 0;
 
+        private float lowerRCSRad;
+        private float upperRCSRad;
+        private float solarRad;
+
         private string[] noseNodeNames;
         private string[] upperNodeNames;
         private string[] coreNodeNames;
@@ -891,22 +895,22 @@ namespace SSTUTools
             solarModule.name = "ModularPart-Solar";
             solarModule.getSymmetryModule = m => m.solarModule;
             solarModule.getValidOptions = () => solarDefs;
-            solarModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
-            solarModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
+            solarModule.getLayoutPositionScalar = () => solarRad;
+            solarModule.getLayoutScaleScalar = () => 1f;
 
             upperRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-UPPERRCS"), ModelOrientation.CENTRAL, nameof(currentUpperRCS), nameof(currentUpperRCSLayout), nameof(currentUpperRCSTexture), nameof(upperRCSModulePersistentData), null, null, null, null);
             upperRcsModule.name = "ModularPart-UpperRCS";
             upperRcsModule.getSymmetryModule = m => m.upperRcsModule;
             upperRcsModule.getValidOptions = () => rcsUpDefs;
-            upperRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
-            upperRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
+            upperRcsModule.getLayoutPositionScalar = () => upperRCSRad;
+            upperRcsModule.getLayoutScaleScalar = () => 1f;
 
             lowerRcsModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-LOWERRCS"), ModelOrientation.CENTRAL, nameof(currentLowerRCS), nameof(currentLowerRCSLayout), nameof(currentLowerRCSTexture), nameof(lowerRCSModulePersistentData), null, null, null, null);
             lowerRcsModule.name = "ModularPart-LowerRCS";
             lowerRcsModule.getSymmetryModule = m => m.lowerRcsModule;
             lowerRcsModule.getValidOptions = () => rcsDnDefs;
-            lowerRcsModule.getLayoutPositionScalar = () => coreModule.moduleDiameter * 0.5f;
-            lowerRcsModule.getLayoutScaleScalar = () => coreModule.moduleHorizontalScale;
+            lowerRcsModule.getLayoutPositionScalar = () => lowerRCSRad;
+            lowerRcsModule.getLayoutScaleScalar = () => 1f;
 
             //set up the model lists and load the currently selected model
             noseModule.setupModelList(noseDefs);
@@ -946,7 +950,6 @@ namespace SSTUTools
         }
         
         //TODO - controls for rcs vertical position functions
-        //TODO - controls for layout change functions
         private void initializeUI()
         {
             Action<SSTUModularPart> modelChangedAction = (m) =>
@@ -1239,7 +1242,6 @@ namespace SSTUTools
             }
         }
         
-        //TODO -- update solar/RCS positions
         private void updateModulePositions()
         {
             //scales for modules depend on the module above/below them
@@ -1283,17 +1285,23 @@ namespace SSTUTools
             
             //scale and position of RCS and solar models handled a bit differently
             float coreScale = coreModule.moduleHorizontalScale;
+
+            ModelModule<SSTUModularPart> module = getModuleByName(currentSolarParent);
+            module.getSolarMountingValues(currentSolarOffset, out solarRad, out pos);
             solarModule.setScale(coreScale);
-            upperRcsModule.setScale(coreScale);
-            lowerRcsModule.setScale(coreScale);
-
-            //TODO -- offsets need to be adjusted by the offset range for the currently selected model/module.
-            solarModule.setPosition(getModuleByName(currentSolarParent).modulePosition + currentSolarOffset);
-            upperRcsModule.setPosition(getModuleByName(currentUpperRCSParent).modulePosition + currentUpperRCSOffset);
-            lowerRcsModule.setPosition(getModuleByName(currentLowerRCSParent).modulePosition + currentLowerRCSOffset);
-
+            solarModule.setPosition(pos);
             solarModule.updateModelMeshes();
-            upperRcsModule.updateModelMeshes();
+
+            module = getModuleByName(currentUpperRCSParent);
+            module.getRCSMountingValues(currentUpperRCSOffset, out upperRCSRad, out pos);
+            upperRcsModule.setScale(coreScale);
+            upperRcsModule.setPosition(pos);
+            upperRcsModule.updateModelMeshes(); 
+
+            module = getModuleByName(currentLowerRCSParent);
+            module.getRCSMountingValues(currentLowerRCSOffset, out lowerRCSRad, out pos);
+            lowerRcsModule.setScale(coreScale);
+            lowerRcsModule.setPosition(pos);
             lowerRcsModule.updateModelMeshes();
         }
 
@@ -1503,6 +1511,10 @@ namespace SSTUTools
             return getTotalHeight() * 0.5f;
         }
 
+        /// <summary>
+        /// Return the ModelModule slot responsible for upper attach point of lower fairing module
+        /// </summary>
+        /// <returns></returns>
         private ModelModule<SSTUModularPart> getLowerFairingModelModule()
         {
             float coreBaseDiam = coreModule.moduleDiameter;
@@ -1511,6 +1523,10 @@ namespace SSTUTools
             return mountModule;
         }
 
+        /// <summary>
+        /// Return the ModelModule slot responsible for lower attach point of the upper fairing module
+        /// </summary>
+        /// <returns></returns>
         private ModelModule<SSTUModularPart> getUpperFairingModelModule()
         {
             float coreBaseDiam = coreModule.moduleDiameter;

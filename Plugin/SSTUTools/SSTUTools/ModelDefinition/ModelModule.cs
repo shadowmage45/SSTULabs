@@ -1372,6 +1372,32 @@ namespace SSTUTools
             return null;
         }
 
+        //TODO
+        public void getRCSMountingValues(float vPos, out float radius, out float posY)
+        {
+            bool invert = currentDefinition.shouldInvert(orientation);
+            if (currentDefinition.rcsData != null)
+            {
+                currentDefinition.rcsData.getModelPosition(0, currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+            }
+            else
+            {
+                radius = currentDiameter * 0.5f;
+                posY = modulePosition;
+                if (orientation == ModelOrientation.TOP) { posY += currentHeight * 0.5f; }
+                else if (orientation == ModelOrientation.BOTTOM) { posY -= currentHeight * 0.5f; }
+            }
+        }
+
+        //TODO
+        public void getSolarMountingValues(float vPos, out float radius, out float posY)
+        {
+            radius = currentDiameter * 0.5f;
+            posY = modulePosition;
+            if (orientation == ModelOrientation.TOP) { posY += currentHeight * 0.5f; }
+            else if (orientation == ModelOrientation.BOTTOM) { posY -= currentHeight * 0.5f; }
+        }
+
         #endregion ENDREGION - Module Linking
 
     }
