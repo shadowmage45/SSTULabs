@@ -613,6 +613,7 @@ namespace SSTUTools
             }
             initializedDefaults = true;
             updateRCSModule();
+            updateEngineModule();
             updateDragCubes();
         }
 
@@ -1349,10 +1350,11 @@ namespace SSTUTools
                 rcsFuelControl.Start();
             }
 
+            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
+
             //initialize the thrust value from the RCS module
             if (rcsThrust < 0)
             {
-                ModuleRCS rcs = part.GetComponent<ModuleRCS>();
                 if (rcs != null)
                 {
                     rcsThrust = rcs.thrusterPower;

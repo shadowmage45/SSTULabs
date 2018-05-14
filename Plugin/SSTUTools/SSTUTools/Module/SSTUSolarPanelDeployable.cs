@@ -177,7 +177,7 @@ namespace SSTUTools
                 else
                 {
                     animData = def.animationData;
-                    msd = def.solarData;
+                    msd = def.solarModuleData;
                 }
             }
             //allow local override of animation data

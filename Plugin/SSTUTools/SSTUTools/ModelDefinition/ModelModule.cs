@@ -202,7 +202,7 @@ namespace SSTUTools
         /// <summary>
         /// Return true/false if this part can be the parent of an RCS module/model.
         /// </summary>
-        public bool rcsParentEnabled { get { return definition.rcsData != null; } }
+        public bool rcsParentEnabled { get { return definition.rcsPositionData != null; } }
 
         /// <summary>
         /// Return true/false if thhe current definition supports RCS module functions (thrust, transform names)
@@ -228,7 +228,7 @@ namespace SSTUTools
         /// <summary>
         /// Return true/false if this module has solar panel data for its current configuration.
         /// </summary>
-        public bool solarEnabled { get { return definition.solarData == null ? false : definition.solarData.enabled; } }
+        public bool solarEnabled { get { return definition.solarModuleData == null ? false : definition.solarModuleData.enabled; } }
 
         /// <summary>
         /// Return the currently 'active' model definition.
@@ -554,11 +554,11 @@ namespace SSTUTools
         {
             int len = layout.positions.Length;
             ModelSolarData[] msds = new ModelSolarData[len];
-            if (definition.solarData != null)//supports solar panels....
+            if (definition.solarModuleData != null)//supports solar panels....
             {
                 for (int i = 0; i < len; i++)
                 {
-                    msds[i] = definition.solarData;
+                    msds[i] = definition.solarModuleData;
                 }
             }
             else
@@ -1376,9 +1376,29 @@ namespace SSTUTools
         public void getRCSMountingValues(float vPos, out float radius, out float posY)
         {
             bool invert = currentDefinition.shouldInvert(orientation);
-            if (currentDefinition.rcsData != null)
+            if (currentDefinition.rcsPositionData != null)
             {
-                currentDefinition.rcsData.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+                currentDefinition.rcsPositionData.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+                posY += getPlacementOffset();
+                posY += modulePosition;
+            }
+            else
+            {
+                radius = currentDiameter * 0.5f;
+                posY = modulePosition;
+                posY += getPlacementOffset();
+            }
+        }
+
+        //TODO
+        public void getSolarMountingValues(float vPos, out float radius, out float posY)
+        {
+            bool invert = currentDefinition.shouldInvert(orientation);
+            if (currentDefinition.solarPositionData != null)
+            {
+                currentDefinition.solarPositionData.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+                posY += getPlacementOffset();
+                posY += modulePosition;
             }
             else
             {
@@ -1387,15 +1407,6 @@ namespace SSTUTools
                 if (orientation == ModelOrientation.TOP) { posY += currentHeight * 0.5f; }
                 else if (orientation == ModelOrientation.BOTTOM) { posY -= currentHeight * 0.5f; }
             }
-        }
-
-        //TODO
-        public void getSolarMountingValues(float vPos, out float radius, out float posY)
-        {
-            radius = currentDiameter * 0.5f;
-            posY = modulePosition;
-            if (orientation == ModelOrientation.TOP) { posY += currentHeight * 0.5f; }
-            else if (orientation == ModelOrientation.BOTTOM) { posY -= currentHeight * 0.5f; }
         }
 
         #endregion ENDREGION - Module Linking
