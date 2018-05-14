@@ -960,7 +960,7 @@ namespace SSTUTools
             angle = node.GetFloatValue("angle", 0);
         }
 
-        public void getModelPosition(float radius, float hScale, float vScale, float vRange, bool invert, out float oRadius, out float oPosY)
+        public void getModelPosition(float hScale, float vScale, float vRange, bool invert, out float oRadius, out float oPosY)
         {
             float rads = Mathf.Deg2Rad * angle;
             //position of the center of the offset

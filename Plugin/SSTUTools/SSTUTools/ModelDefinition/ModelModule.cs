@@ -1378,7 +1378,7 @@ namespace SSTUTools
             bool invert = currentDefinition.shouldInvert(orientation);
             if (currentDefinition.rcsData != null)
             {
-                currentDefinition.rcsData.getModelPosition(0, currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+                currentDefinition.rcsData.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
             }
             else
             {
