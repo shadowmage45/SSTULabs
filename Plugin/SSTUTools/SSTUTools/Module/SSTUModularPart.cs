@@ -1502,15 +1502,19 @@ namespace SSTUTools
             return getTotalHeight() * 0.5f;
         }
 
-        //TODO
         private ModelModule<SSTUModularPart> getLowerFairingModelModule()
         {
+            float coreBaseDiam = coreModule.moduleDiameter;
+            if (coreModule.moduleLowerDiameter < coreBaseDiam) { return coreModule; }
+            if (lowerModule.moduleLowerDiameter < coreBaseDiam) { return lowerModule; }
             return mountModule;
         }
 
-        //TODO
         private ModelModule<SSTUModularPart> getUpperFairingModelModule()
         {
+            float coreBaseDiam = coreModule.moduleDiameter;
+            if (coreModule.moduleUpperDiameter < coreBaseDiam) { return coreModule; }
+            if (upperModule.moduleUpperDiameter < coreBaseDiam) { return upperModule; }
             return noseModule;
         }
 

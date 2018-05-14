@@ -349,8 +349,11 @@ namespace SSTUTools
         {
             get
             {
-                bool invert = definition.shouldInvert(orientation);
-                return modulePosition + (definition.fairingData == null ? 0 : (invert ? definition.fairingData.getBottom(currentVerticalScale, invert) : definition.fairingData.getTop(currentVerticalScale, invert)));
+                float pos = modulePosition;
+                if (definition.fairingData == null) { return pos; }
+                pos += definition.fairingData.getTop(currentVerticalScale, definition.shouldInvert(orientation));
+                pos += getPlacementOffset();
+                return pos;
             }
         }
 
@@ -361,8 +364,11 @@ namespace SSTUTools
         {
             get
             {
-                bool invert = definition.shouldInvert(orientation);
-                return modulePosition + (definition.fairingData == null ? 0 : (invert? definition.fairingData.getTop(currentVerticalScale, invert) : definition.fairingData.getBottom(currentVerticalScale, invert)));
+                float pos = modulePosition;
+                if (definition.fairingData == null) { return pos; }
+                pos += definition.fairingData.getBottom(currentVerticalScale, definition.shouldInvert(orientation));
+                pos += getPlacementOffset();
+                return pos;
             }
         }
         
@@ -405,6 +411,11 @@ namespace SSTUTools
             this.animationModule = new AnimationModule(part, partModule, animationPersistenceFieldName, deployLimitField, deployEventName, retractEventName);
             getValidOptions = delegate () { return optionsCache; };
             loadColors(persistentData);
+        }
+
+        public override string ToString()
+        {
+            return getErrorReportModuleName();
         }
 
         /// <summary>

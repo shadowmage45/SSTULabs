@@ -874,12 +874,14 @@ namespace SSTUTools
 
         public float getTop(float scale, bool invert)
         {
-            return invert ? -scale * top : scale * top;
+            if (invert) { return scale * bottom; }
+            return scale * top;
         }
 
         public float getBottom(float scale, bool invert)
         {
-            return invert ? -scale * bottom : scale * bottom;
+            if (invert) { return scale * top; }
+            return scale * bottom;
         }
 
     }
