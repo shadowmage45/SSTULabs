@@ -185,13 +185,13 @@ namespace SSTUTools
         public string mountManagedNodes = string.Empty;
 
         /// <summary>
-        /// Name of the 'interstage' node; positioned depending on mount interstage location (CB) / bottom of the upper tank (ST).
+        /// Name of the 'interstage' node; positioned according to upper fairing lower spawn point
         /// </summary>
         [KSPField]
         public string noseInterstageNode = "noseInterstage";
 
         /// <summary>
-        /// Name of the 'interstage' node; positioned depending on mount interstage location (CB) / bottom of the upper tank (ST).
+        /// Name of the 'interstage' node; positioned according to lower fairing upper spawn point
         /// </summary>
         [KSPField]
         public string mountInterstageNode = "mountInterstage";
@@ -1400,24 +1400,25 @@ namespace SSTUTools
             lowerModule.updateAttachNodeBody(lowerNodeNames, userInput);
             mountModule.updateAttachNodeBody(mountNodeNames, userInput);
 
-            //TODO -- interstage node handling, for use on MUS -- needs to tie into fairing positioning code.
-            ////update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
-            //Vector3 pos = new Vector3(0, getTopFairingBottomY(), 0);
-            //SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
-            //AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
-            //if (noseInterstage != null)
-            //{
-            //    SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
-            //}
+            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
+            ModelModule<SSTUModularPart> nodeModule = getUpperFairingModelModule();
+            Vector3 pos = new Vector3(0, noseModule.fairingBottom, 0);
+            SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
+            AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
+            if (noseInterstage != null)
+            {
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, noseInterstage, pos, Vector3.up, userInput);
+            }
 
-            ////update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
-            //pos = new Vector3(0, getBottomFairingTopY(), 0);
-            //SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
-            //AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
-            //if (mountInterstage != null)
-            //{
-            //    SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
-            //}
+            //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
+            nodeModule = getLowerFairingModelModule();
+            pos = new Vector3(0, nodeModule.fairingTop, 0);
+            SSTUSelectableNodes.updateNodePosition(part, mountInterstageNode, pos);
+            AttachNode mountInterstage = part.FindAttachNode(mountInterstageNode);
+            if (mountInterstage != null)
+            {
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, mountInterstage, pos, Vector3.down, userInput);
+            }
 
             //update surface attach node position, part position, and any surface attached children
             //TODO -- how to determine how far to offset/move surface attached children?
