@@ -180,9 +180,12 @@ namespace SSTUTools
         /// <summary>
         /// The solar layout data that is applicable to this model definition.  Will be null if no solar data is specified in the config.
         /// </summary>
-        public readonly ModelSolarData solarData;
+        public readonly ModelSolarData solarModuleData;
 
-        public readonly ModelSolarPositionData solarPositionData;
+        /// <summary>
+        /// The solar positioning data for attaching solar panels to this model.  Will be null if this model is not a valid target for solar panel attachment.
+        /// </summary>
+        public readonly ModelAttachablePositionData solarPositionData;
 
         /// <summary>
         /// The model animation constraint data that is applicable to this model definition.  Will be null if no constraint data is specified in the config.
@@ -202,7 +205,7 @@ namespace SSTUTools
         /// <summary>
         /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
         /// </summary>
-        public readonly ModelRCSPositionData rcsData;
+        public readonly ModelAttachablePositionData rcsPositionData;
 
         /// <summary>
         /// The rcs-module data for use by the RCS thrusters in this model -- thrust, fuel type, ISP.  Will be null if this is not an RCS model.
@@ -410,24 +413,25 @@ namespace SSTUTools
             //load model solar panel definition data, if present
             if (node.HasNode("SOLARDATA"))
             {
-                solarData = new ModelSolarData(node.GetNode("SOLARDATA"));
+                solarModuleData = new ModelSolarData(node.GetNode("SOLARDATA"));
             }
 
+            //load solar position data, if present
             if (node.HasNode("SOLARPOSITION"))
             {
-                solarPositionData = new ModelSolarPositionData(node.GetNode("SOLARPOSITION"));
-            }
-
-            //load model RCS positioning data, if present
-            if (node.HasNode("RCSPOSITION"))
-            {
-                rcsData = new ModelRCSPositionData(node.GetNode("RCSPOSITION"));
+                solarPositionData = new ModelAttachablePositionData(node.GetNode("SOLARPOSITION"));
             }
 
             //load model RCS module data, if present
             if (node.HasNode("RCSDATA"))
             {
                 rcsModuleData = new ModelRCSModuleData(node.GetNode("RCSDATA"));
+            }
+
+            //load model RCS positioning data, if present
+            if (node.HasNode("RCSPOSITION"))
+            {
+                rcsPositionData = new ModelAttachablePositionData(node.GetNode("RCSPOSITION"));
             }
 
             //load model engine thrust data, if present
@@ -624,7 +628,7 @@ namespace SSTUTools
             }
             return valid;
         }
-
+        
         public override string ToString()
         {
             return "ModelDef[ " + name + " ]";
@@ -818,18 +822,6 @@ namespace SSTUTools
 
     }
 
-    /// <summary>
-    /// Specifies where on a model-definition that solar panels should be mounted.  This is relative to the models orienation and origin, and the value is inverted whenever the model is used inverted.
-    /// </summary>
-    public class ModelSolarPositionData
-    {
-        public float position;
-        public ModelSolarPositionData(ConfigNode node)
-        {
-            position = node.GetFloatValue("position");
-        }
-    }
-
     //TODO
     /// <summary>
     /// Information denoting the model-animation-constraint setup for the meshes a single ModelDefinition.  Contains all information for all constraints used by the model.
@@ -929,7 +921,7 @@ namespace SSTUTools
     /// Container for RCS positional data for a model definition. <para/>
     /// Specifies if the model supports RCS block addition, where on the model the blocks are positioned, and if they may have their position adjusted.
     /// </summary>
-    public class ModelRCSPositionData
+    public class ModelAttachablePositionData
     {
 
         /// <summary>
@@ -952,7 +944,7 @@ namespace SSTUTools
         /// </summary>
         public readonly float angle;
 
-        public ModelRCSPositionData(ConfigNode node)
+        public ModelAttachablePositionData(ConfigNode node)
         {
             posY = node.GetFloatValue("posY", 0);
             posX = node.GetFloatValue("posX", 0);
