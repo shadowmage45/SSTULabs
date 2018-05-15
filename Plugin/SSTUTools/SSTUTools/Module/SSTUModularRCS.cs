@@ -23,29 +23,29 @@ namespace SSTUTools
         [KSPField]
         public int structureContainerIndex = 0;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Scale"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Scale"),
          UI_FloatEdit(sigFigs = 3, suppressEditorShipModified = true, minValue = 0.05f, maxValue = 5f, incrementSmall = 0.25f, incrementLarge = 1f, incrementSlide = 0.05f)]
         public float currentScale = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Block"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Block"),
          UI_ChooseOption(suppressEditorShipModified =true)]
         public string currentModel = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Block Texture"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Block Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentTexture = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Structure"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Structure"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructure = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Structure Texture"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Structure Texture"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentStructureTexture = string.Empty;
 
-        [KSPField(isPersistant = true, guiActiveEditor = false, guiName = "Layout"),
+        [KSPField(isPersistant = true, guiActiveEditor = false, guiActive = false, guiName = "Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
-        public string currentLayout = "default";
+        public string currentLayout = string.Empty;
 
         [KSPField(isPersistant = true)]
         public string modelPersistentData;
@@ -69,8 +69,9 @@ namespace SSTUTools
         private float modifiedCost = -1;
         private float modifiedMass = -1;
 
-        private Transform sharedRoot;
+        private Transform standoffRotatedRoot;
         private Transform standoffTransform;
+        private Transform modelRotatedRoot;
         private Transform modelTransform;
         private bool initialized = false;
 
@@ -147,9 +148,8 @@ namespace SSTUTools
 
         //----------------------------------------------------IPartXModifier interface methos--------------------------------------------
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
-        {
-            float scaleMod = (defaultCost * currentScale * currentScale) - defaultCost;
-            return modifiedCost + scaleMod;
+        {   
+            return -defaultCost + modifiedCost;
         }
 
         public ModifierChangeWhen GetModuleCostChangeWhen()
@@ -159,8 +159,7 @@ namespace SSTUTools
 
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            float scaleMod = (defaultMass * currentScale * currentScale) - defaultMass;
-            return modifiedMass + scaleMod;
+            return -defaultMass + modifiedMass;
         }
 
         public ModifierChangeWhen GetModuleMassChangeWhen()
@@ -225,19 +224,25 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
-            sharedRoot = part.transform.FindRecursive("SSTUModularRCSRoot");
-            if (sharedRoot == null)
+            standoffRotatedRoot = part.transform.FindRecursive("SSTUModularRCSStructureRoot");
+            if (standoffRotatedRoot == null)
             {
-                debug("Creating MRCS Root Transform");
-                sharedRoot = new GameObject("SSTUModularRCSRoot").transform;
-                sharedRoot.NestToParent(part.transform.FindRecursive("model"));
-                sharedRoot.Rotate(90, 90, 0);
+                standoffRotatedRoot = new GameObject("SSTUModularRCSStructureRoot").transform;
+                standoffRotatedRoot.NestToParent(part.transform.FindRecursive("model"));
+                standoffRotatedRoot.Rotate(90, -90, 0);
+            }
+            modelRotatedRoot = part.transform.FindRecursive("SSTUModularRCSBlockRoot");
+            if (modelRotatedRoot == null)
+            {
+                modelRotatedRoot = new GameObject("SSTUModularRCSBlockRoot").transform;
+                modelRotatedRoot.NestToParent(part.transform.FindRecursive("model"));
+                modelRotatedRoot.Rotate(0, 0, 0);
             }
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
             ModelDefinitionLayoutOptions[] blocks = SSTUModelData.getModelDefinitions(node.GetNodes("MODEL"));
             ModelDefinitionLayoutOptions[] structs = SSTUModelData.getModelDefinitions(node.GetNodes("STRUCTURE"));
 
-            modelTransform = sharedRoot.FindOrCreate("ModularRCSModel");
+            modelTransform = modelRotatedRoot.FindOrCreate("ModularRCSModel");
             rcsBlockModule = new ModelModule<SSTUModularRCS>(part, this, modelTransform, ModelOrientation.CENTRAL, nameof(currentModel), nameof(currentLayout), nameof(currentTexture), nameof(modelPersistentData), null, null, null, null);
             rcsBlockModule.name = "RCSBlock";
             rcsBlockModule.getSymmetryModule = m => m.rcsBlockModule;
@@ -246,7 +251,7 @@ namespace SSTUTools
             rcsBlockModule.setupModel();
             rcsBlockModule.updateSelections();
 
-            standoffTransform = sharedRoot.FindOrCreate("ModularRCSStandoff");
+            standoffTransform = standoffRotatedRoot.FindOrCreate("ModularRCSStandoff");
             standoffModule = new ModelModule<SSTUModularRCS>(part, this, standoffTransform, ModelOrientation.TOP, nameof(currentStructure), nameof(currentLayout), nameof(currentStructureTexture), nameof(structurePersistentData), null, null, null, null);
             standoffModule.name = "Standoff";
             standoffModule.getSymmetryModule = m => m.standoffModule;
@@ -287,13 +292,11 @@ namespace SSTUTools
         private void updateAttachNodes(bool userInput)
         {
             float standoffBottomZ = standoffModule.moduleBottom;
-            debug("pos: " + standoffBottomZ);
-            debug("height: " + standoffModule.moduleHeight);
-            Vector3 pos = new Vector3(standoffBottomZ, 0, 0);
+            Vector3 pos = new Vector3(-standoffBottomZ, 0, 0);
             AttachNode srfNode = part.srfAttachNode;
             if (srfNode != null)
             {
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, srfNode, pos, Vector3.left, userInput);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, srfNode, pos, Vector3.right, userInput);
             }
             AttachNode bottomNode = part.FindAttachNode("bottom");
             if (bottomNode != null)
