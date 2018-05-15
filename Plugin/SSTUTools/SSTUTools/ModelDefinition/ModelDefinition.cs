@@ -205,7 +205,7 @@ namespace SSTUTools
         /// <summary>
         /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
         /// </summary>
-        public readonly ModelAttachablePositionData rcsPositionData;
+        public readonly ModelAttachablePositionData[] rcsPositionData;
 
         /// <summary>
         /// The rcs-module data for use by the RCS thrusters in this model -- thrust, fuel type, ISP.  Will be null if this is not an RCS model.
@@ -431,7 +431,13 @@ namespace SSTUTools
             //load model RCS positioning data, if present
             if (node.HasNode("RCSPOSITION"))
             {
-                rcsPositionData = new ModelAttachablePositionData(node.GetNode("RCSPOSITION"));
+                ConfigNode[] pns = node.GetNodes("RCSPOSITION");
+                len = pns.Length;
+                rcsPositionData = new ModelAttachablePositionData[len];
+                for (int i = 0; i < len; i++)
+                {
+                    rcsPositionData[i] = new ModelAttachablePositionData(pns[i]);
+                }
             }
 
             //load model engine thrust data, if present

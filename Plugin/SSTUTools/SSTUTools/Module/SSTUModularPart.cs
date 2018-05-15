@@ -1294,13 +1294,13 @@ namespace SSTUTools
             solarModule.updateModelMeshes();
 
             module = getModuleByName(currentUpperRCSParent);
-            module.getRCSMountingValues(currentUpperRCSOffset, out upperRCSRad, out pos);
+            module.getRCSMountingValues(currentUpperRCSOffset, true, out upperRCSRad, out pos);
             upperRcsModule.setScale(coreScale);
             upperRcsModule.setPosition(pos);
             upperRcsModule.updateModelMeshes(); 
 
             module = getModuleByName(currentLowerRCSParent);
-            module.getRCSMountingValues(currentLowerRCSOffset, out lowerRCSRad, out pos);
+            module.getRCSMountingValues(currentLowerRCSOffset, false, out lowerRCSRad, out pos);
             lowerRcsModule.setScale(coreScale);
             lowerRcsModule.setPosition(pos);
             lowerRcsModule.updateModelMeshes();

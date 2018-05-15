@@ -1373,12 +1373,28 @@ namespace SSTUTools
         }
 
         //TODO
-        public void getRCSMountingValues(float vPos, out float radius, out float posY)
+        public void getRCSMountingValues(float vPos, bool upper, out float radius, out float posY)
         {
             bool invert = currentDefinition.shouldInvert(orientation);
             if (currentDefinition.rcsPositionData != null)
             {
-                currentDefinition.rcsPositionData.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
+                ModelAttachablePositionData mapd = null;
+                if (upper)//always 0th index in config
+                {
+                    mapd = currentDefinition.rcsPositionData[0];
+                }
+                else//if both positions specified, will always be 1st index, else 0th
+                {
+                    if (currentDefinition.rcsPositionData.Length > 1)
+                    {
+                        mapd = currentDefinition.rcsPositionData[1];//lower def
+                    }
+                    else
+                    {
+                        mapd = currentDefinition.rcsPositionData[0];//default to upper def if no lower defined
+                    }
+                }
+                mapd.getModelPosition(currentHorizontalScale, currentVerticalScale, vPos, invert, out radius, out posY);
                 posY += getPlacementOffset();
                 posY += modulePosition;
             }
