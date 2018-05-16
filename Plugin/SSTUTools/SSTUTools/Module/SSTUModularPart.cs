@@ -8,70 +8,15 @@ using static SSTUTools.SSTULog;
 
 namespace SSTUTools
 {
+
+    /// <summary>
+    /// PartModule that manages multiple models/meshes and accompanying features for model switching - resources, modules, textures, recoloring.<para/>
+    /// Includes 5 stack-mounted modules, two rcs modules, and a single solar module.  All modules support model-switching, texture-switching, recoloring.
+    /// </summary>
     public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable, IContainerVolumeContributor
     {
 
-        /**
-        * UI Layout for part right-click menu (Editor)
-        * Line     Feature
-        * 1        Diameter Adjust Control
-        * 2        Nose Selection
-        * 3        Upper Selection
-        * 4        Core Selection
-        * 5        Lower Selection
-        * 6        Mount Selection
-        * 7        Upper RCS Mounting Choice (nose/upper/core)
-        * 8        Upper RCS Selection
-        * 9        Upper RCS Offset
-        * 10       Upper RCS Layout
-        * 11       Lower RCS Mounting Choice (core/lower/mount)
-        * 12       Lower RCS Selection
-        * 13       Lower RCS Offset
-        * 14       Lower RCS Layout
-        * 15       Solar Panel Mouting Choice (upper/core/lower)
-        * 16       Solar Panel Selection
-        * 17       Solar Panel Layout
-        * 18       Nose Texture
-        * 19       Upper Texture
-        * 20       Core Texture
-        * 21       Lower Texture
-        * 22       Mount Texture
-        * 23       Upper RCS Texture
-        * 24       Lower RCS Texture
-        * 25       Solar Panel Texture
-        * 26       Nose Animation Toggle
-        * 27       Nose Animation Deploy Limit
-        * 28       Upper Animation Toggle
-        * 29       Upper Animation Deploy Limit
-        * 30       Core Animation Toggle
-        * 31       Core Animation Deploy Limit
-        * 32       Lower Animation Toggle
-        * 33       Lower Animation Deploy Limit
-        * 34       Mount Animation Toggle
-        * 35       Mount Animation Deploy Limit
-        * 36       Open Volume Container GUI
-        * 37       Open Recoloring GUI
-        * 38+++    Stock RCS, gimbal, ReactionWheel toggles, resources (lots more lines)
-        **/
-
-        /**
-        * UI Layout for part right-click menu (Flight)
-        * Line     Feature
-        * 1        Solar Panel Status
-        * 2        Nose Animation Toggle
-        * 3        Nose Animation Deploy Limit
-        * 4        Upper Animation Toggle
-        * 5        Upper Animation Deploy Limit
-        * 6        Core Animation Toggle
-        * 7        Core Animation Deploy Limit
-        * 8        Lower Animation Toggle
-        * 9        Lower Animation Deploy Limit
-        * 10       Mount Animation Toggle
-        * 11       Mount Animation Deploy Limit
-        * 12+++    Stock RCS, gimbal, ReactionWheel toggles, resources (lots more lines)
-        **/
-
-        #region REGION - Standard Part Config Fields
+        #region REGION - Part Config Fields
 
         [KSPField]
         public float diameterIncrement = 0.625f;
@@ -137,6 +82,15 @@ namespace SSTUTools
         public int mountContainerIndex = 0;
 
         [KSPField]
+        public int coreSecondContainerIndex = 0;
+
+        [KSPField]
+        public float coreSecondContainerMinPercent = 0f;
+
+        [KSPField]
+        public float coreSecondContainerMaxPercent = 0f;
+
+        [KSPField]
         public int topFairingIndex = -1;
 
         [KSPField]
@@ -144,6 +98,12 @@ namespace SSTUTools
 
         [KSPField]
         public int bottomFairingIndex = -1;
+
+        [KSPField]
+        public int upperRCSIndex = -1;
+
+        [KSPField]
+        public int lowerRCSIndex = -1;
 
         [KSPField]
         public string upperRCSThrustTransform = "RCSThrustTransform";
@@ -223,15 +183,23 @@ namespace SSTUTools
         /// <summary>
         /// Solar panel display status field.  Updated by solar functions module with occlusion and/or EC generation stats.
         /// </summary>
-        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "SolarState:")]
+        [KSPField(isPersistant = false, guiActiveEditor = false, guiActive = true, guiName = "SolarState:")]
         public string solarPanelStatus = string.Empty;
 
         /// <summary>
         /// The current user selected diamater of the part.  Drives the scaling and positioning of everything else in the model.
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Diameter"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Diameter", guiUnits = "m"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentDiameter = 2.5f;
+
+        /// <summary>
+        /// Percentage of 'core' model volume that is devoted to a secondary container.
+        /// Intended to be used to allow for easy configuration of 'support tank' use for RCS/EC propellants alongside a main-fuel tank.
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Support", guiUnits = "%"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
+        public float coreSecondContainerPercent = 0f;
 
         #region REGION - Module persistent data fields
 
@@ -421,24 +389,20 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public bool initializedDefaults = false;
 
-        //standard work-around for lack of config-node data being passed consistently and lack of support for mod-added serializable classes
-        [Persistent]
-        public string configNodeData = string.Empty;
-
-        #endregion REGION - Standard Part Config Fields
+        #endregion REGION - Part Config Fields
 
         #region REGION - Private working vars
+
+        /// <summary>
+        /// Standard work-around for lack of config-node data being passed consistently and lack of support for mod-added serializable classes.
+        /// </summary>
+        [Persistent]
+        public string configNodeData = string.Empty;
 
         /// <summary>
         /// Has initialization been run?  Set to true the first time init methods are run (OnLoad/OnStart), and ensures that init is only run a single time.
         /// </summary>
         private bool initialized = false;
-
-        /// <summary>
-        /// Cache of the base/config thrust for the RCS module(s)
-        /// TODO -- add differentiation for upper/lower rcs base thrusts
-        /// </summary>
-        private float rcsThrust = -1;
 
         /// <summary>
         /// The adjusted modified mass for this part.
@@ -450,6 +414,9 @@ namespace SSTUTools
         /// </summary>
         private float modifiedCost = 0;
 
+        /// <summary>
+        /// Radius values used for positioning of the solar and RCS module slots.  These values are updated in the 'udpatePositions' method.
+        /// </summary>
         private float lowerRCSRad;
         private float upperRCSRad;
         private float solarRad;
@@ -475,11 +442,6 @@ namespace SSTUTools
         /// Ref to the solar module that updates solar panel functions -- ec gen, tracking (animations handled through built-in animation handling)
         /// </summary>
         private SolarModule solarFunctionsModule;
-        
-        /// <summary>
-        /// ref to the ModularRCS module that updates fuel type and thrust for RCS
-        /// </summary>
-        private SSTURCSFuelSelection rcsFuelControl;
 
         /// <summary>
         /// Mapping of all of the variant sets available for this part.  When variant list length > 0, an additional 'variant' UI slider is added to allow for switching between variants.
@@ -515,7 +477,7 @@ namespace SSTUTools
 
         #endregion ENDREGION - Private working vars
 
-        #region REGION - UI Controls
+        #region REGION - UI Events and Actions for Animations (buttons and action groups)
 
         [KSPEvent]
         public void noseDeployEvent() { noseModule.animationModule.onDeployEvent(); }
@@ -571,7 +533,7 @@ namespace SSTUTools
         [KSPAction]
         public void solarToggleAction(KSPActionParam param) { solarModule.animationModule.onToggleAction(param); }
 
-        #endregion ENDREGION - UI Controls
+        #endregion ENDREGION - UI Events and Actions (buttons and action groups)
 
         #region REGION - Standard KSP Overrides
 
@@ -798,18 +760,23 @@ namespace SSTUTools
         public ContainerContribution[] getContainerContributions()
         {
             ContainerContribution[] cts;
+            float c1 = coreSecondContainerPercent;
+            float c2 = 1 - c1;
             if (useAdapterVolume)
             {
                 ContainerContribution ct0 = new ContainerContribution(noseContainerIndex, noseModule.moduleVolume * 1000f);
                 ContainerContribution ct1 = new ContainerContribution(upperContainerIndex, upperModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f * c2);
                 ContainerContribution ct3 = new ContainerContribution(lowerContainerIndex, lowerModule.moduleVolume * 1000f);
                 ContainerContribution ct4 = new ContainerContribution(mountContainerIndex, mountModule.moduleVolume * 1000f);
-                cts = new ContainerContribution[5] { ct0, ct1, ct2, ct3, ct4 };
+                ContainerContribution ct5 = new ContainerContribution(coreSecondContainerIndex, coreModule.moduleVolume * 1000f * c1);
+                cts = new ContainerContribution[6] { ct0, ct1, ct2, ct3, ct4, ct5 };
             }
             else
             {
-                cts = new ContainerContribution[] { new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f) };
+                ContainerContribution ct1 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution(coreSecondContainerIndex, coreModule.moduleVolume * 1000f);
+                cts = new ContainerContribution[2] { ct1, ct2 };
             }
             return cts;
         }
@@ -951,6 +918,10 @@ namespace SSTUTools
         }
         
         //TODO - controls for rcs vertical position functions
+        /// <summary>
+        /// Initialize the UI controls, including default values, and specifying delegates for their 'onClick' methods.<para/>
+        /// All UI based interaction code will be defined/run through these delegates.
+        /// </summary>
         private void initializeUI()
         {
             Action<SSTUModularPart> modelChangedAction = (m) =>
@@ -1243,6 +1214,10 @@ namespace SSTUTools
             }
         }
         
+        /// <summary>
+        /// Update the scale and position values for all currently configured models.  Does no validation, only updates positions.<para/>
+        /// After calling this method, all models will be scaled and positioned according to their internal position/scale values and the orientations/offsets defined in the models.
+        /// </summary>
         private void updateModulePositions()
         {
             //scales for modules depend on the module above/below them
@@ -1336,37 +1311,23 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        //TODO -- handle cases of upper+lower with same index
         /// <summary>
         /// Update the ModuleRCSXX with the current stats for the current configuration (thrust, ISP, fuel type)
         /// </summary>
         private void updateRCSModule()
         {
-            //initialize the external RCS fuel-type control module
-            //TODO -- need more modules for upper/lower differentiation?
-            rcsFuelControl = part.GetComponent<SSTURCSFuelSelection>();
-            if (rcsFuelControl != null)
+            ModuleRCS[] rcsModules = part.GetComponents<ModuleRCS>();
+            if (rcsModules == null || rcsModules.Length == 0) { return; }//nothing to update
+            if (upperRCSIndex < rcsModules.Length)
             {
-                rcsFuelControl.Start();
+                ModuleRCS upper = rcsModules[upperRCSIndex];
+                upper.thrusterPower = upperRcsModule.rcsThrusterPower;
             }
-
-            ModuleRCS rcs = part.GetComponent<ModuleRCS>();
-
-            //initialize the thrust value from the RCS module
-            if (rcsThrust < 0)
+            if (lowerRCSIndex < rcsModules.Length)
             {
-                if (rcs != null)
-                {
-                    rcsThrust = rcs.thrusterPower;
-                }
-            }
-
-            //if we have a valid thrust output rating, update the stock RCS module with that thrust value.
-            if (rcsThrust >= 0)
-            {
-                float thrust = rcsThrust * Mathf.Pow(coreModule.moduleHorizontalScale, 2);
-                MonoBehaviour.print("TODO -- Adjust RCS thrust/enabled/disabled status from SSTUModularPart");
-                //SSTUModularRCS.updateRCSModules(part, !upperRcsModule.model.dummyModel, thrust, true, true, true, true, true, true);
+                ModuleRCS lower = rcsModules[lowerRCSIndex];
+                lower.thrusterPower = lowerRcsModule.rcsThrusterPower;
             }
         }
 
@@ -1613,6 +1574,12 @@ namespace SSTUTools
                     return mountModule;
                 case "NONE":
                     return null;
+                case "SOLAR":
+                    return solarModule;
+                case "UPPERRCS":
+                    return upperRcsModule;
+                case "LOWERRCS":
+                    return lowerRcsModule;
                 default:
                     return null;
             }
