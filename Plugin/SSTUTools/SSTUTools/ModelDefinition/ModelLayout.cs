@@ -145,6 +145,25 @@ namespace SSTUTools
             this.positions = positions;
         }
 
+        /// <summary>
+        /// Returns the average of the magnitude of the scale vectors applied to each position.  Used for adjusting thrust/etc on multi-position model setups.
+        /// </summary>
+        /// <returns></returns>
+        public float modelScalarAverage()
+        {
+            float pa = 0;
+            int len = positions.Length;
+            if (len > 0)
+            {
+                for (int i = 0; i < len; i++)
+                {
+                    pa += positions[i].localScale.magnitude;
+                }
+                pa /= len;
+            }
+            return pa;
+        }
+
     }
 
     /// <summary>

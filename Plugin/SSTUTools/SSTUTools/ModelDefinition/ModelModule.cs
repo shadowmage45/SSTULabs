@@ -183,6 +183,10 @@ namespace SSTUTools
 
         #region REGION - Convenience wrappers for accessing model definition data for external use
 
+        /// <summary>
+        /// Return the current 'name' of this model-module.  Currently only used in error reporting.<para/>
+        /// Name must be set manually after module is instantiated.
+        /// </summary>
         public string name
         {
             get { return moduleName; }
@@ -369,6 +373,25 @@ namespace SSTUTools
                 pos += definition.fairingData.getBottom(currentVerticalScale, definition.shouldInvert(orientation));
                 pos += getPlacementOffset();
                 return pos;
+            }
+        }
+
+        /// <summary>
+        /// Return the scaled RCS thruster power that this model should use for updating of ModuleRCS.
+        /// </summary>
+        public float rcsThrusterPower
+        {
+            get
+            {
+                float power = 0;
+                if (definition.rcsModuleData != null)
+                {
+                    power = definition.rcsModuleData.rcsThrust;
+                    float scale = currentHorizontalScale * currentHorizontalScale * currentVerticalScale;
+                    scale *= layout.modelScalarAverage();
+                    power *= Mathf.Pow(scale, 2);
+                }
+                return power;
             }
         }
         
@@ -1246,7 +1269,7 @@ namespace SSTUTools
 
         #endregion ENDREGION - Private/Internal methods
 
-        #region REGION - Module Linking
+        #region REGION - Model-Module Linking
 
         /// <summary>
         /// Return an array with containing the models that are valid options for use as upper-adapters for the currently
@@ -1372,7 +1395,13 @@ namespace SSTUTools
             return null;
         }
 
-        //TODO
+        /// <summary>
+        /// Return the X and Y mounting positions for an RCS model-module slot parented to -this- model-module.
+        /// </summary>
+        /// <param name="vPos"></param>
+        /// <param name="upper"></param>
+        /// <param name="radius"></param>
+        /// <param name="posY"></param>
         public void getRCSMountingValues(float vPos, bool upper, out float radius, out float posY)
         {
             bool invert = currentDefinition.shouldInvert(orientation);
@@ -1406,7 +1435,12 @@ namespace SSTUTools
             }
         }
 
-        //TODO
+        /// <summary>
+        /// Return the X and Y mounting positions for a solar panel model-module slot parented to -this- model-module.
+        /// </summary>
+        /// <param name="vPos"></param>
+        /// <param name="radius"></param>
+        /// <param name="posY"></param>
         public void getSolarMountingValues(float vPos, out float radius, out float posY)
         {
             bool invert = currentDefinition.shouldInvert(orientation);
@@ -1425,7 +1459,7 @@ namespace SSTUTools
             }
         }
 
-        #endregion ENDREGION - Module Linking
+        #endregion ENDREGION - Model-Module Linking
 
     }
 
