@@ -81,16 +81,14 @@ namespace SSTUTools
         [KSPField]
         public int mountContainerIndex = 0;
 
-
+        [KSPField]
+        public int auxContainerIndex = 0;
 
         [KSPField]
-        public int coreSecondContainerIndex = 0;
+        public float auxContainerMinPercent = 0f;
 
         [KSPField]
-        public float coreSecondContainerMinPercent = 0f;
-
-        [KSPField]
-        public float coreSecondContainerMaxPercent = 0f;
+        public float auxContainerMaxPercent = 0f;
 
         [KSPField]
         public int topFairingIndex = -1;
@@ -201,7 +199,7 @@ namespace SSTUTools
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Support", guiUnits = "%"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 15, incrementLarge = 5, incrementSmall = 1, incrementSlide = 0.1f)]
-        public float coreSecondContainerPercent = 0f;
+        public float auxContainerPercent = 0f;
 
         #region REGION - Module persistent data fields
 
@@ -762,7 +760,7 @@ namespace SSTUTools
         public ContainerContribution[] getContainerContributions()
         {
             ContainerContribution[] cts;
-            float c1 = coreSecondContainerPercent;
+            float c1 = auxContainerPercent * 0.01f;
             float c2 = 1 - c1;
             if (useAdapterVolume)
             {
@@ -771,13 +769,13 @@ namespace SSTUTools
                 ContainerContribution ct2 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f * c2);
                 ContainerContribution ct3 = new ContainerContribution("lower", lowerContainerIndex, lowerModule.moduleVolume * 1000f);
                 ContainerContribution ct4 = new ContainerContribution("mount", mountContainerIndex, mountModule.moduleVolume * 1000f);
-                ContainerContribution ct5 = new ContainerContribution("aux", coreSecondContainerIndex, coreModule.moduleVolume * 1000f * c1);
+                ContainerContribution ct5 = new ContainerContribution("aux", auxContainerIndex, coreModule.moduleVolume * 1000f * c1);
                 cts = new ContainerContribution[6] { ct0, ct1, ct2, ct3, ct4, ct5 };
             }
             else
             {
                 ContainerContribution ct1 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution("aux", coreSecondContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution("aux", auxContainerIndex, coreModule.moduleVolume * 1000f);
                 cts = new ContainerContribution[2] { ct1, ct2 };
             }
             return cts;
