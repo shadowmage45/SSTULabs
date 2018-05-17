@@ -314,7 +314,7 @@ namespace SSTUTools
                 if (!playing)
                 {
                     AnimState newState = animationState == AnimState.PLAYING_BACKWARD ? AnimState.STOPPED_START : AnimState.STOPPED_END;
-                    onAnimationStateChange(newState);
+                    onAnimationStateChange(newState, true);
                 }
             }
         }
@@ -377,7 +377,7 @@ namespace SSTUTools
                         break;
                     }
             }
-            onAnimationStateChange(newState);
+            onAnimationStateChange(newState, updateCallback);
             updateUIState();
         }
 
@@ -419,10 +419,10 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Internal method to update the persistent data state(s) from the current animation state.  May be overriden for additional functionality.
+        /// Internal method to update the persistent data state(s) from the current animation state.
         /// </summary>
         /// <param name="newState"></param>
-        protected virtual void onAnimationStateChange(AnimState newState, bool updateExternal = false)
+        protected void onAnimationStateChange(AnimState newState, bool updateExternal = false)
         {
             animationState = newState;
             persistentData = newState.ToString();

@@ -80,6 +80,11 @@ namespace SSTUTools
             if (!inflated) { return; }
             updateResourceAmounts(deflationMult);
             animationModule.onRetractEvent();
+            if (rotationModule != null)
+            {
+                //force-send the retract event to the rotation module to trigger stopping of rotation during retract animation
+                rotationModule.onAnimationStateChange(AnimState.STOPPED_START);
+            }
             updateCrewCapacity(deflatedCrew);
             inflated = false;
             appliedMass = 0;
@@ -103,6 +108,12 @@ namespace SSTUTools
         {
             string info = "This module requires " + inflationMass + " tons of " + resourceName + " in order to be brought online if launched in the deflated/packed state.";
             return info;
+        }
+
+        public void Update()
+        {
+            if (!HighLogic.LoadedSceneIsEditor && !HighLogic.LoadedSceneIsFlight) { return; }
+            animationModule.Update();
         }
 
         public void Start()
@@ -157,6 +168,7 @@ namespace SSTUTools
             animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(inflateEvent), nameof(deflateEvent));
             animationModule.getSymmetryModule = m => ((SSTUInflatable)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.onAnimStateChangeCallback = onAnimationStateChange;
 
             resourceDef = PartResourceLibrary.Instance.GetDefinition(resourceName);
             if (resourceDef == null)
@@ -193,6 +205,10 @@ namespace SSTUTools
             {
                 vc.inflationMultiplier = mult;
                 vc.recalcVolume();
+            }
+            else
+            {
+                SSTUModInterop.updateResourceVolume(part);//call out to RF to update volume; it will obviously lack the inflation multiplier data
             }
         }
 
