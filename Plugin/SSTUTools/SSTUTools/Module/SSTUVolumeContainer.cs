@@ -222,10 +222,17 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 cts = contributors[i].getContainerContributions();
+                debug("Updating containers from contributor: " + contributors[i]);
                 int len2 = cts.Length;
                 for (int k = 0; k < len2; k++)
                 {
-                    volumes[cts[k].containerIndex] += cts[k].containerVolume;
+                    int idx = cts[k].containerIndex;
+                    debug(cts[k]);
+                    if (idx < volumes.Length && idx >= 0)
+                    {
+                        volumes[cts[k].containerIndex] += cts[k].containerVolume;
+                        
+                    }
                 }
             }
             len = containers.Length;

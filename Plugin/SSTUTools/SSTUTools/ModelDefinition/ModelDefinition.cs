@@ -203,7 +203,8 @@ namespace SSTUTools
         public readonly ModelEngineTransformData engineTransformData;
 
         /// <summary>
-        /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.
+        /// The RCS position data for this model definition.  If RCS is attached to this model, determines where should it be located.<para/>
+        /// Upper RCS module position should always be in index 0 if multiple modules are present.
         /// </summary>
         public readonly ModelAttachablePositionData[] rcsPositionData;
 

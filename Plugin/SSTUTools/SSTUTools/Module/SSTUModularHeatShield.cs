@@ -266,7 +266,7 @@ namespace SSTUTools
             {
                 volume *= currentShieldTypeData.resourceMult;
             }
-            return new ContainerContribution[] { new ContainerContribution(containerIndex, volume) };
+            return new ContainerContribution[] { new ContainerContribution("mhs", containerIndex, volume) };
         }
 
         #endregion

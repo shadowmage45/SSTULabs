@@ -212,8 +212,8 @@ namespace SSTUTools
 
         public ContainerContribution[] getContainerContributions()
         {
-            ContainerContribution ctBlock = new ContainerContribution(blockContainerIndex, rcsBlockModule.moduleVolume * 1000f);
-            ContainerContribution ctStruct = new ContainerContribution(structureContainerIndex, standoffModule.moduleVolume * 1000f);
+            ContainerContribution ctBlock = new ContainerContribution("rcsBlock", blockContainerIndex, rcsBlockModule.moduleVolume * 1000f);
+            ContainerContribution ctStruct = new ContainerContribution("rcsStruct", structureContainerIndex, standoffModule.moduleVolume * 1000f);
             ContainerContribution[] cts = new ContainerContribution[2] { ctBlock, ctStruct };
             return cts;
         }

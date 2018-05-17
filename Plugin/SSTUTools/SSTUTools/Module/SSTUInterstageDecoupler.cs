@@ -511,7 +511,7 @@ namespace SSTUTools
         //IContainerVolumeContributor override
         public ContainerContribution[] getContainerContributions()
         {
-            ContainerContribution ctBlock = new ContainerContribution(engineContainerIndex, engineModels.moduleVolume*1000f);
+            ContainerContribution ctBlock = new ContainerContribution("isdc", engineContainerIndex, engineModels.moduleVolume*1000f);
             ContainerContribution[] cts = new ContainerContribution[] { ctBlock };
             return cts;
         }

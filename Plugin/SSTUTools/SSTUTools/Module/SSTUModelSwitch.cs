@@ -212,7 +212,7 @@ namespace SSTUTools
         //IContainerVolumeContributor override
         public ContainerContribution[] getContainerContributions()
         {
-            return new ContainerContribution[] { new ContainerContribution(containerIndex, models.moduleVolume * 1000f) };
+            return new ContainerContribution[] { new ContainerContribution(uiLabel, containerIndex, models.moduleVolume * 1000f) };
         }
 
         private void initialize()

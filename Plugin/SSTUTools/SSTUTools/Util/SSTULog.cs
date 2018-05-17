@@ -37,5 +37,11 @@ namespace SSTUTools
             MonoBehaviour.print("SSTU-DEBUG: " + line);
         }
 
+        public static void debug(object obj)
+        {
+            if (!debugMode) { return; }
+            MonoBehaviour.print(obj);
+        }
+
     }
 }

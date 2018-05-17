@@ -1405,6 +1405,7 @@ namespace SSTUTools
         public void getRCSMountingValues(float vPos, bool upper, out float radius, out float posY)
         {
             bool invert = currentDefinition.shouldInvert(orientation);
+            //if (invert) { upper = !upper; }
             if (currentDefinition.rcsPositionData != null)
             {
                 ModelAttachablePositionData mapd = null;

@@ -81,6 +81,8 @@ namespace SSTUTools
         [KSPField]
         public int mountContainerIndex = 0;
 
+
+
         [KSPField]
         public int coreSecondContainerIndex = 0;
 
@@ -100,10 +102,10 @@ namespace SSTUTools
         public int bottomFairingIndex = -1;
 
         [KSPField]
-        public int upperRCSIndex = -1;
+        public int upperRCSIndex = 0;
 
         [KSPField]
-        public int lowerRCSIndex = -1;
+        public int lowerRCSIndex = 0;
 
         [KSPField]
         public string upperRCSThrustTransform = "RCSThrustTransform";
@@ -198,7 +200,7 @@ namespace SSTUTools
         /// Intended to be used to allow for easy configuration of 'support tank' use for RCS/EC propellants alongside a main-fuel tank.
         /// </summary>
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Support", guiUnits = "%"),
-         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 15, incrementLarge = 5, incrementSmall = 1, incrementSlide = 0.1f)]
         public float coreSecondContainerPercent = 0f;
 
         #region REGION - Module persistent data fields
@@ -764,18 +766,18 @@ namespace SSTUTools
             float c2 = 1 - c1;
             if (useAdapterVolume)
             {
-                ContainerContribution ct0 = new ContainerContribution(noseContainerIndex, noseModule.moduleVolume * 1000f);
-                ContainerContribution ct1 = new ContainerContribution(upperContainerIndex, upperModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f * c2);
-                ContainerContribution ct3 = new ContainerContribution(lowerContainerIndex, lowerModule.moduleVolume * 1000f);
-                ContainerContribution ct4 = new ContainerContribution(mountContainerIndex, mountModule.moduleVolume * 1000f);
-                ContainerContribution ct5 = new ContainerContribution(coreSecondContainerIndex, coreModule.moduleVolume * 1000f * c1);
+                ContainerContribution ct0 = new ContainerContribution("nose", noseContainerIndex, noseModule.moduleVolume * 1000f);
+                ContainerContribution ct1 = new ContainerContribution("upper", upperContainerIndex, upperModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f * c2);
+                ContainerContribution ct3 = new ContainerContribution("lower", lowerContainerIndex, lowerModule.moduleVolume * 1000f);
+                ContainerContribution ct4 = new ContainerContribution("mount", mountContainerIndex, mountModule.moduleVolume * 1000f);
+                ContainerContribution ct5 = new ContainerContribution("aux", coreSecondContainerIndex, coreModule.moduleVolume * 1000f * c1);
                 cts = new ContainerContribution[6] { ct0, ct1, ct2, ct3, ct4, ct5 };
             }
             else
             {
-                ContainerContribution ct1 = new ContainerContribution(coreContainerIndex, coreModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution(coreSecondContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct1 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f);
+                ContainerContribution ct2 = new ContainerContribution("aux", coreSecondContainerIndex, coreModule.moduleVolume * 1000f);
                 cts = new ContainerContribution[2] { ct1, ct2 };
             }
             return cts;
@@ -1319,15 +1321,26 @@ namespace SSTUTools
         {
             ModuleRCS[] rcsModules = part.GetComponents<ModuleRCS>();
             if (rcsModules == null || rcsModules.Length == 0) { return; }//nothing to update
-            if (upperRCSIndex < rcsModules.Length)
+
+            //if only a single index used (e.g. StationCore part setups, where upper/lower are used simply for two different layouts)
+            //use the data from model in the 'upper' slot
+            if (upperRCSIndex == lowerRCSIndex && upperRCSIndex >= 0 && upperRCSIndex < rcsModules.Length)
             {
-                ModuleRCS upper = rcsModules[upperRCSIndex];
-                upper.thrusterPower = upperRcsModule.rcsThrusterPower;
+                rcsModules[upperRCSIndex].thrusterPower = upperRcsModule.rcsThrusterPower;
             }
-            if (lowerRCSIndex < rcsModules.Length)
+            else
             {
-                ModuleRCS lower = rcsModules[lowerRCSIndex];
-                lower.thrusterPower = lowerRcsModule.rcsThrusterPower;
+                //else treat each module individually, if indexes are valid
+                if (upperRCSIndex < rcsModules.Length && upperRCSIndex >= 0)
+                {
+                    ModuleRCS upper = rcsModules[upperRCSIndex];
+                    upper.thrusterPower = upperRcsModule.rcsThrusterPower;
+                }
+                if (lowerRCSIndex < rcsModules.Length && lowerRCSIndex >= 0)
+                {
+                    ModuleRCS lower = rcsModules[lowerRCSIndex];
+                    lower.thrusterPower = lowerRcsModule.rcsThrusterPower;
+                }
             }
         }
 
@@ -1512,9 +1525,16 @@ namespace SSTUTools
             solarModule.updateSelections();
             upperRcsModule.updateSelections();
             lowerRcsModule.updateSelections();
+
+            ModelModule<SSTUModularPart> lowerParent, upperParent, solarParent;
+            lowerParent = getModuleByName(currentLowerRCSParent);
+            upperParent = getModuleByName(currentUpperRCSParent);
+            solarParent = getModuleByName(currentSolarParent);
+
             bool lowerRCSControlsEnabled = lowerRcsModule.layout.positions.Length >= 1 && lowerRcsModule.rcsModuleEnabled;
             bool upperRCSControlsEnabled = upperRcsModule.layout.positions.Length >= 1 && upperRcsModule.rcsModuleEnabled;
             bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.solarEnabled;
+            //bool lowerOffsetEnabled = lowerRCSControlsEnabled && lowerParent.definition.rcsPositionData != null && lowerParent.definition.rcsPositionData[0].range > 0;
             Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled;
             Fields[nameof(currentLowerRCSLayout)].guiActiveEditor = lowerRCSControlsEnabled;
