@@ -274,6 +274,11 @@ namespace SSTUTools
             return high;
         }
 
+        public void setFuelPreset(int containerIndex, ContainerFuelPreset fuelType, bool updateSymmetry)
+        {
+            setFuelPreset(containers[containerIndex], fuelType, updateSymmetry);
+        }
+
         private ContainerDefinition getBaseContainer() { return containers[baseContainerIndex]; }
 
         /// <summary>

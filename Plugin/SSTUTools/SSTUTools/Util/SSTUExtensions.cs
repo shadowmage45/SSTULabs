@@ -265,6 +265,19 @@ namespace SSTUTools
             return curve;
         }
 
+        public static ConfigNode getNode(this FloatCurve curve, string name)
+        {
+            ConfigNode node = new ConfigNode(name);
+            int len = curve.Curve.length;
+            Keyframe[] keys = curve.Curve.keys;
+            for (int i = 0; i < len; i++)
+            {
+                Keyframe key = keys[i];
+                node.AddValue("key", key.time + " " + key.value + " " + key.inTangent + " " + key.outTangent);
+            }
+            return node;
+        }
+
         public static Color getColor(this ConfigNode node, String name)
         {
             Color color = new Color();
@@ -777,16 +790,6 @@ namespace SSTUTools
                 output = output + "\n" + f.time + " " + f.value + " " + f.inTangent + " " + f.outTangent;
             }
             return output;
-        }
-
-        public static void logDebug(this MonoBehaviour module, String message)
-        {
-            MonoBehaviour.print("SSTU-DEBUG: " + message);
-        }
-
-        public static void logError(this MonoBehaviour module, String message)
-        {
-            MonoBehaviour.print("SSTU-ERROR: " + message);
         }
 
         #endregion
