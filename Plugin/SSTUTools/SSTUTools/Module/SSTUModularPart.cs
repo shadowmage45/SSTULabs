@@ -207,109 +207,109 @@ namespace SSTUTools
 
         //non-persistent value; initialized to whatever the currently selected core model definition is at time of loading
         //allows for variant names to be updated in the part-config without breaking everything....
-        [KSPField(guiName = "Variant"),
+        [KSPField(guiName = "Variant", guiActiveEditor = true, guiActive = false),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentVariant = "Default";
 
-        [KSPField(isPersistant = true, guiName = "Top"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Top"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentNose = "Mount-None";
         
-        [KSPField(isPersistant = true, guiName = "Upper"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpper = "Mount-None";
 
-        [KSPField(isPersistant = true, guiName = "Core"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Core"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentCore = "Mount-None";
 
-        [KSPField(isPersistant = true, guiName = "Lower"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLower = "Mount-None";
 
-        [KSPField(isPersistant = true, guiName = "Mount"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Mount"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentMount = "Mount-None";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Solar V.Offset"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Solar V.Offset"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentSolarOffset = 0f;
 
-        [KSPField(isPersistant = true, guiName = "Solar"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Solar"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolar = "Solar-None";
 
-        [KSPField(isPersistant = true, guiName = "Solar Layout"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Solar Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolarLayout = "default";
 
-        [KSPField(isPersistant = true, guiName = "Solar Parent"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Solar Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolarParent = "CORE";
 
-        [KSPField(isPersistant = true, guiName = "Upper RCS"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCS = "MUS-RCS1";
 
-        [KSPField(isPersistant = true, guiName = "Upper RCS Layout"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper RCS Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCSLayout = "default";
 
-        [KSPField(isPersistant = true, guiName = "Upper RCS Parent"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper RCS Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCSParent = "CORE";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset1"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "RCS V.Offset1"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentUpperRCSOffset = 0f;
 
-        [KSPField(isPersistant = true, guiName = "Lower RCS"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower RCS"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCS = "MUS-RCS1";
 
-        [KSPField(isPersistant = true, guiName = "Lower RCS Layout"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower RCS Layout"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCSLayout = "default";
 
-        [KSPField(isPersistant = true, guiName = "Lower RCS Parent"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower RCS Parent"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCSParent = "CORE";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "RCS V.Offset2"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "RCS V.Offset2"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentLowerRCSOffset = 0f;
 
         //------------------------------------------TEXTURE SET PERSISTENCE-----------------------------------------------//
 
-        [KSPField(isPersistant = true, guiName = "Nose Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Nose Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentNoseTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Upper Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Core Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Core Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentCoreTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Lower Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Mount Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Mount Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentMountTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Upper RCS Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper RCS Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCSTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Lower RCS Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower RCS Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCSTexture = "default";
 
-        [KSPField(isPersistant = true, guiName = "Solar Tex"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Solar Tex"),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentSolarTexture = "default";
 
@@ -342,23 +342,23 @@ namespace SSTUTools
 
         //------------------------------------------ANIMATION PERSISTENCE-----------------------------------------------//
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Nose Deploy Limit"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Nose Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float noseAnimationDeployLimit = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Top Deploy Limit"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Top Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float upperAnimationDeployLimit = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Core Deploy Limit"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Core Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float coreAnimationDeployLimit = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Bottom Deploy Limit"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Bottom Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float lowerAnimationDeployLimit = 1f;
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiName = "Mount Deploy Limit"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Mount Deploy Limit"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float mountAnimationDeployLimit = 1f;
         
@@ -549,6 +549,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+            debug("GUIActive state for nose selection: " + Fields[nameof(currentNose)].guiActive);
             initialize();
             initializeUI();
         }
@@ -1548,19 +1549,21 @@ namespace SSTUTools
             upperParent = getModuleByName(currentUpperRCSParent);
             solarParent = getModuleByName(currentSolarParent);
 
-            bool lowerRCSControlsEnabled = lowerRcsModule.layout.positions.Length >= 1 && lowerRcsModule.rcsModuleEnabled;
-            bool upperRCSControlsEnabled = upperRcsModule.layout.positions.Length >= 1 && upperRcsModule.rcsModuleEnabled;
-            bool solarControlsEnabled = solarModule.layout.positions.Length >= 1 && solarModule.solarEnabled;
-            //bool lowerOffsetEnabled = lowerRCSControlsEnabled && lowerParent.definition.rcsPositionData != null && lowerParent.definition.rcsPositionData[0].range > 0;
-            Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled;
-            Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled;
-            Fields[nameof(currentLowerRCSLayout)].guiActiveEditor = lowerRCSControlsEnabled;
-            Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRCSControlsEnabled;
-            Fields[nameof(currentUpperRCSOffset)].guiActiveEditor = upperRCSControlsEnabled;
-            Fields[nameof(currentUpperRCSLayout)].guiActiveEditor = upperRCSControlsEnabled;
-            Fields[nameof(currentSolarParent)].guiActiveEditor = solarControlsEnabled;
-            Fields[nameof(currentSolarOffset)].guiActiveEditor = solarControlsEnabled;
-            Fields[nameof(currentSolarLayout)].guiActiveEditor = solarControlsEnabled;
+            bool lowerRCSControlsEnabled = lowerRcsModule.rcsModuleEnabled;
+            bool upperRCSControlsEnabled = upperRcsModule.rcsModuleEnabled;
+            bool solarControlsEnabled = solarModule.solarEnabled;
+
+            Fields[nameof(currentLowerRCSParent)].guiActiveEditor = lowerRCSControlsEnabled && lowerRCSParentOptions.Split(',').Length > 1;
+            Fields[nameof(currentLowerRCSOffset)].guiActiveEditor = lowerRCSControlsEnabled && lowerParent.getRCSMountingRange(false) > 0;
+            Fields[nameof(currentLowerRCSLayout)].guiActiveEditor = lowerRCSControlsEnabled && lowerRcsModule.layoutOptions.layouts.Count() > 1;
+
+            Fields[nameof(currentUpperRCSParent)].guiActiveEditor = upperRCSControlsEnabled && upperRCSParentOptions.Split(',').Length > 1;
+            Fields[nameof(currentUpperRCSOffset)].guiActiveEditor = upperRCSControlsEnabled && upperParent.getRCSMountingRange(true) > 0;
+            Fields[nameof(currentUpperRCSLayout)].guiActiveEditor = upperRCSControlsEnabled && upperRcsModule.layoutOptions.layouts.Count() > 1;
+
+            Fields[nameof(currentSolarParent)].guiActiveEditor = solarControlsEnabled && solarParentOptions.Split(',').Length > 1;
+            Fields[nameof(currentSolarOffset)].guiActiveEditor = solarControlsEnabled && solarParent.definition.solarPositionData!=null && solarParent.definition.solarPositionData.range > 0;
+            Fields[nameof(currentSolarLayout)].guiActiveEditor = solarControlsEnabled && solarModule.layoutOptions.layouts.Count() > 1;
         }
 
         /// <summary>

@@ -502,6 +502,18 @@ namespace SSTUTools
 
         #region PartModule extensionMethods
 
+        public static void setFieldEnabledEditor(this PartModule module, string fieldName, bool active)
+        {
+            BaseField f = module.Fields[fieldName];
+            if (f != null) { f.guiActiveEditor = active; }
+        }
+
+        public static void setFieldEnabledFlight(this PartModule module, string fieldName, bool active)
+        {
+            BaseField f = module.Fields[fieldName];
+            if (f != null) { f.guiActive = active; }
+        }
+
         public static void updateUIFloatEditControl(this PartModule module, string fieldName, float min, float max, float incLarge, float incSmall, float incSlide, bool forceUpdate, float forceVal)
         {
             UI_FloatEdit widget = null;
@@ -577,19 +589,24 @@ namespace SSTUTools
             }
         }
 
+        /// <summary>
+        /// FOR EDITOR USE ONLY - will not update or activate UI fields in flight scene
+        /// </summary>
+        /// <param name="module"></param>
+        /// <param name="fieldName"></param>
+        /// <param name="options"></param>
+        /// <param name="display"></param>
+        /// <param name="forceUpdate"></param>
+        /// <param name="forceVal"></param>
         public static void updateUIChooseOptionControl(this PartModule module, string fieldName, string[] options, string[] display, bool forceUpdate, string forceVal="")
         {
             if (display.Length == 0 && options.Length > 0) { display = new string[] { "NONE" }; }
             if (options.Length == 0) { options = new string[] { "NONE" }; }
-            module.Fields[fieldName].guiActive = module.Fields[fieldName].guiActiveEditor = options.Length > 1;
+            module.Fields[fieldName].guiActiveEditor = options.Length > 1;
             UI_ChooseOption widget = null;
             if (HighLogic.LoadedSceneIsEditor)
             {
                 widget = (UI_ChooseOption)module.Fields[fieldName].uiControlEditor;
-            }
-            else if (HighLogic.LoadedSceneIsFlight)
-            {
-                widget = (UI_ChooseOption)module.Fields[fieldName].uiControlFlight;
             }
             else
             {

@@ -14,7 +14,7 @@ namespace SSTUTools
         /// Current volume in liters, summed from sub-container volumes
         /// DO NOT UPDATE MANUALLY -- call container.onVolumeUpdated(float volume)
         /// </summary>
-        [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Total Volume", guiUnits = "l")]
+        [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = true, guiName = "Total Volume", guiUnits = "l")]
         public float volume;
 
         /// <summary>
@@ -44,13 +44,13 @@ namespace SSTUTools
         /// <summary>
         /// Gui displayed usable volume, tallied from containers
         /// </summary>
-        [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Usable Volume", guiUnits = "l")]
+        [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = true, guiName = "Usable Volume", guiUnits = "l")]
         public float usableVolume;
 
         /// <summary>
         /// Gui displayed dry mass, tallied from containers
         /// </summary>
-        [KSPField(isPersistant = false, guiActiveEditor = true, guiName = "Tankage Mass", guiUnits = "t")]
+        [KSPField(isPersistant = false, guiActive = false, guiActiveEditor = true, guiName = "Tankage Mass", guiUnits = "t")]
         public float tankageMass;
 
         /// <summary>
@@ -145,6 +145,10 @@ namespace SSTUTools
 
             BaseField fuelSelection = Fields[nameof(guiFuelType)];
             fuelSelection.uiControlEditor.onFieldChanged = onFuelTypeUpdated;
+            fuelSelection.guiActive = false;
+            Fields[nameof(volume)].guiActive = false;
+            Fields[nameof(tankageMass)].guiActive = false;
+            Fields[nameof(usableVolume)].guiActive = false;
         }
 
         public override void OnStartFinished(StartState state)
@@ -152,7 +156,6 @@ namespace SSTUTools
             base.OnStartFinished(state);
             if (!initializedResources && (HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight))
             {
-                MonoBehaviour.print("Initializing resources");
                 initializedResources = true;
                 recalcVolume();
             }

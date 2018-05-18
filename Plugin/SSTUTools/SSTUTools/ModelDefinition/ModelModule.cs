@@ -1436,6 +1436,32 @@ namespace SSTUTools
             }
         }
 
+        public float getRCSMountingRange(bool upper)
+        {
+            bool invert = currentDefinition.shouldInvert(orientation);
+            if (definition.rcsPositionData != null)
+            {
+                ModelAttachablePositionData mapd = null;
+                if (upper)//always 0th index in config
+                {
+                    mapd = currentDefinition.rcsPositionData[0];
+                }
+                else//if both positions specified, will always be 1st index, else 0th
+                {
+                    if (currentDefinition.rcsPositionData.Length > 1)
+                    {
+                        mapd = currentDefinition.rcsPositionData[1];//lower def
+                    }
+                    else
+                    {
+                        mapd = currentDefinition.rcsPositionData[0];//default to upper def if no lower defined
+                    }
+                }
+                return mapd.range;
+            }
+            return 0f;
+        }
+
         /// <summary>
         /// Return the X and Y mounting positions for a solar panel model-module slot parented to -this- model-module.
         /// </summary>
