@@ -24,6 +24,9 @@ namespace SSTUTools
         [KSPField]
         public int engineModuleIndex = -1;
 
+        [KSPField]
+        public string label = "Fuel Type";
+
         /// <summary>
         /// The currently selected fuel type.  If specified in the config, used as a 'default' fuel type, otherwise initialized to the first fuel type.
         /// </summary>
@@ -66,6 +69,7 @@ namespace SSTUTools
                 });
             };
 
+            Fields[nameof(currentFuelType)].guiName = label;
             Fields[nameof(currentFuelType)].guiActiveEditor = fuelTypes.Length > 1;
             string[] names = SSTUUtils.getNames(fuelTypes, m => m.fuelPreset.name);
             this.updateUIChooseOptionControl(nameof(currentFuelType), names, names, true, currentFuelType);
@@ -144,6 +148,7 @@ namespace SSTUTools
             if (containerIndex < vc.numberOfContainers)
             {
                 vc.setFuelPreset(containerIndex, fuelType.fuelPreset, false);
+                vc.recalcVolume();
             }
             else
             {
@@ -180,6 +185,10 @@ namespace SSTUTools
             public FuelTypeISP(ConfigNode node)
             {
                 fuelPreset = VolumeContainerLoader.getPreset(node.GetStringValue("name"));
+                if (fuelPreset == null)
+                {
+                    SSTULog.error("Could not locate fuel preset for name: "+node.GetStringValue("name"));
+                }
                 if (node.HasNode("ispCurve"))
                 {
                     ispCurve = node.GetFloatCurve("ispCurve");
