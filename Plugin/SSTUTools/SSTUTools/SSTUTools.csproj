@@ -94,7 +94,7 @@
     <Compile Include="ModelDefinition\ModelLayout.cs" />
     <Compile Include="Module\SSTUModularPart.cs" />
     <Compile Include="Module\SSTUDockingSnapAdjust.cs" />
-    <Compile Include="Module\SSTURCSFuelSelection.cs" />
+    <Compile Include="Module\SSTUFuelSelection.cs" />
     <Compile Include="Module\SSTUModularRCS.cs" />
     <Compile Include="Module\SSTUAirstreamShield.cs" />
     <Compile Include="Module\SSTUCollisionHandler.cs" />

@@ -917,7 +917,6 @@ namespace SSTUTools
             SSTUStockInterop.updatePartHighlighting(part);
         }
         
-        //TODO - controls for rcs vertical position functions
         /// <summary>
         /// Initialize the UI controls, including default values, and specifying delegates for their 'onClick' methods.<para/>
         /// All UI based interaction code will be defined/run through these delegates.
@@ -1123,6 +1122,7 @@ namespace SSTUTools
                 SSTUStockInterop.fireEditorUpdate();
             };
 
+            //------------------MODEL DIAMETER SWITCH UI INIT---------------------//
             if (maxDiameter == minDiameter)
             {
                 Fields[nameof(currentDiameter)].guiActiveEditor = false;
@@ -1130,6 +1130,25 @@ namespace SSTUTools
             else
             {
                 this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
+            }
+
+            //------------------AUX CONTAINER SWITCH UI INIT---------------------//
+            Fields[nameof(auxContainerPercent)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.auxContainerPercent = this.auxContainerPercent; }
+                    SSTUModInterop.updateResourceVolume(m.part);
+                    SSTUStockInterop.fireEditorUpdate();
+                });
+            };
+            if (auxContainerMinPercent == auxContainerMaxPercent)
+            {
+                Fields[nameof(auxContainerPercent)].guiActiveEditor = false;
+            }
+            else
+            {
+                this.updateUIFloatEditControl(nameof(auxContainerPercent), auxContainerMinPercent, auxContainerMaxPercent, 5f, 1f, 0.1f, false, auxContainerPercent);
             }
 
             //------------------MODULE TEXTURE SWITCH UI INIT---------------------//
@@ -1142,6 +1161,7 @@ namespace SSTUTools
             Fields[nameof(currentUpperRCSTexture)].uiControlEditor.onFieldChanged = upperRcsModule.textureSetSelected;
             Fields[nameof(currentLowerRCSTexture)].uiControlEditor.onFieldChanged = lowerRcsModule.textureSetSelected;
 
+            //------------------MODULE PARENT SWITCH UI INIT---------------------//
             string[] upperRCSOptions = upperRCSParentOptions.Split(',');
             this.updateUIChooseOptionControl(nameof(currentUpperRCSParent), upperRCSOptions, upperRCSOptions, true, currentUpperRCSParent);
             string[] lowerRCSOptions = lowerRCSParentOptions.Split(',');
@@ -1310,8 +1330,7 @@ namespace SSTUTools
                 modifiedCost += mountModule.moduleCost;
             }
         }
-
-        //TODO -- handle cases of upper+lower with same index
+        
         /// <summary>
         /// Update the ModuleRCSXX with the current stats for the current configuration (thrust, ISP, fuel type)
         /// </summary>
