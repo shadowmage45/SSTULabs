@@ -375,25 +375,6 @@ namespace SSTUTools
                 return pos;
             }
         }
-
-        /// <summary>
-        /// Return the scaled RCS thruster power that this model should use for updating of ModuleRCS.
-        /// </summary>
-        public float rcsThrusterPower
-        {
-            get
-            {
-                float power = 0;
-                if (definition.rcsModuleData != null)
-                {
-                    power = definition.rcsModuleData.rcsThrust;
-                    float scale = currentHorizontalScale * currentHorizontalScale * currentVerticalScale;
-                    scale *= layout.modelScalarAverage();
-                    power *= Mathf.Pow(scale, 2);
-                }
-                return power;
-            }
-        }
         
         /// <summary>
         /// Return the currently configured custom color data for this module slot.
@@ -570,13 +551,30 @@ namespace SSTUTools
         }
 
         /// <summary>
-        /// Update the input moduleRCS enabled, thrust and axis enable/disable status
+        /// Update the input moduleRCS enabled, thrust and axis enable/disable status.  Calls rcs.OnStart() to update
         /// </summary>
         /// <param name="rcs"></param>
         /// <param name="thrustScaleFactor"></param>
         public void updateRCSModule(ModuleRCS rcs, float thrustScaleFactor)
         {
-
+            float power = 0;
+            if (definition.rcsModuleData != null)
+            {
+                ModelRCSModuleData data = definition.rcsModuleData;
+                power = data.rcsThrust;
+                float scale = currentHorizontalScale * currentHorizontalScale * currentVerticalScale;
+                scale *= layout.modelScalarAverage();
+                power *= Mathf.Pow(scale, 2);
+                rcs.enableX = data.enableX;
+                rcs.enableY = data.enableY;
+                rcs.enableZ = data.enableZ;
+                rcs.enablePitch = data.enablePitch;
+                rcs.enableYaw = data.enableYaw;
+                rcs.enableRoll = data.enableRoll;
+            }
+            rcs.thrusterPower = power;
+            rcs.moduleIsEnabled = power > 0;
+            rcs.OnStart(PartModule.StartState.Flying);
         }
 
         #endregion ENDREGION - Update Methods

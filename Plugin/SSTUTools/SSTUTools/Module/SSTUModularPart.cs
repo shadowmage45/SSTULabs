@@ -115,19 +115,7 @@ namespace SSTUTools
         public string engineThrustTransform = "thrustTransform";
 
         [KSPField]
-        public string disabledRCSModelName = "RCS-None";
-
-        [KSPField]
-        public string disabledSolarName = "Solar-None";
-
-        [KSPField]
-        public string engineThrustModule = "NONE";
-
-        [KSPField]
-        public string engineTransformModule = "NONE";
-
-        [KSPField]
-        public string engineGimbalModule = "NONE";
+        public string gimbalTransform = "gimbalTransform";
 
         [KSPField]
         public string noseManagedNodes = string.Empty;
@@ -184,7 +172,13 @@ namespace SSTUTools
         /// Determines what module slot should be examined for engine thrust statistics.
         /// </summary>
         [KSPField]
-        public string engineThrustFunctionSource = "CORE";
+        public string engineThrustSource = "CORE";
+
+        /// <summary>
+        /// Determines what module slot should be examined for engine transform and gimbal transform names
+        /// </summary>
+        [KSPField]
+        public string engineTransformSource = "CORE";
 
         /// <summary>
         /// Determines what module slot should be examined for upper-rcs statistics
@@ -1365,20 +1359,18 @@ namespace SSTUTools
             //use the data from model in the 'upper' slot
             if (upperRCSIndex == lowerRCSIndex && upperRCSIndex >= 0 && upperRCSIndex < rcsModules.Length)
             {
-                rcsModules[upperRCSIndex].thrusterPower = upperRCSSource.rcsThrusterPower;
+                upperRCSSource.updateRCSModule(rcsModules[upperRCSIndex], 3);
             }
             else
             {
                 //else treat each module individually, if indexes are valid
                 if (upperRCSIndex < rcsModules.Length && upperRCSIndex >= 0)
                 {
-                    ModuleRCS upper = rcsModules[upperRCSIndex];
-                    upper.thrusterPower = upperRCSSource.rcsThrusterPower;
+                    upperRCSSource.updateRCSModule(rcsModules[upperRCSIndex], 3);
                 }
                 if (lowerRCSIndex < rcsModules.Length && lowerRCSIndex >= 0)
                 {
-                    ModuleRCS lower = rcsModules[lowerRCSIndex];
-                    lower.thrusterPower = lowerRCSSource.rcsThrusterPower;
+                    lowerRCSSource.updateRCSModule(rcsModules[lowerRCSIndex], 3);
                 }
             }
         }
@@ -1389,16 +1381,13 @@ namespace SSTUTools
         /// </summary>
         private void updateEngineModule()
         {
-
-        }
-
-        //TODO
-        /// <summary>
-        /// Update the ModuleGimbal with the current stats for the current configuration.
-        /// </summary>
-        private void updateGimbalModule()
-        {
-
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine == null) { return; }
+            ModelModule<SSTUModularPart> engineTransformSource = getModuleByName(this.engineTransformSource);
+            engineTransformSource.renameEngineThrustTransforms(engineThrustTransform);
+            engineTransformSource.renameGimbalTransforms(gimbalTransform);
+            ModelModule<SSTUModularPart> engineThrustSource = getModuleByName(this.engineThrustSource);
+            engineThrustSource.updateEngineModuleThrust(engine, 3);
         }
 
         //TODO -- surface attach handling -- both internal and external.

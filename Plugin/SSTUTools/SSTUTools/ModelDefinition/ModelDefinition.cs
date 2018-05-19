@@ -659,7 +659,7 @@ namespace SSTUTools
         {
             thrustTransformName = node.GetStringValue("thrustTransform");
             if (string.IsNullOrEmpty(thrustTransformName)) { SSTULog.error("ERROR: THrust transform name was null for model def engine transform data"); }
-            gimbalTransformName = node.GetStringValue("gimbalTransformName");
+            gimbalTransformName = node.GetStringValue("gimbalTransform");
             gimbalAdjustmentRange = node.GetFloatValue("gimbalAdjustRange", 0);
             gimbalFlightRange = node.GetFloatValue("gimbalFlightRange", 0);
         }
@@ -901,10 +901,18 @@ namespace SSTUTools
         /// </summary>
         public readonly float rcsThrust;
 
+        public readonly bool enableX, enableY, enableZ, enablePitch, enableYaw, enableRoll;
+
         public ModelRCSModuleData(ConfigNode node)
         {
             thrustTransformName = node.GetStringValue("thrustTransformName");
             rcsThrust = node.GetFloatValue("thrust");
+            enableX = node.GetBoolValue("enableX", true);
+            enableY = node.GetBoolValue("enableY", true);
+            enableZ = node.GetBoolValue("enableZ", true);
+            enablePitch = node.GetBoolValue("enablePitch", true);
+            enableYaw = node.GetBoolValue("enableYaw", true);
+            enableRoll = node.GetBoolValue("enableRoll", true);
         }
 
         public float getThrust(float scale)
