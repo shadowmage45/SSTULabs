@@ -1020,4 +1020,407 @@ namespace SSTUTools
         BOTTOM
     }
 
+    /// <summary>
+    /// Class denoting a the transforms to use from a single database model.  Allows for combining multiple entire models, and/or transforms from models, all into a single active/usable Model
+    /// </summary>
+    public class SubModelData
+    {
+
+        public readonly string modelURL;
+        public readonly string[] modelMeshes;
+        public readonly string[] renameMeshes;
+        public readonly string parent;
+        public readonly Vector3 rotation;
+        public readonly Vector3 position;
+        public readonly Vector3 scale;
+
+        public SubModelData(ConfigNode node)
+        {
+            modelURL = node.GetStringValue("modelName");
+            modelMeshes = node.GetStringValues("transform");
+            renameMeshes = node.GetStringValues("rename");
+            parent = node.GetStringValue("parent", string.Empty);
+            position = node.GetVector3("position", Vector3.zero);
+            rotation = node.GetVector3("rotation", Vector3.zero);
+            scale = node.GetVector3("scale", Vector3.one);
+        }
+
+        public SubModelData(string modelURL, string[] meshNames, string parent, Vector3 pos, Vector3 rot, Vector3 scale)
+        {
+            this.modelURL = modelURL;
+            this.modelMeshes = meshNames;
+            this.renameMeshes = new string[0];
+            this.parent = parent;
+            this.position = pos;
+            this.rotation = rot;
+            this.scale = scale;
+        }
+
+        public void setupSubmodel(GameObject modelRoot)
+        {
+            if (modelMeshes.Length > 0)
+            {
+                Transform[] trs = modelRoot.transform.GetAllChildren();
+                List<Transform> toKeep = new List<Transform>();
+                List<Transform> toCheck = new List<Transform>();
+                int len = trs.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (trs[i] == null)
+                    {
+                        continue;
+                    }
+                    else if (isActiveMesh(trs[i].name))
+                    {
+                        toKeep.Add(trs[i]);
+                    }
+                    else
+                    {
+                        toCheck.Add(trs[i]);
+                    }
+                }
+                List<Transform> transformsToDelete = new List<Transform>();
+                len = toCheck.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    if (!isParent(toCheck[i], toKeep))
+                    {
+                        transformsToDelete.Add(toCheck[i]);
+                    }
+                }
+                len = transformsToDelete.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    GameObject.DestroyImmediate(transformsToDelete[i].gameObject);
+                }
+            }
+            if (renameMeshes.Length > 0)
+            {
+                string[] split;
+                string oldName, newName;
+                int len = renameMeshes.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    split = renameMeshes[i].Split(',');
+                    if (split.Length < 2)
+                    {
+                        MonoBehaviour.print("ERROR: Mesh rename format invalid, must specify <oldName>,<newName>");
+                        continue;
+                    }
+                    oldName = split[0].Trim();
+                    newName = split[1].Trim();
+                    Transform[] trs = modelRoot.transform.FindChildren(oldName);
+                    int len2 = trs.Length;
+                    for (int k = 0; k < len2; k++)
+                    {
+                        trs[k].name = newName;
+                    }
+                }
+            }
+        }
+
+        private bool isActiveMesh(string transformName)
+        {
+            int len = modelMeshes.Length;
+            bool found = false;
+            for (int i = 0; i < len; i++)
+            {
+                if (modelMeshes[i] == transformName)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
+        }
+
+        private bool isParent(Transform toCheck, List<Transform> children)
+        {
+            int len = children.Count;
+            for (int i = 0; i < len; i++)
+            {
+                if (children[i].isParent(toCheck)) { return true; }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Data class for specifying which meshes should be merged into singular mesh instances.
+    /// For use in game-object reduction for models composited from many sub-meshes.
+    /// </summary>
+    public class MeshMergeData
+    {
+
+        /// <summary>
+        /// The name of the transform to parent the merged meshes into.
+        /// </summary>
+        public readonly string parentTransform;
+
+        /// <summary>
+        /// The name of the transform to merge the specified meshes into.  If this transform is not present, it will be created.  
+        /// Will be parented to 'parentTransform' if that field is populated, else it will become the 'root' transform in the model.
+        /// </summary>
+        public readonly string targetTransform;
+
+        /// <summary>
+        /// The names of the meshes to merge into the target transform.
+        /// </summary>
+        public readonly string[] meshNames;
+
+        public MeshMergeData(ConfigNode node)
+        {
+            parentTransform = node.GetStringValue("parent", string.Empty);
+            targetTransform = node.GetStringValue("target", "MergedMesh");
+            meshNames = node.GetStringValues("mesh");
+        }
+
+        /// <summary>
+        /// Given the input root transform for a fully assembled model (e.g. from sub-model-data),
+        /// locate any transforms that should be merged, merge them into the specified target transform,
+        /// and parent them to the specified parent transform (or root if NA).
+        /// </summary>
+        /// <param name="root"></param>
+        public void mergeMeshes(Transform root)
+        {
+            //find target transform
+            //create if it doesn't exist
+            Transform target = root.FindRecursive(targetTransform);
+            if (target == null)
+            {
+                target = new GameObject(targetTransform).transform;
+                target.NestToParent(root);
+            }
+
+            //locate mesh filter on target transform
+            //add a new one if not already present
+            MeshFilter mf = target.GetComponent<MeshFilter>();
+            if (mf == null)
+            {
+                mf = target.gameObject.AddComponent<MeshFilter>();
+                mf.mesh = new Mesh();
+            }
+
+            Material material = null;
+
+            //merge meshes into singular mesh object
+            //copy material/rendering settings from one of the original meshes
+            List<CombineInstance> cis = new List<CombineInstance>();
+            CombineInstance ci;
+            Transform[] trs;
+            int len = meshNames.Length;
+            int trsLen;
+            MeshFilter mm;
+            for (int i = 0; i < len; i++)
+            {
+                trs = root.FindChildren(meshNames[i]);
+                trsLen = trs.Length;
+                for (int k = 0; k < trsLen; k++)
+                {
+                    //locate mesh filter from specified mesh(es)
+                    mm = trs[k].GetComponent<MeshFilter>();
+                    //if mesh did not exist, skip it 
+                    //TODO log error on missing mesh on specified transform
+                    if (mm == null) { continue; }
+                    ci = new CombineInstance();
+                    ci.mesh = mm.sharedMesh;
+                    ci.transform = trs[k].localToWorldMatrix;
+                    cis.Add(ci);
+                    //if we don't currently have a reference to a material, grab a ref to/copy of the shared material
+                    //for the current mesh(es).  These must all use the same materials
+                    if (material == null)
+                    {
+                        Renderer mr = trs[k].GetComponent<Renderer>();
+                        material = mr.material;//grab a NON-shared material reference
+                    }
+                }
+            }
+            mf.mesh.CombineMeshes(cis.ToArray());
+
+            //update the material for the newly combined mesh
+            //add mesh-renderer component if necessary
+            Renderer renderer = target.GetComponent<Renderer>();
+            if (renderer == null)
+            {
+                renderer = target.gameObject.AddComponent<MeshRenderer>();
+            }
+            renderer.sharedMaterial = material;
+
+            //parent the new output GO to the specified parent
+            //or parent target transform to the input root if no parent is specified
+            if (!string.IsNullOrEmpty(parentTransform))
+            {
+                Transform parent = root.FindRecursive(parentTransform);
+            }
+            else
+            {
+                target.parent = root;
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// Data that defines how a compound model scales and updates its height with scale changes.
+    /// </summary>
+    public class CompoundModelData
+    {
+        /*
+            Compound Model Definition and Manipulation
+
+            Compound Model defines the following information for all transforms in the model that need position/scale updated:
+            * total model height - combined height of the model at its default diameter.
+            * height - of the meshes of the transform at default scale
+            * canScaleHeight - if this particular transform is allowed to scale its height
+            * index - index of the transform in the model, working from origin outward.
+            * v-scale axis -- in case it differs from Y axis
+
+            Updating the height on a Compound Model will do the following:
+            * Inputs - vertical scale, horizontal scale
+            * Calculate the desired height from the total model height and input vertical scale factor
+            * Apply horizontal scaling directly to all transforms.  
+            * Apply horizontal scale factor to the vertical scale for non-v-scale enabled meshes (keep aspect ratio of those meshes).
+            * From total desired height, subtract the height of non-scaleable meshes.
+            * The 'remainderTotalHeight' is then divided proportionately between all remaining scale-able meshes.
+            * Calculate needed v-scale for the portion of height needed for each v-scale-able mesh.
+         */
+        CompoundModelTransformData[] compoundTransformData;
+
+        public CompoundModelData(ConfigNode node)
+        {
+            ConfigNode[] trNodes = node.GetNodes("TRANSFORM");
+            int len = trNodes.Length;
+            compoundTransformData = new CompoundModelTransformData[len];
+            for (int i = 0; i < len; i++)
+            {
+                compoundTransformData[i] = new CompoundModelTransformData(trNodes[i]);
+            }
+        }
+
+        public void setHeightExplicit(ModelDefinition def, GameObject root, float dScale, float height, ModelOrientation orientation)
+        {
+            float vScale = height / def.height;
+            setHeightFromScale(def, root, dScale, vScale, orientation);
+        }
+
+        public void setHeightFromScale(ModelDefinition def, GameObject root, float dScale, float vScale, ModelOrientation orientation)
+        {
+            float desiredHeight = def.height * vScale;
+            float staticHeight = getStaticHeight() * dScale;
+            float neededScaleHeight = desiredHeight - staticHeight;
+
+            //iterate through scaleable transforms, calculate total height of scaleable transforms; use this height to determine 'percent share' of needed scale height for each transform
+            int len = compoundTransformData.Length;
+            float totalScaleableHeight = 0f;
+            for (int i = 0; i < len; i++)
+            {
+                totalScaleableHeight += compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height : 0f;
+            }
+
+            float pos = 0f;//pos starts at origin, is incremented according to transform height along 'dir'
+            float dir = orientation == ModelOrientation.BOTTOM ? -1f : 1f;//set from model orientation, either +1 or -1 depending on if origin is at botom or top of model (ModelOrientation.TOP vs ModelOrientation.BOTTOM)
+            float localVerticalScale = 1f;
+            Transform[] trs;
+            int len2;
+            float percent, scale, height;
+
+            for (int i = 0; i < len; i++)
+            {
+                percent = compoundTransformData[i].canScaleHeight ? compoundTransformData[i].height / totalScaleableHeight : 0f;
+                height = percent * neededScaleHeight;
+                scale = height / compoundTransformData[i].height;
+
+                trs = root.transform.FindChildren(compoundTransformData[i].name);
+                len2 = trs.Length;
+                for (int k = 0; k < len2; k++)
+                {
+                    trs[k].localPosition = compoundTransformData[i].vScaleAxis * (pos + compoundTransformData[i].offset * dScale);
+                    if (compoundTransformData[i].canScaleHeight)
+                    {
+                        pos += dir * height;
+                        localVerticalScale = scale;
+                    }
+                    else
+                    {
+                        pos += dir * dScale * compoundTransformData[i].height;
+                        localVerticalScale = dScale;
+                    }
+                    trs[k].localScale = getScaleVector(dScale, localVerticalScale, compoundTransformData[i].vScaleAxis);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a vector representing the 'localScale' of a transform, using the input 'axis' as the vertical-scale axis.
+        /// Essentially returns axis*vScale + ~axis*hScale
+        /// </summary>
+        /// <param name="sHoriz"></param>
+        /// <param name="sVert"></param>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        private Vector3 getScaleVector(float sHoriz, float sVert, Vector3 axis)
+        {
+            if (axis.x < 0) { axis.x = 1; }
+            if (axis.y < 0) { axis.y = 1; }
+            if (axis.z < 0) { axis.z = 1; }
+            return (axis * sVert) + (getInverseVector(axis) * sHoriz);
+        }
+
+        /// <summary>
+        /// Kind of like a bitwise inversion for a vector.
+        /// If the input has any value for x/y/z, the output will have zero for that variable.
+        /// If the input has zero for x/y/z, the output will have a one for that variable.
+        /// </summary>
+        /// <param name="axis"></param>
+        /// <returns></returns>
+        private Vector3 getInverseVector(Vector3 axis)
+        {
+            Vector3 val = Vector3.one;
+            if (axis.x != 0) { val.x = 0; }
+            if (axis.y != 0) { val.y = 0; }
+            if (axis.z != 0) { val.z = 0; }
+            return val;
+        }
+
+        /// <summary>
+        /// Returns the sum of non-scaleable transform heights from the compound model data.
+        /// </summary>
+        /// <returns></returns>
+        private float getStaticHeight()
+        {
+            float val = 0f;
+            int len = compoundTransformData.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (!compoundTransformData[i].canScaleHeight) { val += compoundTransformData[i].height; }
+            }
+            return val;
+        }
+
+    }
+
+    /// <summary>
+    /// Data class for a single transform in a compound-transform-enabled model.
+    /// </summary>
+    public class CompoundModelTransformData
+    {
+        public readonly string name;
+        public readonly bool canScaleHeight = false;//can this transform scale its height
+        public readonly float height;//the height of the meshes attached to this transform, at scale = 1
+        public readonly float offset;//the vertical offset of the meshes attached to this transform, when translated this amount the top/botom of the meshes will be at transform origin.
+        public readonly int order;//the linear index of this transform in a vertical model setup stack
+        public readonly Vector3 vScaleAxis = Vector3.up;
+
+        public CompoundModelTransformData(ConfigNode node)
+        {
+            name = node.GetStringValue("name");
+            canScaleHeight = node.GetBoolValue("canScale");
+            height = node.GetFloatValue("height");
+            offset = node.GetFloatValue("offset");
+            order = node.GetIntValue("order");
+            vScaleAxis = node.GetVector3("axis", Vector3.up);
+        }
+    }
+
+
 }

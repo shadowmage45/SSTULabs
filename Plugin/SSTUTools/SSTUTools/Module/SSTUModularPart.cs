@@ -28,9 +28,6 @@ namespace SSTUTools
         public float maxDiameter = 10f;
 
         [KSPField]
-        public bool useAdapterVolume = true;
-
-        [KSPField]
         public bool useAdapterMass = true;
 
         [KSPField]
@@ -82,7 +79,10 @@ namespace SSTUTools
         public int mountContainerIndex = 0;
 
         [KSPField]
-        public int auxContainerIndex = 0;
+        public int auxContainerSourceIndex = -1;
+
+        [KSPField]
+        public int auxContainerTargetIndex = -1;
 
         [KSPField]
         public float auxContainerMinPercent = 0f;
@@ -181,6 +181,24 @@ namespace SSTUTools
         public string lowerRCSParentOptions = "NOSE,UPPER,CORE,LOWER,MOUNT";
 
         /// <summary>
+        /// Determines what module slot should be examined for engine thrust statistics.
+        /// </summary>
+        [KSPField]
+        public string engineThrustFunctionSource = "CORE";
+
+        /// <summary>
+        /// Determines what module slot should be examined for upper-rcs statistics
+        /// </summary>
+        [KSPField]
+        public string upperRCSFunctionSource = "UPPERRCS";
+
+        /// <summary>
+        /// Determines what module slot should be examined for lower-rcs statistics
+        /// </summary>
+        [KSPField]
+        public string lowerRCSFunctionSource = "LOWERRCS";
+
+        /// <summary>
         /// Solar panel display status field.  Updated by solar functions module with occlusion and/or EC generation stats.
         /// </summary>
         [KSPField(isPersistant = false, guiActiveEditor = false, guiActive = true, guiName = "SolarState:")]
@@ -259,7 +277,7 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentUpperRCSParent = "CORE";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "RCS V.Offset1"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Upper RCS Offset"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentUpperRCSOffset = 0f;
 
@@ -275,7 +293,7 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentLowerRCSParent = "CORE";
 
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "RCS V.Offset2"),
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Lower RCS Offset"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.5f, incrementSmall = 0.25f, incrementSlide = 0.01f)]
         public float currentLowerRCSOffset = 0f;
 
@@ -761,25 +779,27 @@ namespace SSTUTools
         public ContainerContribution[] getContainerContributions()
         {
             ContainerContribution[] cts;
-            float c1 = auxContainerPercent * 0.01f;
-            float c2 = 1 - c1;
-            if (useAdapterVolume)
-            {
-                ContainerContribution ct0 = new ContainerContribution("nose", noseContainerIndex, noseModule.moduleVolume * 1000f);
-                ContainerContribution ct1 = new ContainerContribution("upper", upperContainerIndex, upperModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f * c2);
-                ContainerContribution ct3 = new ContainerContribution("lower", lowerContainerIndex, lowerModule.moduleVolume * 1000f);
-                ContainerContribution ct4 = new ContainerContribution("mount", mountContainerIndex, mountModule.moduleVolume * 1000f);
-                ContainerContribution ct5 = new ContainerContribution("aux", auxContainerIndex, coreModule.moduleVolume * 1000f * c1);
-                cts = new ContainerContribution[6] { ct0, ct1, ct2, ct3, ct4, ct5 };
-            }
-            else
-            {
-                ContainerContribution ct1 = new ContainerContribution("core", coreContainerIndex, coreModule.moduleVolume * 1000f);
-                ContainerContribution ct2 = new ContainerContribution("aux", auxContainerIndex, coreModule.moduleVolume * 1000f);
-                cts = new ContainerContribution[2] { ct1, ct2 };
-            }
+            float auxVol = 0;
+            ContainerContribution ct0 = getCC("nose", noseContainerIndex, noseModule.moduleVolume * 1000f, ref auxVol);
+            ContainerContribution ct1 = getCC("upper", upperContainerIndex, upperModule.moduleVolume * 1000f, ref auxVol);
+            ContainerContribution ct2 = getCC("core", coreContainerIndex, coreModule.moduleVolume * 1000f, ref auxVol);
+            ContainerContribution ct3 = getCC("lower", lowerContainerIndex, lowerModule.moduleVolume * 1000f, ref auxVol);
+            ContainerContribution ct4 = getCC("mount", mountContainerIndex, mountModule.moduleVolume * 1000f, ref auxVol);
+            ContainerContribution ct5 = new ContainerContribution("aux", auxContainerTargetIndex, auxVol);
+            cts = new ContainerContribution[6] { ct0, ct1, ct2, ct3, ct4, ct5 };
             return cts;
+        }
+
+        private ContainerContribution getCC(string name, int index, float vol, ref float auxVol)
+        {
+            float ap = auxContainerPercent * 0.01f;
+            float contVol = vol;
+            if (index == auxContainerSourceIndex && auxContainerTargetIndex >= 0)
+            {
+                auxVol += vol * ap;
+                contVol = (1 - ap) * vol;
+            }
+            return new ContainerContribution(name, index, contVol);
         }
 
         #endregion ENDREGION - Standard KSP Overrides
@@ -1143,7 +1163,7 @@ namespace SSTUTools
                     SSTUStockInterop.fireEditorUpdate();
                 });
             };
-            if (auxContainerMinPercent == auxContainerMaxPercent)
+            if (auxContainerMinPercent == auxContainerMaxPercent || auxContainerSourceIndex < 0 || auxContainerTargetIndex < 0)
             {
                 Fields[nameof(auxContainerPercent)].guiActiveEditor = false;
             }
@@ -1339,12 +1359,13 @@ namespace SSTUTools
         {
             ModuleRCS[] rcsModules = part.GetComponents<ModuleRCS>();
             if (rcsModules == null || rcsModules.Length == 0) { return; }//nothing to update
-
+            ModelModule<SSTUModularPart> upperRCSSource = getModuleByName(upperRCSFunctionSource);
+            ModelModule<SSTUModularPart> lowerRCSSource = getModuleByName(lowerRCSFunctionSource);
             //if only a single index used (e.g. StationCore part setups, where upper/lower are used simply for two different layouts)
             //use the data from model in the 'upper' slot
             if (upperRCSIndex == lowerRCSIndex && upperRCSIndex >= 0 && upperRCSIndex < rcsModules.Length)
             {
-                rcsModules[upperRCSIndex].thrusterPower = upperRcsModule.rcsThrusterPower;
+                rcsModules[upperRCSIndex].thrusterPower = upperRCSSource.rcsThrusterPower;
             }
             else
             {
@@ -1352,12 +1373,12 @@ namespace SSTUTools
                 if (upperRCSIndex < rcsModules.Length && upperRCSIndex >= 0)
                 {
                     ModuleRCS upper = rcsModules[upperRCSIndex];
-                    upper.thrusterPower = upperRcsModule.rcsThrusterPower;
+                    upper.thrusterPower = upperRCSSource.rcsThrusterPower;
                 }
                 if (lowerRCSIndex < rcsModules.Length && lowerRCSIndex >= 0)
                 {
                     ModuleRCS lower = rcsModules[lowerRCSIndex];
-                    lower.thrusterPower = lowerRcsModule.rcsThrusterPower;
+                    lower.thrusterPower = lowerRCSSource.rcsThrusterPower;
                 }
             }
         }
