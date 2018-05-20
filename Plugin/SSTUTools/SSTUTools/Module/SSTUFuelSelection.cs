@@ -126,7 +126,7 @@ namespace SSTUTools
                 ConfigNode pNode = fuelType.fuelPreset.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
                 if (fuelType.ispCurve != null)
                 {
-                    pNode.AddNode("atmCurve", fuelType.ispCurve.getNode("atmCurve"));
+                    pNode.AddNode("atmosphereCurve", fuelType.ispCurve.getNode("atmosphereCurve"));
                 }
                 rcsModule.OnLoad(pNode);
             }

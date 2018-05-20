@@ -912,12 +912,14 @@ namespace SSTUTools
             upperRcsModule.setupModel();
             lowerRcsModule.setupModel();
             solarModule.setupModel();
-            
+
             //initialize RCS thrust transforms
-            upperRcsModule.renameRCSThrustTransforms(upperRCSThrustTransform);
-            lowerRcsModule.renameRCSThrustTransforms(lowerRCSThrustTransform);
+            getModuleByName(upperRCSFunctionSource).renameRCSThrustTransforms(upperRCSThrustTransform);
+            getModuleByName(lowerRCSFunctionSource).renameRCSThrustTransforms(lowerRCSThrustTransform);
 
             //TODO handle engine transform and gimbal transform initial renaming
+            getModuleByName(engineTransformSource).renameEngineThrustTransforms(engineThrustTransform);
+            getModuleByName(engineTransformSource).renameGimbalTransforms(gimbalTransform);
 
             //solar panel animation and solar panel UI controls
             solarFunctionsModule = new SolarModule(part, this, solarModule.animationModule, Fields[nameof(solarRotationPersistentData)], Fields[nameof(solarPanelStatus)]);
@@ -1316,6 +1318,11 @@ namespace SSTUTools
             lowerRcsModule.setScale(coreScale);
             lowerRcsModule.setPosition(pos);
             lowerRcsModule.updateModelMeshes();
+
+            module = getModuleByName(upperRCSFunctionSource);
+            module.renameRCSThrustTransforms(upperRCSThrustTransform);
+            module = getModuleByName(lowerRCSFunctionSource);
+            module.renameRCSThrustTransforms(lowerRCSThrustTransform);
         }
 
         /// <summary>
