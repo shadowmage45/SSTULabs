@@ -947,6 +947,8 @@ namespace SSTUTools
                 m.updateFairing(true);
                 m.updateAvailableVariants();
                 m.updateDragCubes();
+                m.updateRCSModule();
+                m.updateEngineModule();
                 SSTUModInterop.updateResourceVolume(m.part);
             };
 
