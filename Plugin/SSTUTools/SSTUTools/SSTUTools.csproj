@@ -92,6 +92,7 @@
     <Compile Include="MeshGenerator\ProceduralModel.cs" />
     <Compile Include="ModelDefinition\ModelDefinition.cs" />
     <Compile Include="ModelDefinition\ModelLayout.cs" />
+    <Compile Include="Module\SSTUEngineThrustCurveGUI.cs" />
     <Compile Include="Module\SSTUModularPart.cs" />
     <Compile Include="Module\SSTUDockingSnapAdjust.cs" />
     <Compile Include="Module\SSTUFuelSelection.cs" />
