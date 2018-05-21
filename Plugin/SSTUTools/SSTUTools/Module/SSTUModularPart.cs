@@ -28,6 +28,15 @@ namespace SSTUTools
         public float maxDiameter = 10f;
 
         [KSPField]
+        public float volumeScalingPower = 3f;
+
+        [KSPField]
+        public float massScalingPower = 3f;
+
+        [KSPField]
+        public float thrustScalingPower = 3f;
+
+        [KSPField]
         public bool useAdapterMass = true;
 
         [KSPField]
@@ -871,7 +880,7 @@ namespace SSTUTools
             mountModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-MOUNT"), ModelOrientation.BOTTOM, nameof(currentMount), null, nameof(currentMountTexture), nameof(mountModulePersistentData), nameof(mountAnimationPersistentData), nameof(mountAnimationDeployLimit), nameof(mountDeployEvent), nameof(mountRetractEvent));
             mountModule.name = "ModularPart-Mount";
             mountModule.getSymmetryModule = m => m.mountModule;
-            if (validateLower) { mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation, mountNodeNames, "bottom"); }
+            if (validateMount) { mountModule.getValidOptions = () => lowerModule.getValidLowerModels(mountDefs, mountModule.orientation, mountNodeNames, "bottom"); }
             else { mountModule.getValidOptions = () => mountDefs; }
 
             solarModule = new ModelModule<SSTUModularPart>(part, this, getRootTransform("ModularPart-SOLAR"), ModelOrientation.CENTRAL, nameof(currentSolar), nameof(currentSolarLayout), nameof(currentSolarTexture), nameof(solarModulePersistentData), nameof(solarAnimationPersistentData), null, nameof(solarDeployEvent), nameof(solarRetractEvent));
@@ -894,6 +903,24 @@ namespace SSTUTools
             lowerRcsModule.getValidOptions = () => rcsDnDefs;
             lowerRcsModule.getLayoutPositionScalar = () => lowerRCSRad;
             lowerRcsModule.getLayoutScaleScalar = () => 1f;
+
+            noseModule.massScalar = massScalingPower;
+            upperModule.massScalar = massScalingPower;
+            coreModule.massScalar = massScalingPower;
+            lowerModule.massScalar = massScalingPower;
+            mountModule.massScalar = massScalingPower;
+            solarModule.massScalar = massScalingPower;
+            upperRcsModule.massScalar = massScalingPower;
+            lowerRcsModule.massScalar = massScalingPower;
+
+            noseModule.volumeScalar = volumeScalingPower;
+            upperModule.volumeScalar = volumeScalingPower;
+            coreModule.volumeScalar = volumeScalingPower;
+            lowerModule.volumeScalar = volumeScalingPower;
+            mountModule.volumeScalar = volumeScalingPower;
+            solarModule.volumeScalar = volumeScalingPower;
+            upperRcsModule.volumeScalar = volumeScalingPower;
+            lowerRcsModule.volumeScalar = volumeScalingPower;
 
             //set up the model lists and load the currently selected model
             noseModule.setupModelList(noseDefs);
@@ -1375,11 +1402,11 @@ namespace SSTUTools
                 //else treat each module individually, if indexes are valid
                 if (upperRCSIndex < rcsModules.Length && upperRCSIndex >= 0)
                 {
-                    upperRCSSource.updateRCSModule(rcsModules[upperRCSIndex], 3);
+                    upperRCSSource.updateRCSModule(rcsModules[upperRCSIndex], thrustScalingPower);
                 }
                 if (lowerRCSIndex < rcsModules.Length && lowerRCSIndex >= 0)
                 {
-                    lowerRCSSource.updateRCSModule(rcsModules[lowerRCSIndex], 3);
+                    lowerRCSSource.updateRCSModule(rcsModules[lowerRCSIndex], thrustScalingPower);
                 }
             }
         }
@@ -1396,7 +1423,7 @@ namespace SSTUTools
             engineTransformSource.renameEngineThrustTransforms(engineThrustTransform);
             engineTransformSource.renameGimbalTransforms(gimbalTransform);
             ModelModule<SSTUModularPart> engineThrustSource = getModuleByName(this.engineThrustSource);
-            engineThrustSource.updateEngineModuleThrust(engine, 3);
+            engineThrustSource.updateEngineModuleThrust(engine, thrustScalingPower);
         }
 
         //TODO -- surface attach handling -- both internal and external.

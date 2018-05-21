@@ -128,6 +128,13 @@ namespace SSTUTools
         private BaseField layoutField;
 
         /// <summary>
+        /// Scaling powers used for mass, volume, and engine/rcs thrust values
+        /// </summary>
+        private float massScalePower = 3f;
+        private float volumeScalePower = 3f;
+        private float thrustScalePower = 3f;
+
+        /// <summary>
         /// Local cached working variables for scale, sizing, mass, and cost.
         /// </summary>
         private float currentHorizontalScale = 1f;
@@ -253,6 +260,24 @@ namespace SSTUTools
         /// Return the currently active layout options for the current model definition.
         /// </summary>
         public ModelDefinitionLayoutOptions layoutOptions { get { return currentLayoutOptions; } }
+
+        public float volumeScalar
+        {
+            get { return volumeScalePower; }
+            set { volumeScalePower = value; }
+        }
+
+        public float massScalar
+        {
+            get { return massScalePower; }
+            set { massScalePower = value; }
+        }
+
+        public float thrustScalar
+        {
+            get { return thrustScalePower; }
+            set { thrustScalePower = value; }
+        }
 
         /// <summary>
         /// Return the current mass for this module slot.  Includes adjustments from the definition mass based on the current scale.
@@ -564,7 +589,7 @@ namespace SSTUTools
                 power = data.rcsThrust;
                 float scale = currentHorizontalScale * currentHorizontalScale * currentVerticalScale;
                 scale *= layout.modelScalarAverage();
-                power *= Mathf.Pow(scale, 2);
+                power *= Mathf.Pow(scale, thrustScaleFactor);
                 rcs.enableX = data.enableX;
                 rcs.enableY = data.enableY;
                 rcs.enableZ = data.enableZ;
@@ -805,7 +830,7 @@ namespace SSTUTools
         /// Updates the position of the model.
         /// </summary>
         /// <param name="originPos"></param>
-        public virtual void setPosition(float originPos)
+        public void setPosition(float originPos)
         {
             currentVerticalPosition = originPos;
         }
@@ -961,10 +986,13 @@ namespace SSTUTools
         private void updateModuleStats()
         {
             int positions = layout.positions.Count();
-            float scalar = moduleHorizontalScale * moduleHorizontalScale * moduleVerticalScale;
-            currentMass = definition.mass * scalar * positions;
-            currentCost = definition.cost * scalar * positions;
-            currentVolume = definition.volume * scalar * positions;
+            float averageScale = (moduleHorizontalScale + moduleHorizontalScale + moduleVerticalScale) / 3;
+            float mScalar = Mathf.Pow(averageScale, massScalar);
+            float vScalar = Mathf.Pow(averageScale, volumeScalar);
+            float cScalar = Mathf.Pow(averageScale, massScalar);
+            currentMass = definition.mass * mScalar * positions;
+            currentCost = definition.cost * cScalar * positions;
+            currentVolume = definition.volume * vScalar * positions;
         }
 
         /// <summary>
