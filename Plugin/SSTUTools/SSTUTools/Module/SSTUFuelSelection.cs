@@ -132,9 +132,9 @@ namespace SSTUTools
                 ModuleRCS rcsModule = modules[rcsModuleIndex];
                 rcsModule.propellants.Clear();
                 ConfigNode pNode = fuelType.fuelPreset.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
-                if (fuelType.ispCurve != null)
+                if (fuelType.atmosphereCurve != null)
                 {
-                    pNode.AddNode("atmosphereCurve", fuelType.ispCurve.getNode("atmosphereCurve"));
+                    pNode.AddNode("atmosphereCurve", fuelType.atmosphereCurve.getNode("atmosphereCurve"));
                 }
                 rcsModule.OnLoad(pNode);
             }
@@ -174,9 +174,9 @@ namespace SSTUTools
                 ModuleEngines engine = engines[engineModuleIndex];
                 engine.propellants.Clear();
                 ConfigNode pNode = fuelType.fuelPreset.getPropellantNode(ResourceFlowMode.ALL_VESSEL_BALANCE);
-                if (fuelType.ispCurve != null)
+                if (fuelType.atmosphereCurve != null)
                 {
-                    pNode.AddNode("atmosphereCurve", fuelType.ispCurve.getNode("atmosphereCurve"));
+                    pNode.AddNode("atmosphereCurve", fuelType.atmosphereCurve.getNode("atmosphereCurve"));
                 }
                 engine.OnLoad(pNode);
             }
@@ -189,7 +189,7 @@ namespace SSTUTools
         public class FuelTypeISP
         {
             public readonly ContainerFuelPreset fuelPreset;
-            public readonly FloatCurve ispCurve;
+            public readonly FloatCurve atmosphereCurve;
             public FuelTypeISP(ConfigNode node)
             {
                 fuelPreset = VolumeContainerLoader.getPreset(node.GetStringValue("name"));
@@ -197,13 +197,13 @@ namespace SSTUTools
                 {
                     SSTULog.error("Could not locate fuel preset for name: "+node.GetStringValue("name"));
                 }
-                if (node.HasNode("ispCurve"))
+                if (node.HasNode("atmosphereCurve"))
                 {
-                    ispCurve = node.GetFloatCurve("ispCurve");
+                    atmosphereCurve = node.GetFloatCurve("atmosphereCurve");
                 }
                 else
                 {
-                    ispCurve = null;
+                    atmosphereCurve = null;
                 }
             }
 
