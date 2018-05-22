@@ -34,12 +34,6 @@ namespace SSTUTools
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentFuelType = string.Empty;
 
-        /// <summary>
-        /// Tracks if the initial fuel type update has been done, updating external modules with the fuel type specified in this module as default.
-        /// </summary>
-        [KSPField(isPersistant = true)]
-        public bool initializedExternal = false;
-
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -79,11 +73,7 @@ namespace SSTUTools
 
         public void Start()
         {
-            if (!initializedExternal)
-            {
-                initializedExternal = true;
-                updateFuelType();
-            }
+            updateFuelType();
         }
 
         private void init()
