@@ -221,6 +221,18 @@ namespace SSTUTools
             return vals;
         }
 
+        public static int[] parseIntArray(string input)
+        {
+            string[] vals = parseCSV(input);
+            int len = vals.Length;
+            int[] iVals = new int[len];
+            for (int i = 0; i < len; i++)
+            {
+                iVals[i] = safeParseInt(vals[i]);
+            }
+            return iVals;
+        }
+
         public static float[] parseFloatArray(string input)
         {
             string[] strs = parseCSV(input);

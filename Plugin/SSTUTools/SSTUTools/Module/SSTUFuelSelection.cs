@@ -16,13 +16,13 @@ namespace SSTUTools
         /// Controls which ModuleRCS this module interacts with.  Defaults to -1.  Set to >=0 to enable rcs module interaction.
         /// </summary>
         [KSPField]
-        public int rcsModuleIndex = -1;
+        public string rcsModuleIndex = string.Empty;
 
         /// <summary>
         /// Controls which ModuleEngines this module interacts with.  Defaults to -1.  Set to >=0 to enable rcs module interaction.
         /// </summary>
         [KSPField]
-        public int engineModuleIndex = -1;
+        public string engineModuleIndex = string.Empty;
 
         [KSPField]
         public string label = "Fuel Type";
@@ -43,6 +43,8 @@ namespace SSTUTools
         [Persistent]
         public string configNodeData = string.Empty;
 
+        private int[] rcsIndices;
+        private int[] engineIndices;
         private FuelTypeISP[] fuelTypes;
         private FuelTypeISP fuelType;
         private bool initialized = false;
@@ -88,6 +90,8 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
+            rcsIndices = SSTUUtils.parseIntArray(rcsModuleIndex);
+            engineIndices = SSTUUtils.parseIntArray(engineModuleIndex);
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);
 
             ConfigNode[] fuelTypeNodes = node.GetNodes("FUELTYPE");
@@ -110,8 +114,22 @@ namespace SSTUTools
         private void updateFuelType()
         {
             updateContainerFuelType(fuelType, part, containerIndex);
-            updateEngineFuelType(fuelType, part, engineModuleIndex);
-            updateRCSFuelType(fuelType, part, rcsModuleIndex);
+            if (engineIndices != null && engineIndices.Length > 0)
+            {
+                int len = engineIndices.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    updateEngineFuelType(fuelType, part, engineIndices[i]);
+                }
+            }
+            if (rcsIndices != null && rcsIndices.Length > 0)
+            {
+                int len = rcsIndices.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    updateRCSFuelType(fuelType, part, rcsIndices[i]);
+                }
+            }
         }
 
         public static void updateRCSFuelType(FuelTypeISP fuelType, Part part, int rcsModuleIndex)
