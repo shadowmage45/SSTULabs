@@ -144,6 +144,11 @@ namespace SSTUTools
             initialize();
         }
 
+        public void Start()
+        {
+            updateAirstreamShield();
+        }
+
         private void initialize()
         {
             ConfigNode node = SSTUConfigNodeUtils.parseConfigNode(configNodeData);            
@@ -164,6 +169,16 @@ namespace SSTUTools
         private void onAnimStateChange(AnimState newState)
         {
             fireEvents(newState);
+            updateAirstreamShield();
+        }
+
+        private void updateAirstreamShield()
+        {
+            SSTUAirstreamShield sass = part.GetComponent<SSTUAirstreamShield>();
+            if (sass != null)
+            {
+                sass.updateShieldStatus();
+            }
         }
 
         private void fireEvents(AnimState newState)
@@ -186,6 +201,7 @@ namespace SSTUTools
                     break;
             }
         }
+
     }
 }
 

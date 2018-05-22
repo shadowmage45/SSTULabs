@@ -13,6 +13,9 @@ namespace SSTUTools
 
         [KSPField]
         public bool useAttachNodeBottom = false;
+
+        [KSPField]
+        public string animationID = string.Empty;
         
         [KSPField]
         public float topY;
@@ -116,7 +119,7 @@ namespace SSTUTools
             needsUpdate = true;
         }
 
-        private void updateShieldStatus()
+        public void updateShieldStatus()
         {
             clearShieldedParts();
             findShieldedParts();
@@ -140,7 +143,26 @@ namespace SSTUTools
         private void findShieldedParts()
         {
             clearShieldedParts();
-            findShieldedPartsCylinder();
+            if (string.IsNullOrEmpty(animationID))
+            {
+                findShieldedPartsCylinder();
+            }
+            else
+            {
+                IScalarModule[] ism = part.GetComponents<IScalarModule>();
+                int len = ism.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    if (ism[i].ScalarModuleID == animationID)
+                    {
+                        if (ism[i].GetScalar <= 0)//stopped and closed
+                        {
+                            findShieldedPartsCylinder();
+                        }
+                        break;//only care about the first matching animation module
+                    }
+                }
+            }
         }
 
         private void findShieldedPartsCylinder()
