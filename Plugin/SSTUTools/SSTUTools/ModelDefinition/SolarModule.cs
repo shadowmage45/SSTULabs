@@ -42,15 +42,7 @@ namespace SSTUTools
         /// </summary>
         public SymmetryModule getSymmetryModule;
 
-        /*
-        
-            this.temperatureEfficCurve = new FloatCurve();
-            this.temperatureEfficCurve.Add(4f, 1.2f, 0f, -0.0005725837f);
-            this.temperatureEfficCurve.Add(300f, 1f, -0.0008277721f, -0.0008277721f);
-            this.temperatureEfficCurve.Add(1200f, 0.1f, -0.0003626566f, -0.0003626566f);
-            this.temperatureEfficCurve.Add(2500f, 0.01f, 0f, 0f);
-            //uses part-temp as input
-            */
+        private FloatCurve temperatureEfficCurve;
 
         private string panelStatus
         {
@@ -82,6 +74,11 @@ namespace SSTUTools
             this.animModule = animModule;
             this.rotationPersistenceField = rotationPersistence;
             this.panelStatusField = panelStatusField;
+            this.temperatureEfficCurve = new FloatCurve();
+            this.temperatureEfficCurve.Add(4f, 1.2f, 0f, -0.0005725837f);
+            this.temperatureEfficCurve.Add(300f, 1f, -0.0008277721f, -0.0008277721f);
+            this.temperatureEfficCurve.Add(1200f, 0.1f, -0.0003626566f, -0.0003626566f);
+            this.temperatureEfficCurve.Add(2500f, 0.01f, 0f, 0f);
         }
 
         public void onRetractEvent()
@@ -112,6 +109,7 @@ namespace SSTUTools
             initializeRotations();
         }
 
+        //TODO -- support solar panels that lack animations (static panels)
         /// <summary>
         /// Should be called from Update() to update the solar panel transform rotations.
         /// This just rotates the panel pivots towards the solar target, does not check occlusion or ec-output
@@ -119,9 +117,6 @@ namespace SSTUTools
         /// </summary>
         public void Update()
         {
-            //TODO -- support solar panels that lack animations (static panels)
-            //TODO -- support solar panel animation locking -- this should have separate lock and angle sliders for main and secondary transforms
-            //TODO -- how useful is the locking feature, really?
             //only update if animation is set to deployed
             if (animState != AnimState.STOPPED_END)
             {
@@ -155,6 +150,7 @@ namespace SSTUTools
             //noop in editor if not lerping closed
         }
 
+        //TODO -- get solar target from ?? (in case of multiple stars/reparented stars, etc)
         /// <summary>
         /// Should be called on fixed-update to calculate the EC output from solar panels.  Includes raycasts
         /// for occlusion checks, as well as
@@ -182,7 +178,6 @@ namespace SSTUTools
                 {
                     panelStatus = "Occluded: Unknown";
                 }
-                //TODO loop through panels and set them to 'occluded' status so that they do not update sun tracking rotation
                 return;
             }
             Vector3 solarTarget = FlightGlobals.Bodies[0].transform.position;
@@ -200,16 +195,14 @@ namespace SSTUTools
                 totalOutput += panelOutput;
             }
 
-            float temperatureMultiplier = 1.0f;//TODO -- add temp curve/multiplier
+            float temperatureMultiplier = temperatureEfficCurve.Evaluate((float)part.temperature);
             totalOutput *= temperatureMultiplier * distMult;//per-second output value
             //use current this to update gui status before converting to delta time updates
             if (totalOutput > 0)
             {
                 panelStatus = totalOutput + " EC/s";
-
-                totalOutput *= TimeWarp.fixedDeltaTime;
-                MonoBehaviour.print("TODO -- update part resources for EC generation");
-                //TODO update part resources
+                totalOutput *= TimeWarp.fixedDeltaTime;//convert to from ec/second to ec/physics tick
+                part.RequestResource("ElectricCharge", -totalOutput);//add to part
             }
             else
             {
