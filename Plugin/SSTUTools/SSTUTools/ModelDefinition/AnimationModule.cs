@@ -306,10 +306,7 @@ namespace SSTUTools
                         playing = true;
                     }
                 }
-                if (animTime != time)
-                {
-                    animationPosition = time;
-                }
+                animationPosition = time;
                 //if no longer playing, set the new animation state and inform the callback of the change
                 if (!playing)
                 {

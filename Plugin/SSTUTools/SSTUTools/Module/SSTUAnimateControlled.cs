@@ -73,6 +73,7 @@ namespace SSTUTools
         {            
             get
             {
+                if (animationModule.animState == AnimState.STOPPED_END) { return 1.0f; }
                 return animationModule.animTime;
             }
         }
