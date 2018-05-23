@@ -29,6 +29,9 @@ namespace SSTUTools
         [KSPField]
         public string animationID = string.Empty;
 
+        [KSPField]
+        public int animationLayer = 0;
+
         [KSPField(isPersistant =true, guiActiveEditor = true, guiName = "Diam"),
          UI_FloatEdit(suppressEditorShipModified = true, unit = "m", sigFigs = 3)]
         public float currentDiameter = 2.5f;
@@ -103,29 +106,17 @@ namespace SSTUTools
 
         private void onDiameterChanged(BaseField field, System.Object obj)
         {
-            setDiameterFromEditor(currentDiameter, true);
-        }
-
-        private void setDiameterFromEditor(float newDiameter, bool updateSymmetry)
-        {
-            if (newDiameter > maxDiameter) { newDiameter = maxDiameter; }
-            if (newDiameter < minDiameter) { newDiameter = minDiameter; }
-            currentDiameter = newDiameter;
-            updateModelScale();
-            updateDragCubes();
-            updatePartCost();
-            updatePartMass();
-            if (updateSymmetry)
+            if (currentDiameter > maxDiameter) { currentDiameter = maxDiameter; }
+            if (currentDiameter < minDiameter) { currentDiameter = minDiameter; }
+            this.actionWithSymmetry(m =>
             {
-                if (updateSymmetry)
-                {
-                    foreach (Part p in part.symmetryCounterparts)
-                    {
-                        p.GetComponent<SSTUWeldingDockingPort>().setDiameterFromEditor(newDiameter, false);
-                    }
-                }
-                SSTUStockInterop.fireEditorUpdate();
-            }
+                if (m != this) { m.currentDiameter = this.currentDiameter; }
+                m.updateModelScale();
+                m.updateDragCubes();
+                m.updatePartCost();
+                m.updatePartMass();
+            });
+            SSTUStockInterop.fireEditorUpdate();
         }
 
         private void onSnapToggled(BaseField field, System.Object obj)
@@ -213,7 +204,7 @@ namespace SSTUTools
 
             animationModule = new AnimationModule(part, this, nameof(persistentState), null, nameof(enableAnimationEvent), nameof(disableAnimationEvent));
             animationModule.getSymmetryModule = m => ((SSTUWeldingDockingPort)m).animationModule;
-            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
+            animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), animationLayer);
             animationModule.onAnimStateChangeCallback = onAnimStateChange;
 
             updateModelScale();
@@ -335,8 +326,7 @@ namespace SSTUTools
             if (mdn == null) { enabled = false; }
             else if(mdn.otherNode == null) { enabled = false; }
             Events[nameof(weldEvent)].guiActive = enabled;
-
-            //TODO update animateUsable GUI to disable the 'extend' buttons when docking node is docked
+            //TODO update animation module/events to disable the 'extend' buttons when docking node is docked
         }
     }
 }
