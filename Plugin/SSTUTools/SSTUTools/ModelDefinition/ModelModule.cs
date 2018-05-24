@@ -747,32 +747,32 @@ namespace SSTUTools
         /// Updates the diamter/scale values so that the upper-diameter of this model matches the input diamter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setDiameterFromAbove(float newDiameter)
+        public void setDiameterFromAbove(float newDiameter, float vScalar = 1f)
         {
             float baseUpperDiameter = definition.shouldInvert(orientation) ? definition.lowerDiameter : definition.upperDiameter;
             float scale = newDiameter / baseUpperDiameter;
-            setScale(scale);
+            setScale(scale, scale * vScalar);
         }
 
         /// <summary>
         /// Updates the diamter/scale values so that the lower-diameter of this model matches the input diamter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setDiameterFromBelow(float newDiameter)
+        public void setDiameterFromBelow(float newDiameter, float vScalar = 1f)
         {
             float baseLowerDiameter = definition.shouldInvert(orientation) ? definition.upperDiameter : definition.lowerDiameter;
             float scale = newDiameter / baseLowerDiameter;
-            setScale(scale);
+            setScale(scale, scale * vScalar);
         }
 
         /// <summary>
         /// Updates the diameter/scale values so that the core-diameter of this model matches the input diameter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setScaleForDiameter(float newDiameter)
+        public void setScaleForDiameter(float newDiameter, float vScalar = 1f)
         {
             float newScale = newDiameter / definition.diameter;
-            setScale(newScale);
+            setScale(newScale, newScale * vScalar);
         }
 
         /// <summary>
@@ -803,6 +803,9 @@ namespace SSTUTools
         /// <param name="newVerticalScale"></param>
         public void setScale(float newHorizontalScale, float newVerticalScale)
         {
+            float min = newHorizontalScale * definition.minVerticalScale;
+            float max = newHorizontalScale * definition.maxVerticalScale;
+            newVerticalScale = Mathf.Clamp(newVerticalScale, min, max);
             currentHorizontalScale = newHorizontalScale;
             currentVerticalScale = newVerticalScale;
             currentHeight = newVerticalScale * definition.height;
@@ -835,7 +838,6 @@ namespace SSTUTools
             currentVerticalPosition = originPos;
         }
 
-        //TODO
         /// <summary>
         /// Updates the attach nodes on the part for the input list of attach nodes and the current specified nodes for this model.
         /// Any 'extra' attach nodes from the part will be disabled.
@@ -897,7 +899,6 @@ namespace SSTUTools
             }
         }
 
-        //TODO
         /// <summary>
         /// Update the input attach node for the 'top' node specified in current model def
         /// </summary>
@@ -917,7 +918,6 @@ namespace SSTUTools
             updateAttachNode(nodeData, node, invert, userInput);
         }
 
-        //TODO
         /// <summary>
         /// Update the input attach node for the 'bottom' node specified in current model def
         /// </summary>

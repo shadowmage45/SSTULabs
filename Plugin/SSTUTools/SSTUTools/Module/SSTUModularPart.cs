@@ -37,6 +37,9 @@ namespace SSTUTools
         public float thrustScalingPower = 3f;
 
         [KSPField]
+        public bool enableVScale;
+
+        [KSPField]
         public bool useAdapterMass = true;
 
         [KSPField]
@@ -213,6 +216,13 @@ namespace SSTUTools
         [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "Diameter", guiUnits = "m"),
          UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true)]
         public float currentDiameter = 2.5f;
+
+        /// <summary>
+        /// Adjustment to the vertical-scale of v-scale compatible models/module-slots.
+        /// </summary>
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "V.Scale", guiUnits = "%"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.25f, incrementSmall = 0.05f, incrementSlide = 0.01f)]
+        public float currentVScale = 1f;
 
         /// <summary>
         /// Percentage of 'core' model volume that is devoted to a secondary container.
@@ -1010,6 +1020,17 @@ namespace SSTUTools
             {
                 this.actionWithSymmetry(m =>
                 {
+                    if (m != this) { m.currentDiameter = this.currentDiameter; }
+                    modelChangedAction(m);
+                });
+                SSTUStockInterop.fireEditorUpdate();
+            };
+
+            Fields[nameof(currentVScale)].uiControlEditor.onFieldChanged = (a, b) =>
+            {
+                this.actionWithSymmetry(m =>
+                {
+                    if (m != this) { m.currentVScale = this.currentVScale; }
                     modelChangedAction(m);
                 });
                 SSTUStockInterop.fireEditorUpdate();
@@ -1177,6 +1198,7 @@ namespace SSTUTools
             {
                 this.updateUIFloatEditControl(nameof(currentDiameter), minDiameter, maxDiameter, diameterIncrement * 2, diameterIncrement, diameterIncrement * 0.05f, true, currentDiameter);
             }
+            Fields[nameof(currentVScale)].guiActiveEditor = enableVScale;
 
             //------------------AUX CONTAINER SWITCH UI INIT---------------------//
             Fields[nameof(auxContainerPercent)].uiControlEditor.onFieldChanged = (a, b) =>
@@ -1288,15 +1310,15 @@ namespace SSTUTools
         {
             //scales for modules depend on the module above/below them
             //first set the scale for the core module -- this depends directly on the UI specified 'diameter' value.
-            coreModule.setScaleForDiameter(currentDiameter);
+            coreModule.setScaleForDiameter(currentDiameter, currentVScale);
 
             //next, set upper, and then nose scale values
-            upperModule.setDiameterFromBelow(coreModule.moduleUpperDiameter);
-            noseModule.setDiameterFromBelow(upperModule.moduleUpperDiameter);
+            upperModule.setDiameterFromBelow(coreModule.moduleUpperDiameter, currentVScale);
+            noseModule.setDiameterFromBelow(upperModule.moduleUpperDiameter, currentVScale);
 
             //finally, set lower and mount scale values
-            lowerModule.setDiameterFromAbove(coreModule.moduleLowerDiameter);
-            mountModule.setDiameterFromAbove(lowerModule.moduleLowerDiameter);
+            lowerModule.setDiameterFromAbove(coreModule.moduleLowerDiameter, currentVScale);
+            mountModule.setDiameterFromAbove(lowerModule.moduleLowerDiameter, currentVScale);
 
             //total height of the part is determined by the sum of the heights of the modules at their current scale
             float totalHeight = noseModule.moduleHeight;

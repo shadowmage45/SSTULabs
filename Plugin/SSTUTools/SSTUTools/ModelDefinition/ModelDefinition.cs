@@ -70,6 +70,16 @@ namespace SSTUTools
         public readonly float lowerDiameter = 5;
 
         /// <summary>
+        /// Minimum scalar offset that can be applied to vertical scale as compared to horizontal scale.
+        /// </summary>
+        public readonly float minVerticalScale = 1f;
+
+        /// <summary>
+        /// Maximum scalar offset that can be applied to vertical scale as compared to horizontal scale.
+        /// </summary>
+        public readonly float maxVerticalScale = 1f;
+
+        /// <summary>
         /// The vertical offset applied to the meshes in the model to make the model conform with its specified orientation setup.<para/>
         /// Applied internally during model setup, should not be needed beyond when the model is first created.<para/>
         /// Should not be needed when COMPOUND_MODEL setups are used (transforms should be positioned properly in their defs).

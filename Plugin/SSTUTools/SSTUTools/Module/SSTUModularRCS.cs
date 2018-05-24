@@ -272,7 +272,7 @@ namespace SSTUTools
             rcsBlockModule.setPosition(0);
             rcsBlockModule.setScale(currentScale);
             rcsBlockModule.updateModelMeshes();
-            standoffModule.setDiameterFromAbove(rcsBlockModule.moduleDiameter);
+            standoffModule.setDiameterFromAbove(rcsBlockModule.moduleDiameter, 1f);
             standoffModule.setPosition(rcsBlockModule.moduleBottom - standoffModule.moduleHeight);
             standoffModule.updateModelMeshes();
         }
