@@ -224,7 +224,15 @@ namespace SSTUTools
             int len = contributors.Length;
             for (int i = 0; i < len; i++)
             {
+                if (contributors[i] == null)
+                {
+                    SSTULog.error("NULL Container Contributor");
+                }
                 cts = contributors[i].getContainerContributions();
+                if (cts == null)
+                {
+                    SSTULog.error("NULL Container Contributor Contributions");
+                }
                 int len2 = cts.Length;
                 for (int k = 0; k < len2; k++)
                 {
@@ -232,7 +240,6 @@ namespace SSTUTools
                     if (idx < volumes.Length && idx >= 0)
                     {
                         volumes[cts[k].containerIndex] += cts[k].containerVolume;
-                        
                     }
                 }
             }
