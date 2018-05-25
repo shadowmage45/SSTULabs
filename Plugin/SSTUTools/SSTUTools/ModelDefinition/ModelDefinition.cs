@@ -272,6 +272,8 @@ namespace SSTUTools
             mass = node.GetFloatValue("mass", mass);
             cost = node.GetFloatValue("cost", cost);
             diameter = node.GetFloatValue("diameter", diameter);
+            minVerticalScale = node.GetFloatValue("minVerticalScale", minVerticalScale);
+            maxVerticalScale = node.GetFloatValue("maxVerticalScale", maxVerticalScale);
             upperDiameter = node.GetFloatValue("upperDiameter", diameter);
             lowerDiameter = node.GetFloatValue("lowerDiameter", diameter);
             if (node.HasValue("verticalOffset"))
