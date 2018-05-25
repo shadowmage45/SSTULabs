@@ -246,6 +246,10 @@ namespace SSTUTools
             len = containers.Length;
             for (int i = 0; i < len; i++)
             {
+                if (containers[i] == null)
+                {
+                    SSTULog.error("NULL Container definition for index: " + i);
+                }
                 containers[i].setContainerVolume(volumes[i]);
             }
             updateMassAndCost();//update cached part mass and cost values
