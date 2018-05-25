@@ -123,8 +123,8 @@ namespace SSTUTools
             {
                 //because configNode.ToString() reverses the order of values, and model def layouts are always loaded from string-cached config nodes
                 //we need to reverse the order of the model and layout names during parsing
-                groupedNames = nodes[i].GetStringValues("model", true);
-                groupedLayouts = nodes[i].GetStringValues("layout", new string[] { "default" }, true);
+                groupedNames = nodes[i].GetStringValues("model");
+                groupedLayouts = nodes[i].GetStringValues("layout", new string[] { "default" });
                 len2 = groupedNames.Length;
                 for (int k = 0; k < len2; k++)
                 {
