@@ -452,6 +452,11 @@ namespace SSTUTools
         private float upperRCSRad;
         private float solarRad;
 
+        /// <summary>
+        /// Previous diameter value, used for surface attach position updates.
+        /// </summary>
+        private float prevDiameter = -1;
+
         private string[] noseNodeNames;
         private string[] upperNodeNames;
         private string[] coreNodeNames;
@@ -828,6 +833,8 @@ namespace SSTUTools
             if (initialized) { return; }
             initialized = true;
 
+            prevDiameter = currentDiameter;
+
             noseNodeNames = SSTUUtils.parseCSV(noseManagedNodes);
             upperNodeNames = SSTUUtils.parseCSV(upperManagedNodes);
             coreNodeNames = SSTUUtils.parseCSV(coreManagedNodes);
@@ -1022,6 +1029,7 @@ namespace SSTUTools
                 {
                     if (m != this) { m.currentDiameter = this.currentDiameter; }
                     modelChangedAction(m);
+                    m.prevDiameter = m.currentDiameter;
                 });
                 SSTUStockInterop.fireEditorUpdate();
             };
@@ -1495,7 +1503,6 @@ namespace SSTUTools
             AttachNode surfaceNode = part.srfAttachNode;
             if (surfaceNode != null)
             {
-                float prevDiameter = currentDiameter;
                 coreModule.updateSurfaceAttachNode(surfaceNode, prevDiameter, userInput);
             }
         }

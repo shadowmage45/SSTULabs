@@ -523,7 +523,8 @@ namespace SSTUTools
         {
             if (definition.rcsModuleData == null)
             {
-                error("RCS module data (transformNames,thrust) is null for model definition: " + definition.name+" for: "+getErrorReportModuleName()+"\nCould not update RCS transform names.");
+                //not really an error -- null is a valid value for many model defs
+                //error("RCS module data (transformNames,thrust) is null for model definition: " + definition.name+" for: "+getErrorReportModuleName()+"\nCould not update RCS transform names.");
                 return;
             }
             definition.rcsModuleData.renameTransforms(root, destinationName);
@@ -538,7 +539,8 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                error("Engine transform data is null for model definition: " + definition.name + " for: "+getErrorReportModuleName() + "\nCould not update engine thrust transform names.");
+                //not really an error -- null is a valid value for many model defs
+                //error("Engine transform data is null for model definition: " + definition.name + " for: "+getErrorReportModuleName() + "\nCould not update engine thrust transform names.");
                 return;
             }
             definition.engineTransformData.renameThrustTransforms(root, destinationName);
@@ -553,7 +555,8 @@ namespace SSTUTools
         {
             if (definition.engineTransformData == null)
             {
-                error("Engine transform data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
+                //not really an error -- null is a valid value for many model defs
+                //error("Engine transform data is null for model definition: " + definition.name+" for: "+getErrorReportModuleName());
                 return;
             }
             definition.engineTransformData.renameGimbalTransforms(root, destinationName);
@@ -954,7 +957,6 @@ namespace SSTUTools
             updateAttachNode(nodeData, node, invert, userInput);
         }
 
-        //TODO
         /// <summary>
         /// Update the input surface attach node for current model diameter, adjusted for model-def specified positioning.<para/>
         /// Also updates any surface-attached children on the part, by the delta of (oldDiam - newDiam)
@@ -964,7 +966,17 @@ namespace SSTUTools
         /// <param name="userInput"></param>
         public void updateSurfaceAttachNode(AttachNode node, float prevDiameter, bool userInput)
         {
+            float currentDiameter = moduleDiameter;
             debug("TODO - Update surface attach node");
+            debug("Prev: " + prevDiameter + " new: " + currentDiameter);
+            AttachNode srf = part.srfAttachNode;
+            if (srf != null)
+            {
+                Vector3 pos = new Vector3(currentDiameter*0.5f, moduleCenter, 0);
+                Vector3 ori = new Vector3(1, 0, 0);
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, srf, pos, ori, userInput);
+                SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, prevDiameter, currentDiameter);
+            }
         }
 
         /// <summary>
