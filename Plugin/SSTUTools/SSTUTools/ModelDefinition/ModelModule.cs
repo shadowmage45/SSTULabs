@@ -570,7 +570,7 @@ namespace SSTUTools
         public void updateEngineModuleThrust(ModuleEngines engine, float thrustScalePower)
         {
             if (engine == null || !engineThrustEnabled) { return; }
-            float scalar = Mathf.Pow(currentHorizontalScale, thrustScalePower);
+            float scalar = Mathf.Pow(Mathf.Sqrt(currentHorizontalScale*currentVerticalScale), thrustScalePower);
             float min = definition.engineThrustData.minThrust * layout.positions.Count() * scalar;
             float max = definition.engineThrustData.maxThrust * layout.positions.Count() * scalar;
             float[] splitThrust = definition.engineThrustData.getCombinedSplitThrust(layout.positions.Count());
@@ -1118,7 +1118,7 @@ namespace SSTUTools
                 }
                 else//invalid colors or texture set, create default placeholder color array
                 {
-                    error("Could not use default coloring from texture set: " + textureSetName + ".  No texture set or coloring data found.  Using placeholder coloring.  Module: "+getErrorReportModuleName());
+                    //debug("Could not use default coloring from texture set: " + textureSetName + ".  No texture set or coloring data found.  Using placeholder coloring.  Module: "+getErrorReportModuleName());
                     RecoloringData placeholder = new RecoloringData(Color.white, 1, 1);
                     customColors = new RecoloringData[] { placeholder, placeholder, placeholder };
                 }
