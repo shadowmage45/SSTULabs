@@ -747,32 +747,32 @@ namespace SSTUTools
         /// Updates the diamter/scale values so that the upper-diameter of this model matches the input diamter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setDiameterFromAbove(float newDiameter, float vScalar = 1f)
+        public void setDiameterFromAbove(float newDiameter, float vScalar = 0f)
         {
             float baseUpperDiameter = definition.shouldInvert(orientation) ? definition.lowerDiameter : definition.upperDiameter;
             float scale = newDiameter / baseUpperDiameter;
-            setScale(scale, scale * vScalar);
+            setScale(scale, scale * vScaleOffset(vScalar));
         }
 
         /// <summary>
         /// Updates the diamter/scale values so that the lower-diameter of this model matches the input diamter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setDiameterFromBelow(float newDiameter, float vScalar = 1f)
+        public void setDiameterFromBelow(float newDiameter, float vScalar = 0f)
         {
             float baseLowerDiameter = definition.shouldInvert(orientation) ? definition.upperDiameter : definition.lowerDiameter;
             float scale = newDiameter / baseLowerDiameter;
-            setScale(scale, scale * vScalar);
+            setScale(scale, scale * vScaleOffset(vScalar));
         }
 
         /// <summary>
         /// Updates the diameter/scale values so that the core-diameter of this model matches the input diameter
         /// </summary>
         /// <param name="newDiameter"></param>
-        public void setScaleForDiameter(float newDiameter, float vScalar = 1f)
+        public void setScaleForDiameter(float newDiameter, float vScalar = 0f)
         {
             float newScale = newDiameter / definition.diameter;
-            setScale(newScale, newScale * vScalar);
+            setScale(newScale, newScale * vScaleOffset(vScalar));
         }
 
         /// <summary>
@@ -811,6 +811,23 @@ namespace SSTUTools
             currentHeight = newVerticalScale * definition.height;
             currentDiameter = newHorizontalScale * definition.diameter;
             updateModuleStats();
+        }
+
+        private float vScaleOffset(float aspectInput)
+        {
+            float min = definition.minVerticalScale;
+            float max = definition.maxVerticalScale;
+            float vScale = 1f;
+            if (aspectInput < 0)
+            {
+                aspectInput = Mathf.Abs(aspectInput);
+                vScale -= aspectInput * (1 - min);
+            }
+            else if (aspectInput > 0)
+            {
+                vScale += aspectInput * (max - 1);
+            }
+            return vScale;
         }
 
         #endregion ENDREGION - GUI Interaction Methods

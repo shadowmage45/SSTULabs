@@ -220,9 +220,9 @@ namespace SSTUTools
         /// <summary>
         /// Adjustment to the vertical-scale of v-scale compatible models/module-slots.
         /// </summary>
-        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "V.Scale", guiUnits = "%"),
-         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = 0, maxValue = 1, incrementLarge = 0.25f, incrementSmall = 0.05f, incrementSlide = 0.01f)]
-        public float currentVScale = 1f;
+        [KSPField(isPersistant = true, guiActiveEditor = true, guiActive = false, guiName = "V.ScaleAdj"),
+         UI_FloatEdit(sigFigs = 4, suppressEditorShipModified = true, minValue = -1, maxValue = 1, incrementLarge = 0.25f, incrementSmall = 0.05f, incrementSlide = 0.01f)]
+        public float currentVScale = 0f;
 
         /// <summary>
         /// Percentage of 'core' model volume that is devoted to a secondary container.
