@@ -967,8 +967,6 @@ namespace SSTUTools
         public void updateSurfaceAttachNode(AttachNode node, float prevDiameter, bool userInput)
         {
             float currentDiameter = moduleDiameter;
-            debug("TODO - Update surface attach node");
-            debug("Prev: " + prevDiameter + " new: " + currentDiameter);
             AttachNode srf = part.srfAttachNode;
             if (srf != null)
             {
