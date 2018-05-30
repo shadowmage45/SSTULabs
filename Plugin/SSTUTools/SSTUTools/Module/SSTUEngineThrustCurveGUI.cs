@@ -23,7 +23,7 @@ namespace SSTUTools
         /// Current curve preset name.  Will be either the name of a preset curve or 'custom' if a user-defined curve is in use.
         /// </summary>
         [KSPField(isPersistant =true)]
-        public string presetCurveName = "linear";
+        public string presetCurveName = "Constant";
 
         /// <summary>
         /// True/false if using a preset or custom curve.
@@ -47,10 +47,10 @@ namespace SSTUTools
         /// </summary>
         private bool initialized = false;
 
-        [KSPEvent(guiActive = false, guiActiveEditor = true)]
+        [KSPEvent(guiActive = false, guiActiveEditor = true, guiName = "Open Thrust Curve Editor")]
         public void openThrustCurveGUI()
         {
-            ThrustCurveEditorGUI.openGUI(this, currentCurve);
+            ThrustCurveEditorGUI.openGUI(this, presetCurveName, currentCurve);
         }
         
         public override void OnLoad(ConfigNode node)
@@ -61,6 +61,7 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
+            initialize();
         }
 
         public void Start()
@@ -75,6 +76,42 @@ namespace SSTUTools
         {
             if (initialized) { return; }
             initialized = true;
+            if (!string.IsNullOrEmpty(customCurveData))
+            {
+                //load currentCurve from customCurveData
+                currentCurve = new FloatCurve();
+                currentCurve.loadSingleLine(customCurveData);
+            }
+            else if (usePresetCurve && !string.IsNullOrEmpty(presetCurveName))
+            {
+                //load currentCurve from PresetCurve data
+                loadPresetCurve(presetCurveName);
+                customCurveData = "";
+            }
+            else
+            {
+                //uninitialized module; no custom or preset curve specified, and at least one of the two is mandatory
+                //init to 'linear' curve type
+                usePresetCurve = true;
+                presetCurveName = "Constant";
+                customCurveData = "";
+                //load currentCurve from PresetCurve data
+                loadPresetCurve(presetCurveName);
+            }
+            updateEngineCurve();
+        }
+
+        public void thrustCurveGuiClosed(string preset, FloatCurve curve)
+        {
+            //update the persistent curve data from
+            currentCurve = curve;
+            presetCurveName = preset;
+            usePresetCurve = !string.IsNullOrEmpty(presetCurveName);
+            if (!usePresetCurve)
+            {
+                customCurveData = currentCurve.ToStringSingleLine();
+            }
+            SSTULog.debug("Updating engine thrust cuve data.  Use preset: " + usePresetCurve);
             updateEngineCurve();
         }
 
@@ -87,7 +124,24 @@ namespace SSTUTools
             if (engineModuleIndex < 0) { return; }//config error
             if (engineModuleIndex >= engines.Length) { return; }//config error
             if (currentCurve == null) { return; }//code error
+            SSTULog.debug("Updating ModuleEngine's thrust-curve");
             engines[engineModuleIndex].thrustCurve = currentCurve;
+        }
+
+        private void loadPresetCurve(string presetName)
+        {
+            ConfigNode[] presetNodes = GameDatabase.Instance.GetConfigNodes("SSTU_THRUSTCURVE");
+            ThrustCurvePreset preset;
+            int len = presetNodes.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (presetNodes[i].GetStringValue("name") == presetName)
+                {
+                    preset = new ThrustCurvePreset(presetNodes[i]);
+                    currentCurve = preset.curve;
+                    break;
+                }
+            }
         }
     }
 }

@@ -799,6 +799,11 @@ namespace SSTUTools
             return default(T);
         }
 
+
+        #endregion
+
+        #region FloatCurve extensions
+
         public static String Print(this FloatCurve curve)
         {
             String output = "";
@@ -809,7 +814,39 @@ namespace SSTUTools
             return output;
         }
 
+        public static string ToStringSingleLine(this FloatCurve curve)
+        {
+            string data = "";
+            int len = curve.Curve.length;
+            Keyframe key;
+            for (int i = 0; i < len; i++)
+            {
+                key = curve.Curve.keys[i];
+                if (i > 0) { data = data + ":"; }
+                data = data + key.time + "," + key.value + "," + key.inTangent + "," + key.outTangent;
+            }
+            return data;
+        }
+
+        public static void loadSingleLine(this FloatCurve curve, string input)
+        {
+            string[] keySplits = input.Split(':');
+            string[] valSplits;
+            int len = keySplits.Length;
+            float key, value, inTan, outTan;
+            for (int i = 0; i < len; i++)
+            {
+                valSplits = keySplits[i].Split(',');
+                key = float.Parse(valSplits[0]);
+                value = float.Parse(valSplits[1]);
+                inTan = float.Parse(valSplits[2]);
+                outTan = float.Parse(valSplits[3]);
+                curve.Add(key, value, inTan, outTan);
+            }
+        }
+
         #endregion
+
     }
 }
 

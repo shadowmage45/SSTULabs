@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace SSTUTools
 {
-    public class ThrustCurveEditorGUI
+    public class ThrustCurveEditorGUI : MonoBehaviour
     {
         private static int graphWidth = 640;
         private static int graphHeight = 250;
@@ -15,9 +15,11 @@ namespace SSTUTools
 
         private static int presetWidth = 200;
         private static int presetHeight = scrollHeight + graphHeight;
-        
+
+        private static ThrustCurveEditorGUI activeGUI;
+
         private static int id;
-        private static PartModule module;
+        private static SSTUEngineThrustCurveGUI module;
         private static FloatCurve curve;
         private static Texture2D texture;        
         private static Rect windowRect = new Rect(Screen.width - 900, 40, graphWidth + margin, graphHeight + scrollHeight + margin);
@@ -28,18 +30,22 @@ namespace SSTUTools
 
         private static Rect presetWindowRect = new Rect(Screen.width - 900 - presetWidth - margin, 40, presetWidth + margin, presetHeight + margin);
         private static bool presetWindowOpen = false;
-        //private static Vector2 presetScrollPos;
 
-
-        public static void openGUI(PartModule srbModule, FloatCurve inputCurve)
+        public static void openGUI(SSTUEngineThrustCurveGUI srbModule, string preset, FloatCurve inputCurve)
         {
             module = srbModule;
             id = module.GetInstanceID();
-            MonoBehaviour.print("ThrustCurveEditor-input curve: " + curve+"\n"+SSTUUtils.printFloatCurve(curve));            
+            MonoBehaviour.print("ThrustCurveEditor-input curve: " + curve + "\n" + SSTUUtils.printFloatCurve(curve));
+            presetName = preset;
             setupCurveData(inputCurve);
             texture = new Texture2D(graphWidth, graphHeight);
             updateGraphTexture();
             loadPresets();
+            if (activeGUI == null)
+            {
+                activeGUI = srbModule.gameObject.AddComponent<ThrustCurveEditorGUI>();
+                SSTULog.debug("Created new gui object: " + activeGUI);
+            }
         }
 
         private static void setupCurveData(FloatCurve curve)
@@ -58,12 +64,14 @@ namespace SSTUTools
         {
             sortKeys(true);
             updateFloatCurve();
+            module.thrustCurveGuiClosed(presetName, curve);
             //module.closeGui(curve, presetName);
             MonoBehaviour.Destroy(texture);
             curve = null;
             module = null;
             presets = null;
             curveData.Clear();
+            MonoBehaviour.Destroy(activeGUI);
         }
 
         public static void updateGUI()
@@ -249,6 +257,12 @@ namespace SSTUTools
                 presets[i] = preset;
             }
         }
+
+        public void OnGUI()
+        {
+            updateGUI();
+        }
+
     }
 
     public class ThrustCurvePreset
