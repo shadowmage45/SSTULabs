@@ -10,57 +10,44 @@ namespace SSTUTools
     public class SSTUGimbalOffset : PartModule
     {
 
-        [KSPField]
-        public float gimbalXRangeEditor;
-
-        [KSPField]
-        public float gimbalZRangeEditor;
-
         /// <summary>
-        /// Gimbal adjustment range on X-axis while in flight.
+        /// Gimbal adjustment range on X-axis while in editor.
         /// </summary>
         [KSPField]
         public float gimbalXRange;
 
         /// <summary>
-        /// Gimbal adjustment range on Z-axis while in flight.
+        /// Gimbal adjustment range on Z-axis while in editor.
         /// </summary>
         [KSPField]
         public float gimbalZRange;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Gimbal X"),
+         UI_FloatRange(suppressEditorShipModified =true, minValue = -1, maxValue = 1, stepIncrement = 0.01f)]
         public float gimbalOffsetX = 0f;
 
-        [KSPField(isPersistant = true)]
+        [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Gimbal Z"),
+         UI_FloatRange(suppressEditorShipModified = true, minValue = -1, maxValue = 1, stepIncrement = 0.01f)]
         public float gimbalOffsetZ = 0f;
 
+        private ModuleGimbal gimbalModule;
+        //the actual default orientation of the transforms
         private Quaternion[] defaultOrientations;
-        private Transform[] gimbalTransforms;
 
         private bool initialized = false;
-
-        public override void OnLoad(ConfigNode node)
-        {
-            base.OnLoad(node);
-            initialize();
-        }
 
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
             initialize();
-        }
 
-        public void initialize()
-        {
-            if (initialized) { return; }
-            initialized = true;
-
-            Fields[nameof(gimbalOffsetX)].uiControlEditor.onFieldChanged = (a, b) => 
+            //init field callback methods
+            Fields[nameof(gimbalOffsetX)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 this.actionWithSymmetry(m =>
                 {
                     if (m != this) { m.gimbalOffsetX = this.gimbalOffsetX; }
+                    m.updateGimbalOffset();
                 });
             };
 
@@ -69,34 +56,76 @@ namespace SSTUTools
                 this.actionWithSymmetry(m =>
                 {
                     if (m != this) { m.gimbalOffsetZ = this.gimbalOffsetZ; }
+                    m.updateGimbalOffset();
                 });
             };
-
-            ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
-            if (gimbal == null) { SSTULog.error("No gimbal module located; cannot manipulate gimbal range or offset"); }
-
-            gimbalTransforms = gimbal.gimbalTransforms.ToArray();
-            defaultOrientations = gimbal.initRots.ToArray();
         }
 
-        public void reInitialize()
+        public void Start()
         {
-
+            initialize();
         }
 
         /// <summary>
-        /// Resets the gimbal to its default orientation, and then applies newRotation to it as a direct rotation around the input world axis.
-        /// After this method is used, the ModuleGimbal's internal 'default orientation' values need to be updated appropriately.
+        /// Recreates the default orientation array, and re-applies the X and Z rotation offsets.<para/>
+        /// This method relies on the ModuleGimbal's transform and rotations arrays, and should only be called after the gimbal has been initialized.<para/>
+        /// Assumes that the new gimbal transforms are currently in their default orientation.
         /// </summary>
-        /// <param name="partGimbalTransform"></param>
-        /// <param name="newRotation"></param>
-        public void updateGimbalRotation(Vector3 worldAxis, float newRotation)
+        public void reInitialize()
         {
-            int len = gimbalTransforms.Length;
+            initialized = false;
+            initialize();
+        }
+
+        private void initialize()
+        {
+            if (initialized) { return; }
+            if (defaultOrientations != null) { return; }//already initialized? should not have
+            gimbalModule = part.GetComponent<ModuleGimbal>();
+            if (gimbalModule == null)//no module to update, may be due to ordering in part config
+            {
+                SSTULog.debug("Skipping gimbal offset external init - no gimbal module");
+                return;
+            }
+            if (gimbalModule.gimbalTransforms == null || gimbalModule.gimbalTransforms.Count <= 0)//gimbal not loaded
+            {
+                SSTULog.debug("Skipping gimbal offset external init - no gimbal transforms");
+                return;
+            }
+            else if (gimbalModule.initRots == null || gimbalModule.initRots.Count <= 0)//gimbal invalid?
+            {
+                SSTULog.debug("Skipping gimbal offset external init - no gimbal initRots");
+                return;
+            }
+            //gimbal is present, and appears to be valid, set to initialized and get default orientations array
+            initialized = true;
+            defaultOrientations = gimbalModule.initRots.ToArray();
+            SSTULog.debug("Initialized default gimbal values: "+defaultOrientations.Length);
+            //update gimbal rotations for the current values
+            SSTULog.debug("Updating for current/persistent values: "+gimbalOffsetX+","+gimbalOffsetZ+"  and ranges: "+gimbalXRange+","+gimbalZRange);
+            updateGimbalOffset();
+            
+        }
+
+        private void updateGimbalOffset()
+        {
+            SSTULog.debug("Updating gimbal offsets");
+            int len = gimbalModule.gimbalTransforms.Count();
+            Transform tr;
+            Quaternion rot;
             for (int i = 0; i < len; i++)
             {
-                gimbalTransforms[i].localRotation = defaultOrientations[i];
-                gimbalTransforms[i].Rotate(worldAxis, -newRotation, Space.World);
+                tr = gimbalModule.gimbalTransforms[i];
+                if (tr == null)
+                {
+                    SSTULog.error("NULL gimbal transform detected in ModuleGimbal's transform list!");
+                    continue;
+                }
+                SSTULog.debug("Updating tr: " + i + " : " + tr.localRotation);
+                rot = defaultOrientations[i] * Quaternion.AngleAxis(gimbalOffsetX * gimbalXRange, Vector3.right);
+                tr.localRotation = rot * Quaternion.AngleAxis(gimbalOffsetZ * gimbalZRange, Vector3.up);//gimbals use Z+ = 'down', so we actually rotate around Y+ as 'forward'
+                gimbalModule.initRots[i] = tr.localRotation;
+                SSTULog.debug("New rot: " + tr.localRotation);
             }
         }
 
