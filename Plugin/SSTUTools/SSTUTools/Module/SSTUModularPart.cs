@@ -1441,19 +1441,44 @@ namespace SSTUTools
             }
         }
 
-        //TODO
         /// <summary>
         /// Update the ModuleEnginesXX with the current stats for the current configuration.
         /// </summary>
         private void updateEngineModule()
         {
-            ModuleEngines engine = part.GetComponent<ModuleEngines>();
-            if (engine == null) { return; }
             ModelModule<SSTUModularPart> engineTransformSource = getModuleByName(this.engineTransformSource);
             engineTransformSource.renameEngineThrustTransforms(engineThrustTransform);
             engineTransformSource.renameGimbalTransforms(gimbalTransform);
-            ModelModule<SSTUModularPart> engineThrustSource = getModuleByName(this.engineThrustSource);
-            engineThrustSource.updateEngineModuleThrust(engine, thrustScalingPower);
+            ModuleEngines engine = part.GetComponent<ModuleEngines>();
+            if (engine != null)
+            {
+                ModelModule<SSTUModularPart> engineThrustSource = getModuleByName(this.engineThrustSource);
+                engineThrustSource.updateEngineModuleThrust(engine, thrustScalingPower);
+            }
+
+            //re-init gimbal module
+            ModuleGimbal gimbal = part.GetComponent<ModuleGimbal>();
+            if (gimbal != null)
+            {
+                //check to see that gimbal was already initialized
+                if ((HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight) && gimbal.gimbalTransforms!=null)
+                {
+                    gimbal.OnStart(StartState.Flying);
+
+                    //re-init gimbal offset module if it exists
+                    SSTUGimbalOffset gOffset = part.GetComponent<SSTUGimbalOffset>();
+                    if (gOffset != null)
+                    {
+                        gOffset.reInitialize();
+                    }
+                }
+            }
+
+            SSTUAnimateEngineHeat engineHeat = part.GetComponent<SSTUAnimateEngineHeat>();
+            if (engineHeat != null)
+            {
+                engineHeat.reInitialize();
+            }
         }
 
         //TODO -- surface attach handling -- both internal and external.
