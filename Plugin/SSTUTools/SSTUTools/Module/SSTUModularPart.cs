@@ -1503,6 +1503,99 @@ namespace SSTUTools
                 }
                 constraints.loadExternalData(constraintNode);
             }
+
+            updateEffectsScale();
+        }
+
+        private void updateEffectsScale()
+        {
+            float diameterScale = coreModule.moduleHorizontalScale;
+            if (part.partInfo != null && part.partInfo.partConfig != null)
+            {
+                //get the base EFFECTS node from the part config
+                ConfigNode effectsNode = part.partInfo.partConfig.GetNode("EFFECTS");
+                //create a copy of it, so as to not adjust the original node
+                ConfigNode copiedEffectsNode = new ConfigNode("EFFECTS");
+                effectsNode.CopyTo(copiedEffectsNode);
+
+                foreach (ConfigNode innerNode1 in copiedEffectsNode.nodes)
+                {
+                    foreach (ConfigNode innerNode2 in innerNode1.nodes)
+                    {
+                        //local position offset is common for both stock effects and real-plume effects
+                        if (innerNode2.HasValue("localPosition"))
+                        {
+                            Vector3 pos = innerNode2.GetVector3("localPosition");
+                            pos *= diameterScale;
+                            innerNode2.SetValue("localPosition", (pos.x + ", " + pos.y + ", " + pos.z), false);
+                        }
+                        //fixedScale is only used by RealPlume
+                        if (innerNode2.HasValue("fixedScale"))//real-plumes scaling
+                        {
+                            float fixedScaleVal = innerNode2.GetFloatValue("fixedScale");
+                            fixedScaleVal *= diameterScale;
+                            innerNode2.SetValue("fixedScale", fixedScaleVal.ToString(), false);
+                        }
+                        else if (innerNode2.HasValue("emission"))//stock effects scaling
+                        {
+                            String[] emissionVals = innerNode2.GetValues("emission");
+                            for (int i = 0; i < emissionVals.Length; i++)
+                            {
+                                String val = emissionVals[i];
+                                String[] splitVals = val.Split(new char[] { ' ' });
+                                String replacement = "";
+                                int len = splitVals.Length;
+                                for (int k = 0; k < len; k++)
+                                {
+                                    if (k == 1)//the 'value' portion 
+                                    {
+                                        float emissionValue = SSTUUtils.safeParseFloat(splitVals[k]) * diameterScale;
+                                        splitVals[k] = emissionValue.ToString();
+                                    }
+                                    replacement = replacement + splitVals[k];
+                                    if (k < len - 1) { replacement = replacement + " "; }
+                                }
+                                emissionVals[i] = replacement;
+                            }
+                            innerNode2.RemoveValues("emission");
+                            foreach (String replacementVal in emissionVals)
+                            {
+                                innerNode2.AddValue("emission", replacementVal);
+                            }
+
+                            //scale speed along with emission
+                            if (innerNode2.HasValue("speed"))
+                            {
+                                String[] speedBaseVals = innerNode2.GetValues("speed");
+                                int len = speedBaseVals.Length;
+                                for (int i = 0; i < len; i++)
+                                {
+                                    String replacement = "";
+                                    String[] speedSplitVals = speedBaseVals[i].Split(new char[] { ' ' });
+                                    for (int k = 0; k < speedSplitVals.Length; k++)
+                                    {
+                                        if (k == 1)
+                                        {
+                                            float speedVal = SSTUUtils.safeParseFloat(speedSplitVals[k]) * diameterScale;
+                                            speedSplitVals[k] = speedVal.ToString();
+                                        }
+                                        replacement = replacement + speedSplitVals[k];
+                                        if (k < len - 1) { replacement = replacement + " "; }
+                                    }
+                                    speedBaseVals[i] = replacement;
+                                }
+                                innerNode2.RemoveValues("speed");
+                                foreach (String replacementVal in speedBaseVals)
+                                {
+                                    innerNode2.AddValue("speed", replacementVal);
+                                }
+                            }
+                            //do stock effects support any kind of 'size' manipulation?
+                        }
+                    }
+                }
+                part.Effects.OnLoad(copiedEffectsNode);
+            }
         }
 
         /// <summary>
