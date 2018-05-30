@@ -585,7 +585,6 @@ namespace SSTUTools
         public override void OnStart(StartState state)
         {
             base.OnStart(state);
-            debug("GUIActive state for nose selection: " + Fields[nameof(currentNose)].guiActive);
             initialize();
             initializeUI();
         }

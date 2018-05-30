@@ -74,6 +74,7 @@ namespace SSTUTools
         public void reInitialize()
         {
             initialized = false;
+            defaultOrientations = null;
             initialize();
         }
 
@@ -84,32 +85,25 @@ namespace SSTUTools
             gimbalModule = part.GetComponent<ModuleGimbal>();
             if (gimbalModule == null)//no module to update, may be due to ordering in part config
             {
-                SSTULog.debug("Skipping gimbal offset external init - no gimbal module");
                 return;
             }
             if (gimbalModule.gimbalTransforms == null || gimbalModule.gimbalTransforms.Count <= 0)//gimbal not loaded
             {
-                SSTULog.debug("Skipping gimbal offset external init - no gimbal transforms");
                 return;
             }
             else if (gimbalModule.initRots == null || gimbalModule.initRots.Count <= 0)//gimbal invalid?
             {
-                SSTULog.debug("Skipping gimbal offset external init - no gimbal initRots");
                 return;
             }
             //gimbal is present, and appears to be valid, set to initialized and get default orientations array
             initialized = true;
             defaultOrientations = gimbalModule.initRots.ToArray();
-            SSTULog.debug("Initialized default gimbal values: "+defaultOrientations.Length);
-            //update gimbal rotations for the current values
-            SSTULog.debug("Updating for current/persistent values: "+gimbalOffsetX+","+gimbalOffsetZ+"  and ranges: "+gimbalXRange+","+gimbalZRange);
             updateGimbalOffset();
             
         }
 
         private void updateGimbalOffset()
         {
-            SSTULog.debug("Updating gimbal offsets");
             int len = gimbalModule.gimbalTransforms.Count();
             Transform tr;
             Quaternion rot;
@@ -121,11 +115,14 @@ namespace SSTUTools
                     SSTULog.error("NULL gimbal transform detected in ModuleGimbal's transform list!");
                     continue;
                 }
-                SSTULog.debug("Updating tr: " + i + " : " + tr.localRotation);
-                rot = defaultOrientations[i] * Quaternion.AngleAxis(gimbalOffsetX * gimbalXRange, Vector3.right);
-                tr.localRotation = rot * Quaternion.AngleAxis(gimbalOffsetZ * gimbalZRange, Vector3.up);//gimbals use Z+ = 'down', so we actually rotate around Y+ as 'forward'
+                //use the parts 'right' and 'fwd' vectors for part-local axis rotations
+                Vector3 vesselRight = part.transform.right;
+                Vector3 vesselFwd = part.transform.forward;
+                vesselRight = tr.InverseTransformDirection(vesselRight);
+                vesselFwd = tr.InverseTransformDirection(vesselFwd);
+                rot = defaultOrientations[i] * Quaternion.AngleAxis(gimbalOffsetX * gimbalXRange, vesselRight);
+                tr.localRotation = rot * Quaternion.AngleAxis(gimbalOffsetZ * gimbalZRange, vesselFwd);
                 gimbalModule.initRots[i] = tr.localRotation;
-                SSTULog.debug("New rot: " + tr.localRotation);
             }
         }
 
