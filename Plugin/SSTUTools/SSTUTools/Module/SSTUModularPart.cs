@@ -1462,12 +1462,22 @@ namespace SSTUTools
                 //check to see that gimbal was already initialized
                 if ((HighLogic.LoadedSceneIsEditor || HighLogic.LoadedSceneIsFlight) && gimbal.gimbalTransforms!=null)
                 {
+                    float range = 0;
                     gimbal.OnStart(StartState.Flying);
+                    if (engineTransformSource.definition.engineTransformData != null) { range = engineTransformSource.definition.engineTransformData.gimbalFlightRange; }
+                    gimbal.gimbalRange = range;
 
                     //re-init gimbal offset module if it exists
                     SSTUGimbalOffset gOffset = part.GetComponent<SSTUGimbalOffset>();
                     if (gOffset != null)
                     {
+                        range = 0;
+                        if (engineTransformSource.definition.engineTransformData != null)
+                        {
+                            range = engineTransformSource.definition.engineTransformData.gimbalAdjustmentRange;
+                        }
+                        gOffset.gimbalXRange = range;
+                        gOffset.gimbalZRange = range;
                         gOffset.reInitialize();
                     }
                 }
