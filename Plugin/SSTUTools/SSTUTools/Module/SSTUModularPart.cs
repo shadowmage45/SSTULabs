@@ -1510,6 +1510,7 @@ namespace SSTUTools
         private void updateEffectsScale()
         {
             float diameterScale = coreModule.moduleHorizontalScale;
+            SSTULog.debug("Updating effects for scale: " + diameterScale);
             if (part.partInfo != null && part.partInfo.partConfig != null)
             {
                 //get the base EFFECTS node from the part config
@@ -1594,6 +1595,7 @@ namespace SSTUTools
                         }
                     }
                 }
+                SSTULog.debug("Reloading effects from: \n" + copiedEffectsNode);
                 part.Effects.OnLoad(copiedEffectsNode);
             }
         }
