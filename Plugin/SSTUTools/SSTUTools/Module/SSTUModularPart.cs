@@ -1488,9 +1488,23 @@ namespace SSTUTools
             {
                 engineHeat.reInitialize();
             }
+
+            SSTUModelConstraint constraints = part.GetComponent<SSTUModelConstraint>();
+            if (constraints!=null)
+            {
+                ConfigNode constraintNode;
+                if (engineTransformSource.definition.constraintData != null)
+                {
+                    constraintNode = engineTransformSource.definition.constraintData.constraintNode;
+                }
+                else
+                {
+                    constraintNode = new ConfigNode("CONSTRAINT");
+                }
+                constraints.loadExternalData(constraintNode);
+            }
         }
 
-        //TODO -- surface attach handling -- both internal and external.
         /// <summary>
         /// Update the attach nodes for the current model-module configuration. 
         /// The 'nose' module is responsible for updating of upper attach nodes, while the 'mount' module is responsible for lower attach nodes.

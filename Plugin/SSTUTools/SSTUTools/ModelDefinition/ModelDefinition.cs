@@ -841,15 +841,15 @@ namespace SSTUTools
 
     }
 
-    //TODO
     /// <summary>
     /// Information denoting the model-animation-constraint setup for the meshes a single ModelDefinition.  Contains all information for all constraints used by the model.
     /// </summary>
     public class ModelConstraintData
     {
-        //TODO
+        public ConfigNode constraintNode;
         public ModelConstraintData(ConfigNode node)
         {
+            constraintNode = node;
         }        
     }
 
