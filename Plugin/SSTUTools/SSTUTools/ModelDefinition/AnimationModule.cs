@@ -53,6 +53,11 @@ namespace SSTUTools
         public Action<AnimState> onAnimStateChangeCallback;
 
         /// <summary>
+        /// If true the parts default drag cube will be updated on animation state changes
+        /// </summary>
+        public bool updateDragCube = true;
+
+        /// <summary>
         /// Internal cache of the current animation state as an Enum
         /// </summary>
         private AnimState animationState = AnimState.STOPPED_START;
@@ -423,6 +428,10 @@ namespace SSTUTools
         {
             animationState = newState;
             persistentData = newState.ToString();
+            if (updateDragCube)
+            {
+                SSTUStockInterop.addDragUpdatePart(part);
+            }
             if (updateExternal && onAnimStateChangeCallback!=null)
             {
                 onAnimStateChangeCallback(newState);
