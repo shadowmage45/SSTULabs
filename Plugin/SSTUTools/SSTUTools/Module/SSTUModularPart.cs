@@ -1516,7 +1516,7 @@ namespace SSTUTools
         private void updateEffectsScale()
         {
             float diameterScale = coreModule.moduleHorizontalScale;
-            if (part.partInfo != null && part.partInfo.partConfig != null)
+            if (part.partInfo != null && part.partInfo.partConfig != null && part.partInfo.partConfig.HasNode("EFFECTS"))
             {
                 //get the base EFFECTS node from the part config
                 ConfigNode effectsNode = part.partInfo.partConfig.GetNode("EFFECTS");
