@@ -42,7 +42,15 @@ namespace SSTUTools
         /// </summary>
         public SymmetryModule getSymmetryModule;
 
+        /// <summary>
+        /// Internal efficiency curve used on panels.
+        /// </summary>
         private FloatCurve temperatureEfficCurve;
+
+        /// <summary>
+        /// Power scaling factor, a multiplier applied to 
+        /// </summary>
+        public float powerScalar = 1f;
 
         private string panelStatus
         {
@@ -200,6 +208,7 @@ namespace SSTUTools
             //use current this to update gui status before converting to delta time updates
             if (totalOutput > 0)
             {
+                totalOutput *= powerScalar;
                 panelStatus = totalOutput + " EC/s";
                 totalOutput *= TimeWarp.fixedDeltaTime;//convert to from ec/second to ec/physics tick
                 part.RequestResource("ElectricCharge", -totalOutput);//add to part

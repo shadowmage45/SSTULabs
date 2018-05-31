@@ -37,6 +37,9 @@ namespace SSTUTools
         public float thrustScalingPower = 3f;
 
         [KSPField]
+        public float solarScalingPower = 2f;
+
+        [KSPField]
         public bool enableVScale;
 
         [KSPField]
@@ -1362,6 +1365,7 @@ namespace SSTUTools
             solarModule.setScale(coreScale);
             solarModule.setPosition(pos);
             solarModule.updateModelMeshes();
+            solarFunctionsModule.powerScalar = Mathf.Pow(coreScale, solarScalingPower);
 
             module = getModuleByName(currentUpperRCSParent);
             module.getRCSMountingValues(currentUpperRCSOffset, true, out upperRCSRad, out pos);
@@ -1503,10 +1507,12 @@ namespace SSTUTools
                 }
                 constraints.loadExternalData(constraintNode);
             }
-
             updateEffectsScale();
         }
 
+        /// <summary>
+        /// Rescales the values in the EFFECTS node from the prefab part for the current model scale, and then reloads the effects
+        /// </summary>
         private void updateEffectsScale()
         {
             float diameterScale = coreModule.moduleHorizontalScale;
@@ -1518,9 +1524,10 @@ namespace SSTUTools
                 //create a copy of it, so as to not adjust the original node
                 ConfigNode copiedEffectsNode = new ConfigNode("EFFECTS");
                 effectsNode.CopyTo(copiedEffectsNode);
-
+                //TODO clean up foreach
                 foreach (ConfigNode innerNode1 in copiedEffectsNode.nodes)
                 {
+                    //TODO clean up foreach
                     foreach (ConfigNode innerNode2 in innerNode1.nodes)
                     {
                         //local position offset is common for both stock effects and real-plume effects
@@ -1530,7 +1537,9 @@ namespace SSTUTools
                             pos *= diameterScale;
                             innerNode2.SetValue("localPosition", (pos.x + ", " + pos.y + ", " + pos.z), false);
                         }
-                        //fixedScale is only used by RealPlume
+                        //TODO expand this to explicitly test for RealPlume somehow?
+                        //TODO also include additional paramaters that may need scaling (how to determine scaling factors?)
+                        //fixedScale is only used by RealPlume, but handles pretty much all scaling effects more or less properly
                         if (innerNode2.HasValue("fixedScale"))//real-plumes scaling
                         {
                             float fixedScaleVal = innerNode2.GetFloatValue("fixedScale");
@@ -1539,6 +1548,9 @@ namespace SSTUTools
                         }
                         else if (innerNode2.HasValue("emission"))//stock effects scaling
                         {
+                            //TODO -- stock has some strange scaling values applied to the effects, inverse of model transform scale
+                            //possibly in an attempt to keep the effect the same 'scale' regardless of transform scale
+                            //... but it looks so terrible...
                             String[] emissionVals = innerNode2.GetValues("emission");
                             for (int i = 0; i < emissionVals.Length; i++)
                             {
