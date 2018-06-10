@@ -966,13 +966,14 @@ namespace SSTUTools
         /// <param name="userInput"></param>
         public void updateSurfaceAttachNode(AttachNode node, float prevDiameter, bool userInput)
         {
-            float currentDiameter = moduleDiameter;
-            AttachNode srf = part.srfAttachNode;
-            if (srf != null)
+            if (node != null)
             {
-                Vector3 pos = new Vector3(currentDiameter*0.5f, moduleCenter, 0);
-                Vector3 ori = new Vector3(1, 0, 0);
-                SSTUAttachNodeUtils.updateAttachNodePosition(part, srf, pos, ori, userInput);
+                float currentDiameter = moduleDiameter;
+                float hScale = currentDiameter / definition.diameter;
+                AttachNodeBaseData surfNodeData = definition.surfaceNode;
+                Vector3 pos = surfNodeData.position * hScale;
+                Vector3 ori = surfNodeData.orientation;
+                SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, ori, userInput);
                 SSTUAttachNodeUtils.updateSurfaceAttachedChildren(part, prevDiameter, currentDiameter);
             }
         }
