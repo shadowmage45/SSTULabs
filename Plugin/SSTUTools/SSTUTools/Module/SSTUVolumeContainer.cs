@@ -218,6 +218,11 @@ namespace SSTUTools
         /// </summary>
         public void recalcVolume()
         {
+            if (!initializedResources || containers == null)
+            {
+                //not yet initialized -- recalc will be called during Start, so ignore for now
+                return;
+            }
             float[] volumes = new float[numberOfContainers];
             IContainerVolumeContributor[] contributors = part.FindModulesImplementing<IContainerVolumeContributor>().ToArray();
             ContainerContribution[] cts;
@@ -262,7 +267,7 @@ namespace SSTUTools
             SSTUStockInterop.fireEditorUpdate();
         }
 
-        public int numberOfContainers { get { return containers.Length; } }
+        public int numberOfContainers { get { return containers==null? 0 : containers.Length; } }
 
         public ContainerDefinition highestVolumeContainer(string resourceName)
         {
