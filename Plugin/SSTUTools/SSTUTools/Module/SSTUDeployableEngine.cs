@@ -50,6 +50,11 @@ namespace SSTUTools
             animationModule.onRetractEvent();
         }
 
+        public void Update()
+        {
+            if (animationModule != null) { animationModule.Update(); }
+        }
+
         public void Start()
         {
             engineModule = null;
