@@ -231,6 +231,7 @@ namespace SSTUTools
 
         public void Start()
         {
+            updatePartCost();
             updateFairing(false);
         }
 
@@ -494,15 +495,6 @@ namespace SSTUTools
         {
             modifiedMass = model.moduleMass * currentShieldTypeData.massMult;
             modifiedCost = model.moduleCost;
-            if (standAlonePart && model != null)
-            {
-                PartResource res = part.Resources[resourceName];
-                modifiedCost += (float)res.maxAmount * res.info.unitCost;//the shield cost currently is just the cost of the additional ablator resource
-            }
-            else if (heatSoak)
-            {
-                //TODO -- need to specify a 'shieldCost' that can be increased along with the shield type multiplier and/or scale factors
-            }
         }
 
         private void updateAttachNodes(bool userInput)
