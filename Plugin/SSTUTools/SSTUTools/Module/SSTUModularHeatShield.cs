@@ -44,13 +44,13 @@ namespace SSTUTools
         /// Used to adjust the volume scaling in the model-module
         /// </summary>
         [KSPField]
-        public float resourceScalePower = 3f;
+        public float resourceScalePower = 2f;
 
         /// <summary>
         /// Adjusts the ablation rate based on model scale.  ablationMult = pow(scale, ablationScalePower)
         /// </summary>
         [KSPField]
-        public float ablationScalePower = 3f;
+        public float ablationScalePower = 0f;
 
         /// <summary>
         /// Determines the container index within VolumeContainer to use for resource.
@@ -302,6 +302,8 @@ namespace SSTUTools
             model.setPosition(0);
             model.updateModelMeshes();
             model.updateSelections();
+            model.volumeScalar = resourceScalePower;
+            model.massScalar = resourceScalePower;
             if (standAlonePart)
             {
                 updateDragCube();
