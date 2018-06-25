@@ -280,26 +280,11 @@ namespace SSTUTools
             initialized = true;
             double hsp = 1;
             double dens = 1;
-            if (heatSoak)
-            {
-                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(resourceName);
-                hsp = resource.specificHeatCapacity;
-                dens = resource.density;
-            }
-            else
-            {
-                resource = part.Resources[resourceName];
-                if (resource != null)
-                {
-                    hsp = resource.info.specificHeatCapacity;
-                    dens = resource.info.density;
-                }
-                else
-                {
-                    hsp = PhysicsGlobals.StandardSpecificHeatCapacity;
-                    dens = 0.005f;
-                }
-            }
+
+            PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(resourceName);
+            hsp = resource.specificHeatCapacity;
+            dens = resource.density;
+
             fluxPerResourceUnit = hsp * ablationEfficiency * dens;
             baseSkinIntMult = part.skinInternalConductionMult;
             baseCondMult = part.heatConductivity;
@@ -443,6 +428,10 @@ namespace SSTUTools
             }
             else
             {
+                if (resource == null)
+                {
+                    resource = part.Resources[resourceName];
+                }
                 double maxResourceUsed = maxFluxRemoved / (fluxPerResourceUnit * currentShieldTypeData.efficiencyMult);
                 maxResourceUsed *= TimeWarp.fixedDeltaTime; //convert to a per-tick usage amount
                 if (maxResourceUsed > resource.amount)//didn't have enough ablator for the full tick, calculate partial use
