@@ -441,12 +441,12 @@ namespace SSTUTools
         /// <summary>
         /// The adjusted modified mass for this part.
         /// </summary>
-        private float modifiedMass = 0;
+        private float modifiedMass = -1;
 
         /// <summary>
         /// The adjusted modified cost for this part.
         /// </summary>
-        private float modifiedCost = 0;
+        private float modifiedCost = -1;
 
         /// <summary>
         /// Radius values used for positioning of the solar and RCS module slots.  These values are updated in the 'udpatePositions' method.
@@ -665,14 +665,14 @@ namespace SSTUTools
         //IPartMass/CostModifier override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            if (modifiedMass == 0) { return 0; }
+            if (modifiedMass == -1) { return 0; }
             return -defaultMass + modifiedMass;
         }
 
         //IPartMass/CostModifier override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
-            if (modifiedCost == 0) { return 0; }
+            if (modifiedCost == -1) { return 0; }
             return -defaultCost + modifiedCost;
         }
 
@@ -1394,6 +1394,7 @@ namespace SSTUTools
             modifiedMass = coreModule.moduleMass;
             modifiedMass += solarModule.moduleMass;
             modifiedMass += upperRcsModule.moduleMass;
+            modifiedMass += lowerRcsModule.moduleMass;
             if (useAdapterMass)
             {
                 modifiedMass += noseModule.moduleMass;
