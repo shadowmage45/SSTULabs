@@ -1634,7 +1634,7 @@ namespace SSTUTools
 
             //update the nose interstage node, using the node position as specified by the nose module's fairing offset parameter
             ModelModule<SSTUModularPart> nodeModule = getUpperFairingModelModule();
-            Vector3 pos = new Vector3(0, noseModule.fairingBottom, 0);
+            Vector3 pos = new Vector3(0, nodeModule.fairingBottom, 0);
             SSTUSelectableNodes.updateNodePosition(part, noseInterstageNode, pos);
             AttachNode noseInterstage = part.FindAttachNode(noseInterstageNode);
             if (noseInterstage != null)
