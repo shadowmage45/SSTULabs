@@ -88,14 +88,24 @@ namespace SSTUTools
             //}
         }
 
-        //TODO this currently only returns the mass of the first propellant listed from the part that this module is a component of
-        //should be expanded to search the entire vessel during flight (respecting stage/flow setup)
-        //should be expanded to search the entire ShipConstruct in the editor, respecting stage flow
+        //TODO should be expanded to search the entire vessel during flight (respecting stage/flow setup)
+        //TODO should be expanded to search the entire ShipConstruct in the editor, respecting stage flow
         private float getEnginePropellantMass(ModuleEngines engine)
         {
-            string propName = engine.propellants[0].name;
-            PartResource pr = part.Resources[propName];
-            float fuelMass = (float)(pr.info.density * pr.amount);
+            float fuelMass = 0;
+            if (engine.propellants != null && engine.propellants.Count > 0)
+            {
+                int len = engine.propellants.Count;
+                for (int i = 0; i < len; i++)
+                {
+                    string propName = engine.propellants[0].name;
+                    PartResource pr = part.Resources[propName];
+                    if (pr != null)
+                    {
+                        fuelMass += (float)(pr.info.density * pr.amount);
+                    }
+                }
+            }
             return fuelMass;
         }
 
