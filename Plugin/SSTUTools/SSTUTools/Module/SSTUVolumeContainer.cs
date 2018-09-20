@@ -537,10 +537,10 @@ namespace SSTUTools
                 return;
             }
 
-            VolumeContainerGUI.openGUI(this, containers);
             guiEnabled = true;
             EditorLogic editor = EditorLogic.fetch;
             if (editor != null) { editor.Lock(true, true, true, "SSTUVolumeContainerLock"); }
+            VolumeContainerGUI.openGUI(this, containers);
         }
 
         public void closeGUI()
