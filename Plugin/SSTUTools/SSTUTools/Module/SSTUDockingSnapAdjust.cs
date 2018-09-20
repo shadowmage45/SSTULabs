@@ -29,7 +29,7 @@ namespace SSTUTools
             float minDot = 1 - (tolerance / 360f);//gives a 0 <-> 1 range
             minDot *= 2;//convert to a 0 <-> 2 range
             minDot -= 1;//offset into -1 <-> 1 range
-            mdn.captureMinRollDot = minDot;
+            mdn.captureMinRollDot = enableSnap? minDot : -3.402e38f;
 
             BaseField snapAngleField = Fields[nameof(snapAngle)];
             snapAngleField.guiActive = snapAngleField.guiActiveEditor = enableSnap;
