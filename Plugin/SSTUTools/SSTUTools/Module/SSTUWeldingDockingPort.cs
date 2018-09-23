@@ -171,6 +171,11 @@ namespace SSTUTools
             mdn.snapRotation = enableSnap;
         }
 
+        public void Update()
+        {
+            if (animationModule != null) { animationModule.Update(); }
+        }
+
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
             if (modifiedMass == 0) { return 0; }
