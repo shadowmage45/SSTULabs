@@ -525,6 +525,7 @@ namespace SSTUTools
             {
                 //not really an error -- null is a valid value for many model defs
                 //error("RCS module data (transformNames,thrust) is null for model definition: " + definition.name+" for: "+getErrorReportModuleName()+"\nCould not update RCS transform names.");
+                //TODO -- need to add a dummy RCS transform if one is not already present, to prevent stock modules' from spamming log with errors
                 return;
             }
             definition.rcsModuleData.renameTransforms(root, destinationName);

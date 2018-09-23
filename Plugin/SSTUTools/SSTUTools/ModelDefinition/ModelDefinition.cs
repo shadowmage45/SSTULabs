@@ -940,6 +940,7 @@ namespace SSTUTools
             {
                 trs[i].gameObject.name = trs[i].name = destinationName;
             }
+            //TODO -- if transform array is null, add a single dummy transform of the given name to stop stock modules' logspam
         }
 
     }
