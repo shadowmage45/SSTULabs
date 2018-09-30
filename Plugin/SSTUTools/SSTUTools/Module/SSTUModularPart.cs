@@ -241,7 +241,7 @@ namespace SSTUTools
 
         //non-persistent value; initialized to whatever the currently selected core model definition is at time of loading
         //allows for variant names to be updated in the part-config without breaking everything....
-        [KSPField(guiName = "Variant", guiActiveEditor = true, guiActive = false),
+        [KSPField(isPersistant =true, guiName = "Variant", guiActiveEditor = true, guiActive = false),
          UI_ChooseOption(suppressEditorShipModified = true)]
         public string currentVariant = "Default";
 
