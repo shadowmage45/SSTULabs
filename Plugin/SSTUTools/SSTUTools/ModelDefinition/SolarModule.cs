@@ -52,6 +52,8 @@ namespace SSTUTools
         /// </summary>
         public float powerScalar = 1f;
 
+        public float totalOutput = 0f;
+
         private string panelStatus
         {
             get { return panelStatusField.GetValue<string>(module); }
@@ -165,6 +167,7 @@ namespace SSTUTools
         /// </summary>
         public void FixedUpdate()
         {
+            this.totalOutput = 0f;
             if (!HighLogic.LoadedSceneIsFlight || part.vessel == null)
             {
                 return;
@@ -217,6 +220,7 @@ namespace SSTUTools
             {
                 panelStatus = "Occluded: " + occluder;
             }
+            this.totalOutput = totalOutput * TimeWarp.fixedDeltaTime;
         }
 
         //TODO
