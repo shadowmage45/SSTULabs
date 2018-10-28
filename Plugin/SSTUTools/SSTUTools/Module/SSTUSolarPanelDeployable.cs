@@ -45,6 +45,12 @@ namespace SSTUTools
         public String guiStatus = String.Empty;
 
         /// <summary>
+        /// Public field that can be used by external mods/etc to query for the last updated power output.
+        /// </summary>
+        [KSPField]
+        public float ECOutput = 0f;
+
+        /// <summary>
         /// Animation persistent data
         /// </summary>
         [KSPField(isPersistant = true)]
@@ -134,8 +140,10 @@ namespace SSTUTools
 
         public void FixedUpdate()
         {
+            ECOutput = 0f;
             if (!moduleIsEnabled) { return; }
             solarModule.FixedUpdate();
+            ECOutput = solarModule.totalOutput;
         }
 
         public void Update()
