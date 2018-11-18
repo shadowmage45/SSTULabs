@@ -288,6 +288,7 @@ namespace SSTUTools
                 rle.applyToPart(part, modifier, keepExisting);
             }
             SSTUModInterop.updatePartResourceDisplay(part);
+            //GameEvents.onPartResourceListChange.Fire(part);
         }
 
         private void removeUnusedResources(Part part)
@@ -354,7 +355,31 @@ namespace SSTUTools
                 resourceNode.AddValue("name", name);
                 resourceNode.AddValue("maxAmount", max * modifier);
                 resourceNode.AddValue("amount", fill * modifier);
-                part.AddResource(resourceNode);
+                pr = part.AddResource(resourceNode);
+            }
+
+            //handle stock delta-v simulation resource setup
+            //SR resource code adapted from B9 code by @blowfishpro
+            //https://github.com/blowfishpro/B9PartSwitch/pull/110/files
+            PartResource sr = part.SimulationResources[name];
+            if (sr != null)
+            {
+
+                sr.maxAmount = max * modifier;
+                if (keepExistingAmount)
+                {
+                    sr.amount = Math.Min(pr.amount, pr.maxAmount);
+                }
+                else
+                {
+                    sr.amount = fill * modifier;
+                }
+            }
+            else
+            {
+                sr = new PartResource(pr);
+                sr.simulationResource = true;
+                part.SimulationResources.dict.Add(name.GetHashCode(), sr);
             }
         }
 

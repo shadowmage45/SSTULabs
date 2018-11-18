@@ -9,12 +9,6 @@ ZIP:SSTU-%version%.zip
 	+d Build/Source:Source
 	+f Build/Installation_Instructions.txt:Installation_Instructions.txt
 }
-ZIP:SSTU-PBR-%version%.zip
-{
-    +d Build-PBR/GameData:GameData
-	+f LICENSE-ASSETS.txt:Installation_Instructions.txt
-}
 CMD:rd Build /s/q
 CMD:rd Build /s/q
-CMD:rd Build-PBR /s/q
 CMD:move /y *.zip ..

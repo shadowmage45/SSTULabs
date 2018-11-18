@@ -591,7 +591,7 @@ namespace SSTUTools
             {
                 ModelRCSModuleData data = definition.rcsModuleData;
                 power = data.rcsThrust;
-                float scale = currentHorizontalScale * currentHorizontalScale * currentVerticalScale;
+                float scale = Mathf.Sqrt(currentHorizontalScale * currentVerticalScale);
                 scale *= layout.modelScalarAverage();
                 power *= Mathf.Pow(scale, thrustScaleFactor);
                 rcs.enableX = data.enableX;
