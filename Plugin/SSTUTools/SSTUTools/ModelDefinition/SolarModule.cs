@@ -54,6 +54,8 @@ namespace SSTUTools
 
         public float totalOutput = 0f;
 
+        public float standardPotentialOutput = 0f;
+
         private string panelStatus
         {
             get { return panelStatusField.GetValue<string>(module); }
@@ -115,6 +117,7 @@ namespace SSTUTools
             for (int i = 0; i < len; i++)
             {
                 panelData[i] = new PanelData(data[i], roots[i]);
+                standardPotentialOutput += panelData[i].standardPotentialOutput;
             }
             initializeRotations();
         }
@@ -315,6 +318,8 @@ namespace SSTUTools
         /// Name of the occluder, if any.  Updated during panel power update processing.
         /// </summary>
         public string occluderName = string.Empty;
+
+        public float standardPotentialOutput => suncatchers==null? 0 : suncatchers.Sum(a => a.resourceRate);
 
         public PanelData(ModelSolarData data, Transform root)
         {

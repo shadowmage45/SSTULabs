@@ -13,7 +13,7 @@ namespace SSTUTools
     /// PartModule that manages multiple models/meshes and accompanying features for model switching - resources, modules, textures, recoloring.<para/>
     /// Includes 5 stack-mounted modules, two rcs modules, and a single solar module.  All modules support model-switching, texture-switching, recoloring.
     /// </summary>
-    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable, IContainerVolumeContributor
+    public class SSTUModularPart : PartModule, IPartCostModifier, IPartMassModifier, IRecolorable, IContainerVolumeContributor, IContractObjectiveModule
     {
 
         #region REGION - Part Config Fields
@@ -821,6 +821,11 @@ namespace SSTUTools
             }
             return new ContainerContribution(name, index, contVol);
         }
+
+        //IContractObjectiveModule override
+        public string GetContractObjectiveType() { return "Generator"; }
+        //IContractObjectiveModule override
+        public bool CheckContractObjectiveValidity() { return solarFunctionsModule != null && solarFunctionsModule.standardPotentialOutput > 0; }
 
         #endregion ENDREGION - Standard KSP Overrides
 
