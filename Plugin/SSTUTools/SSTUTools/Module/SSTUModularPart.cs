@@ -1096,7 +1096,11 @@ namespace SSTUTools
             Fields[nameof(currentSolarLayout)].uiControlEditor.onFieldChanged = (a, b) =>
             {
                 solarModule.layoutSelected(a, b);
-                this.actionWithSymmetry(modelChangedAction);
+                this.actionWithSymmetry(m =>
+                {
+                    modelChangedAction(m);
+                    m.solarFunctionsModule.setupSolarPanelData(m.solarModule.getSolarData(), m.solarModule.moduleModelTransforms);
+                });
             };
 
             Fields[nameof(currentSolarParent)].uiControlEditor.onFieldChanged = (a, b) =>
