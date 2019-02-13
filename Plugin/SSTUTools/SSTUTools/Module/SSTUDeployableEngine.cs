@@ -47,6 +47,10 @@ namespace SSTUTools
         [KSPEvent(name = "retractEngineEvent", guiName = "Shutdown Engine", guiActive = true, guiActiveEditor = false)]
         public void retractEngineEvent()
         {
+            if (engineModule.EngineIgnited)
+            {
+                engineModule.Shutdown();
+            }
             animationModule.onRetractEvent();
         }
 
@@ -128,15 +132,6 @@ namespace SSTUTools
             animationModule.getSymmetryModule = m => ((SSTUDeployableEngine)m).animationModule;
             animationModule.setupAnimations(animData, part.transform.FindRecursive("model"), 0);
             animationModule.onAnimStateChangeCallback = onAnimationStateChange;
-        }
-
-        private void setAnimationState(AnimState state)
-        {
-            AnimState currentState = animationModule.animState;
-            if (state == AnimState.STOPPED_END)
-            {
-                engineModule.OnActive();
-            }
         }
 
         private void setupEngineModuleGui()
