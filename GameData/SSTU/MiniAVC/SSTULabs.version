@@ -1,31 +1,31 @@
 {
 	"NAME":"SSTULabs",
 	"URL":"http://ksp-avc.cybutek.net/version.php?id=296",
-	"DOWNLOAD":"https://github.com/shadowmage45/SSTULabs/releases/tag/0.9.44.156",
-	"CHANGE_LOG_URL":"https://github.com/shadowmage45/SSTULabs/releases/tag/0.9.44.156",
+	"DOWNLOAD":"https://github.com/shadowmage45/SSTULabs/releases/tag/0.10.45.156",
+	"CHANGE_LOG_URL":"https://github.com/shadowmage45/SSTULabs/releases/tag/0.10.45.157",
 	"VERSION":
 	{
 		"MAJOR":0,
-		"MINOR":9,
-		"PATCH":44,
-		"BUILD":156
+		"MINOR":10,
+		"PATCH":45,
+		"BUILD":157
 	},
 	"KSP_VERSION":
 	{
 		"MAJOR":1,
-		"MINOR":5,
+		"MINOR":6,
 		"PATCH":1
 	},
 	"KSP_VERSION_MIN":
 	{
 		"MAJOR":1,
-		"MINOR":5,
+		"MINOR":6,
 		"PATCH":0
 	},
 	"KSP_VERSION_MAX":
 	{
 		"MAJOR":1,
-		"MINOR":5,
+		"MINOR":6,
 		"PATCH":9
 	}
 }
