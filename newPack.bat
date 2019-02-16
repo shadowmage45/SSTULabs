@@ -13,7 +13,7 @@ git checkout dev
 cd..
 cd TexturesUnlimited
 git checkout master
-xcopy GameData ..\SSTULabs\GameData /e /i
+xcopy GameData ..\SSTULabs\GameData /e /i /y
 git checkout dev
 cd..
 cd SSTULabs
