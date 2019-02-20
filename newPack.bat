@@ -18,8 +18,8 @@ git checkout dev
 cd..
 cd SSTULabs
 xcopy GameData Build\GameData /e /i
-copy LICENSE-ASSETS.txt Build\GameData\LICENSE-ASSETS.txt
-copy LICENSE-SOURCE.txt Build\GameData\LICENSE-SOURCE.txt
+copy LICENSE-ASSETS.txt Build\GameData\SSTU\LICENSE-ASSETS.txt
+copy LICENSE-SOURCE.txt Build\GameData\SSTU\LICENSE-SOURCE.txt
 copy Installation_Instructions.txt Build\Installation_Instructions.txt
 xcopy Plugin\SSTUTools\SSTUTools Build\Source\Plugin /e /i
 rd Build\Source\Plugin\bin /s /q
@@ -28,6 +28,9 @@ rd Build\Source\Plugin\obj /s /q
 rd Build\GameData\SSTU-OptionalPatches /s /q
 rd Build\GameData\SSTU-TextureSets /s /q
 rd Build\GameData\SSTU-PBR /s /q
+rd Build\GameData\TexturesUnlimitedFX /s /q
+rd Build\GameData\BlendShapeModelLoader /s /q
+del Build\GameData\000_TexturesUnlimited\Plugins\BlendshapeModelLoader.dll
 del Build\Source\Plugin\.gitignore
 del Build\Source\Plugin\SSTUTools.csproj
 del Build\Source\Plugin\SSTUTools.csproj.user
