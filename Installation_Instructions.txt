@@ -3,6 +3,9 @@ All subfolders in the GameData folder within the .zip file need to be extracted 
 Extract the GameData/SSTU folder to <KSP>/GameData/SSTU
 Extract the GameData/CommunityResourcePack folder to <KSP>/GameData/CommunityResourcePack
 Extract the GameData/KSPWheel folder to <KSP>/GameData/KSPWheel
+Extract the GameData/000_TexturesUnlimited folder to <KSP>/GameData/000_TexturesUnlimited
 Extract the ModuleManager.*.*.*.dll file to <KSP>/GameData/ModuleManager.*.*.*.dll
 
 Optional patches are available from the SSTULabs GitHub repository in the SSTU-OptionalPatches folder.  Install these anywhere in your GameData folder to enable the patches.
+
+When running the game on Windows, for best graphical performance, start the game using the -force-glcore or -force-d3d11 command line options;  this will enable use of OpenGL/DX11 graphics APIs which offer more modern features than the default of DX9

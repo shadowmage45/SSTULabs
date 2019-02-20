@@ -1,1 +1,1 @@
-run build.bat -- it will do the rest
+run build_start_here.bat -- it will do the rest
