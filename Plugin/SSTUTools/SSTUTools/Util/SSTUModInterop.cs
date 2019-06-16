@@ -32,10 +32,13 @@ namespace SSTUTools
 
         public static void updateResourceVolume(Part part)
         {
+            SSTULog.debug("Part volume changed...");
             SSTUVolumeContainer vc = part.GetComponent<SSTUVolumeContainer>();
             if (vc != null)
             {
                 vc.recalcVolume();
+                SSTUResourceBoiloff rb = part.GetComponent<SSTUResourceBoiloff>();
+                if (rb != null) { rb.onPartResourcesChanged(); }
             }
             else
             {

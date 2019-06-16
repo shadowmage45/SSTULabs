@@ -36,6 +36,16 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float lastEffective = 1f;
 
+        /// <summary>
+        /// The nominal EC cost for the currently configured container.  This is the cooling cost with full tanks of the currently selected resources,
+        /// with the currently selected tank type.
+        /// </summary>
+        [KSPField(guiActive = false, guiActiveEditor = false)]
+        public float nominalECCost = 0f;
+
+        /// <summary>
+        /// There is one BoiloffResourceData object for each resource in the part that is subject to boiloff.
+        /// </summary>
         private BoiloffResourceData[] boiloffData;
 
         //defaults to true, only runs once and is then set to false
@@ -67,9 +77,9 @@ namespace SSTUTools
         /// </summary>
         public void Start()
         {
-            updateStatsFromContainer();
             boiloffEnabled = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().boiloffEnabled;
             settingsBoiloffModifier = HighLogic.CurrentGame.Parameters.CustomParams<SSTUGameSettings>().boiloffModifier;
+            updateStatsFromContainer();
             if (!boiloffEnabled)
             {
                 Fields["guiVolumeLoss"].guiActive = false;
@@ -139,11 +149,13 @@ namespace SSTUTools
         {
             int len = boiloffData.Length;
             SSTUVolumeContainer container = part.GetComponent<SSTUVolumeContainer>();
+            nominalECCost = 0;
             if (container != null)
             {
                 for (int i = 0; i < len; i++)
                 {
-                    boiloffData[i].setFromContainer(container);
+                    boiloffData[i].setFromContainer(container, settingsBoiloffModifier);
+                    nominalECCost += boiloffData[i].maxECCost;
                 }
             }
             else
@@ -156,15 +168,18 @@ namespace SSTUTools
                     boiloffData[i].activeInsulationPrevention = activeInsulationPrevention;
                     boiloffData[i].inactiveInsulationPrevention = inactiveInsulationPrevention;
                     boiloffData[i].passiveInsulationPrevention = passiveInsulationPrevention;
+                    nominalECCost += boiloffData[i].maxECCost;
                 }
             }
+
         }
 
-        //TODO - not going to be called from anywhere; need to possibly subscribe to events... 
-        // or... who knows;
-        // only need to know when resources are upated in-flight, which should generally never happen
-        private void onPartResourcesChanged()
+        /// <summary>
+        /// Called by SSTUModInterop whenever resources are changed for a part and VolumeContainer is present.
+        /// </summary>
+        public void onPartResourcesChanged()
         {
+            SSTULog.debug("Part resources changed...");
             initialize();
             updateStatsFromContainer();
         }
@@ -187,6 +202,11 @@ namespace SSTUTools
         public float volumeLost;
         public float ecCost;
 
+        /// <summary>
+        /// Maximum EC cost for full tanks.
+        /// </summary>
+        public float maxECCost;
+
         public BoiloffResourceData(PartResource resource, BoiloffData data)
         {
             this.resource = resource;
@@ -194,17 +214,18 @@ namespace SSTUTools
             this.unitVolume = FuelTypes.INSTANCE.getResourceVolume(resource.resourceName);
         }
         
-        public void setFromContainer(SSTUVolumeContainer container)
+        public void setFromContainer(SSTUVolumeContainer container, float configMult)
         {
             ContainerDefinition highestVolume = container.highestVolumeContainer(data.name);
             if (container == null)
             {
                 MonoBehaviour.print("ERROR: Could not locate volume container definition for resource: " + data.name);
             }
-            setFromContainer(highestVolume.currentModifier);
+            setFromContainer(highestVolume.currentModifier, configMult);
+            calcMaxECCost(configMult);
         }
 
-        public void setFromContainer(ContainerModifier mod)
+        public void setFromContainer(ContainerModifier mod, float configMult)
         {
             boiloffModifier = mod.boiloffModifier;
             activeInsulationPercent = mod.activeInsulationPercent;
@@ -212,6 +233,7 @@ namespace SSTUTools
             activeInsulationPrevention = mod.activeInsulationPrevention;
             inactiveInsulationPrevention = mod.inactiveInsulationPrevention;
             passiveInsulationPrevention = mod.passiveInsulationPrevention;
+            calcMaxECCost(configMult);
         }
         
         public float processBoiloff(Part part, double seconds, float configMult, float fixedEffectiveness = -1)
@@ -224,6 +246,9 @@ namespace SSTUTools
             double inactivePrevention = 0f;
             double activePreventionCost = activePrevention * activeECCost * data.cost;
             double activePercent = 1.0f;
+            //fixed effectiveness is a hack for working around EC limitations on resumption from a non-focused vessel
+            //basically assume that if the craft had sufficient EC generation when it was unfocused, that it would have
+            //sufficient generation for the entire unfocused time.
             if (fixedEffectiveness >= 0)
             {
                 activePercent = fixedEffectiveness;
@@ -266,6 +291,11 @@ namespace SSTUTools
             //MonoBehaviour.print("actLoss  : " + volumeLost);
             //MonoBehaviour.print("ecCost   : " + ecCost);
             return (float)activePercent;
+        }
+
+        private void calcMaxECCost(float configMult)
+        {
+            maxECCost = data.cost * activeECCost * activeInsulationPercent * activeInsulationPrevention * configMult * boiloffModifier * data.value * (1 / 3600f) * (float)resource.maxAmount * unitVolume;
         }
 
     }

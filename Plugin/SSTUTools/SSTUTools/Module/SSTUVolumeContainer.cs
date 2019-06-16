@@ -349,6 +349,8 @@ namespace SSTUTools
             updateMassAndCost();
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onContainerUpdated(this);
+            SSTUResourceBoiloff rb = part.GetComponent<SSTUResourceBoiloff>();
+            if (rb != null) { rb.onPartResourcesChanged(); }
         }
 
         /// <summary>
