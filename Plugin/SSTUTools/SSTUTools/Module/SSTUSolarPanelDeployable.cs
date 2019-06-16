@@ -62,6 +62,14 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string solarPersistentData = string.Empty;
 
+        /// <summary>
+        /// Nominal output of the solar panels; 100% thermal efficiency at Kerbin orbit distance from sun (1 KAU).  This value is set when
+        /// the part is initialied and updated any time solar panel layout is changed.  Can be queried in the editor or flight scene to
+        /// determine the current -nominal- EC output of solar panels.
+        /// </summary>
+        [KSPField(isPersistant = true)]
+        public float nominalSolarOutput = 0f;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -205,6 +213,7 @@ namespace SSTUTools
             solarModule = new SolarModule(part, this, animationModule, Fields[nameof(solarPersistentData)], Fields[nameof(guiStatus)]);
             solarModule.getSymmetryModule = m => ((SSTUSolarPanelDeployable)m).solarModule;
             solarModule.setupSolarPanelData(new ModelSolarData[] { msd }, new Transform[] { part.transform.FindRecursive("model") });
+            nominalSolarOutput = solarModule.standardPotentialOutput;
         }
         
         //TODO
