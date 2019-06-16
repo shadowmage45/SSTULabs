@@ -54,6 +54,9 @@ namespace SSTUTools
 
         public float totalOutput = 0f;
 
+        /// <summary>
+        /// The calculated nominal output for current solar panel configuration.
+        /// </summary>
         public float standardPotentialOutput = 0f;
 
         private string panelStatus
@@ -114,6 +117,7 @@ namespace SSTUTools
         {
             int len = data.Length;
             panelData = new PanelData[len];
+            standardPotentialOutput = 0;
             for (int i = 0; i < len; i++)
             {
                 panelData[i] = new PanelData(data[i], roots[i]);
