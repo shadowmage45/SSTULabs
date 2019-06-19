@@ -84,6 +84,7 @@ namespace SSTUTools
         private float modifiedCost = -1;
         private string prevFuelType;
         private bool guiEnabled = false;
+        private string[] blacklistedResources;
 
         public void onFuelTypeUpdated(BaseField field, object obj)
         {
@@ -196,6 +197,13 @@ namespace SSTUTools
                 }
             }
             prevFuelType = getBaseContainer().fuelPreset;
+            ConfigNode[] blacklistNodes = node.GetNodes("BLACKLIST");
+            len = blacklistNodes.Length;
+            blacklistedResources = new string[len];
+            for (int i = 0; i < len; i++)
+            {
+                blacklistedResources[i] = blacklistNodes[i].GetStringValue("name");
+            }
         }
 
         private void updatePersistentData()
@@ -345,7 +353,7 @@ namespace SSTUTools
             {
                 containers[i].getResources(list);
             }
-            list.setResourcesToPart(part, inflationMultiplier, HighLogic.LoadedSceneIsFlight);
+            list.setResourcesToPart(part, inflationMultiplier, HighLogic.LoadedSceneIsFlight, blacklistedResources);
             updateMassAndCost();
             SSTUStockInterop.fireEditorUpdate();
             SSTUModInterop.onContainerUpdated(this);

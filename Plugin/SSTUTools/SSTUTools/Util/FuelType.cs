@@ -281,7 +281,12 @@ namespace SSTUTools
         /// <param name="fill"></param>
         public void setResourcesToPart(Part part, float modifier, bool keepExisting)
         {
-            removeUnusedResources(part);
+            setResourcesToPart(part, modifier, keepExisting, new string[0]);
+        }
+
+        public void setResourcesToPart(Part part, float modifier, bool keepExisting, string[] blacklist)
+        {
+            removeUnusedResources(part, blacklist);
             int len = resourceList.Count;
             foreach(ResourceListEntry rle in resourceList.Values)
             {
@@ -291,14 +296,14 @@ namespace SSTUTools
             //GameEvents.onPartResourceListChange.Fire(part);
         }
 
-        private void removeUnusedResources(Part part)
+        private void removeUnusedResources(Part part, string[] blacklist)
         {
             int len = part.Resources.Count;
             PartResource pr;
             for (int i = len-1; i >=0; i--)
             {
                 pr = part.Resources[i];
-                if (!contains(pr))
+                if (!contains(pr) && !blacklist.Contains(pr.resourceName))
                 {
                     part.Resources.Remove(pr);
                 }
