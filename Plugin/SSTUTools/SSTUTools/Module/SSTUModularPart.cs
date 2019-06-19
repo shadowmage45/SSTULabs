@@ -1876,6 +1876,49 @@ namespace SSTUTools
 
         #endregion ENDREGION - Custom Update Methods
 
+        #region REGION - Mod Interop
+
+        public Bounds getModuleBounds(string moduleName)
+        {
+            switch (moduleName)
+            {
+                case "NOSE":
+                    return noseModule.getModelBounds();
+                case "UPPER":
+                    return upperModule.getModelBounds();
+                case "CORE":
+                    return coreModule.getModelBounds();
+                case "LOWER":
+                    return lowerModule.getModelBounds();
+                case "MOUNT":
+                    return mountModule.getModelBounds();
+                case "NONE":
+                    return new Bounds();
+                case "SOLAR":
+                    return solarModule.getModelBounds();
+                case "UPPERRCS":
+                    return upperRcsModule.getModelBounds();
+                case "LOWERRCS":
+                    return lowerRcsModule.getModelBounds();
+                default:
+                    return new Bounds();
+            }
+
+        }
+
+        public Bounds getModuleBounds(string[] moduleNames)
+        {
+            Bounds bounds = new Bounds();
+            int len = moduleNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                bounds.Encapsulate(getModuleBounds(moduleNames[i]));
+            }
+            return bounds;
+        }
+
+        #endregion
+
     }
 
     /// <summary>
