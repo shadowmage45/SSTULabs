@@ -54,6 +54,8 @@ namespace SSTUTools
 
         public float totalOutput = 0f;
 
+        public bool useStockResource = true;
+
         /// <summary>
         /// The calculated nominal output for current solar panel configuration.
         /// </summary>
@@ -221,7 +223,8 @@ namespace SSTUTools
                 totalOutput *= powerScalar;
                 panelStatus = totalOutput + " EC/s";
                 totalOutput *= TimeWarp.fixedDeltaTime;//convert to from ec/second to ec/physics tick
-                part.RequestResource("ElectricCharge", -totalOutput);//add to part
+                if (useStockResource)
+                    part.RequestResource("ElectricCharge", -totalOutput);//add to part
             }
             else
             {

@@ -44,6 +44,9 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public string persistentState = AnimState.STOPPED_START.ToString();
 
+        [KSPField]
+        public bool useStockResource = true;
+
         [Persistent]
         public string configNodeData = string.Empty;
 
@@ -220,8 +223,11 @@ namespace SSTUTools
                 return;
             }
             double unitsNeeded = (inflationMass - appliedMass) / resourceDef.density;
-            double unitsUsed = part.RequestResource(resourceName, unitsNeeded);
-            appliedMass += (float) unitsUsed * resourceDef.density;
+            if (useStockResource)
+            {
+                double unitsUsed = part.RequestResource(resourceName, unitsNeeded);
+                appliedMass += (float)unitsUsed * resourceDef.density;
+            }
         }
 
         private void updateCrewCapacity(int capacity)

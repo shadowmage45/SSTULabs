@@ -24,6 +24,9 @@ namespace SSTUTools
         [KSPField(isPersistant = false)]
         public FloatCurve temperatureEfficCurve;
 
+        [KSPField]
+        public bool useStockResource = true;
+
 
         //BELOW HERE ARE NON-CONFIG EDITABLE FIELDS
 
@@ -93,7 +96,7 @@ namespace SSTUTools
             {
                 updatePanelPower(pd);
             }
-            if (energyFlow > 0)
+            if (energyFlow > 0 && useStockResource)
             {
                 part.RequestResource(resourceName, -energyFlow);
             }
