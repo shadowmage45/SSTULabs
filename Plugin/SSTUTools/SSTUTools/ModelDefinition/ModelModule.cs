@@ -1008,13 +1008,12 @@ namespace SSTUTools
         public Bounds getModelBounds()
         {
             Bounds bounds = new Bounds();
-            if (models == null) { return bounds; }
-            foreach (Transform tr in models)
+            if (models == null) { return bounds; }//uninitialized module?
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
             {
-                Renderer r = tr.GetComponent<Renderer>();
-                if (r == null) { continue; }
-                Bounds b = PartGeometryUtil.GetRendererBounds(tr.gameObject);
-                bounds.Encapsulate(b);
+                Transform tr = models[i];
+                bounds.Encapsulate(PartGeometryUtil.GetRendererBounds(tr.gameObject));
             }
             return bounds;
         }
