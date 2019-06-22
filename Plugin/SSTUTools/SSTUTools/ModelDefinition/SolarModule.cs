@@ -664,7 +664,7 @@ namespace SSTUTools
             //this is the total angle needed to rotate (could be + or -)
             float rawAngle = getRotationAmount(targetPos);
             float absAngle = Mathf.Abs(rawAngle);
-            float frameSpeed = trackingSpeed * Time.deltaTime;
+            float frameSpeed = trackingSpeed * Time.deltaTime * TimeWarp.CurrentRate;
             float frameAngle = 0f;
 
             bool finished = true;
