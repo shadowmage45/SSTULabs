@@ -1005,6 +1005,19 @@ namespace SSTUTools
             SSTUAttachNodeUtils.updateAttachNodePosition(part, node, pos, ori, userInput);
         }
 
+        public Bounds getModelBounds()
+        {
+            Bounds bounds = new Bounds();
+            if (models == null) { return bounds; }//uninitialized module?
+            int len = models.Length;
+            for (int i = 0; i < len; i++)
+            {
+                Transform tr = models[i];
+                bounds.Encapsulate(PartGeometryUtil.GetRendererBounds(tr.gameObject));
+            }
+            return bounds;
+        }
+
         #endregion ENDREGION - Public/External methods
 
         #region ENDREGION - Private/Internal methods
