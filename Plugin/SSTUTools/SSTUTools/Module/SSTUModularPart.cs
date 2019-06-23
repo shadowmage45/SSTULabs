@@ -556,19 +556,19 @@ namespace SSTUTools
         [KSPEvent]
         public void mountRetractEvent() { mountModule.animationModule.onRetractEvent(); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Nose Animation")]
         public void noseToggleAction(KSPActionParam param) { noseModule.animationModule.onToggleAction(param); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Top Animation")]
         public void topToggleAction(KSPActionParam param) { upperModule.animationModule.onToggleAction(param); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Core Animation")]
         public void coreToggleAction(KSPActionParam param) { coreModule.animationModule.onToggleAction(param); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Bottom Animation")]
         public void bottomToggleAction(KSPActionParam param) { lowerModule.animationModule.onToggleAction(param); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Mount Animation")]
         public void mountToggleAction(KSPActionParam param) { mountModule.animationModule.onToggleAction(param); }
 
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Deploy Solar Panels")]
@@ -577,7 +577,7 @@ namespace SSTUTools
         [KSPEvent(guiActive = true, guiActiveEditor = true, guiName = "Retract Solar Panels")]
         public void solarRetractEvent() { solarFunctionsModule.onRetractEvent(); }
 
-        [KSPAction]
+        [KSPAction(guiName = "Toggle Solar Deployment")]
         public void solarToggleAction(KSPActionParam param) { solarModule.animationModule.onToggleAction(param); }
 
         #endregion ENDREGION - UI Events and Actions (buttons and action groups)
@@ -1875,6 +1875,49 @@ namespace SSTUTools
         }
 
         #endregion ENDREGION - Custom Update Methods
+
+        #region REGION - Mod Interop
+
+        public Bounds getModuleBounds(string moduleName)
+        {
+            switch (moduleName)
+            {
+                case "NOSE":
+                    return noseModule.getModelBounds();
+                case "UPPER":
+                    return upperModule.getModelBounds();
+                case "CORE":
+                    return coreModule.getModelBounds();
+                case "LOWER":
+                    return lowerModule.getModelBounds();
+                case "MOUNT":
+                    return mountModule.getModelBounds();
+                case "NONE":
+                    return new Bounds();
+                case "SOLAR":
+                    return solarModule.getModelBounds();
+                case "UPPERRCS":
+                    return upperRcsModule.getModelBounds();
+                case "LOWERRCS":
+                    return lowerRcsModule.getModelBounds();
+                default:
+                    return new Bounds();
+            }
+
+        }
+
+        public Bounds getModuleBounds(string[] moduleNames)
+        {
+            Bounds bounds = new Bounds();
+            int len = moduleNames.Length;
+            for (int i = 0; i < len; i++)
+            {
+                bounds.Encapsulate(getModuleBounds(moduleNames[i]));
+            }
+            return bounds;
+        }
+
+        #endregion
 
     }
 
