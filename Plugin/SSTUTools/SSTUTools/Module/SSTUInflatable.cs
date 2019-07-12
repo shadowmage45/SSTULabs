@@ -204,12 +204,9 @@ namespace SSTUTools
             if (vc != null)
             {
                 vc.inflationMultiplier = mult;
-                vc.recalcVolume();
             }
-            else
-            {
-                SSTUModInterop.updateResourceVolume(part);//call out to RF to update volume; it will obviously lack the inflation multiplier data
-            }
+            //std call that will update volume container and/or realfuels interop
+            SSTUModInterop.updateResourceVolume(part);
         }
 
         private void consumeResources()
