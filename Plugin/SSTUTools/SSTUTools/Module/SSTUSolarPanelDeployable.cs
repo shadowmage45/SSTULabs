@@ -45,7 +45,8 @@ namespace SSTUTools
         public String guiStatus = String.Empty;
 
         /// <summary>
-        /// Public field that can be used by external mods/etc to query for the last updated power output.
+        /// Public field that can be used by external mods/etc to query for the last updated power output.<para/>
+        /// This value is given in EC/s, and reflects the total calculated output from the last update tick.
         /// </summary>
         [KSPField]
         public float ECOutput = 0f;

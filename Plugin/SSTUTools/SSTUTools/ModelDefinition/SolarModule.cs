@@ -52,6 +52,9 @@ namespace SSTUTools
         /// </summary>
         public float powerScalar = 1f;
 
+        /// <summary>
+        /// Per-second output calculated on the last update tick
+        /// </summary>
         public float totalOutput = 0f;
 
         /// <summary>
@@ -215,7 +218,8 @@ namespace SSTUTools
 
             float temperatureMultiplier = temperatureEfficCurve.Evaluate((float)part.temperature);
             totalOutput *= temperatureMultiplier * distMult;//per-second output value
-            //use current this to update gui status before converting to delta time updates
+            //cache total output for use upstream by controller module
+            this.totalOutput = totalOutput;
             if (totalOutput > 0)
             {
                 totalOutput *= powerScalar;
@@ -227,7 +231,6 @@ namespace SSTUTools
             {
                 panelStatus = "Occluded: " + occluder;
             }
-            this.totalOutput = totalOutput * TimeWarp.fixedDeltaTime;
         }
 
         //TODO
