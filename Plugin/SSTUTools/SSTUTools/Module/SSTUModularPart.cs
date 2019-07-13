@@ -431,6 +431,12 @@ namespace SSTUTools
         [KSPField(isPersistant = true)]
         public float nominalSolarOutput = 0f;
 
+        [KSPField]
+        public bool subtractMass = true;
+
+        [KSPField]
+        public bool subtractCost = true;
+
         #endregion REGION - Part Config Fields
 
         #region REGION - Private working vars
@@ -673,15 +679,18 @@ namespace SSTUTools
         //IPartMass/CostModifier override
         public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
         {
-            if (modifiedMass == -1) { return 0; }
-            return -defaultMass + modifiedMass;
+            if (modifiedMass == -1)
+            {
+                return 0;
+            }
+            return (subtractMass ? -defaultMass : 0) + modifiedMass;
         }
 
         //IPartMass/CostModifier override
         public float GetModuleCost(float defaultCost, ModifierStagingSituation sit)
         {
             if (modifiedCost == -1) { return 0; }
-            return -defaultCost + modifiedCost;
+            return (subtractCost? -defaultCost : 0) + modifiedCost;
         }
 
         //IRecolorable override
@@ -991,6 +1000,7 @@ namespace SSTUTools
             updateAttachNodes(false);
             updateAvailableVariants();
             SSTUStockInterop.updatePartHighlighting(part);
+            SSTUModInterop.updateResourceVolume(part);
             nominalSolarOutput = solarFunctionsModule.standardPotentialOutput;
         }
         
