@@ -50,7 +50,7 @@ namespace SSTUTools
         /// <summary>
         /// Currently tracked sun (used trough reflection by Kerbalism for its Kopernicus multi-star support)
         /// </summary>
-        private CelestialBody trackedBody;
+        private int trackedBodyIndex = 0;
 
         /// <summary>
         /// Power scaling factor, a multiplier applied to 
@@ -102,7 +102,7 @@ namespace SSTUTools
             this.temperatureEfficCurve.Add(300f, 1f, -0.0008277721f, -0.0008277721f);
             this.temperatureEfficCurve.Add(1200f, 0.1f, -0.0003626566f, -0.0003626566f);
             this.temperatureEfficCurve.Add(2500f, 0.01f, 0f, 0f);
-            this.trackedBody = FlightGlobals.Bodies[0];
+            this.trackedBodyIndex = 0; //TODO -- get solar target from ?? (in case of multiple stars/reparented stars, etc)
         }
 
         public void onRetractEvent()
@@ -164,7 +164,7 @@ namespace SSTUTools
             }
             else if(HighLogic.LoadedSceneIsFlight)//sun tracking only active in flight
             {
-                Vector3 sunPos = trackedBody.transform.position;
+                Vector3 sunPos = FlightGlobals.Bodies[trackedBodyIndex].transform.position;
                 if (part.vessel != null && part.vessel.solarFlux > 0)
                 {
                     for (int i = 0; i < len; i++)
@@ -176,7 +176,6 @@ namespace SSTUTools
             //noop in editor if not lerping closed
         }
 
-        //TODO -- get solar target from ?? (in case of multiple stars/reparented stars, etc)
         /// <summary>
         /// Should be called on fixed-update to calculate the EC output from solar panels.  Includes raycasts
         /// for occlusion checks, as well as
@@ -207,7 +206,7 @@ namespace SSTUTools
                 }
                 return;
             }
-            Vector3 solarTarget = trackedBody.transform.position;
+            Vector3 solarTarget = FlightGlobals.Bodies[trackedBodyIndex].transform.position;
             string occluder = string.Empty;
             float panelOutput = 0f;
             float totalOutput = 0f;
