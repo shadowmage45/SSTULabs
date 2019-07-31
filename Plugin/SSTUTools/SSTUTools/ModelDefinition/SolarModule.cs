@@ -191,6 +191,9 @@ namespace SSTUTools
             if (distMult == 0)//occluded, zero solar flux input on vessel
             {
                 //use current main body as the occluder, even though it might be something else in the case of lunar eclipse/etc
+                //TODO -- analytically determine what the occluding body is;
+                //  use dot product to derive angle angle and check vs angular diameter of each body to see if it is occluding and return the closest occluding body
+                //  somehow calculate partial output for partially occluded sun? 
                 if (FlightGlobals.currentMainBody != null)
                 {
                     panelStatus = "Occluded: " + FlightGlobals.currentMainBody.name;
