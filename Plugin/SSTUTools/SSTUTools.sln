@@ -19,8 +19,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BaseMapCreation", "..\..\..
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SSTUSpecMasker", "SSTUSpecMasker\SSTUSpecMasker.csproj", "{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TexturesUnlimitedFX", "..\..\..\TexturesUnlimited\Plugin\TexturesUnlimitedFX\TexturesUnlimitedFX.csproj", "{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TexturesUnlimitedTools", "..\..\..\TexturesUnlimited\Plugin\TexturesUnlimitedTools\TexturesUnlimitedTools.csproj", "{4089A3BA-0F14-4CA7-95DA-DD288038493E}"
 EndProject
 Global
@@ -129,18 +127,6 @@ Global
 		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|x64.Build.0 = Release|Any CPU
 		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|x86.ActiveCfg = Release|Any CPU
 		{75AE6DF1-CEA1-47E9-B9C5-DEAAE205987C}.Release|x86.Build.0 = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|x64.Build.0 = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Debug|x86.Build.0 = Debug|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|Any CPU.Build.0 = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|x64.ActiveCfg = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|x64.Build.0 = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|x86.ActiveCfg = Release|Any CPU
-		{84C4972A-F6EE-43F9-9DC9-A185FD2D1086}.Release|x86.Build.0 = Release|Any CPU
 		{4089A3BA-0F14-4CA7-95DA-DD288038493E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4089A3BA-0F14-4CA7-95DA-DD288038493E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4089A3BA-0F14-4CA7-95DA-DD288038493E}.Debug|x64.ActiveCfg = Debug|x64
